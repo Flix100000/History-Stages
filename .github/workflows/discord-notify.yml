@@ -89,7 +89,7 @@ jobs:
               username: "History Stages",
               avatar_url: $icon,
               content: $content,
-              allowed_mentions: { parse: ["everyone"] },
+              allowed_mentions: { parse: ["everyone", "Updates"] },
               embeds: [{
                 author: { name: "History Stages", icon_url: $icon },
                 title: $title,
