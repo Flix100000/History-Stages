@@ -153,6 +153,7 @@ public final class TradeGoodsScanner {
         int ran = 0;
         for (VillagerTrades.ItemListing listing : listings) {
             if (listing == null) continue;
+            if (searchesTheWorld(listing)) continue;
             for (int attempt = 0; attempt < RUNS_PER_LISTING; attempt++) {
                 try {
                     MerchantOffer offer = listing.getOffer(trader, random);
@@ -168,6 +169,21 @@ public final class TradeGoodsScanner {
             ran++;
         }
         return ran;
+    }
+
+    /**
+     * A cartographer's treasure map answers "what do you sell" by going and looking: it searches
+     * the world for the structure the map would point at, generating terrain until it finds one.
+     * On a large pack that took eighteen seconds here — on the thread that also throws ender
+     * pearls and runs commands, so the whole server stood still — and it happened the first time
+     * anyone opened the editor, once per world.
+     *
+     * <p>Left out rather than made cheaper, because there is no cheap way to ask: the offer has no
+     * answer until the search finishes. The maps are missing from the trade picker as a result;
+     * locking one by its item still works.
+     */
+    private static boolean searchesTheWorld(VillagerTrades.ItemListing listing) {
+        return listing instanceof VillagerTrades.TreasureMapForEmeralds;
     }
 
     /** Null when the offer hands over nothing recognisable, which no lock could name anyway. */
