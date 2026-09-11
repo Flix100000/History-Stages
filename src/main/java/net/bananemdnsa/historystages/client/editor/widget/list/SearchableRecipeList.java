@@ -15,6 +15,7 @@ import net.bananemdnsa.historystages.client.editor.widget.EditorTooltip;
 import net.bananemdnsa.historystages.client.editor.widget.GridGeometry;
 import net.bananemdnsa.historystages.client.editor.widget.ItemSlotGrid;
 import net.bananemdnsa.historystages.client.editor.widget.SearchPanelChrome;
+import net.bananemdnsa.historystages.compat.reliableremover.ReliableRemoverCompat;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
@@ -87,6 +88,13 @@ public class SearchableRecipeList implements PickerOverlay {
     // Master column
     private final List<ItemEntry> allRecipeItems = new ArrayList<>();
     private final List<ItemEntry> filteredItems = new ArrayList<>();
+    /**
+     * Ids Reliable Remover reports as deleted. Reliable Remover hides a deleted item's recipes
+     * from the recipe viewers but leaves them in the recipe manager, so unlike the fluids and
+     * recipes the rest of this class reasons about, they do reach the grid and have to be taken
+     * out here.
+     */
+    private final Set<String> removedItems = new HashSet<>();
     private int scrollRow = 0;
     private int maxScrollRow = 0;
     private boolean draggingScrollbar = false;
@@ -249,7 +257,17 @@ public class SearchableRecipeList implements PickerOverlay {
             int orderB = registryOrder.getOrDefault(b.id(), Integer.MAX_VALUE);
             return Integer.compare(orderA, orderB);
         });
-        filteredItems.addAll(allRecipeItems);
+        if (ReliableRemoverCompat.isPresent()) {
+            for (ItemEntry entry : allRecipeItems) {
+                if (ReliableRemoverCompat.isRemoved(entry.stack())) {
+                    removedItems.add(entry.id());
+                }
+            }
+            if (!removedItems.isEmpty()) {
+                SearchPanelChrome.addRemovedFilter(searchBar);
+            }
+        }
+        applyFilter(searchBar.getText());
     }
 
     /**
@@ -373,6 +391,8 @@ public class SearchableRecipeList implements PickerOverlay {
         String query = filter == null ? "" : filter;
         filteredItems.clear();
         for (ItemEntry entry : allRecipeItems) {
+            if (!SearchPanelChrome.passesRemovedFilter(searchBar, removedItems, entry.id()))
+                continue;
             if (!itemHasAnySurvivingRecipe(entry))
                 continue;
             // A "@namespace" query is answered by recipePassesFilters, which reads the recipe id;

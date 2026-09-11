@@ -4,8 +4,10 @@ import net.bananemdnsa.historystages.api.editor.widget.SearchBar;
 
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.Font;
+import net.minecraft.network.chat.Component;
 
 import java.util.Collection;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -19,7 +21,28 @@ import java.util.function.Supplier;
  */
 public final class SearchPanelChrome {
 
+    /** Filter switch that swaps a picker over to showing only what a pack has deleted. */
+    public static final String FILTER_ONLY_REMOVED = "only_removed";
+
     private SearchPanelChrome() {}
+
+    /**
+     * Offers the deleted items as a filter. Only worth calling once a picker has found some —
+     * a switch that can only ever empty the grid is noise in the menu.
+     */
+    public static void addRemovedFilter(SearchBar bar) {
+        bar.filters().addOption(FILTER_ONLY_REMOVED,
+                Component.translatable("editor.historystages.search.filter.only_removed").getString(), null);
+    }
+
+    /**
+     * Whether an id survives the deleted-items switch: off keeps everything but the deleted ones,
+     * on keeps nothing else. The inversion lives here rather than in each picker because reading
+     * it backwards hides exactly the wrong half and looks plausible either way.
+     */
+    public static boolean passesRemovedFilter(SearchBar bar, Set<String> removedIds, String id) {
+        return removedIds.isEmpty() || removedIds.contains(id) == bar.filters().isActive(FILTER_ONLY_REMOVED);
+    }
 
     /**
      * Builds a {@link SearchBar} with the standard filter dropdown: optional "hide already
