@@ -1,12 +1,20 @@
 package net.bananemdnsa.historystages.gametest;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
+import com.google.gson.Gson;
 import io.netty.buffer.Unpooled;
 
 import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.HistoryStages;
+import net.bananemdnsa.historystages.data.ItemEntry;
+import net.bananemdnsa.historystages.data.StageEntry;
+import net.bananemdnsa.historystages.network.clientbound.EditorSyncPacket;
+import net.bananemdnsa.historystages.network.clientbound.SyncStageDefinitionsPacket;
 import net.bananemdnsa.historystages.network.clientbound.SyncStagesPacket;
 import net.bananemdnsa.historystages.network.clientbound.SyncVisualConfigPacket;
 import net.minecraft.gametest.framework.GameTest;
@@ -96,6 +104,120 @@ public final class PacketTests {
         } finally {
             Config.VISUAL.showLockIcons.set(original);
         }
+    }
+
+    /** A stage set of {@code stages} stages holding {@code itemsEach} items apiece. */
+    private static Map<String, StageEntry> stageSet(int stages, int itemsEach) {
+        Map<String, StageEntry> map = new LinkedHashMap<>();
+        for (int s = 0; s < stages; s++) {
+            StageEntry stage = new StageEntry();
+            stage.setDisplayName("Gametest Stage " + s);
+            List<ItemEntry> items = new ArrayList<>();
+            for (int i = 0; i < itemsEach; i++) {
+                items.add(new ItemEntry("gametest:item_" + s + "_" + i));
+            }
+            stage.setItemEntries(items);
+            map.put("gametest:stage_" + s, stage);
+        }
+        return map;
+    }
+
+    private static SyncStageDefinitionsPacket definitionsOf(Map<String, StageEntry> stages) {
+        return new SyncStageDefinitionsPacket(stages, Map.of(),
+                Map.of("gametest:stage_0", "early/ores"), Map.of(),
+                Set.of("early", "early/ores"), Set.of(),
+                "{\"global\":{}}", "{\"descriptions\":{}}", true, false);
+    }
+
+    @GameTest(template = "empty")
+    public static void stageDefinitionsSurviveTheirCodec(GameTestHelper helper) {
+        SyncStageDefinitionsPacket original = definitionsOf(stageSet(3, 4));
+
+        FriendlyByteBuf buffer = new FriendlyByteBuf(Unpooled.buffer());
+        SyncStageDefinitionsPacket.STREAM_CODEC.encode(buffer, original);
+        SyncStageDefinitionsPacket restored = SyncStageDefinitionsPacket.STREAM_CODEC.decode(buffer);
+
+        if (!original.stages().keySet().equals(restored.stages().keySet())) {
+            helper.fail("the stage set did not survive its codec"
+                    + "\n  sent:     " + original.stages().keySet()
+                    + "\n  received: " + restored.stages().keySet());
+            return;
+        }
+        // The fields after the stage maps are the ones a misread length prefix eats first, so they
+        // are worth naming individually rather than trusting the keys above.
+        if (!original.stagePaths().equals(restored.stagePaths())
+                || !original.folders().equals(restored.folders())) {
+            helper.fail("the folder tree did not survive: paths " + restored.stagePaths()
+                    + ", folders " + restored.folders());
+            return;
+        }
+        if (!original.graphLayout().equals(restored.graphLayout())
+                || !original.graphStages().equals(restored.graphStages())
+                || restored.graphGlobalFrozen() != original.graphGlobalFrozen()
+                || restored.graphIndividualFrozen() != original.graphIndividualFrozen()) {
+            helper.fail("the graph settings did not survive: layout " + restored.graphLayout()
+                    + ", stages " + restored.graphStages()
+                    + ", frozen " + restored.graphGlobalFrozen() + "/" + restored.graphIndividualFrozen());
+            return;
+        }
+        if (buffer.readableBytes() != 0) {
+            helper.fail("the decoder left " + buffer.readableBytes()
+                    + " bytes unread, so it reads less than the encoder writes");
+            return;
+        }
+        helper.succeed();
+    }
+
+    /**
+     * The bug this whole compression round exists for: a pack whose stage JSON went past the old
+     * quarter-million character cap could not log its players in at all.
+     */
+    @GameTest(template = "empty")
+    public static void aStageSetPastTheOldStringCapStillEncodes(GameTestHelper helper) {
+        Map<String, StageEntry> stages = stageSet(60, 250);
+
+        int rawChars = new Gson().toJson(stages).length();
+        if (rawChars <= 262144) {
+            helper.fail("the fixture is only " + rawChars + " characters, which the old cap "
+                    + "would have accepted - it proves nothing");
+            return;
+        }
+
+        FriendlyByteBuf buffer = new FriendlyByteBuf(Unpooled.buffer());
+        SyncStageDefinitionsPacket.STREAM_CODEC.encode(buffer, definitionsOf(stages));
+        SyncStageDefinitionsPacket restored = SyncStageDefinitionsPacket.STREAM_CODEC.decode(buffer);
+
+        if (restored.stages().size() != stages.size()) {
+            helper.fail("sent " + stages.size() + " stages, got back " + restored.stages().size());
+            return;
+        }
+        StageEntry first = restored.stages().get("gametest:stage_0");
+        if (first == null || first.getItemEntries().size() != 250) {
+            helper.fail("the first stage came back with "
+                    + (first == null ? "nothing" : first.getItemEntries().size() + " items"));
+            return;
+        }
+        helper.succeed();
+    }
+
+    /** Same map, second door: opening the editor on that pack has to work too. */
+    @GameTest(template = "empty")
+    public static void aStageSetPastTheOldStringCapReachesTheEditor(GameTestHelper helper) {
+        Map<String, StageEntry> stages = stageSet(60, 250);
+
+        FriendlyByteBuf buffer = new FriendlyByteBuf(Unpooled.buffer());
+        EditorSyncPacket.STREAM_CODEC.encode(buffer, new EditorSyncPacket(stages));
+        EditorSyncPacket restored = EditorSyncPacket.STREAM_CODEC.decode(buffer);
+
+        if (restored.stages().size() != stages.size()) {
+            helper.fail("sent " + stages.size() + " stages, got back " + restored.stages().size());
+            return;
+        }
+        if (buffer.readableBytes() != 0) {
+            helper.fail("the decoder left " + buffer.readableBytes() + " bytes unread");
+            return;
+        }
+        helper.succeed();
     }
 
     @GameTest(template = "empty")

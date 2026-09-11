@@ -4,6 +4,7 @@ import net.bananemdnsa.historystages.network.EditorDataCache;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import net.bananemdnsa.historystages.HistoryStages;
+import net.bananemdnsa.historystages.network.PacketJson;
 import net.bananemdnsa.historystages.client.editor.graph.StageGraphConfig;
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.StageManager;
@@ -34,6 +35,12 @@ import java.util.Set;
  * already both the login sync and the post-admin-save broadcast, so they reach clients on both
  * paths with no new plumbing. Each payload is the JSON that its own data class reads and writes —
  * one serialiser for the file and the wire, rather than two that can disagree.
+ *
+ * <p>Every JSON field travels gzipped. Written plainly, a large pack's stage set went past the
+ * fixed character cap on a string write and threw while the login packet was being encoded — the
+ * player was simply dropped. Stage JSON is the same handful of keys repeated once per entry, so it
+ * compresses about tenfold, which buys far more headroom than raising the cap would and keeps the
+ * packet well under the frame limit at the same time.
  */
 public record SyncStageDefinitionsPacket(Map<String, StageEntry> stages,
                                          Map<String, StageEntry> individualStages,
@@ -80,15 +87,27 @@ public record SyncStageDefinitionsPacket(Map<String, StageEntry> stages,
     public static final StreamCodec<FriendlyByteBuf, SyncStageDefinitionsPacket> STREAM_CODEC =
             StreamCodec.of(SyncStageDefinitionsPacket::encode, SyncStageDefinitionsPacket::decode);
 
+    /**
+     * Character ceiling for the two stage maps and the two graph files.
+     *
+     * <p>Generous because it no longer costs anything on the wire — gzip turns stage JSON, which
+     * is the same dozen keys repeated per entry, into something between a tenth and a twentieth of
+     * its size. It is a guard against a runaway file, not a budget anyone is expected to spend.
+     */
+    private static final int MAX_JSON_CHARS = 8 * 1024 * 1024;
+
+    /** For folder paths and folder names, which scale with the tree rather than its contents. */
+    private static final int MAX_SMALL_JSON_CHARS = 1024 * 1024;
+
     private static void encode(FriendlyByteBuf buffer, SyncStageDefinitionsPacket msg) {
-        buffer.writeUtf(GSON.toJson(msg.stages), 262144);
-        buffer.writeUtf(GSON.toJson(msg.individualStages), 262144);
-        buffer.writeUtf(GSON.toJson(msg.stagePaths), 65536);
-        buffer.writeUtf(GSON.toJson(msg.individualStagePaths), 65536);
-        buffer.writeUtf(GSON.toJson(msg.folders), 65536);
-        buffer.writeUtf(GSON.toJson(msg.individualFolders), 65536);
-        buffer.writeUtf(msg.graphLayout != null ? msg.graphLayout : "{}", 262144);
-        buffer.writeUtf(msg.graphStages != null ? msg.graphStages : "{}", 262144);
+        PacketJson.write(buffer, GSON.toJson(msg.stages), MAX_JSON_CHARS, "stages");
+        PacketJson.write(buffer, GSON.toJson(msg.individualStages), MAX_JSON_CHARS, "individual stages");
+        PacketJson.write(buffer, GSON.toJson(msg.stagePaths), MAX_SMALL_JSON_CHARS, "stage paths");
+        PacketJson.write(buffer, GSON.toJson(msg.individualStagePaths), MAX_SMALL_JSON_CHARS, "individual stage paths");
+        PacketJson.write(buffer, GSON.toJson(msg.folders), MAX_SMALL_JSON_CHARS, "folders");
+        PacketJson.write(buffer, GSON.toJson(msg.individualFolders), MAX_SMALL_JSON_CHARS, "individual folders");
+        PacketJson.write(buffer, msg.graphLayout != null ? msg.graphLayout : "{}", MAX_JSON_CHARS, "graph layout");
+        PacketJson.write(buffer, msg.graphStages != null ? msg.graphStages : "{}", MAX_JSON_CHARS, "graph stages");
         // Frozen-ness cannot be read back out of the position JSON: an unfrozen tree carries
         // computed positions too, so a non-empty section proves nothing off disk.
         buffer.writeBoolean(msg.graphGlobalFrozen);
@@ -96,20 +115,20 @@ public record SyncStageDefinitionsPacket(Map<String, StageEntry> stages,
     }
 
     private static SyncStageDefinitionsPacket decode(FriendlyByteBuf buffer) {
-        Map<String, StageEntry> stages = GSON.fromJson(buffer.readUtf(262144), MAP_TYPE);
+        Map<String, StageEntry> stages = GSON.fromJson(PacketJson.read(buffer, MAX_JSON_CHARS, "stages"), MAP_TYPE);
         if (stages == null) stages = new HashMap<>();
-        Map<String, StageEntry> individualStages = GSON.fromJson(buffer.readUtf(262144), MAP_TYPE);
+        Map<String, StageEntry> individualStages = GSON.fromJson(PacketJson.read(buffer, MAX_JSON_CHARS, "individual stages"), MAP_TYPE);
         if (individualStages == null) individualStages = new HashMap<>();
-        Map<String, String> stagePaths = GSON.fromJson(buffer.readUtf(65536), PATH_MAP_TYPE);
+        Map<String, String> stagePaths = GSON.fromJson(PacketJson.read(buffer, MAX_SMALL_JSON_CHARS, "stage paths"), PATH_MAP_TYPE);
         if (stagePaths == null) stagePaths = new HashMap<>();
-        Map<String, String> individualStagePaths = GSON.fromJson(buffer.readUtf(65536), PATH_MAP_TYPE);
+        Map<String, String> individualStagePaths = GSON.fromJson(PacketJson.read(buffer, MAX_SMALL_JSON_CHARS, "individual stage paths"), PATH_MAP_TYPE);
         if (individualStagePaths == null) individualStagePaths = new HashMap<>();
-        Set<String> folders = GSON.fromJson(buffer.readUtf(65536), FOLDER_SET_TYPE);
+        Set<String> folders = GSON.fromJson(PacketJson.read(buffer, MAX_SMALL_JSON_CHARS, "folders"), FOLDER_SET_TYPE);
         if (folders == null) folders = new HashSet<>();
-        Set<String> individualFolders = GSON.fromJson(buffer.readUtf(65536), FOLDER_SET_TYPE);
+        Set<String> individualFolders = GSON.fromJson(PacketJson.read(buffer, MAX_SMALL_JSON_CHARS, "individual folders"), FOLDER_SET_TYPE);
         if (individualFolders == null) individualFolders = new HashSet<>();
-        String graphLayout = buffer.readUtf(262144);
-        String graphStages = buffer.readUtf(262144);
+        String graphLayout = PacketJson.read(buffer, MAX_JSON_CHARS, "graph layout");
+        String graphStages = PacketJson.read(buffer, MAX_JSON_CHARS, "graph stages");
         boolean graphGlobalFrozen = buffer.readBoolean();
         boolean graphIndividualFrozen = buffer.readBoolean();
         return new SyncStageDefinitionsPacket(stages, individualStages, stagePaths,
