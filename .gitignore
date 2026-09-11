@@ -33,7 +33,7 @@ repo
 .claude/
 .vscode/
 CLAUDE.md
-docs/superpowers/
+docs/
 .superpowers/
 
 # docs/ holds local notes and brainstorm specs, never part of the repo.
