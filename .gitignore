@@ -39,6 +39,10 @@ CLAUDE.md
 # docs/ holds local notes and brainstorm specs, never part of the repo.
 docs/
 
+# Mods pulled in only to reproduce a bug report. build.gradle applies this file when it is here,
+# so the build server never sees it. Restore it from docs/forge-dev-setup/.
+dev-deps.gradle
+
 # Unit tests are kept local: the maintainer verifies in-game, and the suite is not
 # part of what ships.
 src/test/

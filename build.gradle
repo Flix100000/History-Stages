@@ -111,6 +111,14 @@ dependencies {
     compileOnly fg.deobf("top.theillusivec4.curios:curios-forge:5.14.1+1.20.1:api")
 }
 
+// Mods pulled in only to reproduce a bug report - Create, KubeJS and the like. They live in
+// dev-deps.gradle, which is not in the repo, so a clean checkout and the build server never
+// download them and a release never depends on CurseForge being up. docs/forge-dev-setup/ holds
+// the copy to restore the file from.
+if (file("dev-deps.gradle").exists()) {
+    apply from: "dev-deps.gradle"
+}
+
 tasks.named('processResources', ProcessResources).configure {
     var replaceProperties = [
             minecraft_version: minecraft_version, minecraft_version_range: minecraft_version_range,
