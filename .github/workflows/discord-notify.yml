@@ -62,6 +62,7 @@ jobs:
           LOADER: ${{ steps.mcver.outputs.loader }}
           MC: ${{ steps.mcver.outputs.mc }}
           FOOTER: ${{ steps.mcver.outputs.footer }}
+          UPDATES_ROLE_ID: ${{ vars.DISCORD_UPDATES_ROLE_ID }}
         run: |
           set -euo pipefail
 
@@ -74,8 +75,16 @@ jobs:
           CURSEFORGE_URL="https://www.curseforge.com/minecraft/mc-mods/history-stages"
           DOWNLOADS="[Modrinth]($MODRINTH_URL) • [CurseForge]($CURSEFORGE_URL) • [GitHub]($RELEASE_URL)"
 
+          # A role only pings as <@&id>, so the id comes from the
+          # DISCORD_UPDATES_ROLE_ID repo variable.
+          ROLE_ID="${UPDATES_ROLE_ID:-}"
+          MENTIONS="@everyone"
+          if [ -n "$ROLE_ID" ]; then
+            MENTIONS="$MENTIONS <@&$ROLE_ID>"
+          fi
+
           payload=$(jq -n \
-            --arg content $'@everyone\n🚀 **A new version is available!**' \
+            --arg content "$MENTIONS"$'\n🚀 **A new version is available!**' \
             --arg title "🚀 $RELEASE_NAME" \
             --arg url "$RELEASE_URL" \
             --arg desc "$RELEASE_BODY" \
@@ -85,11 +94,12 @@ jobs:
             --arg icon "$ICON_URL" \
             --arg footer "$FOOTER" \
             --arg ts "$PUBLISHED_AT" \
+            --arg role "$ROLE_ID" \
             '{
               username: "History Stages",
               avatar_url: $icon,
               content: $content,
-              allowed_mentions: { parse: ["everyone", "Updates"] },
+              allowed_mentions: { parse: ["everyone"], roles: (if $role == "" then [] else [$role] end) },
               embeds: [{
                 author: { name: "History Stages", icon_url: $icon },
                 title: $title,
