@@ -55,6 +55,10 @@ public final class KubeJsRecipeLockTests {
     private static final ResourceLocation SHAPED =
             ResourceLocation.parse("kubejs:hstg_repro_shaped");
 
+    /** Shares its ingredients with vanilla red sandstone, deliberately. */
+    private static final ResourceLocation COLLIDING =
+            ResourceLocation.parse("kubejs:hstg_repro_collision");
+
     private KubeJsRecipeLockTests() {}
 
     @GameTest(template = "empty")
@@ -175,7 +179,7 @@ public final class KubeJsRecipeLockTests {
         StageData data = StageData.get(level);
         String stageId = GameTestStages.PREFIX + "kubejs_shaped_id";
         try {
-            if (!resolvesAs(server, level, RecipeType.CRAFTING, Items.RED_SAND)) {
+            if (!resolvesAs(server, level, RecipeType.CRAFTING, Items.GRAVEL)) {
                 helper.fail(SHAPED + " does not resolve in a crafter grid even with nothing "
                         + "locked — the test's own input is wrong, not the gate");
                 return;
@@ -184,7 +188,7 @@ public final class KubeJsRecipeLockTests {
             GameTestStages.global("kubejs_shaped_id", stage ->
                     stage.setRecipes(new ArrayList<>(List.of(SHAPED.toString()))));
 
-            if (resolvesAs(server, level, RecipeType.CRAFTING, Items.RED_SAND)) {
+            if (resolvesAs(server, level, RecipeType.CRAFTING, Items.GRAVEL)) {
                 helper.fail(SHAPED + " sits on a locked global stage and a mechanical crafter "
                         + "would still make it — this is the reported bug");
                 return;
@@ -193,7 +197,7 @@ public final class KubeJsRecipeLockTests {
             data.addStage(stageId);
             StageData.refreshCache(data.getUnlockedStages());
 
-            if (!resolvesAs(server, level, RecipeType.CRAFTING, Items.RED_SAND)) {
+            if (!resolvesAs(server, level, RecipeType.CRAFTING, Items.GRAVEL)) {
                 helper.fail("the stage is unlocked and " + SHAPED + " still does not resolve");
                 return;
             }
@@ -202,6 +206,56 @@ public final class KubeJsRecipeLockTests {
             GameTestStages.removeAll();
             data.removeStage(stageId);
         }
+    }
+
+    @GameTest(template = "empty")
+    public static void gatingARecipeLeavesItsCollisionPartnerAlone(GameTestHelper helper) {
+        // Vanilla answers with the first recipe that matches and stops there, so a gate that
+        // simply empties the answer removes every other recipe on the same ingredients as well.
+        // COLLIDING sits on 2x2 red sand, which is vanilla red sandstone.
+        ServerLevel level = helper.getLevel();
+        MinecraftServer server = level.getServer();
+        if (server.getRecipeManager().byKey(COLLIDING).isEmpty()) {
+            helper.fail("needs " + COLLIDING + " — see theScriptedRecipesResolveAtAll");
+            return;
+        }
+
+        StageData data = StageData.get(level);
+        String stageId = GameTestStages.PREFIX + "kubejs_collision";
+        try {
+            if (!resolvesAs(server, level, RecipeType.CRAFTING, Items.RED_SAND)) {
+                helper.fail("2x2 red sand resolves to nothing with everything unlocked — the "
+                        + "test's own input is wrong, not the gate");
+                return;
+            }
+
+            GameTestStages.global("kubejs_collision", stage ->
+                    stage.setRecipes(new ArrayList<>(List.of(COLLIDING.toString()))));
+
+            ItemStack still = resolvedResult(server, level, Items.RED_SAND);
+            if (still.isEmpty()) {
+                helper.fail(COLLIDING + " is locked and 2x2 red sand now makes nothing at all — "
+                        + "the gate took vanilla red sandstone down with it");
+                return;
+            }
+            if (!still.is(Items.RED_SANDSTONE)) {
+                helper.fail("2x2 red sand makes " + still + " while " + COLLIDING + " is locked; "
+                        + "vanilla red sandstone was expected");
+                return;
+            }
+            helper.succeed();
+        } finally {
+            GameTestStages.removeAll();
+            data.removeStage(stageId);
+        }
+    }
+
+    /** What a crafter grid of this item actually produces, empty when nothing resolves. */
+    private static ItemStack resolvedResult(MinecraftServer server, ServerLevel level, Item filling) {
+        return server.getRecipeManager()
+                .getRecipeFor(RecipeType.CRAFTING, crafterGrid(filling), level)
+                .map(holder -> holder.value().getResultItem(level.registryAccess()))
+                .orElse(ItemStack.EMPTY);
     }
 
     private static boolean loaded(GameTestHelper helper, MinecraftServer server, ResourceLocation id) {
