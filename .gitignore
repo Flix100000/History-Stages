@@ -22,6 +22,8 @@ eclipse
 run
 runs
 run-data
+run-server
+run-gametest
 
 repo
 
@@ -32,11 +34,10 @@ forge*changelog.txt
 .claude/
 .vscode/
 CLAUDE.md
-docs/superpowers/
 .superpowers/
 
-# Word documents in docs/ are local notes, never part of the repo.
-docs/*.docx
+# docs/ holds local notes and brainstorm specs, never part of the repo.
+docs/
 
 # Unit tests are kept local: the maintainer verifies in-game, and the suite is not
 # part of what ships.
