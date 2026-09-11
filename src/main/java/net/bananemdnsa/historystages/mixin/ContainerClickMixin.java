@@ -54,16 +54,6 @@ public class ContainerClickMixin {
         Slot slot = menu.slots.get(slotId);
         ItemStack stack = slot.getItem();
         if (stack.isEmpty()) return;
-
-        if (StageLockHelper.isActionLockedByIndividualStage(stack, serverPlayer.getUUID(), "pickup")) {
-            ci.cancel();
-
-            ResourceLocation itemRL = BuiltInRegistries.ITEM.getKey(stack.getItem());
-            DebugLogger.runtimeThrottled("Container Lock", "container_" + serverPlayer.getUUID() + "_" + itemRL,
-                    "<" + serverPlayer.getName().getString() + "> Interaction with locked item '" + itemRL + "' in container blocked");
-
-            LockFeedback.sendActionbar(serverPlayer, FEEDBACK_CATEGORY, LockMessages.itemLocked());
-        }
     }
 
     /**
