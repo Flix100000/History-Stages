@@ -60,6 +60,7 @@ import java.util.stream.Collectors;
 @Mixin(RecipeManager.class)
 public class RecipeManagerMixin implements UngatedRecipes {
     @Shadow private Map<ResourceLocation, Recipe<?>> byName;
+    @Shadow private Map<RecipeType<?>, Map<ResourceLocation, Recipe<?>>> recipes;
 
     /**
      * Only refresh stage cache and populate AllRecipesCache on apply().
@@ -102,8 +103,31 @@ public class RecipeManagerMixin implements UngatedRecipes {
             CallbackInfoReturnable<Optional<T>> cir) {
         Optional<T> result = cir.getReturnValue();
         if (result.isPresent() && isRecipeLocked(result.get(), level.isClientSide())) {
-            cir.setReturnValue(Optional.empty());
+            cir.setReturnValue(nextUnlocked(type, container, level));
         }
+    }
+
+    /**
+     * The next recipe of this type that matches and is not locked.
+     *
+     * <p>Vanilla answers with the first match and stops there, so emptying the result would take
+     * every other recipe with the same ingredients down with the locked one. Lock a scripted
+     * "2x2 red sand" and red sandstone stops being craftable as well — which of the two vanilla
+     * offers up first is map order, so it can even differ between loads.
+     *
+     * <p>Same iteration order vanilla uses, so with nothing locked the answer is the one it would
+     * have given anyway. Only reached once something is actually locked.
+     */
+    @SuppressWarnings("unchecked")
+    private <C extends Container, T extends Recipe<C>> Optional<T> nextUnlocked(
+            RecipeType<T> type, C container, Level level) {
+        boolean isClient = level.isClientSide();
+        for (Recipe<?> recipe : this.recipes.getOrDefault(type, Collections.emptyMap()).values()) {
+            if (isRecipeLocked(recipe, isClient)) continue;
+            T candidate = (T) recipe;
+            if (candidate.matches(container, level)) return Optional.of(candidate);
+        }
+        return Optional.empty();
     }
 
     /**
@@ -116,7 +140,8 @@ public class RecipeManagerMixin implements UngatedRecipes {
             CallbackInfoReturnable<Optional<Pair<ResourceLocation, T>>> cir) {
         Optional<Pair<ResourceLocation, T>> result = cir.getReturnValue();
         if (result.isPresent() && isRecipeLocked(result.get().getSecond(), level.isClientSide())) {
-            cir.setReturnValue(Optional.empty());
+            cir.setReturnValue(nextUnlocked(type, container, level)
+                    .map(recipe -> Pair.of(recipe.getId(), recipe)));
         }
     }
 
