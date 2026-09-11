@@ -31,6 +31,11 @@ public class Config {
         public final ModConfigSpec.DoubleValue structureBorderDistance;
         public final ModConfigSpec.BooleanValue structureLockOverlayEnabled;
         public final ModConfigSpec.DoubleValue structureLockOverlayOpacity;
+        public final ModConfigSpec.DoubleValue zoneBorderDistance;
+        public final ModConfigSpec.DoubleValue zoneLockOverlayOpacity;
+        public final ModConfigSpec.BooleanValue zoneBorderFullView;
+        public final ModConfigSpec.BooleanValue zoneBorderOutline;
+        public final ModConfigSpec.ConfigValue<String> zoneBorderColor;
         public final ModConfigSpec.BooleanValue mobUseActionbar;
         public final ModConfigSpec.BooleanValue mobShowChat;
         public final ModConfigSpec.BooleanValue mobShowStagesInChat;
@@ -160,6 +165,51 @@ public class Config {
             structureLockOverlayOpacity = builder
                     .comment("Opacity of the red lock-overlay (0.0 = invisible, 1.0 = fully opaque). [Default: 0.30]")
                     .defineInRange("structureLockOverlayOpacity", 0.30, 0.0, 1.0);
+
+            builder.pop();
+
+            // Zones read their own values rather than the structure ones above. Sharing was the
+            // first arrangement and it did not hold up: a pack can gate a whole region as a zone
+            // and a single hut as a structure, and wanting to see the region from further off says
+            // nothing about the hut.
+            //
+            // What is deliberately NOT here is a switch for whether a border or a tint appears at
+            // all. Every zone already carries show_border and show_overlay, so that question has
+            // an owner, and a second one in the config could only ever contradict it. Everything
+            // below answers "how much" instead - and none at all is a valid amount, which is what
+            // leaves a player who wants neither a way out.
+            builder.comment("Visual feedback for locked zones (border + overlay)").push("zone_overlay");
+
+            zoneBorderDistance = builder
+                    .comment("How close (in blocks) to a locked zone wall before the border becomes visible. The border fades in as you approach. 0 turns the border off entirely.",
+                            "Only zones that switch their border on have one at all - this decides how far it carries, not whether. [Default: 8.0]")
+                    .defineInRange("zoneBorderDistance", 8.0, 0.0, 32.0);
+
+            zoneLockOverlayOpacity = builder
+                    .comment("Opacity of the red lock-overlay while you stand in a locked zone (0.0 = off, 1.0 = fully opaque).",
+                            "Only zones that switch their overlay on show one at all - this decides how strong it is, not whether. [Default: 0.30]")
+                    .defineInRange("zoneLockOverlayOpacity", 0.30, 0.0, 1.0);
+
+            zoneBorderFullView = builder
+                    .comment("Draw the force field of a locked zone far past the usual few blocks, so",
+                            "the whole wall is visible at once? It still fades out with distance, and it",
+                            "still stops well short of the horizon: the wall is worked out from the blocks",
+                            "in front of you, and the further it reaches the more of them there are.",
+                            "Off, it reaches as far as the distance above and no further.",
+                            "[Default: false]")
+                    .define("zoneBorderFullView", false);
+
+            zoneBorderOutline = builder
+                    .comment("Also draw a wireframe outline of every shape in a locked zone, fading",
+                            "in from about fifty blocks away? It shows where an area is and how big",
+                            "before you can make out the wall itself, which is more use while laying",
+                            "a pack out than while playing one. [Default: false]")
+                    .define("zoneBorderOutline", false);
+
+            zoneBorderColor = builder
+                    .comment("Colour of both the force field and the outline, as #RRGGBB.",
+                            "[Default: #E61414]")
+                    .define("zoneBorderColor", "#E61414");
 
             builder.pop();
 
@@ -523,6 +573,7 @@ public class Config {
         public final ModConfigSpec.BooleanValue biomeBlockRightClick;
         public final ModConfigSpec.BooleanValue biomeBlockLeftClick;
         public final ModConfigSpec.BooleanValue biomeBlockProjectiles;
+        public final ModConfigSpec.ConfigValue<String> zoneMarkerItem;
 
         public Gameplay(ModConfigSpec.Builder builder) {
             builder.comment(
@@ -810,6 +861,20 @@ public class Config {
                     .define("blockProjectiles", true);
 
             builder.pop(); // biome_lock
+
+            builder.comment("Zone Lock Settings (areas you draw yourself; each zone carries its own rules)").push("zone_lock");
+
+            zoneMarkerItem = builder
+                    .comment(
+                            "Item used to mark out zone corners in the world.",
+                            "Sneak + left click sets the first corner, sneak + right click the second.",
+                            "Requires permission level 2, the same as opening the editor.",
+                            "Without sneaking the item behaves completely normally, so an item you",
+                            "already carry is a safe choice. Leave empty to switch marking by item",
+                            "off entirely and use /history zone instead. [Default: minecraft:stick]")
+                    .define("markerItem", "minecraft:stick");
+
+            builder.pop(); // zone_lock
         }
     }
 

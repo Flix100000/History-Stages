@@ -122,6 +122,15 @@ public class PacketHandler {
 
         // Lock border sync (Server → Client) — drives the force-field overlay near locked structures
         registrar.playToClient(SyncLockBordersPacket.TYPE, SyncLockBordersPacket.STREAM_CODEC, SyncLockBordersPacket::handle);
+        registrar.playToClient(net.bananemdnsa.historystages.network.clientbound.SyncZoneSelectionPacket.TYPE,
+                net.bananemdnsa.historystages.network.clientbound.SyncZoneSelectionPacket.STREAM_CODEC,
+                net.bananemdnsa.historystages.network.clientbound.SyncZoneSelectionPacket::handle);
+        registrar.playToServer(net.bananemdnsa.historystages.network.serverbound.RequestZoneSelectionPacket.TYPE,
+                net.bananemdnsa.historystages.network.serverbound.RequestZoneSelectionPacket.STREAM_CODEC,
+                net.bananemdnsa.historystages.network.serverbound.RequestZoneSelectionPacket::handle);
+        registrar.playToClient(net.bananemdnsa.historystages.network.clientbound.SyncZoneShapesPacket.TYPE,
+                net.bananemdnsa.historystages.network.clientbound.SyncZoneShapesPacket.STREAM_CODEC,
+                net.bananemdnsa.historystages.network.clientbound.SyncZoneShapesPacket::handle);
     }
 
     public static void sendToAll(SyncStagesPacket packet) {
@@ -137,6 +146,20 @@ public class PacketHandler {
     }
 
     public static void sendToastToPlayer(StageUnlockedToastPacket packet, ServerPlayer player) {
+        PacketDistributor.sendToPlayer(player, packet);
+    }
+
+    /** Never broadcast: a zone selection is the marking player's own business. */
+    public static void sendZoneSelection(
+            net.bananemdnsa.historystages.network.clientbound.SyncZoneSelectionPacket packet,
+            ServerPlayer player) {
+        PacketDistributor.sendToPlayer(player, packet);
+    }
+
+    /** Also per player: which zones are locked differs between them, and so does what they see. */
+    public static void sendZoneShapes(
+            net.bananemdnsa.historystages.network.clientbound.SyncZoneShapesPacket packet,
+            ServerPlayer player) {
         PacketDistributor.sendToPlayer(player, packet);
     }
 

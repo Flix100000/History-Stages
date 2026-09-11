@@ -4,6 +4,8 @@ import net.bananemdnsa.historystages.data.lock.StructureLocks;
 import net.bananemdnsa.historystages.data.lock.StructureGenerationRule;
 import net.bananemdnsa.historystages.data.lock.BiomeLocksAdapter;
 import net.bananemdnsa.historystages.data.lock.BiomeLocks;
+import net.bananemdnsa.historystages.data.lock.ZoneEntry;
+import net.bananemdnsa.historystages.data.lock.ZoneEntryListAdapter;
 import net.bananemdnsa.historystages.data.lock.NamedLockEntryListAdapter;
 import net.bananemdnsa.historystages.data.lock.NamedLockEntry;
 import net.bananemdnsa.historystages.data.lock.EntityLocks;
@@ -79,6 +81,14 @@ public class StageEntry {
 
     @JsonAdapter(BiomeLocksAdapter.class)
     private BiomeLocks biomes;
+
+    /**
+     * Gated areas in the world. Unlike every other category these carry their own rules rather
+     * than reading them from the common config — one zone can burn, the next only block
+     * interaction.
+     */
+    @JsonAdapter(ZoneEntryListAdapter.class)
+    private List<ZoneEntry> zones;
 
     @SerializedName("icon")
     private String icon;
@@ -291,6 +301,10 @@ public class StageEntry {
 
     public List<String> getBiomeModLinked() {
         return biomes != null ? biomes.getModLinked() : new ArrayList<>();
+    }
+
+    public List<ZoneEntry> getZones() {
+        return zones != null ? zones : new ArrayList<>();
     }
 
     public String getIcon() { return icon != null ? icon : ""; }
@@ -559,6 +573,10 @@ public class StageEntry {
         this.biomes.setModLinked(modLinked);
     }
 
+    public void setZones(List<ZoneEntry> zones) {
+        this.zones = zones != null ? new ArrayList<>(zones) : new ArrayList<>();
+    }
+
     public void setIcon(String icon) { this.icon = (icon != null && !icon.isEmpty()) ? icon : null; }
 
     public void setScrollCompletion(String value) {
@@ -628,6 +646,7 @@ public class StageEntry {
         copy.setStructureGenerationRules(getStructureGenerationRules());
         copy.setBiomes(getBiomes());
         copy.setBiomeModLinked(getBiomeModLinked());
+        copy.setZones(getZones().stream().map(ZoneEntry::copy).collect(Collectors.toList()));
         copy.setIcon(getIcon());
         copy.setScrollCompletion(getScrollCompletion());
         EntityLocks locksCopy = new EntityLocks();

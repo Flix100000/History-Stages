@@ -9,6 +9,8 @@ import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.lock.EntityInteractionLockEntry;
 import net.bananemdnsa.historystages.data.lock.EntitySpawnLockEntry;
 import net.bananemdnsa.historystages.data.lock.NamedLockEntry;
+import net.bananemdnsa.historystages.data.lock.ZoneEntry;
+import net.bananemdnsa.historystages.data.lock.ZoneShape;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -133,6 +135,15 @@ class CategoryRoundTripTest {
             case "historystages:interactionlock" ->
                     ((LockCategory<EntityInteractionLockEntry>) category)
                             .write(stage, List.of(new EntityInteractionLockEntry("minecraft:villager")));
+            // A zone needs a shape to be worth anything, so the sample carries one. An empty zone
+            // is legal on disk but says nothing about whether the round trip kept the geometry.
+            case "historystages:zones" -> {
+                ZoneEntry zone = new ZoneEntry();
+                zone.setName("sample");
+                zone.setDimension("minecraft:overworld");
+                zone.setShapes(List.of(ZoneShape.cube(0, 0, 0, 10, 10, 10, false)));
+                ((LockCategory<ZoneEntry>) category).write(stage, List.of(zone));
+            }
             default -> throw new AssertionError("no sample defined for " + category.id());
         }
         return 1;

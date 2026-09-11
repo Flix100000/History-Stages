@@ -5,6 +5,8 @@ import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.client.cache.ClientDependencyCache;
 import net.bananemdnsa.historystages.client.cache.ClientIndividualStageCache;
 import net.bananemdnsa.historystages.client.cache.ClientPlayerStageCache;
+import net.bananemdnsa.historystages.client.cache.ClientZoneSelection;
+import net.bananemdnsa.historystages.client.cache.ClientZoneShapes;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -38,6 +40,13 @@ public class ClientDisconnectHandler {
         // Which items merchants deal in is the server's answer, and the next one may differ.
         // Kept, it would narrow the picker to the last world's goods.
         ClientTradeGoods.clear();
+        // The selection preview draws from this every frame, so a leftover would hang a box in
+        // the next world at coordinates that mean nothing there.
+        ClientZoneSelection.clear();
+        // Same reasoning, one level up: the force field draws from this every frame, and the next
+        // world's zones are somebody else's.
+        ClientZoneShapes.clear();
+        ZoneBorderRenderer.forgetWall();
         // The server pushed its config values into our specs and never wrote our file, so our own
         // settings are only a memory away. Without this they would stay until the game restarts,
         // and the visual ones are visible the moment the next singleplayer world opens.

@@ -73,7 +73,17 @@ public final class LegacyConfigMap {
             // The vanilla recipe book showed locked recipes before 6.0; there was no switch.
             "VISUAL|recipe_book.hideLockedRecipesInBook",
             // The pause-menu editor button was always there for operators before 6.0.
-            "VISUAL|visuals.showEditorButton");
+            "VISUAL|visuals.showEditorButton",
+            // Zones were not a lock category before 6.0, so there was no area to mark out and no
+            // item to pick for marking it.
+            "GAMEPLAY|zone_lock.markerItem",
+            // Same reason: no zones before 6.0, so no force field to draw and nothing to decide
+            // about how far it should reach.
+            "VISUAL|zone_overlay.zoneBorderDistance",
+            "VISUAL|zone_overlay.zoneLockOverlayOpacity",
+            "VISUAL|zone_overlay.zoneBorderFullView",
+            "VISUAL|zone_overlay.zoneBorderOutline",
+            "VISUAL|zone_overlay.zoneBorderColor");
 
     private LegacyConfigMap() {}
 

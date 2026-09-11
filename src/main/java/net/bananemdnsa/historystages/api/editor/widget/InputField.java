@@ -26,6 +26,7 @@ public final class InputField {
     private Function<String, Component> validator;
     private int width = -1;               // -1 = full content width
     private String initial = "";
+    private boolean sameRow = false;
 
     // Range, only meaningful for NUMBER / DECIMAL
     private double min = Double.NEGATIVE_INFINITY;
@@ -59,6 +60,19 @@ public final class InputField {
     public InputField regex(String v) { this.regex = v; return this; }
     public InputField validator(Function<String, Component> v) { this.validator = v; return this; }
     public InputField width(int v) { this.width = v; return this; }
+
+    /**
+     * Puts this field on the same line as the one before it, sharing the width with it.
+     *
+     * <p>For values that are one value together — the three numbers of a position, most of all.
+     * Stacked, a dialog asking for two corners is six rows tall and runs off the bottom of the
+     * screen; side by side it is two.
+     *
+     * <p>Ignored on the first field, which has nothing to join. The line is labelled by whichever
+     * of its fields carries a label, so the usual shape is a labelled first field followed by
+     * unlabelled companions.
+     */
+    public InputField sameRow() { this.sameRow = true; return this; }
     public InputField initial(String v) { this.initial = v == null ? "" : v; return this; }
 
     public InputField range(int min, int max) {
@@ -98,6 +112,8 @@ public final class InputField {
      */
     public int maxLength() { return Math.max(maxLength, initial.length()); }
     public int width() { return width; }
+    /** Named apart from the builder {@link #sameRow()}, which takes no argument either. */
+    public boolean isSameRow() { return sameRow; }
     public String initial() { return initial; }
 
     private boolean allowsNegative() {

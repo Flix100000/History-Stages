@@ -52,6 +52,7 @@ import net.bananemdnsa.historystages.api.editor.EntryActionContext;
 import net.bananemdnsa.historystages.client.editor.tab.EntityTabsState;
 import net.bananemdnsa.historystages.client.editor.tab.LockActionGroups;
 import net.bananemdnsa.historystages.client.editor.tab.ModLinkedCategoryTab;
+import net.bananemdnsa.historystages.client.editor.tab.ZoneCategoryTab;
 import net.bananemdnsa.historystages.client.editor.tab.RichEntryCategoryTab;
 import net.bananemdnsa.historystages.client.editor.tab.StructureCategoryTab;
 import net.bananemdnsa.historystages.client.editor.tab.TradeOfferCategoryTab;
@@ -521,6 +522,18 @@ public class StageDetailScreen extends Screen {
         biomeTabLocal.load(e);
         this.biomeTab = biomeTabLocal;
         this.categoryTabs.put(10, biomeTabLocal);
+        // Beside the biomes, because both answer "where"; the difference is that a zone is drawn
+        // rather than named. Its rows open a screen of their own, so the host hands it the way to
+        // do that instead of the tab reaching for Minecraft itself.
+        @SuppressWarnings("unchecked")
+        LockCategory<net.bananemdnsa.historystages.data.lock.ZoneEntry> zoneCategory =
+                (LockCategory<net.bananemdnsa.historystages.data.lock.ZoneEntry>)
+                        LockCategories.byId(CAT_ZONES);
+        ZoneCategoryTab zoneTabLocal = new ZoneCategoryTab(zoneCategory,
+                () -> { hasChanges = true; updateMaxScroll(); },
+                factory -> this.minecraft.setScreen(factory.apply(this)));
+        zoneTabLocal.load(e);
+        this.categoryTabs.put(11, zoneTabLocal);
         // Which of the two stage maps this screen is editing. Read by every tab that has sections,
         // because a section whose category does not serve this scope is greyed rather than shown.
         StageScope loadScope = isIndividual ? StageScope.INDIVIDUAL : StageScope.GLOBAL;
@@ -1316,6 +1329,7 @@ public class StageDetailScreen extends Screen {
     private static final String CAT_INTERACT   = "historystages:interactionlock";
     private static final String CAT_STRUCTURES = "historystages:structures";
     private static final String CAT_BIOMES     = "historystages:biomes";
+    private static final String CAT_ZONES      = "historystages:zones";
     /**
      * The item section of the trades tab. Its two sibling sections report ids of their own, which
      * is what lets {@link #isTab} tell an item row from a profession row inside one tab.
@@ -2801,6 +2815,15 @@ public class StageDetailScreen extends Screen {
                     final String entryValue = list.get(i);
                     final int tabIdx = activeTab;
                     contextMenu = new ContextMenu();
+                    // First, because on a zone it is the main action: the row opens the zone on a
+                    // left click, and the menu has to offer the same thing rather than only the
+                    // two that come with every entry.
+                    if (isTab(tabIdx, CAT_ZONES)
+                            && sectionAt(tabIdx) instanceof ZoneCategoryTab zones) {
+                        contextMenu.addEntry(
+                                Component.translatable("editor.historystages.zone.edit").getString(),
+                                () -> zones.openAt(entryIdx));
+                    }
                     if (isTab(tabIdx, CAT_ITEMS)) {
                         contextMenu.addEntry(Component.translatable("editor.historystages.context.edit_nbt").getString(),
                                 () -> openNbtEditScreen(entryIdx, entryValue));

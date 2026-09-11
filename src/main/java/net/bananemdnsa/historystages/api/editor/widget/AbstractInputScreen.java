@@ -126,15 +126,35 @@ public abstract class AbstractInputScreen extends AbstractModalScreen {
 
     // ============ Layout ============
 
-    private int fieldBlockHeight(InputField f) {
-        return (f.label() != null ? LABEL_H : 0) + FIELD_H;
+    /** Gap between two fields sharing a line. */
+    private static final int ROW_GAP = 4;
+
+    /** One past the last field on the line starting at {@code from}. */
+    private int rowEnd(int from) {
+        int end = from + 1;
+        while (end < specs.size() && specs.get(end).isSameRow()) end++;
+        return end;
+    }
+
+    /** A line is labelled when any field on it carries a label. */
+    private boolean rowLabelled(int from, int end) {
+        for (int i = from; i < end; i++) {
+            if (specs.get(i).label() != null) return true;
+        }
+        return false;
+    }
+
+    private int rowBlockHeight(int from, int end) {
+        return (rowLabelled(from, end) ? LABEL_H : 0) + FIELD_H;
     }
 
     @Override
     protected final int contentHeight() {
         int h = ERROR_BALANCE;
-        for (InputField f : specs) {
-            h += fieldBlockHeight(f) + FIELD_GAP;
+        for (int i = 0; i < specs.size(); ) {
+            int end = rowEnd(i);
+            h += rowBlockHeight(i, end) + FIELD_GAP;
+            i = end;
         }
         h += extraContentHeight();
         h += ERROR_H;
@@ -159,36 +179,51 @@ public abstract class AbstractInputScreen extends AbstractModalScreen {
         int contentX = boxX + PAD;
         int contentW = boxW - PAD * 2;
 
-        for (int i = 0; i < specs.size(); i++) {
-            InputField f = specs.get(i);
-            int fw = f.width() > 0 ? Math.min(f.width(), contentW) : contentW;
-            int fx = contentX + (contentW - fw) / 2;
-            int fy = y + (f.label() != null ? LABEL_H : 0);
-            fieldRects.add(new int[]{fx, fy, fw});
+        for (int i = 0; i < specs.size(); ) {
+            int end = rowEnd(i);
+            int count = end - i;
+            int each = (contentW - ROW_GAP * (count - 1)) / count;
+            int fy = y + (rowLabelled(i, end) ? LABEL_H : 0);
 
-            // bordered=false: the frame is drawn in renderContent, focus-aware. The box is only
-            // as tall as its text and sits centred in the drawn field, so its own hit rect never
-            // spills into the gap below; mouseClicked maps the full drawn field onto it.
-            EditBox box = new EditBox(this.font, fx + 4, fy + TEXT_INSET_Y, fw - 8, TEXT_H,
-                    f.label() != null ? f.label() : Component.literal(f.key()));
-            box.setMaxLength(f.maxLength());
-            box.setBordered(false);
-            box.setTextColor(0xFFFFFF);
-            box.setValue(f.initial());
-            box.moveCursorToEnd(false);
-            if (f.hint() != null) box.setHint(f.hint());
+            for (int k = i; k < end; k++) {
+                InputField f = specs.get(k);
+                int fw;
+                int fx;
+                if (count > 1) {
+                    fw = each;
+                    fx = contentX + (k - i) * (each + ROW_GAP);
+                } else {
+                    fw = f.width() > 0 ? Math.min(f.width(), contentW) : contentW;
+                    fx = contentX + (contentW - fw) / 2;
+                }
+                fieldRects.add(new int[]{fx, fy, fw});
 
-            final InputField spec = f;
-            final int idx = i;
-            box.setFilter(spec::acceptsTyping);
-            box.setResponder(v -> {
-                touched.set(idx, true);
-                revalidate();
-            });
+                // bordered=false: the frame is drawn in renderContent, focus-aware. The box is
+                // only as tall as its text and sits centred in the drawn field, so its own hit
+                // rect never spills into the gap below; mouseClicked maps the drawn field onto it.
+                EditBox box = new EditBox(this.font, fx + 4, fy + TEXT_INSET_Y, fw - 8, TEXT_H,
+                        f.label() != null ? f.label() : Component.literal(f.key()));
+                box.setMaxLength(f.maxLength());
+                box.setBordered(false);
+                box.setTextColor(0xFFFFFF);
+                box.setValue(f.initial());
+                box.moveCursorToEnd(false);
+                if (f.hint() != null) box.setHint(f.hint());
 
-            this.addRenderableWidget(box);
-            boxes.add(box);
-            y += fieldBlockHeight(f) + FIELD_GAP;
+                final InputField spec = f;
+                final int idx = k;
+                box.setFilter(spec::acceptsTyping);
+                box.setResponder(v -> {
+                    touched.set(idx, true);
+                    revalidate();
+                });
+
+                this.addRenderableWidget(box);
+                boxes.add(box);
+            }
+
+            y += rowBlockHeight(i, end) + FIELD_GAP;
+            i = end;
         }
 
         if (!boxes.isEmpty()) {
@@ -263,24 +298,31 @@ public abstract class AbstractInputScreen extends AbstractModalScreen {
 
     @Override
     protected void renderContent(GuiGraphics g, int x, int y, int w, int mouseX, int mouseY) {
-        // Must match the cursor buildContentWidgets() used, or frames and hit areas drift apart.
+        // Reads the rectangles buildContentWidgets laid out rather than deriving them a second
+        // time. The two arithmetics used to sit side by side and had to be kept identical by
+        // hand; sharing them is what stops frames and hit areas from drifting apart.
         int cy = y + ERROR_BALANCE;
-        for (int i = 0; i < specs.size(); i++) {
-            InputField f = specs.get(i);
-            EditBox box = boxes.get(i);
-            int fw = f.width() > 0 ? Math.min(f.width(), w) : w;
-            int fx = x + (w - fw) / 2;
-            int fy = cy + (f.label() != null ? LABEL_H : 0);
+        for (int i = 0; i < specs.size() && i < fieldRects.size(); ) {
+            int end = Math.min(rowEnd(i), fieldRects.size());
 
-            if (f.label() != null) {
-                g.drawString(this.font, f.label(), fx, cy, LABEL_GREY, false);
+            for (int k = i; k < end; k++) {
+                InputField f = specs.get(k);
+                int[] rect = fieldRects.get(k);
+                int fx = rect[0];
+                int fy = rect[1];
+                int fw = rect[2];
+
+                if (f.label() != null) {
+                    g.drawString(this.font, f.label(), fx, fy - LABEL_H, LABEL_GREY, false);
+                }
+
+                int border = boxes.get(k).isFocused() ? ACCENT_GOLD : FIELD_BORDER;
+                g.fill(fx - 1, fy - 1, fx + fw + 1, fy + FIELD_H + 1, border);
+                g.fill(fx, fy, fx + fw, fy + FIELD_H, FIELD_BG);
             }
 
-            int border = box.isFocused() ? ACCENT_GOLD : FIELD_BORDER;
-            g.fill(fx - 1, fy - 1, fx + fw + 1, fy + FIELD_H + 1, border);
-            g.fill(fx, fy, fx + fw, fy + FIELD_H, FIELD_BG);
-
-            cy += fieldBlockHeight(f) + FIELD_GAP;
+            cy += rowBlockHeight(i, end) + FIELD_GAP;
+            i = end;
         }
 
         // Always invoked, even at zero reserved height: an extra may anchor itself elsewhere

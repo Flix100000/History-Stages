@@ -24,6 +24,7 @@
     "ClientAdvancementsAccessor",
     "ClientRecipeBookMixin",
     "ItemStackMixin",
+    "ZoneBarrierMixin",
     "toast.ToastComponentMixin",
     "toast.ToastComponentAccessor",
     "toast.ToastInstanceMixin",

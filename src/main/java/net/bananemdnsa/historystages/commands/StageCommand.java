@@ -185,6 +185,8 @@ public class StageCommand {
                             return syncAndReload(ctx.getSource(), StageData.get(ctx.getSource().getLevel()), "Configuration reloaded!", false);
                         }))
 
+                .then(ZoneCommand.build())
+
                 // NOTE: --- DEBUG --- subcommands are registered client-side in ClientDebugCommand
         );
     }
