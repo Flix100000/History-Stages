@@ -29,6 +29,8 @@ When someone contributes, add them here in the format:
 
 _People who helped through testing, feedback, ideas, or other non-code contributions._
 
+- **Tech3434** ([@Tech3434](https://github.com/Tech3434)) — a long run of bug reports and compatibility findings, among them the Better Combat lag, the Lootr integration gaps and the container lock blocking inventory moves
+
 <!--
 - **Name** — what they contributed
 -->
