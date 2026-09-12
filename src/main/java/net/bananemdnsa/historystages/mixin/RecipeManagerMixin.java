@@ -3,6 +3,7 @@ package net.bananemdnsa.historystages.mixin;
 import com.google.common.collect.Multimap;
 import net.bananemdnsa.historystages.events.RecipeHandler;
 import net.bananemdnsa.historystages.util.AllRecipesCache;
+import net.bananemdnsa.historystages.util.lock.RecipeResolutionFilter;
 import net.bananemdnsa.historystages.data.saveddata.StageData;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ResourceManager;
@@ -53,9 +54,15 @@ import java.util.*;
  * <p>{@code getOrderedRecipes} is left alone for the same reason as the client: it fills the
  * packet every client is sent on join and after a reload, and our own scanners read it when they
  * need every recipe there is.
+ *
+ * <p>The gate lives inside these method bodies, which means a mod that puts its own subclass of
+ * the recipe manager in place and overrides them is not gated at all. That is not hypothetical —
+ * FastSuite does it, and {@code mixin/fastsuite/AuxRecipeManagerMixin} hooks the overrides. The
+ * two answers such a hook needs are reached through {@link RecipeResolutionFilter} rather than
+ * copied, so there is still only one gate.
  */
 @Mixin(RecipeManager.class)
-public class RecipeManagerMixin {
+public class RecipeManagerMixin implements RecipeResolutionFilter {
     @Shadow private Map<ResourceLocation, RecipeHolder<?>> byName;
     @Shadow private Multimap<RecipeType<?>, RecipeHolder<?>> byType;
 
@@ -180,7 +187,7 @@ public class RecipeManagerMixin {
             CallbackInfoReturnable<Optional<RecipeHolder<T>>> cir) {
         Optional<RecipeHolder<T>> result = cir.getReturnValue();
         if (result.isPresent() && isRecipeLocked(result.get(), level.isClientSide())) {
-            cir.setReturnValue(nextUnlocked(type, input, level));
+            cir.setReturnValue(historystages$firstUnlocked(type, input, level));
         }
     }
 
@@ -194,7 +201,7 @@ public class RecipeManagerMixin {
             CallbackInfoReturnable<Optional<RecipeHolder<T>>> cir) {
         Optional<RecipeHolder<T>> result = cir.getReturnValue();
         if (result.isPresent() && isRecipeLocked(result.get(), level.isClientSide())) {
-            cir.setReturnValue(nextUnlocked(type, input, level));
+            cir.setReturnValue(historystages$firstUnlocked(type, input, level));
         }
     }
 
@@ -208,7 +215,7 @@ public class RecipeManagerMixin {
             CallbackInfoReturnable<Optional<RecipeHolder<T>>> cir) {
         Optional<RecipeHolder<T>> result = cir.getReturnValue();
         if (result.isPresent() && isRecipeLocked(result.get(), level.isClientSide())) {
-            cir.setReturnValue(nextUnlocked(type, input, level));
+            cir.setReturnValue(historystages$firstUnlocked(type, input, level));
         }
     }
 
@@ -223,8 +230,9 @@ public class RecipeManagerMixin {
      * <p>Same iteration order vanilla uses, so with nothing locked the answer is the one it would
      * have given anyway. Only reached once something is actually locked.
      */
+    @Override
     @SuppressWarnings("unchecked")
-    private <I extends RecipeInput, T extends Recipe<I>> Optional<RecipeHolder<T>> nextUnlocked(
+    public <I extends RecipeInput, T extends Recipe<I>> Optional<RecipeHolder<T>> historystages$firstUnlocked(
             RecipeType<T> type, I input, Level level) {
         boolean isClient = level.isClientSide();
         for (RecipeHolder<?> holder : this.byType.get(type)) {
@@ -243,28 +251,31 @@ public class RecipeManagerMixin {
     private <I extends RecipeInput, T extends Recipe<I>> void filterGetRecipesFor(
             RecipeType<T> type, I input, Level level,
             CallbackInfoReturnable<List<RecipeHolder<T>>> cir) {
-        boolean isClient = level.isClientSide();
-        List<RecipeHolder<T>> recipes = cir.getReturnValue();
+        cir.setReturnValue(historystages$withoutLocked(cir.getReturnValue(), level.isClientSide()));
+    }
 
+    @Override
+    public <T extends Recipe<?>> List<RecipeHolder<T>> historystages$withoutLocked(
+            List<RecipeHolder<T>> resolved, boolean isClientSide) {
         // Nothing is filtered in the overwhelming majority of calls, and this one is on the
         // crafting path. Find the first locked recipe before allocating anything; with none,
         // the original list goes back untouched.
         int firstLocked = -1;
-        for (int i = 0; i < recipes.size(); i++) {
-            if (isRecipeLocked(recipes.get(i), isClient)) {
+        for (int i = 0; i < resolved.size(); i++) {
+            if (isRecipeLocked(resolved.get(i), isClientSide)) {
                 firstLocked = i;
                 break;
             }
         }
-        if (firstLocked < 0) return;
+        if (firstLocked < 0) return resolved;
 
-        List<RecipeHolder<T>> filtered = new ArrayList<>(recipes.size() - 1);
-        filtered.addAll(recipes.subList(0, firstLocked));
-        for (int i = firstLocked + 1; i < recipes.size(); i++) {
-            RecipeHolder<T> recipe = recipes.get(i);
-            if (!isRecipeLocked(recipe, isClient)) filtered.add(recipe);
+        List<RecipeHolder<T>> filtered = new ArrayList<>(resolved.size() - 1);
+        filtered.addAll(resolved.subList(0, firstLocked));
+        for (int i = firstLocked + 1; i < resolved.size(); i++) {
+            RecipeHolder<T> recipe = resolved.get(i);
+            if (!isRecipeLocked(recipe, isClientSide)) filtered.add(recipe);
         }
-        cir.setReturnValue(filtered);
+        return filtered;
     }
 
     /** Filter the whole recipe list — see the note on this class for which routes are gated. */
@@ -307,6 +318,6 @@ public class RecipeManagerMixin {
     }
 
     private static boolean isRecipeLocked(RecipeHolder<?> holder, boolean isClientSide) {
-        return RecipeHandler.isOutputLocked(holder, isClientSide) || RecipeHandler.isRecipeIdLocked(holder.id(), isClientSide);
+        return RecipeHandler.isLockedForResolution(holder, isClientSide);
     }
 }

@@ -16,7 +16,8 @@
     "EnchantmentMenuMixin",
     "MerchantOffersMixin",
     "MerchantContainerMixin",
-    "jei.RecipeLayoutMixin"
+    "jei.RecipeLayoutMixin",
+    "fastsuite.AuxRecipeManagerMixin"
   ],
   "client": [
     "bettercombat.AttackStartLockMixin",

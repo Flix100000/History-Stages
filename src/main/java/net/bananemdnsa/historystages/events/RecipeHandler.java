@@ -123,6 +123,25 @@ public class RecipeHandler {
     }
 
     /**
+     * Whether this recipe is gated for whoever is resolving it right now.
+     *
+     * <p>The answer a station gets when it asks which recipe fits what is inside it, and the two
+     * routes that question can be gated by: the recipe's own id on a stage, or an item it produces
+     * whose lock covers {@code recipe}. Unlike {@link #isLockedForEveryone} it reads the
+     * {@link RecipeCraftContext}, so an individual stage counts wherever a station named a player.
+     *
+     * <p>One method rather than two calls at every hook, because there is now more than one place
+     * the resolution gate has to be applied from — {@code RecipeManagerMixin} for the vanilla
+     * manager, {@code mixin/fastsuite/AuxRecipeManagerMixin} for the one FastSuite puts in its
+     * place — and two hooks disagreeing about what counts as gated is exactly what produced the
+     * duplication bug the FastSuite hook exists to fix.
+     */
+    public static boolean isLockedForResolution(RecipeHolder<?> holder, boolean isClientSide) {
+        if (holder == null) return false;
+        return isOutputLocked(holder, isClientSide) || isRecipeIdLocked(holder.id(), isClientSide);
+    }
+
+    /**
      * Whether this recipe is gated for everyone on the server, by any of the three routes: its own
      * id on a stage, an item it produces whose lock covers {@code recipe}, or a fluid it touches.
      *

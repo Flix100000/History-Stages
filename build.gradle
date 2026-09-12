@@ -256,6 +256,16 @@ dependencies {
     // called reflectively and nothing here compiles against it, so this is runtime only — and
     // localRuntime, because a pack that doesn't have the mod must not be told it needs it.
     localRuntime "maven.modrinth:reliable-remover:3.1.1-1.21.1-neoforge"
+    // Its own hard dependency. Without this line no dev run starts at all.
+    localRuntime "maven.modrinth:reliable-recipes:3.1.8-1.21.1-neoforge"
+
+    // FastSuite, for issue #121. It replaces the recipe manager with a subclass of its own, which
+    // is how the two lookups it overrides got past the recipe gate; the hook that puts the gate
+    // back is mixin/fastsuite/AuxRecipeManagerMixin and FastSuiteRecipeLockTests needs the mod
+    // present to say anything at all. Placebo is FastSuite's own dependency, not ours. Runtime
+    // only: nothing here compiles against either.
+    localRuntime "maven.modrinth:fastsuite:1.21.1-6.0.7"
+    localRuntime "maven.modrinth:placebo:1.21.1-9.9.2"
 
     // Example mod dependency using a mod jar from ./libs with a flat dir repository
     // This maps to ./libs/coolmod-${mc_version}-${coolmod_version}.jar
