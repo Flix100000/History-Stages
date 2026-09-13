@@ -54,21 +54,7 @@ public class StageCommand {
                                             StageData d = StageData.get(ctx.getSource().getLevel());
                                             return SharedSuggestionProvider.suggest(d.getUnlockedStages().stream(), b);
                                         })
-                                        .executes(ctx -> handleLock(ctx.getSource(), StringArgumentType.getString(ctx, "stage")))))
-                        .then(Commands.literal("info")
-                                .then(Commands.argument("stage", StringArgumentType.word())
-                                        .suggests((ctx, b) -> SharedSuggestionProvider.suggest(StageManager.getStages().keySet(), b))
-                                        .executes(ctx -> handleGlobalInfo(ctx.getSource(), StringArgumentType.getString(ctx, "stage")))))
-                        .then(Commands.literal("list")
-                                .executes(ctx -> {
-                                    StageData d = StageData.get(ctx.getSource().getLevel());
-                                    ctx.getSource().sendSuccess(() -> Component.literal("§6--- Global Stages ---"), false);
-                                    StageManager.getStages().keySet().forEach(s -> {
-                                        String color = d.getUnlockedStages().contains(s) ? "§a" : "§c";
-                                        ctx.getSource().sendSuccess(() -> Component.literal(color + "- " + s), false);
-                                    });
-                                    return 1;
-                                })))
+                                        .executes(ctx -> handleLock(ctx.getSource(), StringArgumentType.getString(ctx, "stage"))))))
 
                 // --- INDIVIDUAL ---
                 .then(Commands.literal("individual")
@@ -107,19 +93,7 @@ public class StageCommand {
                                                     for (ServerPlayer p : EntityArgument.getPlayers(ctx, "players"))
                                                         result += handleIndividualLock(ctx.getSource(), p, stage);
                                                     return result;
-                                                }))))
-                        .then(Commands.literal("info")
-                                .then(Commands.argument("stage", StringArgumentType.word())
-                                        .suggests((ctx, b) -> SharedSuggestionProvider.suggest(StageManager.getIndividualStages().keySet(), b))
-                                        .executes(ctx -> handleIndividualInfo(ctx.getSource(), StringArgumentType.getString(ctx, "stage")))))
-                        .then(Commands.literal("list")
-                                .then(Commands.argument("players", EntityArgument.players())
-                                        .executes(ctx -> {
-                                            int result = 0;
-                                            for (ServerPlayer p : EntityArgument.getPlayers(ctx, "players"))
-                                                result += handleIndividualList(ctx.getSource(), p);
-                                            return result;
-                                        }))))
+                                                })))))
 
                 // --- TEMPORARY (unlock-count / timer management) ---
                 .then(Commands.literal("temporary")
@@ -189,71 +163,6 @@ public class StageCommand {
 
                 // NOTE: --- DEBUG --- subcommands are registered client-side in ClientDebugCommand
         );
-    }
-
-    private static int handleGlobalInfo(CommandSourceStack source, String stageName) {
-        var entry = StageManager.getStages().get(stageName);
-        if (entry == null) {
-            source.sendFailure(Component.literal("Stage '" + stageName + "' not found!"));
-            return 0;
-        }
-        source.sendSuccess(() -> Component.literal("§6--- Stage Info: §e" + stageName + " §6---"), false);
-
-        int researchTime = entry.getResearchTime();
-        if (researchTime > 0) {
-            source.sendSuccess(() -> Component.literal("§9▶ Research Time: §f" + researchTime + "s §7(custom)"), false);
-        } else {
-            int defaultTime = Config.GAMEPLAY.researchTimeInSeconds.get();
-            source.sendSuccess(() -> Component.literal("§9▶ Research Time: §f" + defaultTime + "s §7(global default)"), false);
-        }
-
-        if (!entry.getAllItemIds().isEmpty()) {
-            source.sendSuccess(() -> Component.literal("§b▶ Items:"), false);
-            entry.getAllItemIds().forEach(i -> source.sendSuccess(() -> Component.literal("  §8• §7" + i), false));
-        }
-        if (!entry.getAllFluidIds().isEmpty()) {
-            source.sendSuccess(() -> Component.literal("§b▶ Fluids:"), false);
-            entry.getAllFluidIds().forEach(f -> source.sendSuccess(() -> Component.literal("  §8• §7" + f), false));
-        }
-        if (!entry.getMods().isEmpty()) {
-            source.sendSuccess(() -> Component.literal("§a▶ Mods:"), false);
-            entry.getMods().forEach(m -> source.sendSuccess(() -> Component.literal("  §8• §7" + m), false));
-        }
-        if (!entry.getRecipes().isEmpty()) {
-            source.sendSuccess(() -> Component.literal("§e▶ Recipes:"), false);
-            entry.getRecipes().forEach(r -> source.sendSuccess(() -> Component.literal("  §8• §7" + r), false));
-        }
-        if (!entry.getDimensions().isEmpty()) {
-            source.sendSuccess(() -> Component.literal("§d▶ Dimensions:"), false);
-            entry.getDimensions().forEach(d -> source.sendSuccess(() -> Component.literal("  §8• §7" + d), false));
-        }
-        if (!entry.getStructures().isEmpty()) {
-            source.sendSuccess(() -> Component.literal("§5▶ Structures:"), false);
-            entry.getStructures().forEach(s -> source.sendSuccess(() -> Component.literal("  §8• §7" + s), false));
-        }
-        if (!entry.getBiomes().isEmpty()) {
-            source.sendSuccess(() -> Component.literal("§2▶ Biomes:"), false);
-            entry.getBiomes().forEach(b -> source.sendSuccess(() -> Component.literal("  §8• §7" + b), false));
-        }
-        if (!entry.getEntities().getAttacklock().isEmpty()) {
-            source.sendSuccess(() -> Component.literal("§c▶ Entities (Attacklock):"), false);
-            entry.getEntities().getAttacklock().forEach(e -> source.sendSuccess(() -> Component.literal("  §8• §7" + e), false));
-        }
-        if (!entry.getEntities().getInteractionlock().isEmpty()) {
-            source.sendSuccess(() -> Component.literal("§c▶ Entities (Interactionlock):"), false);
-            entry.getEntities().getInteractionlock().forEach(e -> {
-                String suffix = e.hasLockActions() ? " §8[" + String.join(", ", e.getLockActions()) + "]" : "";
-                source.sendSuccess(() -> Component.literal("  §8• §7" + e.getId() + suffix), false);
-            });
-        }
-        if (!entry.getEntities().getSpawnlock().isEmpty()) {
-            source.sendSuccess(() -> Component.literal("§c▶ Entities (Spawnlock):"), false);
-            entry.getEntities().getSpawnlock().forEach(e -> {
-                String suffix = e.hasLockSources() ? " §8[" + String.join(", ", e.getLockSources()) + "]" : "";
-                source.sendSuccess(() -> Component.literal("  §8• §7" + e.getId() + suffix), false);
-            });
-        }
-        return 1;
     }
 
     // =============================================
@@ -534,60 +443,6 @@ public class StageCommand {
     // INDIVIDUAL STAGE COMMANDS
     // =============================================
 
-    private static int handleIndividualInfo(CommandSourceStack source, String stageName) {
-        var entry = StageManager.getIndividualStages().get(stageName);
-        if (entry == null) {
-            source.sendFailure(Component.literal("Individual stage '" + stageName + "' not found!"));
-            return 0;
-        }
-        source.sendSuccess(() -> Component.literal("§7--- Individual Stage Info: §f" + stageName + " §7---"), false);
-
-        int researchTime = entry.getResearchTime();
-        if (researchTime > 0) {
-            source.sendSuccess(() -> Component.literal("§9▶ Research Time: §f" + researchTime + "s §7(custom)"), false);
-        } else {
-            int defaultTime = Config.GAMEPLAY.researchTimeInSeconds.get();
-            source.sendSuccess(() -> Component.literal("§9▶ Research Time: §f" + defaultTime + "s §7(global default)"), false);
-        }
-
-        if (!entry.getAllItemIds().isEmpty()) {
-            source.sendSuccess(() -> Component.literal("§b▶ Items:"), false);
-            entry.getAllItemIds().forEach(i -> source.sendSuccess(() -> Component.literal("  §8• §7" + i), false));
-        }
-        if (!entry.getAllFluidIds().isEmpty()) {
-            source.sendSuccess(() -> Component.literal("§b▶ Fluids:"), false);
-            entry.getAllFluidIds().forEach(f -> source.sendSuccess(() -> Component.literal("  §8• §7" + f), false));
-        }
-        if (!entry.getMods().isEmpty()) {
-            source.sendSuccess(() -> Component.literal("§a▶ Mods:"), false);
-            entry.getMods().forEach(m -> source.sendSuccess(() -> Component.literal("  §8• §7" + m), false));
-        }
-        if (!entry.getDimensions().isEmpty()) {
-            source.sendSuccess(() -> Component.literal("§d▶ Dimensions:"), false);
-            entry.getDimensions().forEach(d -> source.sendSuccess(() -> Component.literal("  §8• §7" + d), false));
-        }
-        if (!entry.getStructures().isEmpty()) {
-            source.sendSuccess(() -> Component.literal("§5▶ Structures:"), false);
-            entry.getStructures().forEach(s -> source.sendSuccess(() -> Component.literal("  §8• §7" + s), false));
-        }
-        if (!entry.getBiomes().isEmpty()) {
-            source.sendSuccess(() -> Component.literal("§2▶ Biomes:"), false);
-            entry.getBiomes().forEach(b -> source.sendSuccess(() -> Component.literal("  §8• §7" + b), false));
-        }
-        if (!entry.getEntities().getAttacklock().isEmpty()) {
-            source.sendSuccess(() -> Component.literal("§c▶ Entities (Attacklock):"), false);
-            entry.getEntities().getAttacklock().forEach(e -> source.sendSuccess(() -> Component.literal("  §8• §7" + e), false));
-        }
-        if (!entry.getEntities().getInteractionlock().isEmpty()) {
-            source.sendSuccess(() -> Component.literal("§c▶ Entities (Interactionlock):"), false);
-            entry.getEntities().getInteractionlock().forEach(e -> {
-                String suffix = e.hasLockActions() ? " §8[" + String.join(", ", e.getLockActions()) + "]" : "";
-                source.sendSuccess(() -> Component.literal("  §8• §7" + e.getId() + suffix), false);
-            });
-        }
-        return 1;
-    }
-
     // NOTE: intentionally inline (not routed through StageStates) — the "*" path
     // emits a single combined broadcast/toast/event instead of one per stage. Future
     // fixes to StageStates.unlockGlobal / unlockIndividual must consider whether
@@ -733,23 +588,6 @@ public class StageCommand {
         DebugLogger.runtime("Individual Lock", source.getTextName(),
                 "Locked individual stage '" + stageId + "' for " + target.getName().getString());
         source.sendSuccess(() -> Component.literal("§7[HistoryStages] Locked individual stage '" + stageId + "' for " + target.getName().getString()), true);
-        return 1;
-    }
-
-    private static int handleIndividualList(CommandSourceStack source, ServerPlayer target) {
-        IndividualStageData data = IndividualStageData.get(source.getLevel());
-        java.util.Set<String> playerStages = data.getUnlockedStages(target.getUUID());
-
-        source.sendSuccess(() -> Component.literal("§6--- Individual Stages for " + target.getName().getString() + " ---"), false);
-
-        if (playerStages.isEmpty()) {
-            source.sendSuccess(() -> Component.literal("§7No individual stages unlocked."), false);
-        } else {
-            StageManager.getIndividualStages().keySet().forEach(s -> {
-                String color = playerStages.contains(s) ? "§a" : "§c";
-                source.sendSuccess(() -> Component.literal(color + "- " + s), false);
-            });
-        }
         return 1;
     }
 }
