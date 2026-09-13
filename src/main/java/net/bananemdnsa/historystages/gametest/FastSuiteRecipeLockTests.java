@@ -41,6 +41,11 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
  *
  * <p>Each test gates a recipe of its own. The suite ticks its tests side by side, and two of them
  * on the same recipe would each be looking at the other's stage.
+ *
+ * <p>FastSuite is not in the dev runtime by default, so these are optional: without it they fail
+ * with a message saying so and the rest of the suite still passes. To run them for real, add
+ * {@code localRuntime "maven.modrinth:fastsuite:1.21.1-6.0.7"} and its dependency
+ * {@code localRuntime "maven.modrinth:placebo:1.21.1-9.9.2"} to build.gradle.
  */
 @GameTestHolder(HistoryStages.MOD_ID)
 @PrefixGameTestTemplate(false)
@@ -50,19 +55,19 @@ public final class FastSuiteRecipeLockTests {
 
     private FastSuiteRecipeLockTests() {}
 
-    @GameTest(template = "empty")
+    @GameTest(template = "empty", required = false)
     public static void fastSuiteIsTheOneAnswering(GameTestHelper helper) {
         String manager = helper.getLevel().getServer().getRecipeManager().getClass().getName();
         if (!manager.startsWith(FASTSUITE_PACKAGE)) {
             helper.fail("the server's recipe manager is " + manager + ", so FastSuite is not on "
-                    + "the runtime classpath and this suite cannot say anything. Its coordinates "
-                    + "are in build.gradle next to Create");
+                    + "the runtime classpath and this suite cannot say anything. The class comment "
+                    + "has the two build.gradle lines that bring it in");
             return;
         }
         helper.succeed();
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = "empty", required = false)
     public static void aGatedRecipeDoesNotResolve(GameTestHelper helper) {
         gateAndCheck(helper, "fastsuite_resolve", Items.OAK_LOG, "minecraft:oak_planks",
                 (server, level, input, gated) -> {
@@ -82,7 +87,7 @@ public final class FastSuiteRecipeLockTests {
                 });
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = "empty", required = false)
     public static void bothLookupsBehindATakeAgree(GameTestHelper helper) {
         // The duplication itself. Taking the result out asks what is left over, which resolves
         // through the three-argument lookup; the result slot was filled through the four-argument
@@ -102,7 +107,7 @@ public final class FastSuiteRecipeLockTests {
                 });
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = "empty", required = false)
     public static void aGatedRecipeIsNotInTheListLookupEither(GameTestHelper helper) {
         gateAndCheck(helper, "fastsuite_list", Items.SPRUCE_LOG, "minecraft:spruce_planks",
                 (server, level, input, gated) -> {
