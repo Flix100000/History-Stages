@@ -1,10 +1,21 @@
-# eclipse
+# gradle
+build
+.gradle
+
+# dev run directories
+run
+run-server
+run-gametest
+
+# eclipse / vscode
 bin
+.eclipse/
 *.launch
 .settings
 .metadata
 .classpath
 .project
+.vscode/
 
 # idea
 out
@@ -15,26 +26,8 @@ out
 .idea/*
 !.idea/icon.png
 
-# gradle
-build
-.gradle
-
-# other
-eclipse
-run
-runs
-run-data
-run-server
-run-gametest
-
-repo
-
-# claude / editor
-.claude/
-.vscode/
-CLAUDE.md
+# local notes
 docs/
 .superpowers/
-
-# docs/ holds local notes and brainstorm specs, never part of the repo.
-docs/
+.claude/
+CLAUDE.md
