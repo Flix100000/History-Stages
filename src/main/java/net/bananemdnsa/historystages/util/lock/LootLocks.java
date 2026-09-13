@@ -21,9 +21,8 @@ import java.util.UUID;
  * The two questions every loot strip asks: is this stack locked for that player, and what goes
  * in its place.
  *
- * <p>Three callers now share this — Lootr containers as they are opened, Lootr loot as it is
- * rolled, and mob drops. They differ in which player they can name and in what they do with the
- * answer, but not in the answer itself, and three copies of the replacement ladder would drift.
+ * <p>Lootr loot as it is rolled and mob drops both ask it. They differ in which player they can
+ * name, but not in the answer, and two copies of the replacement ladder had already drifted.
  */
 public final class LootLocks {
 

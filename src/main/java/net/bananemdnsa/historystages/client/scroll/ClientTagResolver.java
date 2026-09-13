@@ -30,7 +30,7 @@ public final class ClientTagResolver implements OpenScrollContent.TagResolver {
         TagKey<Item> key = ItemTags.create(id);
         // BuiltInRegistries.ITEM has no getTagOrEmpty in this NeoForge version — getTag() returns
         // an Optional instead, empty for an unknown tag. Same pattern already used by
-        // LootLockHandler and StageLockFilter.
+        // LootLocks.
         Optional<? extends Iterable<Holder<Item>>> holders = BuiltInRegistries.ITEM.getTag(key);
         List<String> out = new ArrayList<>();
         holders.ifPresent(iterable -> iterable.forEach(holder ->

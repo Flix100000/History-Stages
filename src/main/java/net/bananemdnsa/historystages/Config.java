@@ -695,7 +695,7 @@ public class Config {
                     .define("lockItemPickup", true);
 
             individualLockLoot = builder
-                    .comment("Handle items locked by individual stages in Lootr containers and mob loot? Lootr containers are checked against the player opening them; mob drops are shared world items, so they are checked against the killing player. [Default: true]")
+                    .comment("Handle items locked by individual stages in Lootr containers and mob loot? Lootr loot is checked against the player it is rolled for; mob drops are shared world items, so they are checked against the killing player. [Default: true]")
                     .define("lockLoot", true);
 
             individualDropOnRevoke = builder

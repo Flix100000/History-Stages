@@ -15,10 +15,14 @@ import java.util.UUID;
 /**
  * Strips staged items out of Lootr loot at the moment it is rolled for a player.
  *
- * <p>{@code LootLockHandler} can only see loot that arrives through a container window, and not
- * everything Lootr hands out does: a decorated pot drops its contents straight on the ground, and
- * so does a brushed suspicious block. Rolling is the one point every one of those paths shares,
- * and it is also the only point that names the player the copy belongs to.
+ * <p>Not everything Lootr hands out arrives through a container window: a decorated pot drops its
+ * contents straight on the ground, and so does a brushed suspicious block. Rolling is the one point
+ * every one of those paths shares, and it is also the only point that names the player the copy
+ * belongs to.
+ *
+ * <p>Nothing strips a container when it is opened. By then the inventory may hold what a player
+ * put there themselves, and there is no telling that apart from the loot (#124). The cost is that
+ * loot rolled before a stage was locked stays where it is.
  *
  * <p>This and its provider are the only places in the mod that import Lootr. Nothing references
  * either of them — Lootr's own {@code ServiceLoader} is what loads them — so a Lootr old enough to
