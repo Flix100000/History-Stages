@@ -24,7 +24,7 @@ public class LockedRecipeDecorator<T> implements IRecipeCategoryDecorator<T> {
     @Override
     public void draw(T recipe, IRecipeCategory<T> category, IRecipeSlotsView recipeSlotsView,
                      GuiGraphics guiGraphics, double mouseX, double mouseY) {
-        if (!isRecipeLocked(recipe, recipeSlotsView)) return;
+        if (JerCategories.isJer(category) || !isRecipeLocked(recipe, recipeSlotsView)) return;
 
         int width = category.getWidth();
         int height = category.getHeight();
