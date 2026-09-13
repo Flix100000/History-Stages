@@ -1,7 +1,10 @@
 package net.bananemdnsa.historystages.data.scroll;
 
 import net.bananemdnsa.historystages.data.StageEntry;
+import net.bananemdnsa.historystages.data.TradeOfferEntry;
+import net.bananemdnsa.historystages.data.TradeProfessionEntry;
 import net.bananemdnsa.historystages.data.lock.EntityLocks;
+import net.bananemdnsa.historystages.data.lock.ZoneEntry;
 import net.bananemdnsa.historystages.data.lock.EntityInteractionLockEntry;
 import net.bananemdnsa.historystages.data.lock.EntitySpawnLockEntry;
 import org.junit.jupiter.api.Test;
@@ -104,6 +107,81 @@ class OpenScrollContentTest {
         assertEquals(OpenScrollContent.DIMENSIONS_KEY, doc.world().get(0).labelKey());
         assertEquals(OpenScrollContent.BIOMES_KEY, doc.world().get(1).labelKey());
         assertEquals(2, doc.worldCount());
+    }
+
+    @Test
+    void zonesAndTradesLandInTheWorldChapterAfterThePlaces() {
+        StageEntry entry = stage();
+        entry.setBiomes(List.of("minecraft:crimson_forest"));
+        entry.setZones(List.of(zone("Old Village", "minecraft:overworld")));
+        entry.setTradeProfessionEntries(List.of(new TradeProfessionEntry("minecraft:librarian")));
+        entry.setTradeOffers(List.of(new TradeOfferEntry("minecraft:cartographer", 2,
+                "minecraft:filled_map", "minecraft:emerald", "minecraft:compass")));
+        entry.setTradeLevels(List.of("5"));
+
+        OpenScrollDocument doc = OpenScrollContent.build("bronze", false, entry, tags(Map.of()));
+
+        assertEquals(List.of(OpenScrollContent.BIOMES_KEY, OpenScrollContent.ZONES_KEY,
+                        OpenScrollContent.TRADE_PROFESSIONS_KEY, OpenScrollContent.TRADE_OFFERS_KEY,
+                        OpenScrollContent.TRADE_LEVELS_KEY),
+                doc.world().stream().map(OpenScrollWorldGroup::labelKey).toList());
+        assertEquals(5, doc.worldCount());
+    }
+
+    @Test
+    void aStageThatOnlyGatesTradesIsNotAnEmptyScroll() {
+        StageEntry entry = stage();
+        entry.setTradeLevels(List.of("3"));
+
+        OpenScrollDocument doc = OpenScrollContent.build("bronze", false, entry, tags(Map.of()));
+
+        assertFalse(doc.isEmpty(OpenScrollChapter.WORLD));
+    }
+
+    @Test
+    void aZoneNameInTwoDimensionsIsOneRowAndAnUnnamedZoneNone() {
+        StageEntry entry = stage();
+        entry.setZones(List.of(zone("Fortress", "minecraft:overworld"),
+                zone("Fortress", "minecraft:the_nether"), zone("", "minecraft:overworld")));
+
+        OpenScrollDocument doc = OpenScrollContent.build("bronze", false, entry, tags(Map.of()));
+
+        assertEquals(List.of("Fortress"), doc.world().get(0).ids());
+    }
+
+    @Test
+    void theSameOfferNarrowedTwiceIsOneRow() {
+        StageEntry entry = stage();
+        com.google.gson.JsonObject mending = new com.google.gson.JsonObject();
+        mending.addProperty("enchantment", "minecraft:mending");
+        entry.setTradeOffers(List.of(
+                new TradeOfferEntry("minecraft:librarian", 1, "minecraft:enchanted_book",
+                        "minecraft:emerald", "minecraft:book"),
+                new TradeOfferEntry("minecraft:librarian", 1, "minecraft:enchanted_book",
+                        "minecraft:emerald", "minecraft:book", mending)));
+
+        OpenScrollDocument doc = OpenScrollContent.build("bronze", false, entry, tags(Map.of()));
+
+        assertEquals(1, doc.worldCount());
+    }
+
+    @Test
+    void aProfessionRowKeepsItsLevelNarrowing() {
+        String narrowed = OpenScrollContent.professionRow(
+                new TradeProfessionEntry("minecraft:librarian", List.of("4", "5")));
+        String every = OpenScrollContent.professionRow(new TradeProfessionEntry("minecraft:librarian"));
+
+        assertEquals("minecraft:librarian", OpenScrollContent.professionId(narrowed));
+        assertEquals(List.of("4", "5"), OpenScrollContent.professionLevels(narrowed));
+        assertEquals("minecraft:librarian", OpenScrollContent.professionId(every));
+        assertTrue(OpenScrollContent.professionLevels(every).isEmpty());
+    }
+
+    private static ZoneEntry zone(String name, String dimension) {
+        ZoneEntry zone = new ZoneEntry();
+        zone.setName(name);
+        zone.setDimension(dimension);
+        return zone;
     }
 
     @Test

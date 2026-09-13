@@ -3,7 +3,9 @@ package net.bananemdnsa.historystages.client.scroll;
 import net.minecraft.client.resources.language.I18n;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
+import net.bananemdnsa.historystages.data.lock.TradePreview;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.item.ItemStack;
 
 import java.util.Locale;
 
@@ -39,6 +41,36 @@ public final class OpenScrollNames {
 
     public static String dimension(String id) {
         return translated("dimension", id);
+    }
+
+    public static String fluid(String id) {
+        ResourceLocation key = ResourceLocation.tryParse(id);
+        if (key == null || !BuiltInRegistries.FLUID.containsKey(key)) return prettify(id);
+        return BuiltInRegistries.FLUID.get(key).getFluidType().getDescription().getString();
+    }
+
+    public static String item(String id) {
+        ResourceLocation key = ResourceLocation.tryParse(id);
+        if (key == null || !BuiltInRegistries.ITEM.containsKey(key)) return prettify(id);
+        return new ItemStack(BuiltInRegistries.ITEM.get(key)).getHoverName().getString();
+    }
+
+    /**
+     * A villager profession by the name its villager carries. The wandering trader is not a
+     * profession but stands in for one in trade locks, and has an entity name of its own.
+     */
+    public static String merchant(String id) {
+        if (TradePreview.WANDERING_TRADER.equals(id)) return creature(id);
+        ResourceLocation key = ResourceLocation.tryParse(id);
+        if (key == null) return prettify(id);
+        String candidate = "entity." + key.getNamespace() + ".villager." + key.getPath();
+        return I18n.exists(candidate) ? I18n.get(candidate) : prettify(id);
+    }
+
+    /** Novice through Master; vanilla ships these keys, so any other number is shown as it is. */
+    public static String merchantLevel(String level) {
+        String candidate = "merchant.level." + level;
+        return I18n.exists(candidate) ? I18n.get(candidate) : level;
     }
 
     /** {@code <prefix>.<namespace>.<path>} when that key exists, a prettified path otherwise. */
