@@ -192,13 +192,13 @@ configurations {
 }
 
 dependencies {
-    // Example optional mod dependency with JEI
-    // The JEI API is declared for compile time use, while the full JEI artifact is used at runtime
-    // compileOnly "mezz.jei:jei-${mc_version}-common-api:${jei_version}"
-    // compileOnly "mezz.jei:jei-${mc_version}-neoforge-api:${jei_version}"
-    // We add the full version to localRuntime, not runtimeOnly, so that we do not publish a dependency on it
-    // localRuntime "mezz.jei:jei-${mc_version}-neoforge:${jei_version}"
+    // ---- Required ----
+
+    // The only hard dependency (see neoforge.mods.toml), so the only one that is passed on to
+    // anyone building against this mod.
     implementation "curse.maven:lootr-361276:8695784"
+
+    // ---- Recipe viewers ----
 
     // JEI for MC 1.21.1 NeoForge. The 1.21 artifacts stop at 19.8.2.99; everything newer is
     // published under the 1.21.1 id, which is the version this mod builds against anyway.
@@ -206,38 +206,44 @@ dependencies {
     compileOnly "mezz.jei:jei-1.21.1-neoforge-api:19.51.0.417"
     localRuntime "mezz.jei:jei-1.21.1-neoforge:19.51.0.417"
 
-    // EMI for MC 1.21.1 NeoForge
     compileOnly "dev.emi:emi-neoforge:1.1.24+1.21.1:api"
     //localRuntime "dev.emi:emi-neoforge:1.1.24+1.21.1"
 
-    // Jade
-    implementation "curse.maven:jade-324717:8591319"
+    // ---- Optional integrations, present in the dev client ----
 
-    // FTB Quests (optional integration) — targets MC 1.21.1 (2101.x). FTBQuests for MC 1.21 (2100.x) never left beta and has broken tooltips for custom tasks/rewards.
-    implementation "curse.maven:ftb-library-forge-404465:8569579"
-    implementation "curse.maven:ftb-teams-forge-404468:8724782"
-    implementation "curse.maven:ftb-quests-forge-289412:8730556"
-    implementation "curse.maven:architectury-api-419699:8492726"
+    compileOnly "curse.maven:jade-324717:8591319"
+    localRuntime "curse.maven:jade-324717:8591319"
 
-    // Curios
-    compileOnly "top.theillusivec4.curios:curios-neoforge:9.5.1+1.21.1"
+    // FTB Quests targets MC 1.21.1 (2101.x). FTBQuests for MC 1.21 (2100.x) never left beta and
+    // has broken tooltips for custom tasks/rewards. Teams has to be on the compile classpath too:
+    // quest team data hands out FTB Teams types. Architectury is only there because FTB Quests
+    // will not start without it.
+    compileOnly "curse.maven:ftb-library-forge-404465:8569579"
+    compileOnly "curse.maven:ftb-teams-forge-404468:8724782"
+    compileOnly "curse.maven:ftb-quests-forge-289412:8730556"
+    localRuntime "curse.maven:ftb-library-forge-404465:8569579"
+    localRuntime "curse.maven:ftb-teams-forge-404468:8724782"
+    localRuntime "curse.maven:ftb-quests-forge-289412:8730556"
+    localRuntime "curse.maven:architectury-api-419699:8492726"
 
-    // Accessories
-    compileOnly "io.wispforest:accessories-neoforge:1.1.0-beta.53+1.21.1"
-
-    // Spell Engine API (optional integration — adapter only loads when the mod is present at runtime)
-    compileOnly "maven.modrinth:spell-engine:1.10.4+1.21.1-neoforge"
-
-    // KubeJS (optional integration). The bridge is reached only because KubeJS reads
-    // kubejs.plugins.txt, so nothing here is a hard dependency. localRuntime as well as
-    // compileOnly, or the integration could not be exercised in the dev client at all.
+    // The bridge is reached only because KubeJS reads kubejs.plugins.txt, so nothing here is a
+    // hard dependency.
     compileOnly "dev.latvian.mods:kubejs-neoforge:2101.7.2-build.374"
     localRuntime "dev.latvian.mods:kubejs-neoforge:2101.7.2-build.374"
 
-    // CraftTweaker (optional integration). Found the same way: CraftTweaker scans for
-    // @ZenRegister, nothing in this mod references the bridge classes.
+    // Found the same way: CraftTweaker scans for @ZenRegister, nothing in this mod references the
+    // bridge classes.
     compileOnly "com.blamejared.crafttweaker:CraftTweaker-neoforge-1.21.1:21.0.38"
     localRuntime "com.blamejared.crafttweaker:CraftTweaker-neoforge-1.21.1:21.0.38"
+
+    // ---- Optional integrations, compile only ----
+
+    compileOnly "top.theillusivec4.curios:curios-neoforge:9.5.1+1.21.1"
+    compileOnly "io.wispforest:accessories-neoforge:1.1.0-beta.53+1.21.1"
+    // The adapter only loads when Spell Engine is present at runtime.
+    compileOnly "maven.modrinth:spell-engine:1.10.4+1.21.1-neoforge"
+
+    // ---- Test subjects ----
 
     // Create, for exercising the fluid side of the recipe picker by hand. Nothing in this mod
     // references Create: the fluid scanner reads a recipe's serialised form and names no mod, so
@@ -252,20 +258,7 @@ dependencies {
     //   localRuntime "com.tterrag.registrate:Registrate:MC1.21-1.3.0+67"
     localRuntime "maven.modrinth:create:6.0.10+mc1.21.1"
 
-    // Example mod dependency using a mod jar from ./libs with a flat dir repository
-    // This maps to ./libs/coolmod-${mc_version}-${coolmod_version}.jar
-    // The group id is ignored when searching -- in this case, it is "blank"
-    // implementation "blank:coolmod-${mc_version}:${coolmod_version}"
-
-    // Example mod dependency using a file as dependency
-    // implementation files("libs/coolmod-${mc_version}-${coolmod_version}.jar")
-
-    // Example project dependency using a sister or child project:
-    // implementation project(":myproject")
-
-    // For more info:
-    // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
-    // http://www.gradle.org/docs/current/userguide/dependency_management.html
+    // ---- Unit tests ----
 
     testImplementation platform('org.junit:junit-bom:5.10.2')
     testImplementation 'org.junit.jupiter:junit-jupiter'
