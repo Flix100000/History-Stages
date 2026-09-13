@@ -5,8 +5,10 @@ import java.util.UUID;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.data.saveddata.IndividualStageData;
 import net.bananemdnsa.historystages.data.saveddata.StageData;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.nbt.CompoundTag;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
@@ -113,6 +115,114 @@ public final class PersistenceTests {
             helper.succeed();
         } finally {
             data.removeStage(player, id);
+        }
+    }
+
+    @GameTest(template = "empty")
+    public static void aGlobalUnlockKeepsItsFirstTimeUntilRemoved(GameTestHelper helper) {
+        StageData data = StageData.get(helper.getLevel());
+        String id = GameTestStages.PREFIX + "timed";
+        data.addStage(id);
+        Long first = data.getUnlockTimes().get(id);
+        if (first == null) {
+            data.removeStage(id);
+            helper.fail("unlocking a stage recorded no unlock time");
+            return;
+        }
+        // The map background goes to the latest unlock, so a repeated grant must not make an
+        // old stage look new. A few ticks apart, or a re-stamp would write the same time back.
+        helper.runAfterDelay(5, () -> {
+            try {
+                data.addStage(id);
+                if (!first.equals(data.getUnlockTimes().get(id))) {
+                    helper.fail("unlocking an already unlocked stage changed its time from " + first
+                            + " to " + data.getUnlockTimes().get(id));
+                    return;
+                }
+                if (!first.equals(StageData.SERVER_UNLOCK_TIMES.get(id))) {
+                    helper.fail("the sync mirror holds " + StageData.SERVER_UNLOCK_TIMES.get(id)
+                            + " instead of " + first);
+                    return;
+                }
+                data.removeStage(id);
+                if (data.getUnlockTimes().containsKey(id) || StageData.SERVER_UNLOCK_TIMES.containsKey(id)) {
+                    helper.fail("a removed stage kept its unlock time");
+                    return;
+                }
+                helper.succeed();
+            } finally {
+                data.removeStage(id);
+            }
+        });
+    }
+
+    @GameTest(template = "empty")
+    public static void anIndividualUnlockKeepsItsFirstTimeUntilRemoved(GameTestHelper helper) {
+        IndividualStageData data = IndividualStageData.get(helper.getLevel());
+        String id = GameTestStages.PREFIX + "individual_timed";
+        UUID player = UUID.randomUUID();
+        data.addStage(player, id);
+        Long first = data.getUnlockTimes(player).get(id);
+        if (first == null) {
+            data.removeStage(player, id);
+            helper.fail("unlocking an individual stage recorded no unlock time");
+            return;
+        }
+        helper.runAfterDelay(5, () -> {
+            try {
+                data.addStage(player, id);
+                if (!first.equals(data.getUnlockTimes(player).get(id))) {
+                    helper.fail("unlocking an already unlocked individual stage changed its time from "
+                            + first + " to " + data.getUnlockTimes(player).get(id));
+                    return;
+                }
+                data.removeStage(player, id);
+                if (data.getUnlockTimes(player).containsKey(id)) {
+                    helper.fail("a removed individual stage kept its unlock time");
+                    return;
+                }
+                helper.succeed();
+            } finally {
+                data.removeStage(player, id);
+            }
+        });
+    }
+
+    // Own batch: load() rebuilds the shared server caches from its copy, and tests in the same
+    // batch run in the same ticks.
+    @GameTest(template = "empty", batch = "unlock_times_round_trip")
+    public static void unlockTimesSurviveAWriteAndARead(GameTestHelper helper) {
+        StageData global = StageData.get(helper.getLevel());
+        IndividualStageData individual = IndividualStageData.get(helper.getLevel());
+        HolderLookup.Provider registries = helper.getLevel().registryAccess();
+        String id = GameTestStages.PREFIX + "timed_saved";
+        UUID player = UUID.randomUUID();
+        try {
+            global.addStage(id);
+            individual.addStage(player, id);
+
+            Long globalTime = StageData.load(global.save(new CompoundTag(), registries), registries)
+                    .getUnlockTimes().get(id);
+            Long individualTime = IndividualStageData.load(individual.save(new CompoundTag(), registries), registries)
+                    .getUnlockTimes(player).get(id);
+
+            if (!global.getUnlockTimes().get(id).equals(globalTime)) {
+                helper.fail("the global unlock time came back as " + globalTime
+                        + " instead of " + global.getUnlockTimes().get(id));
+                return;
+            }
+            if (!individual.getUnlockTimes(player).get(id).equals(individualTime)) {
+                helper.fail("the individual unlock time came back as " + individualTime
+                        + " instead of " + individual.getUnlockTimes(player).get(id));
+                return;
+            }
+            helper.succeed();
+        } finally {
+            global.removeStage(id);
+            individual.removeStage(player, id);
+            // load() rebuilt the static caches from a copy; get() puts them back on the live data.
+            StageData.get(helper.getLevel());
+            IndividualStageData.get(helper.getLevel());
         }
     }
 

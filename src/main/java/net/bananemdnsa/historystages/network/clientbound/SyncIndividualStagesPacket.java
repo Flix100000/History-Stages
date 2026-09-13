@@ -2,6 +2,7 @@ package net.bananemdnsa.historystages.network.clientbound;
 
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.client.cache.ClientIndividualStageCache;
+import net.bananemdnsa.historystages.data.saveddata.IndividualStageData;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
@@ -9,9 +10,15 @@ import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
-public record SyncIndividualStagesPacket(Set<String> unlockedStages) implements CustomPacketPayload {
+public record SyncIndividualStagesPacket(Set<String> unlockedStages, Map<String, Long> unlockTimes) implements CustomPacketPayload {
+
+    public static SyncIndividualStagesPacket of(IndividualStageData data, UUID player) {
+        return new SyncIndividualStagesPacket(data.getUnlockedStages(player), data.getUnlockTimes(player));
+    }
 
     public static final CustomPacketPayload.Type<SyncIndividualStagesPacket> TYPE =
             new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "sync_individual_stages"));
@@ -24,6 +31,7 @@ public record SyncIndividualStagesPacket(Set<String> unlockedStages) implements 
         for (String stage : msg.unlockedStages) {
             buffer.writeUtf(stage);
         }
+        SyncStagesPacket.writeTimes(buffer, msg.unlockTimes);
     }
 
     private static SyncIndividualStagesPacket decode(FriendlyByteBuf buffer) {
@@ -32,12 +40,12 @@ public record SyncIndividualStagesPacket(Set<String> unlockedStages) implements 
         for (int i = 0; i < size; i++) {
             stages.add(buffer.readUtf());
         }
-        return new SyncIndividualStagesPacket(stages);
+        return new SyncIndividualStagesPacket(stages, SyncStagesPacket.readTimes(buffer));
     }
 
     public static void handle(SyncIndividualStagesPacket msg, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
-            ClientIndividualStageCache.setUnlockedStages(msg.unlockedStages);
+            ClientIndividualStageCache.setUnlockedStages(msg.unlockedStages, msg.unlockTimes);
 
             // Trigger visual refresh for lock icons
             net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();

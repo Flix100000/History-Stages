@@ -14,6 +14,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class IndividualStageData extends SavedData {
     private final Map<UUID, Set<String>> playerStages = new HashMap<>();
+    /** Game time per player and stage; see {@code StageData.unlockTimes}. */
+    private final Map<UUID, Map<String, Long>> unlockTimes = new HashMap<>();
     private static final String DATA_NAME = "historystages_individual";
 
     public static final Map<UUID, Set<String>> SERVER_CACHE = new ConcurrentHashMap<>();
@@ -46,6 +48,7 @@ public class IndividualStageData extends SavedData {
         SERVER_CACHE.clear();
 
         CompoundTag playersTag = nbt.getCompound("players");
+        CompoundTag allTimes = nbt.getCompound("unlockTimes");
         for (String uuidStr : playersTag.getAllKeys()) {
             UUID uuid;
             try {
@@ -61,6 +64,14 @@ public class IndividualStageData extends SavedData {
             }
 
             data.playerStages.put(uuid, stages);
+
+            CompoundTag times = allTimes.getCompound(uuidStr);
+            for (String stage : stages) {
+                if (times.contains(stage, Tag.TAG_LONG)) {
+                    data.unlockTimes.computeIfAbsent(uuid, k -> new HashMap<>())
+                            .put(stage, times.getLong(stage));
+                }
+            }
             SERVER_CACHE.put(uuid, ConcurrentHashMap.newKeySet());
             SERVER_CACHE.get(uuid).addAll(stages);
             VERSION.incrementAndGet();
@@ -79,6 +90,15 @@ public class IndividualStageData extends SavedData {
             playersTag.put(entry.getKey().toString(), list);
         }
         nbt.put("players", playersTag);
+
+        CompoundTag allTimes = new CompoundTag();
+        for (Map.Entry<UUID, Map<String, Long>> entry : unlockTimes.entrySet()) {
+            if (entry.getValue().isEmpty()) continue;
+            CompoundTag times = new CompoundTag();
+            entry.getValue().forEach(times::putLong);
+            allTimes.put(entry.getKey().toString(), times);
+        }
+        nbt.put("unlockTimes", allTimes);
         return nbt;
     }
 
@@ -108,7 +128,12 @@ public class IndividualStageData extends SavedData {
     }
 
     public void addStage(UUID player, String stage) {
-        playerStages.computeIfAbsent(player, k -> new HashSet<>()).add(stage);
+        // Only a real unlock gets a time. Several callers add without checking first, and
+        // re-stamping would make an old stage look like the newest one.
+        if (playerStages.computeIfAbsent(player, k -> new HashSet<>()).add(stage)) {
+            Long now = UnlockClock.now();
+            if (now != null) unlockTimes.computeIfAbsent(player, k -> new HashMap<>()).put(stage, now);
+        }
         SERVER_CACHE.computeIfAbsent(player, k -> ConcurrentHashMap.newKeySet()).add(stage);
         VERSION.incrementAndGet();
         setDirty();
@@ -117,6 +142,8 @@ public class IndividualStageData extends SavedData {
     public boolean removeStage(UUID player, String stage) {
         Set<String> stages = playerStages.get(player);
         if (stages != null && stages.remove(stage)) {
+            Map<String, Long> times = unlockTimes.get(player);
+            if (times != null) times.remove(stage);
             VERSION.incrementAndGet();
             Set<String> cached = SERVER_CACHE.get(player);
             if (cached != null) {
@@ -141,6 +168,12 @@ public class IndividualStageData extends SavedData {
     public Set<String> getUnlockedStages(UUID player) {
         Set<String> stages = playerStages.get(player);
         return stages != null ? new HashSet<>(stages) : new HashSet<>();
+    }
+
+    /** A copy, never null. Stages unlocked before times were recorded are absent. */
+    public Map<String, Long> getUnlockTimes(UUID player) {
+        Map<String, Long> times = unlockTimes.get(player);
+        return times != null ? new HashMap<>(times) : new HashMap<>();
     }
 
     public Set<UUID> getAllPlayersWithStage(String stage) {

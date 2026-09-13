@@ -5,19 +5,25 @@ import net.bananemdnsa.historystages.client.editor.anim.Ease;
 import net.bananemdnsa.historystages.client.editor.anim.Fade;
 import net.bananemdnsa.historystages.client.editor.anim.Timing;
 import net.bananemdnsa.historystages.client.editor.dialog.ColorInputScreen;
+import net.bananemdnsa.historystages.api.editor.widget.PickerOverlay;
+import net.bananemdnsa.historystages.client.editor.graph.CanvasBackgrounds;
 import net.bananemdnsa.historystages.client.editor.graph.NodeShapes;
+import net.bananemdnsa.historystages.client.editor.graph.NodeTextures;
 import net.bananemdnsa.historystages.client.editor.graph.StageGraphConfig;
 import net.bananemdnsa.historystages.client.editor.widget.ConfirmDialog;
 import net.bananemdnsa.historystages.client.editor.widget.EditorTooltip;
 import net.bananemdnsa.historystages.client.editor.widget.StyledButton;
 import net.bananemdnsa.historystages.client.editor.widget.dropdown.EnumDropdown;
 import net.bananemdnsa.historystages.client.editor.widget.list.ConfigRowList;
+import net.bananemdnsa.historystages.client.editor.widget.list.SearchableTextureList;
+import net.bananemdnsa.historystages.data.graph.CanvasBackgroundStyle;
 import net.bananemdnsa.historystages.data.graph.GraphColors;
 import net.bananemdnsa.historystages.data.graph.GraphConfigCodec;
 import net.bananemdnsa.historystages.data.graph.GraphConfigEntries;
 import net.bananemdnsa.historystages.data.graph.GraphKey;
 import net.bananemdnsa.historystages.data.graph.GraphStageData;
 import net.bananemdnsa.historystages.data.graph.NodeState;
+import net.bananemdnsa.historystages.data.graph.ResolvedCanvasBackground;
 import net.bananemdnsa.historystages.data.graph.ResolvedStyle;
 import net.bananemdnsa.historystages.data.graph.StageStyle;
 import net.bananemdnsa.historystages.data.graph.StageStyleFields;
@@ -29,7 +35,9 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
+import net.minecraft.util.FormattedCharSequence;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -54,7 +62,23 @@ public class StageStyleScreen extends Screen {
     /** The all-states tab. Not a {@link NodeState} — it is the block that applies to all of them. */
     private static final String TAB_ALL = "all";
 
-    private static final List<String> TABS = List.of(TAB_ALL, "unlocked", "reachable", "locked");
+    /**
+     * The map background this stage sets once unlocked. Not a state either, and not a node
+     * style: its rows edit the {@code background} block and take their metadata from graph.toml's
+     * {@code canvas} table.
+     */
+    private static final String TAB_BACKGROUND = "background";
+
+    private static final List<String> TABS = List.of(TAB_ALL, "unlocked", "reachable", "locked", TAB_BACKGROUND);
+
+    /** Extra space before the background tab, so it does not read as a fifth state. */
+    private static final int BACKGROUND_TAB_GAP = 10;
+
+    private static final List<String> BACKGROUND_LEAVES = List.of("background", "backgroundTexture", "backgroundColor");
+
+    /** Matches {@code GraphCanvas.GRID_COLOR}. */
+    private static final int PREVIEW_GRID_COLOR = 0x1FFFFFFF;
+    private static final int PREVIEW_CELL = 24;
 
     /** Matches {@code GraphCanvas.BASE_NODE_RADIUS}, so the preview is the node at zoom 1. */
     private static final int BASE_NODE_RADIUS = 15;
@@ -65,7 +89,7 @@ public class StageStyleScreen extends Screen {
     private static final int ROWS_TOP = TAB_Y + SWITCH_H + 8;
     /** Space kept clear at the bottom for the one row of buttons. */
     private static final int BUTTON_BAND = 40;
-    private static final int SWITCH_BAR_MAX_W = 340;
+    private static final int SWITCH_BAR_MAX_W = 430;
 
     private final Screen parent;
     private final String stageId;
@@ -97,6 +121,8 @@ public class StageStyleScreen extends Screen {
     private final Map<String, int[]> switchRects = new HashMap<>();
     private final EditorTooltip tooltip = new EditorTooltip();
     private EnumDropdown openDropdown;
+    /** The texture picker, open over everything while the background texture row is edited. */
+    private PickerOverlay texturePicker;
 
     /**
      * Bottom of the row band. Nine rows are 216px tall and do not fit above the buttons at the
@@ -123,7 +149,48 @@ public class StageStyleScreen extends Screen {
         this.buffer = loaded == null ? new GraphStageData.Entry() : loaded.copyStyles();
         if (buffer.style == null) buffer.style = new StageStyle();
         if (buffer.styles == null) buffer.styles = new StateStyles();
+        if (buffer.background == null) buffer.background = new CanvasBackgroundStyle();
         this.initialJson = bufferJson();
+    }
+
+    private boolean onBackgroundTab() {
+        return TAB_BACKGROUND.equals(tab);
+    }
+
+    /** What this stage itself sets for a row's leaf on the current tab, or null. */
+    private String ownValue(String leaf) {
+        if (!onBackgroundTab()) return StageStyleFields.get(target(), leaf);
+        return switch (leaf) {
+            case "background" -> buffer.background.mode;
+            case "backgroundTexture" -> buffer.background.texture;
+            case "backgroundColor" -> buffer.background.color;
+            default -> null;
+        };
+    }
+
+    private void setOwnValue(String leaf, String value) {
+        if (!onBackgroundTab()) {
+            StageStyleFields.set(target(), leaf, value);
+            return;
+        }
+        switch (leaf) {
+            case "background" -> buffer.background.mode = value;
+            case "backgroundTexture" -> buffer.background.texture = value;
+            case "backgroundColor" -> buffer.background.color = value;
+            default -> { }
+        }
+    }
+
+    /** graph.toml's canvas keys behind the background tab's rows, in {@link #BACKGROUND_LEAVES} order. */
+    private static List<GraphKey> backgroundKeys() {
+        List<GraphKey> out = new ArrayList<>();
+        List<GraphKey> canvas = GraphConfigEntries.sections().getOrDefault("canvas", List.of());
+        for (String leaf : BACKGROUND_LEAVES) {
+            for (GraphKey key : canvas) {
+                if (key.leaf().equals(leaf)) out.add(key);
+            }
+        }
+        return out;
     }
 
     // --- Buffer access ------------------------------------------------------------------------
@@ -159,6 +226,8 @@ public class StageStyleScreen extends Screen {
             }
             pruned.styles = states;
         }
+        pruned.background = buffer.background == null || buffer.background.isEmpty()
+                ? null : buffer.background.copy();
         return GraphStageData.entryToJson(pruned);
     }
 
@@ -174,6 +243,7 @@ public class StageStyleScreen extends Screen {
      * @return the inherited value, or null when the three states disagree
      */
     private String inheritedValue(String leaf) {
+        if (onBackgroundTab()) return graphValues.get("canvas." + leaf);
         if (TAB_ALL.equals(tab)) {
             String first = null;
             for (String state : List.of("unlocked", "reachable", "locked")) {
@@ -209,17 +279,17 @@ public class StageStyleScreen extends Screen {
 
     /**
      * Builds the rows for the current tab. The metadata (kind, range, enum constants) comes from
-     * the unlocked block whatever the tab is — the three blocks declare the same ten keys with
-     * the same types, and the all-states tab has no block of its own to read.
+     * the unlocked block on every node tab — the three blocks declare the same ten keys with
+     * the same types, and the all-states tab has no block of its own to read. The background tab
+     * reads graph.toml's canvas keys instead.
      */
     private void rebuildRows() {
         currentRows = new ArrayList<>();
-        String metaState = TAB_ALL.equals(tab) ? "unlocked" : tab;
-        StageStyle block = target();
+        boolean background = onBackgroundTab();
 
-        for (GraphKey key : GraphConfigEntries.styleKeys(collection, metaState)) {
+        for (GraphKey key : tabKeys()) {
             String leaf = key.leaf();
-            String own = StageStyleFields.get(block, leaf);
+            String own = ownValue(leaf);
             String inherited = inheritedValue(leaf);
 
             // A row with nothing to inherit still carries the value it would start from, so the
@@ -231,7 +301,9 @@ public class StageStyleScreen extends Screen {
             ConfigEditorScreen.ConfigEntry entry = ConfigEditorScreen.ConfigEntry.styleRow(
                     "stagestyle." + tab + "." + leaf,
                     typeOf(key), shown, key.defaultValue(),
-                    "editor.historystages.config.graph.style." + leaf,
+                    background
+                            ? "editor.historystages.config.graph.canvas." + leaf
+                            : "editor.historystages.config.graph.style." + leaf,
                     key.min() == null ? Double.NEGATIVE_INFINITY : key.min(),
                     key.max() == null ? Double.POSITIVE_INFINITY : key.max(),
                     key.enumConstants(), key.enumType());
@@ -313,7 +385,7 @@ public class StageStyleScreen extends Screen {
 
     /** Writes a row's value into the buffer and marks it as this stage's own. */
     private void applyRow(ConfigEditorScreen.ConfigEntry entry, String value) {
-        StageStyleFields.set(target(), leafOf(entry), value);
+        setOwnValue(leafOf(entry), value);
         entry.value = value;
         entry.inherited = false;
         // The row now owns a value of its own, so there is nothing left for it to vary between.
@@ -323,7 +395,7 @@ public class StageStyleScreen extends Screen {
     /** Puts a row back to inheriting and re-reads what it now shows. */
     private void clearRow(ConfigEditorScreen.ConfigEntry entry) {
         String leaf = leafOf(entry);
-        StageStyleFields.set(target(), leaf, null);
+        setOwnValue(leaf, null);
         String inherited = inheritedValue(leaf);
         entry.varies = inherited == null;
         if (inherited != null) {
@@ -347,9 +419,10 @@ public class StageStyleScreen extends Screen {
 
         switchRects.clear();
         int total = Math.min(SWITCH_BAR_MAX_W, this.width - 40);
-        int each = (total - SWITCH_GAP * (TABS.size() - 1)) / TABS.size();
+        int each = (total - SWITCH_GAP * (TABS.size() - 1) - BACKGROUND_TAB_GAP) / TABS.size();
         int x = this.width / 2 - total / 2;
         for (String option : TABS) {
+            if (TAB_BACKGROUND.equals(option)) x += BACKGROUND_TAB_GAP;
             switchRects.put(option, new int[]{x, TAB_Y, each});
             x += each + SWITCH_GAP;
         }
@@ -376,6 +449,7 @@ public class StageStyleScreen extends Screen {
                         () -> {
                             buffer.style = new StageStyle();
                             buffer.styles = new StateStyles();
+                            buffer.background = new CanvasBackgroundStyle();
                             // setScreen runs init(), which rebuilds the rows on its own.
                             this.minecraft.setScreen(this);
                         })),
@@ -506,6 +580,17 @@ public class StageStyleScreen extends Screen {
             if (openDropdown.isExpanded()) hoveredDesc = null;
         }
 
+        if (pickerOpen()) {
+            // Lifted above the rows: text is flushed after the panel's fills, so the row labels
+            // would otherwise show through it.
+            g.pose().pushPose();
+            g.pose().translate(0, 0, 200);
+            g.fill(0, 0, this.width, this.height, 0x80000000);
+            texturePicker.render(g, this.font, mouseX, mouseY);
+            g.pose().popPose();
+            hoveredDesc = null;
+        }
+
         boolean hasText = hoveredDesc != null
                 && net.minecraft.client.resources.language.I18n.exists(hoveredDesc);
         tooltip.render(g, this.font, hasText ? hoveredDesc : null,
@@ -528,8 +613,8 @@ public class StageStyleScreen extends Screen {
             if (active) {
                 g.fill(r[0], r[1] + SWITCH_H - 2, r[0] + r[2], r[1] + SWITCH_H, 0xFFFFCC00);
             }
-            String label = Component.translatable(TAB_ALL.equals(option)
-                    ? "editor.historystages.graph.style.tab.all"
+            String label = Component.translatable(TAB_ALL.equals(option) || TAB_BACKGROUND.equals(option)
+                    ? "editor.historystages.graph.style.tab." + option
                     : "editor.historystages.config.graph.style.state." + option).getString();
             g.drawCenteredString(this.font, label, r[0] + r[2] / 2, r[1] + 4,
                     active ? 0xFFFFFF : Fade.mix(0xFF999999, 0xFFDDDDDD, hp));
@@ -560,6 +645,11 @@ public class StageStyleScreen extends Screen {
         g.fill(x - 1, y - 1, x + w + 1, y + h + 1, 0xFF555555);
         g.fill(x, y, x + w, y + h, 0xFF1A1A1A);
 
+        if (onBackgroundTab()) {
+            renderBackgroundPreview(g, x, y, w, h);
+            return;
+        }
+
         List<NodeState> shown = TAB_ALL.equals(tab)
                 ? List.of(NodeState.UNLOCKED, NodeState.REACHABLE, NodeState.LOCKED)
                 : List.of(NodeState.valueOf(tab.toUpperCase(Locale.ROOT)));
@@ -569,6 +659,43 @@ public class StageStyleScreen extends Screen {
         for (NodeState state : shown) {
             renderPreviewNode(g, state, x, y + i * cellH, w, cellH);
             i++;
+        }
+    }
+
+    /**
+     * The canvas as this stage's player would see it, with the stage's own unlocked node on it —
+     * a background is only worth choosing against the node colours that will sit on top of it.
+     */
+    private void renderBackgroundPreview(GuiGraphics g, int x, int y, int w, int h) {
+        ResolvedCanvasBackground bg = CanvasBackgrounds.withOverride(buffer.background);
+
+        g.enableScissor(x, y, x + w, y + h);
+        g.fill(x, y, x + w, y + h, 0xFF000000 | bg.rgb());
+        switch (bg.mode()) {
+            case "GRID" -> {
+                for (int lx = x; lx < x + w; lx += PREVIEW_CELL) g.fill(lx, y, lx + 1, y + h, PREVIEW_GRID_COLOR);
+                for (int ly = y; ly < y + h; ly += PREVIEW_CELL) g.fill(x, ly, x + w, ly + 1, PREVIEW_GRID_COLOR);
+            }
+            case "TEXTURE" -> {
+                ResourceLocation tex = ResourceLocation.tryParse(bg.texture());
+                if (tex != null) {
+                    NodeTextures.repeatingQuad(g, tex, x, y, x + w, y + h,
+                            0f, 0f, (float) w / PREVIEW_CELL, (float) h / PREVIEW_CELL);
+                }
+            }
+            default -> { }
+        }
+        g.disableScissor();
+
+        renderPreviewNode(g, NodeState.UNLOCKED, x, y, w, h);
+
+        List<FormattedCharSequence> hint = this.font.split(
+                Component.translatable("editor.historystages.graph.style.background.hint"), w - 8);
+        int lineY = y + h - 4 - hint.size() * 10;
+        g.fill(x, lineY - 3, x + w, y + h, 0xA0000000);
+        for (FormattedCharSequence line : hint) {
+            g.drawString(this.font, line, x + 4, lineY, 0xFFBBBBBB, false);
+            lineY += 10;
         }
     }
 
@@ -645,8 +772,31 @@ public class StageStyleScreen extends Screen {
 
     // --- Input --------------------------------------------------------------------------------
 
+    private void openTexturePicker(ConfigEditorScreen.ConfigEntry entry) {
+        SearchableTextureList picker = new SearchableTextureList(texture -> {
+            applyRow(entry, texture);
+            texturePicker = null;
+        });
+        texturePicker = picker;
+        picker.show(this.width / 2, this.height / 2, this.width);
+    }
+
+    /**
+     * Drops the picker once it has hidden itself: a click outside its panel hides it and still
+     * reports the click as consumed, so without this the dim layer would never lift.
+     */
+    private boolean pickerOpen() {
+        if (texturePicker != null && !texturePicker.isVisible()) texturePicker = null;
+        return texturePicker != null;
+    }
+
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (pickerOpen()) {
+            if (!texturePicker.mouseClicked(mouseX, mouseY)) texturePicker = null;
+            return true;
+        }
+
         if (openDropdown != null) {
             boolean wasExpanded = openDropdown.isExpanded();
             if (openDropdown.mouseClicked(mouseX, mouseY)) return true;
@@ -745,6 +895,8 @@ public class StageStyleScreen extends Screen {
                 applyRow(entry, entry.value);
                 this.minecraft.setScreen(new ConfigEditorScreen.ValueInputScreen(this, entry));
             }
+            // Only picking writes the override; closing the picker leaves the row as it was.
+            case TEXTURE -> openTexturePicker(entry);
             default -> {
                 // No other type appears in a style block.
             }
@@ -752,11 +904,16 @@ public class StageStyleScreen extends Screen {
     }
 
     private GraphKey keyFor(String leaf) {
-        String metaState = TAB_ALL.equals(tab) ? "unlocked" : tab;
-        for (GraphKey key : GraphConfigEntries.styleKeys(collection, metaState)) {
+        for (GraphKey key : tabKeys()) {
             if (key.leaf().equals(leaf)) return key;
         }
         return null;
+    }
+
+    /** The keys the current tab's rows are built from. */
+    private List<GraphKey> tabKeys() {
+        if (onBackgroundTab()) return backgroundKeys();
+        return GraphConfigEntries.styleKeys(collection, TAB_ALL.equals(tab) ? "unlocked" : tab);
     }
 
     /**
@@ -770,12 +927,14 @@ public class StageStyleScreen extends Screen {
      */
     private void syncRowsIntoBuffer() {
         for (ConfigEditorScreen.ConfigEntry entry : currentRows) {
-            if (!entry.inherited) StageStyleFields.set(target(), leafOf(entry), entry.value);
+            if (!entry.inherited) setOwnValue(leafOf(entry), entry.value);
         }
     }
 
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+        // The picker's own scrollbar needs the drags too, or it takes the press and never moves.
+        if (pickerOpen() && texturePicker.mouseDragged(mouseX, mouseY)) return true;
         if (draggingScrollbar) {
             updateScrollFromMouse(mouseY);
             return true;
@@ -785,6 +944,7 @@ public class StageStyleScreen extends Screen {
 
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        if (pickerOpen() && texturePicker.mouseReleased()) return true;
         if (draggingScrollbar) {
             draggingScrollbar = false;
             return true;
@@ -794,10 +954,29 @@ public class StageStyleScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (pickerOpen()) return texturePicker.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
         // The popup is anchored to a fixed screen position, so it cannot follow its row.
         openDropdown = null;
         if (maxScroll <= 0) return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
         scrollOffset = Math.max(0, Math.min(maxScroll, scrollOffset - scrollY * 16));
         return true;
+    }
+
+    @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (pickerOpen()) {
+            if (keyCode == 256) {
+                texturePicker = null;
+                return true;
+            }
+            return texturePicker.keyPressed(keyCode);
+        }
+        return super.keyPressed(keyCode, scanCode, modifiers);
+    }
+
+    @Override
+    public boolean charTyped(char c, int modifiers) {
+        if (pickerOpen()) return texturePicker.charTyped(c);
+        return super.charTyped(c, modifiers);
     }
 }

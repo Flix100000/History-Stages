@@ -81,6 +81,7 @@ public class GraphConfig {
         // [canvas]
         public final ModConfigSpec.EnumValue<CanvasBackground> background;
         public final ModConfigSpec.ConfigValue<String> backgroundTexture;
+        public final ModConfigSpec.ConfigValue<String> backgroundColor;
         public final ModConfigSpec.IntValue gridSize;
         public final ModConfigSpec.DoubleValue startZoom;
         public final ModConfigSpec.DoubleValue minZoom;
@@ -162,6 +163,10 @@ public class GraphConfig {
                             "Blank, unparseable or missing falls back to the plain colour, so a typo",
                             "leaves a readable canvas rather than a missing-texture chequerboard.")
                     .define("backgroundTexture", "minecraft:textures/block/polished_andesite.png");
+            backgroundColor = builder
+                    .comment("Base colour of the canvas, #RRGGBB. Shows under the grid, on its own",
+                            "for SOLID, and wherever a texture is missing. [Default: #17171A]")
+                    .define("backgroundColor", "#17171A");
             gridSize = builder.comment("Pixels per grid cell at zoom 1.0.")
                     .defineInRange("gridSize", 48, 16, 160);
             startZoom = builder.defineInRange("startZoom", 1.0, 0.1, 4.0);

@@ -614,7 +614,7 @@ public class StageCommand {
 
         data.setDirty();
         PacketHandler.sendIndividualStagesToPlayer(
-                new SyncIndividualStagesPacket(data.getUnlockedStages(target.getUUID())),
+                SyncIndividualStagesPacket.of(data, target.getUUID()),
                 target
         );
 
@@ -656,7 +656,7 @@ public class StageCommand {
 
         data.setDirty();
         PacketHandler.sendIndividualStagesToPlayer(
-                new SyncIndividualStagesPacket(data.getUnlockedStages(target.getUUID())),
+                SyncIndividualStagesPacket.of(data, target.getUUID()),
                 target
         );
 
@@ -714,7 +714,7 @@ public class StageCommand {
 
         // Sync to the target player
         PacketHandler.sendIndividualStagesToPlayer(
-                new SyncIndividualStagesPacket(data.getUnlockedStages(target.getUUID())),
+                SyncIndividualStagesPacket.of(data, target.getUUID()),
                 target
         );
 

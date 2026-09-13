@@ -65,6 +65,12 @@ public final class GraphAutoLayout {
         return out;
     }
 
+    /** Longest-path depth of every key — the column {@link #compute} starts a connected stage in. */
+    public static Map<String, Integer> layers(Map<String, Set<String>> prerequisites) {
+        Map<String, Set<String>> prereq = sanitize(prerequisites);
+        return assignLayers(prereq.keySet(), prereq);
+    }
+
     /** Drops references to ids that are not nodes, and guarantees every node is a key. */
     private static Map<String, Set<String>> sanitize(Map<String, Set<String>> in) {
         Map<String, Set<String>> out = new HashMap<>();

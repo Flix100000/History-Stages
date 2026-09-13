@@ -15,6 +15,7 @@ import net.bananemdnsa.historystages.data.ItemEntry;
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.network.clientbound.EditorSyncPacket;
 import net.bananemdnsa.historystages.network.clientbound.SyncStageDefinitionsPacket;
+import net.bananemdnsa.historystages.network.clientbound.SyncIndividualStagesPacket;
 import net.bananemdnsa.historystages.network.clientbound.SyncStagesPacket;
 import net.bananemdnsa.historystages.network.clientbound.SyncVisualConfigPacket;
 import net.minecraft.gametest.framework.GameTest;
@@ -73,6 +74,40 @@ public final class PacketTests {
 
         if (!restored.unlockedStages().isEmpty()) {
             helper.fail("an empty packet came back holding " + restored.unlockedStages());
+            return;
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void unlockTimesSurviveBothStageCodecs(GameTestHelper helper) {
+        SyncStagesPacket global = new SyncStagesPacket(
+                List.of("gametest:a", "gametest:b"), Map.of("gametest:a", 42L, "gametest:b", 7L));
+        FriendlyByteBuf buffer = new FriendlyByteBuf(Unpooled.buffer());
+        SyncStagesPacket.STREAM_CODEC.encode(buffer, global);
+        SyncStagesPacket globalBack = SyncStagesPacket.STREAM_CODEC.decode(buffer);
+
+        if (!global.unlockTimes().equals(globalBack.unlockTimes()) || buffer.readableBytes() != 0) {
+            helper.fail("global unlock times did not survive the codec"
+                    + "\n  sent:     " + global.unlockTimes()
+                    + "\n  received: " + globalBack.unlockTimes()
+                    + "\n  unread bytes: " + buffer.readableBytes());
+            return;
+        }
+
+        SyncIndividualStagesPacket individual = new SyncIndividualStagesPacket(
+                Set.of("gametest:c"), Map.of("gametest:c", 123456789L));
+        FriendlyByteBuf buffer2 = new FriendlyByteBuf(Unpooled.buffer());
+        SyncIndividualStagesPacket.STREAM_CODEC.encode(buffer2, individual);
+        SyncIndividualStagesPacket individualBack = SyncIndividualStagesPacket.STREAM_CODEC.decode(buffer2);
+
+        if (!individual.unlockTimes().equals(individualBack.unlockTimes())
+                || !individual.unlockedStages().equals(individualBack.unlockedStages())
+                || buffer2.readableBytes() != 0) {
+            helper.fail("the individual packet did not survive its codec"
+                    + "\n  sent:     " + individual
+                    + "\n  received: " + individualBack
+                    + "\n  unread bytes: " + buffer2.readableBytes());
             return;
         }
         helper.succeed();

@@ -296,7 +296,7 @@ public class HistoryStages {
             // Sync individual stages for this player
             IndividualStageData individualData = IndividualStageData.get(player.serverLevel());
             PacketHandler.sendIndividualStagesToPlayer(
-                    new SyncIndividualStagesPacket(individualData.getUnlockedStages(player.getUUID())),
+                    SyncIndividualStagesPacket.of(individualData, player.getUUID()),
                     player
             );
 

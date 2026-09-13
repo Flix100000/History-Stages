@@ -8,6 +8,7 @@ import net.bananemdnsa.historystages.client.editor.anim.Timing;
 import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.data.graph.GraphLayoutData;
 import net.bananemdnsa.historystages.data.graph.GraphPos;
+import net.bananemdnsa.historystages.data.graph.ResolvedCanvasBackground;
 import net.bananemdnsa.historystages.data.graph.ResolvedStyle;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -116,6 +117,7 @@ public final class GraphCanvas {
 
     /** Whether authoring (dragging, the unplaced strip) is available at all — editor mode only. */
     private final boolean editor;
+    private ResolvedCanvasBackground background;
 
     // Node/unplaced drag: armed on press, promoted to a real drag past DRAG_THRESHOLD, resolved
     // (applied or discarded) on release. Mirrors the arm-then-threshold pattern in
@@ -154,6 +156,11 @@ public final class GraphCanvas {
         this.panY = y + height / 2f;
         this.editor = editor;
         setModel(model);
+    }
+
+    /** Null draws graph.toml's background; the player view hands in its own. */
+    public void setBackground(ResolvedCanvasBackground background) {
+        this.background = background;
     }
 
     public void setModel(StageGraphModel model) {
@@ -227,8 +234,9 @@ public final class GraphCanvas {
 
         int right = Math.min(viewX + viewW, clipRight);
         if (right <= viewX) return;
+        ResolvedCanvasBackground bg = background != null ? background : CanvasBackgrounds.fromConfig();
         g.enableScissor(viewX, viewY, right, viewY + viewH);
-        g.fill(viewX, viewY, right, viewY + viewH, CANVAS_BG);
+        g.fill(viewX, viewY, right, viewY + viewH, 0xFF000000 | bg.rgb());
 
         // Everything in graph space shares one integer pixel grid (see screenX/screenY) and then
         // gets the camera's sub-pixel remainder applied once, here. Letting each node round its
@@ -239,10 +247,10 @@ public final class GraphCanvas {
         g.pose().pushPose();
         g.pose().translate(panX - (float) Math.floor(panX), panY - (float) Math.floor(panY), 0f);
 
-        switch (GraphConfig.GRAPH.background.get()) {
-            case GRID -> drawGrid(g);
-            case TEXTURE -> drawBackgroundTexture(g);
-            case SOLID -> { /* the flat fill drawn above is the whole background */ }
+        switch (bg.mode()) {
+            case "GRID" -> drawGrid(g);
+            case "TEXTURE" -> drawBackgroundTexture(g, bg.texture());
+            default -> { /* SOLID: the flat fill drawn above is the whole background */ }
         }
 
         if (model != null) {
@@ -292,17 +300,7 @@ public final class GraphCanvas {
     }
 
     /**
-     * Canvas backdrop, drawn before the sub-pixel camera offset is applied — it fills the
-     * viewport exactly and must not slide with the graph.
-     *
-     * <p>SOLID is this fill on its own. TEXTURE falls back to it as well: {@code graph.toml}
-     * names the mode but has no resource to point at yet, and guessing a path would only produce
-     * a missing-texture chequerboard.
-     */
-    private static final int CANVAS_BG = 0xFF17171A;
-
-    /**
-     * Tiles {@code canvas.backgroundTexture} across the viewport, panning and zooming with the
+     * Tiles the background texture across the viewport, panning and zooming with the
      * graph exactly as the grid does — a background that stayed still while the map moved would
      * read as a window rather than as ground.
      *
@@ -316,9 +314,8 @@ public final class GraphCanvas {
      * leaves the plain fill that is already on screen; a missing-texture chequerboard behind the
      * whole graph would be far worse than a colour.
      */
-    private void drawBackgroundTexture(GuiGraphics g) {
-        ResourceLocation tex = ResourceLocation.tryParse(
-                GraphConfig.GRAPH.backgroundTexture.get().trim());
+    private void drawBackgroundTexture(GuiGraphics g, String texture) {
+        ResourceLocation tex = ResourceLocation.tryParse(texture);
         if (tex == null) return;
 
         float tile = cellSize() * zoom;

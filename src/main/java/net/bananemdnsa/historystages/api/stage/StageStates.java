@@ -118,7 +118,7 @@ public final class StageStates {
 
         // Sync the unlocked-stages set to the player
         PacketHandler.sendIndividualStagesToPlayer(
-                new SyncIndividualStagesPacket(data.getUnlockedStages(player.getUUID())),
+                SyncIndividualStagesPacket.of(data, player.getUUID()),
                 player
         );
 
@@ -189,7 +189,7 @@ public final class StageStates {
         NeoForge.EVENT_BUS.post(new StageEvent.IndividualLocked(stageId, displayName, player.getUUID()));
 
         PacketHandler.sendIndividualStagesToPlayer(
-                new SyncIndividualStagesPacket(data.getUnlockedStages(player.getUUID())),
+                SyncIndividualStagesPacket.of(data, player.getUUID()),
                 player
         );
 

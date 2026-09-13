@@ -52,11 +52,14 @@ public final class GraphStageData {
         public StageStyle style;
         /** Per-state, layered over {@link #style}. May be null. */
         public StateStyles styles;
+        /** Map background while this is the player's latest unlock with one. May be null. */
+        public CanvasBackgroundStyle background;
 
         public boolean isEmpty() {
             return (description == null || description.isBlank())
                     && (style == null || style.isEmpty())
-                    && (styles == null || styles.isEmpty());
+                    && (styles == null || styles.isEmpty())
+                    && (background == null || background.isEmpty());
         }
 
         /**
@@ -65,14 +68,16 @@ public final class GraphStageData {
          * and three objects per stage per frame is a lot of garbage for a 3×3 dot.
          */
         public boolean hasStyles() {
-            return (style != null && !style.isEmpty()) || (styles != null && !styles.isEmpty());
+            return (style != null && !style.isEmpty()) || (styles != null && !styles.isEmpty())
+                    || (background != null && !background.isEmpty());
         }
 
-        /** The style halves only, deep-copied — for an edit buffer or the clipboard. */
+        /** Everything but the description, deep-copied — for an edit buffer or the clipboard. */
         public Entry copyStyles() {
             Entry out = new Entry();
             out.style = style == null ? null : style.copy();
             out.styles = styles == null ? null : styles.copy();
+            out.background = background == null ? null : background.copy();
             return out;
         }
     }
@@ -132,6 +137,7 @@ public final class GraphStageData {
             updated.description = (text == null || text.isBlank()) ? null : text;
             updated.style = existing == null ? null : existing.style;
             updated.styles = existing == null ? null : existing.styles;
+            updated.background = existing == null ? null : existing.background;
 
             if (updated.isEmpty()) {
                 copy.remove(stageId);
@@ -159,6 +165,8 @@ public final class GraphStageData {
                     ? null : source.style.copy();
             updated.styles = source == null || source.styles == null || source.styles.isEmpty()
                     ? null : source.styles.copy();
+            updated.background = source == null || source.background == null
+                    || source.background.isEmpty() ? null : source.background.copy();
 
             if (updated.isEmpty()) {
                 copy.remove(stageId);
