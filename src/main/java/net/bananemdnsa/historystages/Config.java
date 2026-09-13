@@ -620,7 +620,7 @@ public class Config {
                     .define("lockBlockInteraction", true);
 
             lockContainerInteraction = builder
-                    .comment("Prevent moving individually-locked items in containers? (Blocks taking items from chests, machines, etc.) [Default: true]")
+                    .comment("Prevent taking individually-locked items out of containers? (Chests, machines, backpacks, etc. Sorting your own inventory stays allowed.) [Default: true]")
                     .define("lockContainerInteraction", true);
 
             lockEnchanting = builder

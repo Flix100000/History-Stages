@@ -31,6 +31,11 @@ public class ContainerClickMixin {
      * Taking an item out of a container is the same acquisition the ground-pickup handler gates,
      * so it asks the same action rather than "is this item mentioned anywhere" — otherwise an
      * entry narrowed to {@code recipe} still froze every slot holding it (Issue #117).
+     *
+     * <p>It asks about what the click moves into the player's hands, not about whatever lies in
+     * the clicked slot. Going by the slot froze sorting inside the player's own inventory and
+     * blocked throwing items away, while a number-key swap onto an empty slot never got looked
+     * at (Issue #122).
      */
     @Inject(method = "clicked", at = @At("HEAD"), cancellable = true, remap = true)
     private void onClicked(int slotId, int button, ClickType clickType, Player player, CallbackInfo ci) {
@@ -51,8 +56,7 @@ public class ContainerClickMixin {
         // Validate slot index
         if (slotId < 0 || slotId >= menu.slots.size()) return;
 
-        Slot slot = menu.slots.get(slotId);
-        ItemStack stack = slot.getItem();
+        ItemStack stack = historystages$takenFromStorage(menu, menu.slots.get(slotId), clickType, serverPlayer);
         if (stack.isEmpty()) return;
 
         if (StageLockHelper.isActionLockedByIndividualStage(stack, serverPlayer.getUUID(), "pickup")) {
@@ -133,6 +137,59 @@ public class ContainerClickMixin {
                 "<" + serverPlayer.getName().getString() + "> Equip via container click for '" + itemRL + "' blocked [action: equip]");
 
         LockFeedback.sendActionbar(serverPlayer, FEEDBACK_CATEGORY, LockMessages.itemLocked());
+    }
+
+    /**
+     * The stack this click would move out of storage that is not the player's own, or empty if
+     * it moves nothing that way. Mirrors the branches of {@code AbstractContainerMenu.doClick}.
+     *
+     * <p>A backpack or any other modded storage counts as foreign even though it travels with the
+     * player: its slots are not the player's inventory, and trusting a mod's container to say
+     * otherwise would turn every storage mod into a way around the lock.
+     */
+    @Unique
+    private static ItemStack historystages$takenFromStorage(AbstractContainerMenu menu, Slot slot,
+                                                           ClickType clickType, ServerPlayer player) {
+        switch (clickType) {
+            case PICKUP -> {
+                if (historystages$isPlayerInventory(slot, player)) return ItemStack.EMPTY;
+                ItemStack inSlot = slot.getItem();
+                ItemStack carried = menu.getCarried();
+                // Adding to a stack of the same item puts things in and takes nothing out. Any
+                // other click on a filled slot ends with its item on the cursor.
+                if (ItemStack.isSameItemSameComponents(inSlot, carried) && slot.mayPlace(carried)) {
+                    return ItemStack.EMPTY;
+                }
+                return inSlot;
+            }
+            case QUICK_MOVE, SWAP, CLONE -> {
+                return historystages$isPlayerInventory(slot, player) ? ItemStack.EMPTY : slot.getItem();
+            }
+            case PICKUP_ALL -> {
+                // The double click gathers matching stacks from every slot in the menu, so the
+                // clicked one says nothing - it is usually empty.
+                ItemStack carried = menu.getCarried();
+                if (carried.isEmpty()) return ItemStack.EMPTY;
+                for (Slot other : menu.slots) {
+                    if (!historystages$isPlayerInventory(other, player)
+                            && other.hasItem()
+                            && ItemStack.isSameItemSameComponents(other.getItem(), carried)
+                            && other.mayPickup(player)
+                            && menu.canTakeItemForPickAll(carried, other)) {
+                        return carried;
+                    }
+                }
+                return ItemStack.EMPTY;
+            }
+            default -> {
+                return ItemStack.EMPTY;
+            }
+        }
+    }
+
+    @Unique
+    private static boolean historystages$isPlayerInventory(Slot slot, ServerPlayer player) {
+        return slot.container == player.getInventory();
     }
 
     @Unique
