@@ -11,6 +11,7 @@ import net.bananemdnsa.historystages.data.lock.EntitySpawnLockEntry;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class DualPhaseIndexTest {
@@ -112,7 +113,9 @@ class DualPhaseIndexTest {
     }
 
     @Test
-    void aGlobalSpawnLockWithoutSourcesCountsAsAnAttackLockOverlap() {
+    void aGlobalSpawnLockIsNoAttackLockOverlap() {
+        // Before 6.0.0 the global spawn lock was read as an attack lock and produced an overlap
+        // warning against the individual attack lock. The two are independent now.
         StageEntry global = new StageEntry();
         global.getEntities().setSpawnlock(List.of(new EntitySpawnLockEntry("minecraft:zombie")));
 
@@ -121,8 +124,7 @@ class DualPhaseIndexTest {
 
         DualPhaseIndex index = DualPhaseIndex.build(stages("bronze", global), stages("quest", individual));
 
-        assertEquals(Set.of("bronze"),
-                index.global("historystages:attacklock").get("minecraft:zombie"));
+        assertNull(index.global("historystages:attacklock").get("minecraft:zombie"));
     }
 
     @Test

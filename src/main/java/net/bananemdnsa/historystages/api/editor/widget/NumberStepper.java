@@ -179,12 +179,19 @@ public class NumberStepper {
 
     /** @return true if the character was consumed; only ever true while {@link #isEditing()}. */
     public boolean charTyped(char c) {
-        if (!isEditing() || c < '0' || c > '9') return false;
+        if (!isEditing()) return false;
+        // A minus only as the first character, and only where the range reaches below zero.
+        if (c == '-') {
+            if (min < 0 && buffer.isEmpty()) buffer = "-";
+            return true;
+        }
+        if (c < '0' || c > '9') return false;
         // Capped at the digits the range can use, so the field cannot hold a number it would only
         // clamp away on commit.
-        if (buffer.length() >= String.valueOf(max).length()) return true;
+        int digits = buffer.startsWith("-") ? String.valueOf(min).length() : String.valueOf(max).length();
+        if (buffer.length() >= digits) return true;
         // A leading zero would let "0" grow into "0999", one digit past the cap.
-        if (!(buffer.isEmpty() && c == '0')) buffer += c;
+        if (!((buffer.isEmpty() || buffer.equals("-")) && c == '0')) buffer += c;
         return true;
     }
 
@@ -200,7 +207,7 @@ public class NumberStepper {
         if (!isEditing()) return;
         String typed = buffer;
         buffer = null;
-        if (typed.isEmpty()) {
+        if (typed.isEmpty() || typed.equals("-")) {
             value = valueBeforeEdit;
             return;
         }

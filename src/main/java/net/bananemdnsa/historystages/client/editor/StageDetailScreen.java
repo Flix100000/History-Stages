@@ -7,9 +7,8 @@ import net.bananemdnsa.historystages.client.editor.widget.ContextMenu;
 import net.bananemdnsa.historystages.client.editor.widget.MarqueeText;
 import net.bananemdnsa.historystages.client.editor.widget.popup.ModEntitySelectionPopup;
 import net.bananemdnsa.historystages.client.editor.widget.popup.ModEntrySelectionPopup;
-import net.bananemdnsa.historystages.client.editor.widget.popup.DimensionFilterPopup;
 import net.bananemdnsa.historystages.client.editor.widget.popup.GenerationLimitPopup;
-import net.bananemdnsa.historystages.client.editor.widget.popup.SpawnSourcesPopup;
+import net.bananemdnsa.historystages.client.editor.widget.popup.spawn.SpawnControlPopup;
 import net.bananemdnsa.historystages.client.editor.widget.popup.TradeLevelsPopup;
 import net.bananemdnsa.historystages.client.editor.widget.list.SearchableEntityList;
 import net.bananemdnsa.historystages.client.editor.widget.list.SearchableItemList;
@@ -24,6 +23,7 @@ import net.bananemdnsa.historystages.client.editor.widget.list.SearchableStructu
 import net.bananemdnsa.historystages.client.editor.widget.list.SearchableTagList;
 import net.bananemdnsa.historystages.data.DependencyGroup;
 import net.bananemdnsa.historystages.data.lock.EntityLocks;
+import net.bananemdnsa.historystages.data.lock.EntitySpawnLockEntry;
 import net.bananemdnsa.historystages.data.lock.GenerationPhase;
 import net.bananemdnsa.historystages.data.lock.StructureGenerationRule;
 import net.bananemdnsa.historystages.api.stage.StageScope;
@@ -188,8 +188,7 @@ public class StageDetailScreen extends Screen {
     private final Map<String, List<net.bananemdnsa.historystages.data.ItemEntry>> editInteractionlockItems =
             entityState.interactionItems();
     private final List<String> editSpawnlock = entityState.spawnlock();
-    private final Map<String, List<String>> editSpawnlockSources = entityState.spawnSources();
-    private final Map<String, List<String>> editSpawnlockDimensions = entityState.spawnDimensions();
+    private final Map<String, EntitySpawnLockEntry> editSpawnRules = entityState.spawnRules();
     private final List<String> editModLinked = entityState.modLinked();
     private List<DependencyGroup> editDependencies;
 
@@ -214,9 +213,8 @@ public class StageDetailScreen extends Screen {
     private ModEntitySelectionPopup modEntityPopup;
     private ModEntrySelectionPopup modStructurePopup;
     private ModEntrySelectionPopup modBiomePopup;
-    private DimensionFilterPopup dimFilterPopup;
     private GenerationLimitPopup generationLimitPopup;
-    private SpawnSourcesPopup spawnSourcesPopup;
+    private SpawnControlPopup spawnControlPopup;
     private TradeLevelsPopup tradeLevelsPopup;
     private net.bananemdnsa.historystages.client.editor.widget.popup.InteractionActionsPopup interactionActionsPopup;
     private net.bananemdnsa.historystages.client.editor.widget.popup.InteractionItemsPopup interactionItemsPopup;
@@ -887,8 +885,7 @@ public class StageDetailScreen extends Screen {
                 boolean removedSpawn = editSpawnlock
                         .removeIf(id -> {
                             if (id.startsWith(prefix) && editModLinked.contains(id)) {
-                                editSpawnlockSources.remove(id);
-                                editSpawnlockDimensions.remove(id);
+                                editSpawnRules.remove(id);
                                 return true;
                             }
                             return false;
@@ -935,11 +932,11 @@ public class StageDetailScreen extends Screen {
             showModStructurePopup();
         });
 
-        dimFilterPopup = new DimensionFilterPopup((entityId, allowed) -> {
-            if (allowed.isEmpty()) {
-                editSpawnlockDimensions.remove(entityId);
+        spawnControlPopup = new SpawnControlPopup((entityId, rule) -> {
+            if (rule.equals(new EntitySpawnLockEntry(entityId))) {
+                editSpawnRules.remove(entityId);
             } else {
-                editSpawnlockDimensions.put(entityId, allowed);
+                editSpawnRules.put(entityId, rule);
             }
             hasChanges = true;
         });
@@ -951,15 +948,6 @@ public class StageDetailScreen extends Screen {
             hasChanges = true;
             updateMaxScroll();
         });
-        spawnSourcesPopup = new SpawnSourcesPopup((entityId, blocked) -> {
-            if (blocked.isEmpty()) {
-                editSpawnlockSources.remove(entityId);
-            } else {
-                editSpawnlockSources.put(entityId, blocked);
-            }
-            hasChanges = true;
-        });
-
         interactionActionsPopup = new net.bananemdnsa.historystages.client.editor.widget.popup.InteractionActionsPopup((entityId, blocked) -> {
             // null = every action blocked, which is the default and stored as no filter at all.
             // An empty list is a different answer — the entry blocks nothing — and is kept.
@@ -1071,10 +1059,10 @@ public class StageDetailScreen extends Screen {
     private boolean isAnyOverlayVisible() {
         return (iconSearch != null && iconSearch.isVisible())
                 || anyCategoryPickerVisible()
-                || lockActionsPopupVisible || spawnSourcesPopup.isVisible()
+                || lockActionsPopupVisible || spawnControlPopup.isVisible()
                 || tradeLevelsPopup.isVisible() || interactionActionsPopup.isVisible()
                 || interactionItemsPopup.isVisible() || filterItemSearch.isVisible() || filterTagSearch.isVisible()
-                || dimFilterPopup.isVisible() || generationLimitPopup.isVisible()
+                || generationLimitPopup.isVisible()
                 || contextMenu.isVisible() || recipePopupVisible
                 || modEntityPopup.isVisible() || modStructurePopup.isVisible() || modBiomePopup.isVisible()
                 || actionOverlay() != null;
@@ -1547,16 +1535,26 @@ public class StageDetailScreen extends Screen {
         }
 
         if (isTab(activeTab, CAT_SPAWN)) {
-            List<String> srcFilter = editSpawnlockSources.get(entry);
-            if (srcFilter != null && !srcFilter.isEmpty() && srcFilter.size() < SPAWN_SOURCE_KEYS.length) {
-                String label = Component.translatable("editor.historystages.badge.sources").getString();
-                row.badge("[" + label + ": " + srcFilter.size() + "/" + SPAWN_SOURCE_KEYS.length + "]",
-                        0xCCAA66);
-            }
-            List<String> dimFilter = editSpawnlockDimensions.get(entry);
-            if (dimFilter != null && !dimFilter.isEmpty()) {
-                String label = Component.translatable("editor.historystages.badge.dimensions").getString();
-                row.badge("[" + label + ": " + dimFilter.size() + "]", 0xCCAA66);
+            EntitySpawnLockEntry rule = editSpawnRules.get(entry);
+            if (rule != null) {
+                if (rule.hasLockSources()) {
+                    String label = Component.translatable("editor.historystages.badge.sources").getString();
+                    row.badge("[" + label + ": " + rule.getLockSources().size() + "/" + SPAWN_SOURCE_KEYS.length + "]",
+                            0xCCAA66);
+                }
+                if (rule.getPhase() == GenerationPhase.AFTER_UNLOCK) {
+                    row.badge("[" + Component.translatable("editor.historystages.spawn_control.badge.after_unlock")
+                            .getString() + "]", 0xCCAA66);
+                }
+                int conditions = rule.getConditions().count();
+                if (conditions > 0) {
+                    row.badge("[" + Component.translatable("editor.historystages.spawn_control.badge.conditions")
+                            .getString() + ": " + conditions + "]", 0xCCAA66);
+                }
+                if (rule.getExtraBiomes() != null) {
+                    row.badge("[" + Component.translatable("editor.historystages.spawn_control.badge.extra")
+                            .getString() + ": " + rule.getExtraBiomes().ids().size() + "]", 0xCCAA66);
+                }
             }
         }
 
@@ -2048,7 +2046,6 @@ public class StageDetailScreen extends Screen {
         modBiomePopup.render(guiGraphics, this.font, mouseX, mouseY);
         if (recipePopupVisible) renderRecipePopup(guiGraphics, mouseX, mouseY);
         if (lockActionsPopupVisible) renderLockActionsPopup(guiGraphics, mouseX, mouseY);
-        spawnSourcesPopup.render(guiGraphics, this.font, mouseX, mouseY);
         tradeLevelsPopup.render(guiGraphics, this.font, mouseX, mouseY);
         interactionActionsPopup.render(guiGraphics, this.font, mouseX, mouseY);
         // Skip the popup while one of its pickers is up: text is batched and flushed after the
@@ -2058,7 +2055,7 @@ public class StageDetailScreen extends Screen {
         }
         filterItemSearch.render(guiGraphics, this.font, mouseX, mouseY);
         filterTagSearch.render(guiGraphics, this.font, mouseX, mouseY);
-        dimFilterPopup.render(guiGraphics, this.font, mouseX, mouseY);
+        spawnControlPopup.render(guiGraphics, this.font, mouseX, mouseY);
         generationLimitPopup.render(guiGraphics, this.font, mouseX, mouseY);
         if (overridePopupVisible) renderOverridePopup(guiGraphics, mouseX, mouseY);
         guiGraphics.pose().popPose();
@@ -2662,7 +2659,6 @@ public class StageDetailScreen extends Screen {
         if (modStructurePopup.isVisible()) { return modStructurePopup.mouseClicked(mouseX, mouseY); }
         if (modBiomePopup.isVisible()) { return modBiomePopup.mouseClicked(mouseX, mouseY); }
         if (lockActionsPopupVisible) { return handleLockActionsPopupClick(mouseX, mouseY, button); }
-        if (spawnSourcesPopup.isVisible()) { return spawnSourcesPopup.mouseClicked(mouseX, mouseY); }
         if (tradeLevelsPopup.isVisible()) { return tradeLevelsPopup.mouseClicked(mouseX, mouseY); }
         if (interactionActionsPopup.isVisible()) { return interactionActionsPopup.mouseClicked(mouseX, mouseY); }
         if (filterItemSearch.isVisible()) { if (filterItemSearch.mouseClicked(mouseX, mouseY)) return true; }
@@ -2675,7 +2671,7 @@ public class StageDetailScreen extends Screen {
             if (!interactionItemsPopup.isVisible()) interactionItemsTarget = null;
             return handled;
         }
-        if (dimFilterPopup.isVisible()) { return dimFilterPopup.mouseClicked(mouseX, mouseY); }
+        if (spawnControlPopup.isVisible()) { return spawnControlPopup.mouseClicked(mouseX, mouseY); }
         if (generationLimitPopup.isVisible()) { return generationLimitPopup.mouseClicked(mouseX, mouseY); }
         if (overridePopupVisible) { return handleOverridePopupClick(mouseX, mouseY, button); }
         if (recipePopupVisible) {
@@ -2844,10 +2840,8 @@ public class StageDetailScreen extends Screen {
                                 () -> openOverridePopup(tabIdx, entryIdx));
                     }
                     if (isTab(tabIdx, CAT_SPAWN)) {
-                        contextMenu.addEntry(Component.translatable("editor.historystages.context.spawn_sources").getString(),
-                                () -> spawnSourcesPopup.show(entryValue, editSpawnlockSources.get(entryValue)));
-                        contextMenu.addEntry(Component.translatable("editor.historystages.context.dimension_filter").getString(),
-                                () -> dimFilterPopup.show(entryValue, editSpawnlockDimensions.get(entryValue),
+                        contextMenu.addEntry(Component.translatable("editor.historystages.context.spawn_control").getString(),
+                                () -> spawnControlPopup.show(entryValue, editSpawnRules.get(entryValue),
                                         this.width / 2, this.height / 2));
                     }
                     if (isTab(tabIdx, CAT_INTERACT)) {
@@ -2917,7 +2911,7 @@ public class StageDetailScreen extends Screen {
                         // When removing an item, shift NBT and lockActions indices
                         // When removing a tag, shift NBT, lockActions + override indices
                         // When removing a mod, shift lockActions + override indices
-                        // When removing a spawnlock entry, drop its sources + dimensions entry (keyed by entity ID)
+                        // When removing a spawnlock entry, drop its spawn rule (keyed by entity ID)
                         // When removing an interactionlock entry, drop its action + item filters (keyed by entity ID)
                         // When removing a mod exception, shift NBT indices
                         // When removing a mod, also remove mod-linked entities and exceptions from that mod
@@ -2925,8 +2919,7 @@ public class StageDetailScreen extends Screen {
                             String prefix = removedValue + ":";
                             editSpawnlock.removeIf(id -> {
                                 if (id.startsWith(prefix) && editModLinked.contains(id)) {
-                                    editSpawnlockSources.remove(id);
-                                    editSpawnlockDimensions.remove(id);
+                                    editSpawnRules.remove(id);
                                     return true;
                                 }
                                 return false;
@@ -3141,6 +3134,7 @@ public class StageDetailScreen extends Screen {
             return true;
         if (filterTagSearch.isVisible() && filterTagSearch.mouseDragged(mouseX, mouseY))
             return true;
+        if (spawnControlPopup.isVisible() && spawnControlPopup.mouseDragged(mouseX, mouseY)) return true;
         if (interactionItemsPopup.isVisible() && interactionItemsPopup.mouseDragged(mouseX, mouseY))
             return true;
         if (modBiomePopup.isVisible() && modBiomePopup.mouseDragged(mouseX, mouseY))
@@ -3174,6 +3168,7 @@ public class StageDetailScreen extends Screen {
             return true;
         if (filterTagSearch.isVisible() && filterTagSearch.mouseReleased())
             return true;
+        if (spawnControlPopup.isVisible() && spawnControlPopup.mouseReleased()) return true;
         if (interactionItemsPopup.isVisible() && interactionItemsPopup.mouseReleased())
             return true;
         if (scrollBarDragging) {
@@ -3201,8 +3196,8 @@ public class StageDetailScreen extends Screen {
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         double delta = scrollY;
-        if (dimFilterPopup.isVisible()) {
-            return dimFilterPopup.mouseScrolled(mouseX, mouseY, scrollY);
+        if (spawnControlPopup.isVisible()) {
+            return spawnControlPopup.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
         }
         // The generation dialog has nothing to scroll, but swallowing the wheel keeps the entry
         // list behind it from moving while it is open.
@@ -3258,9 +3253,8 @@ public class StageDetailScreen extends Screen {
         if (modEntityPopup.isVisible() && modEntityPopup.keyPressed(keyCode)) return true;
         if (modStructurePopup.isVisible() && modStructurePopup.keyPressed(keyCode)) return true;
         if (modBiomePopup.isVisible() && modBiomePopup.keyPressed(keyCode)) return true;
-        if (dimFilterPopup.isVisible() && dimFilterPopup.keyPressed(keyCode)) return true;
+        if (spawnControlPopup.isVisible() && spawnControlPopup.keyPressed(keyCode)) return true;
         if (generationLimitPopup.isVisible() && generationLimitPopup.keyPressed(keyCode)) return true;
-        if (spawnSourcesPopup.isVisible() && spawnSourcesPopup.keyPressed(keyCode)) return true;
         if (tradeLevelsPopup.isVisible() && tradeLevelsPopup.keyPressed(keyCode)) return true;
         if (interactionActionsPopup.isVisible() && interactionActionsPopup.keyPressed(keyCode)) return true;
         if (filterItemSearch.isVisible() && filterItemSearch.keyPressed(keyCode)) return true;
@@ -3306,6 +3300,7 @@ public class StageDetailScreen extends Screen {
             if (overrideTooltipField.isFocused() && overrideTooltipField.charTyped(c, modifiers)) return true;
             return true;
         }
+        if (spawnControlPopup.isVisible() && spawnControlPopup.charTyped(c)) return true;
         if (generationLimitPopup.isVisible() && generationLimitPopup.charTyped(c)) return true;
         if (actionOverlay() != null) return actionOverlay().charTyped(c);
         if (anyCategoryPicker(pk -> pk.charTyped(c))) return true;

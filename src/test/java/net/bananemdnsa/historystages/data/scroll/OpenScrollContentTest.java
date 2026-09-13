@@ -7,6 +7,7 @@ import net.bananemdnsa.historystages.data.lock.EntityLocks;
 import net.bananemdnsa.historystages.data.lock.ZoneEntry;
 import net.bananemdnsa.historystages.data.lock.EntityInteractionLockEntry;
 import net.bananemdnsa.historystages.data.lock.EntitySpawnLockEntry;
+import net.bananemdnsa.historystages.data.lock.GenerationPhase;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -93,6 +94,19 @@ class OpenScrollContentTest {
         assertEquals(1, doc.creatures().size());
         assertEquals(java.util.Set.of(OpenScrollMarker.SPAWN, OpenScrollMarker.ATTACK),
                 doc.creatures().get(0).markers());
+    }
+
+    @Test
+    void anAfterUnlockSpawnRuleIsNoLockAndGetsNoMarker() {
+        StageEntry entry = stage();
+        EntityLocks locks = new EntityLocks();
+        locks.setSpawnlock(List.of(new EntitySpawnLockEntry("minecraft:zombie", null,
+                GenerationPhase.AFTER_UNLOCK, null, null)));
+        entry.setEntities(locks);
+
+        OpenScrollDocument doc = OpenScrollContent.build("bronze", false, entry, tags(Map.of()));
+
+        assertTrue(doc.creatures().isEmpty());
     }
 
     @Test

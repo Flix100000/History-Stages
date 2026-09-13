@@ -87,6 +87,7 @@ public class StageData extends SavedData {
         SERVER_UNLOCK_TIMES.putAll(data.unlockTimes);
         VERSION.incrementAndGet();
         net.bananemdnsa.historystages.util.lock.StructureGenerationGate.rebuild();
+        net.bananemdnsa.historystages.util.lock.SpawnControlGate.rebuild();
         return data;
     }
 
@@ -138,6 +139,7 @@ public class StageData extends SavedData {
             // phase being left behind.
             net.bananemdnsa.historystages.util.lock.StructureGenerationGate.onStageLockChanged(stage, true);
             net.bananemdnsa.historystages.util.lock.StructureGenerationGate.rebuild();
+            net.bananemdnsa.historystages.util.lock.SpawnControlGate.rebuild();
             setDirty();
         }
     }
@@ -151,6 +153,7 @@ public class StageData extends SavedData {
             // Before the rebuild, for the same reason as in addStage.
             net.bananemdnsa.historystages.util.lock.StructureGenerationGate.onStageLockChanged(stage, false);
             net.bananemdnsa.historystages.util.lock.StructureGenerationGate.rebuild();
+            net.bananemdnsa.historystages.util.lock.SpawnControlGate.rebuild();
             setDirty();
         }
     }

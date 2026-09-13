@@ -420,7 +420,8 @@ public class DebugLogger {
         pw.println("  Entities (spawnlock) (" + entries.size() + "):");
         for (net.bananemdnsa.historystages.data.lock.EntitySpawnLockEntry entry : entries) {
             StringBuilder sb = new StringBuilder("    - ").append(entry.getId());
-            if (entry.hasLockSources()) sb.append(" [sources: ").append(String.join(", ", entry.getLockSources())).append("]");
+            String rule = net.bananemdnsa.historystages.data.lock.spawn.SpawnRuleText.compact(entry);
+            if (!rule.isEmpty()) sb.append(" [").append(rule).append("]");
             pw.println(sb.toString());
         }
     }

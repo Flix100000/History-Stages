@@ -3,6 +3,7 @@ import net.bananemdnsa.historystages.data.lock.NamedLockEntry;
 import net.bananemdnsa.historystages.data.lock.EntitySpawnLockEntry;
 import net.bananemdnsa.historystages.data.lock.EntityInteractionLockEntry;
 import net.bananemdnsa.historystages.data.lock.EntityLocks;
+import net.bananemdnsa.historystages.data.lock.spawn.SpawnRuleValidator;
 import net.bananemdnsa.historystages.data.lock.category.DualPhaseIndex;
 import net.bananemdnsa.historystages.data.lock.engine.CategoryLockIndexes;
 import net.bananemdnsa.historystages.data.lock.engine.StageLocks;
@@ -653,19 +654,16 @@ public class StageManager {
             return false;
         });
 
-        // Validate per-entry unlock_sources lists
+        // Validate per-entry unlock_sources lists and repair spawn rule values
         for (EntitySpawnLockEntry spEntry : entry.getEntities().getSpawnlock()) {
             validateLockSources(spEntry.getLockSources(), stageId, spEntry.getId());
-        }
-
-        for (EntitySpawnLockEntry spEntry : entry.getEntities().getSpawnlock()) {
-            String entityId = spEntry.getId();
-            // Only "block all sources" entries imply attacklock — selective ones don't.
-            if (!spEntry.hasLockSources() && entry.getEntities().getAttacklock().contains(entityId)) {
-                addMessage(MessageLevel.INFO, "Entity '" + entityId + "' in both attacklock and spawnlock (Stage: " + stageId + "). Redundant.");
-                DebugLogger.info("Redundant Entities", "Entity '" + entityId + "' is in both attacklock and spawnlock (Stage: " + stageId + "). Spawnlock already implies attacklock — the attacklock entry is redundant.");
+            // The reader drops values it cannot parse at all; this is the only place they surface.
+            for (String problem : spEntry.getReadProblems()) {
+                reportSpawnRuleProblem("Spawn rule '" + spEntry.getId() + "': " + problem + ". Ignored.", stageId);
             }
         }
+        entry.getEntities().getSpawnlock().replaceAll(spEntry -> SpawnRuleValidator.sanitize(spEntry,
+                StageManager::isValidResourceLocation, message -> reportSpawnRuleProblem(message, stageId)));
 
         if (entry.getResearchTime() < 0) {
             addMessage(MessageLevel.INFO, "Stage '" + stageId + "' has negative research_time (" + entry.getResearchTime() + "). Using global default.");
@@ -1090,6 +1088,11 @@ public class StageManager {
         }
     }
 
+    private static void reportSpawnRuleProblem(String message, String stageId) {
+        addMessage(MessageLevel.WARN, message + " (Stage: " + stageId + ")");
+        DebugLogger.warn("Invalid Spawn Rules", message + " (Stage: " + stageId + ")");
+    }
+
     private static void checkDuplicates(List<String> list, String stageId, String field) {
         Set<String> seen = new HashSet<>();
         List<String> duplicates = new ArrayList<>();
@@ -1485,6 +1488,7 @@ public class StageManager {
         // Stage definitions carry the block_generation lists, so the worldgen gate has to be
         // rebuilt here too — StageData.load() alone doesn't cover a world without saved data.
         net.bananemdnsa.historystages.util.lock.StructureGenerationGate.rebuild();
+        net.bananemdnsa.historystages.util.lock.SpawnControlGate.rebuild();
 
         System.out.println("[HistoryStages] Individual Stages geladen: " + INDIVIDUAL_STAGES.size());
 
