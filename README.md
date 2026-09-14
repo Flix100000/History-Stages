@@ -22,7 +22,7 @@ Stages can unlock **server-wide** (global), **per player** (individual), or use 
 
 ## Documentation
 
-Full documentation, configuration details, and usage examples are available on the [Wiki](https://github.com/Flix100000/History-Stages/wiki).
+Full documentation, configuration details, and usage examples are available on the [Wiki](https://flix100000.github.io/History-Stages-wiki/).
 
 ## Community
 

@@ -10,7 +10,7 @@ package net.bananemdnsa.historystages.util;
 public final class ModLinks {
 
     /** Full documentation — the link worth reaching from inside the editor. */
-    public static final String WIKI = "https://github.com/Flix100000/History-Stages/wiki";
+    public static final String WIKI = "https://flix100000.github.io/History-Stages-wiki/";
 
     /** Support and development chat. */
     public static final String DISCORD = "https://discord.gg/BeZzxyZ9c4";
