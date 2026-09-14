@@ -1,25 +1,19 @@
 package net.bananemdnsa.historystages.mixin;
 
-import java.util.List;
 import java.util.UUID;
+
+import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 
 import net.bananemdnsa.historystages.util.lock.RecipeCraftContext;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.inventory.SmithingMenu;
-import net.minecraft.world.item.crafting.RecipeHolder;
-import net.minecraft.world.item.crafting.RecipeInput;
-import net.minecraft.world.item.crafting.RecipeManager;
-import net.minecraft.world.item.crafting.RecipeType;
-import net.minecraft.world.item.crafting.SmithingRecipe;
-import net.minecraft.world.item.crafting.SmithingRecipeInput;
-import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
@@ -32,6 +26,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * <p>{@code createResult} is the one place the result comes from, and it writes into the result
  * container. A locked recipe leaves that container empty, so {@code onTake} and
  * {@code quickMoveStack} need no hook of their own: they find nothing.
+ *
+ * <p>The method is wrapped rather than the lookup inside it, for the reason spelled out on
+ * {@link CraftingMenuMixin} — Polymorph reads the recipe list here with {@code @ModifyVariable}
+ * and needs the lookup to still be where vanilla left it.
  */
 @Mixin(SmithingMenu.class)
 public class SmithingMenuMixin {
@@ -47,18 +45,8 @@ public class SmithingMenuMixin {
         this.historystages$crafter = playerInventory.player.getUUID();
     }
 
-    @Redirect(
-            method = "createResult",
-            at = @At(value = "INVOKE",
-                    target = "Lnet/minecraft/world/item/crafting/RecipeManager;getRecipesFor("
-                            + "Lnet/minecraft/world/item/crafting/RecipeType;"
-                            + "Lnet/minecraft/world/item/crafting/RecipeInput;"
-                            + "Lnet/minecraft/world/level/Level;"
-                            + ")Ljava/util/List;"))
-    private List<RecipeHolder<SmithingRecipe>> historystages$resolveForCrafter(
-            RecipeManager manager, RecipeType<SmithingRecipe> type, RecipeInput input,
-            Level level) {
-        return RecipeCraftContext.with(this.historystages$crafter,
-                () -> manager.getRecipesFor(type, (SmithingRecipeInput) input, level));
+    @WrapMethod(method = "createResult")
+    private void historystages$resolveForCrafter(Operation<Void> original) {
+        RecipeCraftContext.with(this.historystages$crafter, () -> original.call());
     }
 }
