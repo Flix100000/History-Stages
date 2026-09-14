@@ -64,6 +64,11 @@ public record SyncIndividualStagesPacket(Set<String> unlockedStages, Map<String,
                     net.bananemdnsa.historystages.compat.jei.JEIPlugin.tryApplyDiff();
                 } catch (Throwable ignored) {}
             }
+            if (net.neoforged.fml.ModList.get().isLoaded("emi")) {
+                try {
+                    net.bananemdnsa.historystages.compat.emi.EmiReloadBridge.reloadIfPresent();
+                } catch (Throwable ignored) {}
+            }
         });
     }
 
