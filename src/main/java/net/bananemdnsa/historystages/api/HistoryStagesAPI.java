@@ -9,7 +9,7 @@ package net.bananemdnsa.historystages.api;
  * do the same thing.
  *
  * <p><strong>Documentation lives in the wiki:</strong>
- * <a href="https://flix100000.github.io/History-Stages-wiki/api/addon-development">Addon
+ * <a href="https://historystages.github.io/api/addon-development">Addon
  * Development</a>. The working example is the demo addon under
  * {@code net.bananemdnsa.historystages.demo}, which exercises all five extension points and —
  * enforced by a test — reaches for nothing outside this package.
