@@ -161,7 +161,7 @@ A next to an unmodified copy of the original license, and its license field on C
 Modrinth points at that file.
 
 Read Section 3 and Appendix A of [LICENSE.txt](LICENSE.txt) before you start — that text is what
-counts. The [Porting History Stages](https://flix100000.github.io/History-Stages-wiki/docs/project/porting-history-stages)
+counts. The [Porting History Stages](https://flix100000.github.io/History-Stages-wiki/wiki/about/porting)
 wiki page walks through the same conditions in plainer terms. Ports that meet them can be listed as
 verified on the wiki and on the official CurseForge, Modrinth and GitHub pages.
 
