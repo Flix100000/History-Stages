@@ -132,11 +132,41 @@ public final class VisibleRecipes {
 
         boolean changed = !now.equals(gatedIds);
         gatedIds = now;
+        gatedSeeded = true;
         return changed;
+    }
+
+    /**
+     * Takes the baseline the next stage change is compared against, once per recipe load.
+     *
+     * <p>Without one the first stage change of a session would look like a change to the gated set
+     * whatever it did, and pay for a datapack reload it did not need.
+     *
+     * <p>Wanted from a server tick rather than from {@code RecipeManager.apply}, for the same two
+     * reasons the fluid index is built there: scripts rewrite recipes after apply, and at apply
+     * time there is not necessarily a server yet — no unlocked set to measure against, and no
+     * per-world config for the mods this walk goes on to ask about their items (#130).
+     */
+    public static synchronized void seedGatedSet(Collection<RecipeHolder<?>> loaded) {
+        if (gatedSeeded) return;
+        gatedSetChanged(loaded);
+    }
+
+    /** Asked once a tick, so the caller does not have to collect the recipe list to find out. */
+    public static synchronized boolean gatedSetNeedsSeeding() {
+        return !gatedSeeded;
+    }
+
+    /** Recipes reloaded, so the baseline describes a list that is gone. */
+    public static synchronized void forgetGatedSet() {
+        gatedIds = Set.of();
+        gatedSeeded = false;
     }
 
     /** What {@link #gatedSetChanged} last reported. Not a cache — do not clear it on invalidate. */
     private static Set<ResourceLocation> gatedIds = Set.of();
+
+    private static boolean gatedSeeded;
 
     private static void changeOwner(Object recipeManager) {
         if (owner == recipeManager) return;

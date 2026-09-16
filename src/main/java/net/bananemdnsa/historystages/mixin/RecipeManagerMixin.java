@@ -86,11 +86,12 @@ public class RecipeManagerMixin implements RecipeResolutionFilter {
         AllRecipesCache.set(new ArrayList<>(this.byName.values()));
         net.bananemdnsa.historystages.data.lock.FluidRecipeIndex.markDirty();
         net.bananemdnsa.historystages.data.lock.VisibleRecipes.invalidate();
-        // Take note of what is gated right now, so the next stage change is compared against a
-        // real answer rather than against nothing. Without this the first stage change on a fresh
-        // server would look like a change to the gated set whatever it did, and pay for a datapack
-        // reload it did not need.
-        net.bananemdnsa.historystages.data.lock.VisibleRecipes.gatedSetChanged(this.byName.values());
+        // The baseline the next stage change is compared against is taken on the first server
+        // tick, not here — working it out asks every recipe result which fluid it is carrying,
+        // and on a world being opened this call runs before there is a server at all: stale
+        // unlocked set, scripts not run yet, and per-world configs not loaded, which is enough to
+        // kill a mod that reads its own config to answer a capability query (#130).
+        net.bananemdnsa.historystages.data.lock.VisibleRecipes.forgetGatedSet();
         auditRecipeLocks();
     }
 
