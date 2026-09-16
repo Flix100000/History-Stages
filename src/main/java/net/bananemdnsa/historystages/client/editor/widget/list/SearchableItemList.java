@@ -122,7 +122,7 @@ public class SearchableItemList implements PickerOverlay {
     public SearchableItemList(Consumer<String> onSelect, Supplier<Collection<String>> alreadyAddedSupplier) {
         this.onSelect = onSelect;
         this.alreadyAddedSupplier = alreadyAddedSupplier;
-        this.searchBar = SearchPanelChrome.createSearchBar("Search items...", this::applyFilter, alreadyAddedSupplier);
+        this.searchBar = SearchPanelChrome.createSearchBar(Component.translatable("editor.historystages.search_items").getString(), this::applyFilter, alreadyAddedSupplier);
 
         for (Item item : ForgeRegistries.ITEMS) {
             ResourceLocation key = ForgeRegistries.ITEMS.getKey(item);

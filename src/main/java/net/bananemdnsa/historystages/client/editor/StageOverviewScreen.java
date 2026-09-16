@@ -13,6 +13,7 @@ import net.bananemdnsa.historystages.client.editor.widget.dialog.InputField;
 import net.bananemdnsa.historystages.client.editor.widget.dialog.InputValues;
 import net.bananemdnsa.historystages.client.editor.widget.dropdown.PlayerPickerDropdown;
 import net.bananemdnsa.historystages.data.StageEntry;
+import net.bananemdnsa.historystages.data.lock.category.CategoryEntryCounter;
 import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.data.StageMode;
 import net.bananemdnsa.historystages.data.StagePaths;
@@ -795,14 +796,9 @@ public class StageOverviewScreen extends Screen {
                 guiGraphics.drawString(this.font, displayText, nameX, entryTop + 4, nameColor, false);
             }
 
-            // Item count info + dependency badge
-            int itemCount = entry.getItemEntries().size() + entry.getTags().size() + entry.getMods().size()
-                    + entry.getRecipes().size() + entry.getDimensions().size()
-                    + entry.getEntities().getAttacklock().size() + entry.getEntities().getInteractionlock().size()
-                    + entry.getEntities().getSpawnlock().size()
-                    + entry.getStructures().size()
-                    + entry.getBiomes().size();
-            String info = itemCount + " entries";
+            // Item count info
+            int itemCount = CategoryEntryCounter.totalEntries(entry);
+            String info = Component.translatable("editor.historystages.entries", itemCount).getString();
             int infoColor = (int) (0x88 + progress * 0x33);
             guiGraphics.drawString(this.font, info, contentLeft + 22, entryTop + 15,
                     (0xFF << 24) | (infoColor << 16) | (infoColor << 8) | infoColor, false);
@@ -999,13 +995,9 @@ public class StageOverviewScreen extends Screen {
                     guiGraphics.drawString(this.font, displayText, nameX, entryTop + 4, nameColor, false);
                 }
 
-                // Item count info + dependency badge
-                int itemCount = entry.getItemEntries().size() + entry.getTags().size() + entry.getMods().size()
-                        + entry.getDimensions().size()
-                        + entry.getEntities().getAttacklock().size() + entry.getEntities().getInteractionlock().size()
-                        + entry.getStructures().size()
-                        + entry.getBiomes().size();
-                String info = itemCount + " entries";
+                // Item count info
+                int itemCount = CategoryEntryCounter.totalEntries(entry);
+                String info = Component.translatable("editor.historystages.entries", itemCount).getString();
                 int infoColor = (int) (0x88 + progress * 0x33);
                 guiGraphics.drawString(this.font, info, contentLeft + 22, entryTop + 15,
                         (0xFF << 24) | (infoColor << 16) | (infoColor << 8) | infoColor, false);
