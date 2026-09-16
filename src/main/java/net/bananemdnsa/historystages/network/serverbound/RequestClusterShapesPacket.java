@@ -42,8 +42,8 @@ public class RequestClusterShapesPacket {
             if (player == null) return;
             if (!player.hasPermissions(2)) return;
 
-            int padding = Config.COMMON.structureLockPadding.get();
-            int clusterDistance = Config.COMMON.structureClusterDistance.get();
+            int padding = Config.GAMEPLAY.structureLockPadding.get();
+            int clusterDistance = Config.GAMEPLAY.structureClusterDistance.get();
             BlockPos pos = player.blockPosition();
             List<StructureCluster> clusters = ClusterBuilder.collectClustersNear(
                     player.serverLevel(), pos, 8, padding, clusterDistance);

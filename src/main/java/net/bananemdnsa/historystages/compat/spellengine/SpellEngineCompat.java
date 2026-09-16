@@ -101,7 +101,7 @@ public final class SpellEngineCompat {
             if (methodArgs == null || methodArgs.length != 1 || methodArgs[0] == null) {
                 return null; // unexpected shape: let the cast proceed
             }
-            if (!Config.COMMON.lockItemUsage.get() && !Config.COMMON.individualLockItemUsage.get()) {
+            if (!Config.GAMEPLAY.lockItemUsage.get() && !Config.GAMEPLAY.individualLockItemUsage.get()) {
                 return null;
             }
 
@@ -113,7 +113,7 @@ public final class SpellEngineCompat {
                     return null;
                 }
                 if (LockGate.isActionLocked(stack, caster, "use",
-                        Config.COMMON.lockItemUsage, Config.COMMON.individualLockItemUsage)) {
+                        Config.GAMEPLAY.lockItemUsage, Config.GAMEPLAY.individualLockItemUsage)) {
                     if (caster instanceof ServerPlayer sp) {
                         ResourceLocation itemRL = ForgeRegistries.ITEMS.getKey(stack.getItem());
                         DebugLogger.runtimeThrottled("Item Use Lock", "cast_" + sp.getUUID() + "_" + itemRL,

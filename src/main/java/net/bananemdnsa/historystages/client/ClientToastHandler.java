@@ -23,7 +23,7 @@ public class ClientToastHandler {
     public static ItemStack resolveIcon(String iconId) {
         String id = (iconId != null && !iconId.isEmpty())
                 ? iconId
-                : Config.COMMON.defaultStageIcon.get();
+                : Config.VISUAL.defaultStageIcon.get();
         if (id != null && !id.isEmpty()) {
             ResourceLocation rl = ResourceLocation.tryParse(id);
             if (rl != null) {

@@ -61,6 +61,10 @@ public class HistoryStages {
         // Must run before either config spec is registered below — see the class comment on
         // GraphConfigMigration for why capture and apply are two separate steps.
         net.bananemdnsa.historystages.data.graph.GraphConfigMigration.capture();
+        // Second, never first: this one renames the old files once it has written their contents
+        // into the new ones, and the graph block lives in the same common file. Reading it after
+        // the rename would cost the pack its whole stage graph.
+        net.bananemdnsa.historystages.data.config.LegacyConfigMigration.capture();
 
         ModItems.register(modEventBus);
         ModBlocks.register(modEventBus);
@@ -76,8 +80,17 @@ public class HistoryStages {
         modEventBus.addListener(this::onConfigLoad);
         modEventBus.addListener(this::onConfigReload);
 
-        ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, Config.CLIENT_SPEC);
-        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, Config.COMMON_SPEC);
+        // Type.COMMON, not CLIENT: a dedicated server never loads a CLIENT spec, so it could not
+        // own these values — and owning them is the whole point of sending them to every player.
+        // Not Type.SERVER either: that stores per world under saves/<world>/serverconfig/, which
+        // is exactly not the one shared place under config/historystages/settings/.
+        // Both specs must name their own file. Forge derives the default name from modid and
+        // type, so two COMMON registrations without explicit paths both claim
+        // historystages-common.toml and mod loading dies on the conflict.
+        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, Config.VISUAL_SPEC,
+                "historystages/settings/visual.toml");
+        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, Config.GAMEPLAY_SPEC,
+                "historystages/settings/gameplay.toml");
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, GraphConfig.GRAPH_SPEC,
                 "historystages/settings/graph.toml");
 
@@ -108,11 +121,10 @@ public class HistoryStages {
                     net.bananemdnsa.historystages.data.settings.StageSettingsGroups.freeze();
                     net.minecraftforge.fml.ModLoader.get().postEvent(
                             new net.bananemdnsa.historystages.api.config.RegisterConfigSectionsEvent());
+                    // The freeze is what makes the section list safe to read from the config
+                    // packets, which now go to AddonConfigSections directly rather than through a
+                    // registry the values had to be copied into first.
                     net.bananemdnsa.historystages.data.config.AddonConfigSections.freeze();
-                    // Publish after the freeze, not before: publishing first would let a
-                    // registration that arrives later in the same dispatch slip through
-                    // unpublished — it would appear in the editor and silently never save.
-                    net.bananemdnsa.historystages.data.config.AddonConfigPublisher.publishCommonSections();
 
                     // Logged here rather than inside freeze(): LockCategories is unit-tested, and
                     // the unit tests must be able to load it without a running game. This line is
@@ -159,13 +171,22 @@ public class HistoryStages {
     }
 
     private void onConfigLoad(net.minecraftforge.fml.event.config.ModConfigEvent.Loading event) {
-        if (event.getConfig().getSpec() == Config.COMMON_SPEC) {
-            net.bananemdnsa.historystages.research.ResearchBoosterRegistry.rebuildFromConfig(
-                    Config.COMMON.researchBoosters.get());
-            net.bananemdnsa.historystages.util.lock.BiomeEffectRegistry.rebuildFromConfig(
-                    Config.COMMON.biomeEffects.get());
-            net.bananemdnsa.historystages.data.tooltip.ScrollTooltipLayout.rebuildFromConfig(
-                    Config.COMMON.scrollTooltipLines.get());
+        if (event.getConfig().getSpec() == Config.GAMEPLAY_SPEC) {
+            net.bananemdnsa.historystages.data.config.ConfigDerivedCaches.rebuildGameplay();
+        }
+        // Its own branch: the scroll tooltip layout is read out of the visual spec, so hanging the
+        // rebuild off the gameplay spec would read a file that may not be loaded yet and would miss
+        // every later change to visual.toml.
+        if (event.getConfig().getSpec() == Config.VISUAL_SPEC) {
+            net.bananemdnsa.historystages.data.config.ConfigDerivedCaches.rebuildVisual();
+        }
+        // Not in the constructor: registerConfig does not load a COMMON spec, and writing into one
+        // before it is loaded throws. Hung off both specs rather than just whichever loads second,
+        // so it does not depend on the registration order — apply() waits until both are ready and
+        // then runs exactly once.
+        if (event.getConfig().getSpec() == Config.VISUAL_SPEC
+                || event.getConfig().getSpec() == Config.GAMEPLAY_SPEC) {
+            net.bananemdnsa.historystages.data.config.LegacyConfigMigration.apply();
         }
         if (event.getConfig().getSpec() == GraphConfig.GRAPH_SPEC) {
             net.bananemdnsa.historystages.data.graph.GraphConfigMigration.apply();
@@ -173,13 +194,11 @@ public class HistoryStages {
     }
 
     private void onConfigReload(net.minecraftforge.fml.event.config.ModConfigEvent.Reloading event) {
-        if (event.getConfig().getSpec() == Config.COMMON_SPEC) {
-            net.bananemdnsa.historystages.research.ResearchBoosterRegistry.rebuildFromConfig(
-                    Config.COMMON.researchBoosters.get());
-            net.bananemdnsa.historystages.util.lock.BiomeEffectRegistry.rebuildFromConfig(
-                    Config.COMMON.biomeEffects.get());
-            net.bananemdnsa.historystages.data.tooltip.ScrollTooltipLayout.rebuildFromConfig(
-                    Config.COMMON.scrollTooltipLines.get());
+        if (event.getConfig().getSpec() == Config.GAMEPLAY_SPEC) {
+            net.bananemdnsa.historystages.data.config.ConfigDerivedCaches.rebuildGameplay();
+        }
+        if (event.getConfig().getSpec() == Config.VISUAL_SPEC) {
+            net.bananemdnsa.historystages.data.config.ConfigDerivedCaches.rebuildVisual();
         }
     }
 
@@ -234,7 +253,11 @@ public class HistoryStages {
             PacketHandler.sendToPlayer(new SyncStagesPacket(data.getUnlockedStages()), player);
             PacketHandler.sendConfigToPlayer(SyncConfigPacket.fromServerConfig(), player);
             PacketHandler.sendGraphConfigToPlayer(
-                    net.bananemdnsa.historystages.network.clientbound.SyncGraphConfigPacket.fromServerConfig(), player);
+                    net.bananemdnsa.historystages.network.clientbound.SyncGraphConfigPacket
+                            .fromServerConfig(), player);
+            PacketHandler.sendVisualConfigToPlayer(
+                    net.bananemdnsa.historystages.network.clientbound.SyncVisualConfigPacket
+                            .fromServerConfig(), player);
 
             // Sync individual stages for this player
             IndividualStageData individualData = IndividualStageData.get(player.serverLevel());
@@ -259,20 +282,18 @@ public class HistoryStages {
             // Crash mit SerializerDebug (null-Player im OnDatapackSyncEvent)
 
             // Welcome message
-            if (Config.COMMON.showWelcomeMessage.get()) {
+            if (Config.VISUAL.showWelcomeMessage.get()) {
                 int stageCount = StageManager.getStages().size();
                 player.sendSystemMessage(Component.literal("§8§m                                                §r"));
                 player.sendSystemMessage(Component.literal("  §b§lHistory Stages §7— §fWelcome!"));
-                player.sendSystemMessage(Component.literal("  §7Loaded §f" + stageCount + " §7stage"
-                        + (stageCount != 1 ? "s" : "") + " from §fconfig/historystages/"));
-                player.sendSystemMessage(
-                        Component.literal("  §7Settings: §fhistorystages-common.toml §7& §fhistorystages-client.toml §7& §fhistorystages/settings/graph.toml"));
-                player.sendSystemMessage(Component.literal("  §8(Disable this message in the common config)"));
+                player.sendSystemMessage(Component.literal("  §7Loaded §f" + stageCount + " §7stage" + (stageCount != 1 ? "s" : "") + " from §fconfig/historystages/"));
+                player.sendSystemMessage(Component.translatable("message.historystages.welcome.settings"));
+                player.sendSystemMessage(Component.translatable("message.historystages.welcome.disable"));
                 player.sendSystemMessage(Component.literal("§8§m                                                §r"));
             }
 
             // Debug error/warning messages (INFO only in log file, not in chat)
-            if (Config.COMMON.showDebugErrors.get()) {
+            if (Config.GAMEPLAY.showDebugErrors.get()) {
                 List<StageManager.LoadingMessage> messages = StageManager.getLoadingMessages();
                 List<StageManager.LoadingMessage> chatMessages = messages.stream()
                         .filter(m -> m.level() != StageManager.MessageLevel.INFO)
@@ -431,7 +452,7 @@ public class HistoryStages {
 
             boolean locked = net.bananemdnsa.historystages.util.lock.StageLockHelper
                     .isActionLockedForServer(stack, "pickup")
-                    || (Config.COMMON.individualLockItemPickup.get()
+                    || (Config.GAMEPLAY.individualLockItemPickup.get()
                         && net.bananemdnsa.historystages.util.lock.StageLockHelper
                             .isActionLockedByIndividualStage(stack, player.getUUID(), "pickup"));
             if (!locked) continue;
@@ -463,7 +484,7 @@ public class HistoryStages {
             return;
 
         // Individual stages: prevent pickup of individually-locked items (respects lock_actions)
-        if (Config.COMMON.individualLockItemPickup.get()
+        if (Config.GAMEPLAY.individualLockItemPickup.get()
                 && net.bananemdnsa.historystages.util.lock.StageLockHelper
                         .isActionLockedByIndividualStage(stack, player.getUUID(), "pickup")) {
             event.setCanceled(true);

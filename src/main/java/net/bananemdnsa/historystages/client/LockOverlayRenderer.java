@@ -33,7 +33,7 @@ public final class LockOverlayRenderer {
         // Hook into a stable vanilla overlay so we render exactly once per frame on top of the HUD.
         if (event.getOverlay() != VanillaGuiOverlay.HOTBAR.type()) return;
 
-        if (!Config.CLIENT.structureLockOverlayEnabled.get()) return;
+        if (!Config.VISUAL.structureLockOverlayEnabled.get()) return;
 
         Minecraft mc = Minecraft.getInstance();
         LocalPlayer player = mc.player;
@@ -42,7 +42,7 @@ public final class LockOverlayRenderer {
 
         if (!isInsideLockedShape(player.getX(), player.getY(), player.getZ())) return;
 
-        double opacity = Config.CLIENT.structureLockOverlayOpacity.get();
+        double opacity = Config.VISUAL.structureLockOverlayOpacity.get();
         if (opacity <= 0.0) return;
 
         int alpha = (int) Math.round(Math.min(1.0, opacity) * 255.0);

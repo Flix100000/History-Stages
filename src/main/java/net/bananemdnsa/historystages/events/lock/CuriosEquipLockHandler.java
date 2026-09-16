@@ -26,7 +26,7 @@ public class CuriosEquipLockHandler {
     @SubscribeEvent
     public static void onCurioEquip(CurioEquipEvent event) {
         if (!(event.getEntity() instanceof Player player)) return;
-        if (!Config.COMMON.lockItemUsage.get() && !Config.COMMON.individualLockItemUsage.get()) return;
+        if (!Config.GAMEPLAY.lockItemUsage.get() && !Config.GAMEPLAY.individualLockItemUsage.get()) return;
 
         ItemStack stack = event.getStack();
         if (stack.isEmpty()) return;
@@ -47,14 +47,14 @@ public class CuriosEquipLockHandler {
     }
 
     private static boolean isItemLocked(ItemStack item, Player player, boolean isClient) {
-        if (Config.COMMON.lockItemUsage.get()) {
+        if (Config.GAMEPLAY.lockItemUsage.get()) {
             if (isClient) {
                 if (StageLockHelper.isItemLockedForClient(item)) return true;
             } else {
                 if (StageLockHelper.isItemLockedForPlayer(item, player.getUUID())) return true;
             }
         }
-        if (Config.COMMON.individualLockItemUsage.get()) {
+        if (Config.GAMEPLAY.individualLockItemUsage.get()) {
             if (isClient) {
                 if (StageLockHelper.isItemLockedByIndividualStageClient(item)) return true;
             } else {

@@ -47,7 +47,7 @@ public class LootLockHandler {
             if (stack.isEmpty()) continue;
 
             if (isLootLocked(stack, playerUuid)) {
-                if (Config.COMMON.useReplacements.get()) {
+                if (Config.GAMEPLAY.useReplacements.get()) {
                     container.setItem(i, getReplacement(stack.getCount()));
                 } else {
                     container.setItem(i, ItemStack.EMPTY);
@@ -66,13 +66,13 @@ public class LootLockHandler {
 
     private static boolean isLootLocked(ItemStack stack, UUID playerUuid) {
         if (StageLockHelper.isActionLockedForServer(stack, "loot")) return true;
-        return Config.COMMON.individualLockLoot.get()
+        return Config.GAMEPLAY.individualLockLoot.get()
                 && StageLockHelper.isActionLockedByIndividualStage(stack, playerUuid, "loot");
     }
 
     private static ItemStack getReplacement(int count) {
         // 1. Priorität: Zufälliges Item aus der replacementItems Liste
-        List<? extends String> list = Config.COMMON.replacementItems.get();
+        List<? extends String> list = Config.GAMEPLAY.replacementItems.get();
         if (list != null && !list.isEmpty()) {
             try {
                 String randomId = list.get(RANDOM.nextInt(list.size()));
@@ -84,7 +84,7 @@ public class LootLockHandler {
         }
 
         // 2. Priorität: Zufälliges Item aus den replacementTags
-        List<? extends String> tags = Config.COMMON.replacementTags.get();
+        List<? extends String> tags = Config.GAMEPLAY.replacementTags.get();
         if (tags != null && !tags.isEmpty()) {
             try {
                 String tagStr = tags.get(RANDOM.nextInt(tags.size()));

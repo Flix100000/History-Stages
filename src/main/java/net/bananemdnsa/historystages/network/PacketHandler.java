@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.network;
 
+import net.bananemdnsa.historystages.network.clientbound.SyncVisualConfigPacket;
 import net.bananemdnsa.historystages.network.serverbound.TakeLecternScrollPacket;
 import net.bananemdnsa.historystages.network.serverbound.SaveStageGraphStylePacket;
 import net.bananemdnsa.historystages.network.serverbound.SaveStageGraphInfoPacket;
@@ -54,7 +55,7 @@ import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.network.simple.SimpleChannel;
 
 public class PacketHandler {
-        private static final String PROTOCOL_VERSION = "9";
+        private static final String PROTOCOL_VERSION = "10";
         public static final SimpleChannel INSTANCE = NetworkRegistry.newSimpleChannel(
                         new ResourceLocation(HistoryStages.MOD_ID, "main"),
                         () -> PROTOCOL_VERSION,
@@ -149,6 +150,8 @@ public class PacketHandler {
                 INSTANCE.registerMessage(id++, SyncGraphConfigPacket.class,
                                 SyncGraphConfigPacket::encode,
                                 SyncGraphConfigPacket::decode, SyncGraphConfigPacket::handle);
+                INSTANCE.registerMessage(id++, SyncVisualConfigPacket.class, SyncVisualConfigPacket::encode,
+                                SyncVisualConfigPacket::decode, SyncVisualConfigPacket::handle);
                 INSTANCE.registerMessage(id++, RequestStageDependencyPacket.class,
                                 RequestStageDependencyPacket::encode,
                                 RequestStageDependencyPacket::decode, RequestStageDependencyPacket::handle);
@@ -251,6 +254,14 @@ public class PacketHandler {
 
         // Send graph.toml to all players (e.g. after admin saves the graph config)
         public static void sendGraphConfigToAll(SyncGraphConfigPacket packet) {
+                INSTANCE.send(PacketDistributor.ALL.noArg(), packet);
+        }
+
+        public static void sendVisualConfigToPlayer(SyncVisualConfigPacket packet, ServerPlayer player) {
+                INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), packet);
+        }
+
+        public static void sendVisualConfigToAll(SyncVisualConfigPacket packet) {
                 INSTANCE.send(PacketDistributor.ALL.noArg(), packet);
         }
 

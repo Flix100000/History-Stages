@@ -23,7 +23,7 @@ public final class HeldAttributeRefresher {
 
     public static void refresh(Player player) {
         if (player.level().isClientSide()) return;
-        boolean lockingEnabled = Config.COMMON.lockItemUsage.get() || Config.COMMON.individualLockItemUsage.get();
+        boolean lockingEnabled = Config.GAMEPLAY.lockItemUsage.get() || Config.GAMEPLAY.individualLockItemUsage.get();
         AttributeMap attributes = player.getAttributes();
 
         for (EquipmentSlot slot : EquipmentSlot.values()) {
@@ -34,7 +34,7 @@ public final class HeldAttributeRefresher {
             if (modifiers.isEmpty()) continue;
 
             boolean locked = lockingEnabled && LockGate.isActionLocked(stack, player, "use",
-                    Config.COMMON.lockItemUsage, Config.COMMON.individualLockItemUsage);
+                    Config.GAMEPLAY.lockItemUsage, Config.GAMEPLAY.individualLockItemUsage);
 
             // Remove first so a re-add can't throw on a duplicate modifier id, then re-apply
             // only when the item is not (or no longer) locked.

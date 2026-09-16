@@ -41,7 +41,7 @@ public class ItemUseLockHandler {
      */
     @SubscribeEvent
     public static void onRightClickItem(PlayerInteractEvent.RightClickItem event) {
-        if (!Config.COMMON.lockItemUsage.get() && !Config.COMMON.individualLockItemUsage.get()) return;
+        if (!Config.GAMEPLAY.lockItemUsage.get() && !Config.GAMEPLAY.individualLockItemUsage.get()) return;
 
         ItemStack heldItem = event.getItemStack();
         if (heldItem.isEmpty()) return;
@@ -65,7 +65,7 @@ public class ItemUseLockHandler {
      */
     @SubscribeEvent
     public static void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
-        if (!Config.COMMON.lockItemUsage.get() && !Config.COMMON.individualLockItemUsage.get()) return;
+        if (!Config.GAMEPLAY.lockItemUsage.get() && !Config.GAMEPLAY.individualLockItemUsage.get()) return;
 
         ItemStack heldItem = event.getItemStack();
         if (heldItem.isEmpty()) return;
@@ -104,7 +104,7 @@ public class ItemUseLockHandler {
      */
     @SubscribeEvent
     public static void onLeftClickBlock(PlayerInteractEvent.LeftClickBlock event) {
-        if (!Config.COMMON.lockItemUsage.get() && !Config.COMMON.individualLockItemUsage.get()) return;
+        if (!Config.GAMEPLAY.lockItemUsage.get() && !Config.GAMEPLAY.individualLockItemUsage.get()) return;
 
         ItemStack heldItem = event.getItemStack();
         if (heldItem.isEmpty()) return;
@@ -127,7 +127,7 @@ public class ItemUseLockHandler {
      */
     @SubscribeEvent
     public static void onAttackEntity(AttackEntityEvent event) {
-        if (!Config.COMMON.lockItemUsage.get() && !Config.COMMON.individualLockItemUsage.get()) return;
+        if (!Config.GAMEPLAY.lockItemUsage.get() && !Config.GAMEPLAY.individualLockItemUsage.get()) return;
 
         ItemStack weapon = event.getEntity().getMainHandItem();
         if (weapon.isEmpty()) return;
@@ -159,7 +159,7 @@ public class ItemUseLockHandler {
     }
 
     private static void handleEntityUse(Player player, ItemStack heldItem, PlayerInteractEvent event) {
-        if (!Config.COMMON.lockItemUsage.get() && !Config.COMMON.individualLockItemUsage.get()) return;
+        if (!Config.GAMEPLAY.lockItemUsage.get() && !Config.GAMEPLAY.individualLockItemUsage.get()) return;
         if (heldItem.isEmpty()) return;
         if (isActionLocked(heldItem, player, "use")) {
             event.setCanceled(true);
@@ -182,7 +182,7 @@ public class ItemUseLockHandler {
         if (event.getEntity().level().isClientSide()) return;
         if (suppressEquipmentCheck) return;
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
-        if (!Config.COMMON.lockItemUsage.get() && !Config.COMMON.individualLockItemUsage.get()) return;
+        if (!Config.GAMEPLAY.lockItemUsage.get() && !Config.GAMEPLAY.individualLockItemUsage.get()) return;
 
         ItemStack newItem = event.getTo();
         if (newItem.isEmpty()) return;
@@ -193,8 +193,8 @@ public class ItemUseLockHandler {
 
         boolean locked = LockGate.isActionLockedServer(
                 newItem, player, "equip",
-                Config.COMMON.lockItemUsage,
-                Config.COMMON.individualLockItemUsage);
+                Config.GAMEPLAY.lockItemUsage,
+                Config.GAMEPLAY.individualLockItemUsage);
         if (locked) {
             ResourceLocation itemRL = ForgeRegistries.ITEMS.getKey(newItem.getItem());
             DebugLogger.runtime("Item Use Lock", player.getName().getString(),
@@ -216,8 +216,8 @@ public class ItemUseLockHandler {
 
     private static boolean isActionLocked(ItemStack item, Player player, String action) {
         return LockGate.isActionLocked(item, player, action,
-                Config.COMMON.lockItemUsage,
-                Config.COMMON.individualLockItemUsage);
+                Config.GAMEPLAY.lockItemUsage,
+                Config.GAMEPLAY.individualLockItemUsage);
     }
 
     private static void showMessage(Player player) {

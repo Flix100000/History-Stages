@@ -88,25 +88,25 @@ public class BiomeLockHandler {
 
         state.checkCooldown--;
         if (cellChanged || state.checkCooldown <= 0) {
-            state.checkCooldown = Config.COMMON.biomeCheckInterval.get();
+            state.checkCooldown = Config.GAMEPLAY.biomeCheckInterval.get();
             state.lastCellKey = cellKey;
             recompute(player, state);
         }
 
         boolean locked = !state.currentLockedBiomeIds.isEmpty();
 
-        if (state.wasLocked && !locked && Config.COMMON.biomeClearEffectsOnLeave.get()) {
+        if (state.wasLocked && !locked && Config.GAMEPLAY.biomeClearEffectsOnLeave.get()) {
             clearEffects(player);
         }
         state.wasLocked = locked;
 
         if (!locked) return;
 
-        if (Config.COMMON.biomeEffectsEnabled.get()) {
+        if (Config.GAMEPLAY.biomeEffectsEnabled.get()) {
             applyEffects(player);
         }
 
-        if (Config.COMMON.biomeMessageEnabled.get()) {
+        if (Config.GAMEPLAY.biomeMessageEnabled.get()) {
             state.messageCooldown--;
             if (state.messageCooldown <= 0) {
                 state.messageCooldown = 40;
@@ -114,11 +114,11 @@ public class BiomeLockHandler {
             }
         }
 
-        if (Config.COMMON.biomeDamageEnabled.get() && !player.isCreative()) {
+        if (Config.GAMEPLAY.biomeDamageEnabled.get() && !player.isCreative()) {
             state.damageCooldown--;
             if (state.damageCooldown <= 0) {
-                state.damageCooldown = Config.COMMON.biomeDamageInterval.get();
-                float amount = Config.COMMON.biomeDamageAmount.get().floatValue();
+                state.damageCooldown = Config.GAMEPLAY.biomeDamageInterval.get();
+                float amount = Config.GAMEPLAY.biomeDamageAmount.get().floatValue();
                 player.hurt(player.level().damageSources().magic(), amount);
             }
         }
@@ -237,7 +237,7 @@ public class BiomeLockHandler {
     // --- Messaging ---
 
     private static void sendLockMessage(ServerPlayer player, PlayerState state) {
-        String format = Config.COMMON.biomeLockMessageFormat.get();
+        String format = Config.GAMEPLAY.biomeLockMessageFormat.get();
         String biomeId = state.currentLockedBiomeIds.isEmpty() ? "?" : state.currentLockedBiomeIds.get(0);
         String stageName = state.currentLockedStageIds.isEmpty()
                 ? biomeId
@@ -250,7 +250,7 @@ public class BiomeLockHandler {
 
         Component msg = Component.literal(formatted);
 
-        if (Config.COMMON.biomeLockInChat.get()) {
+        if (Config.GAMEPLAY.biomeLockInChat.get()) {
             player.sendSystemMessage(msg);
         } else {
             player.displayClientMessage(msg, true);
@@ -396,8 +396,8 @@ public class BiomeLockHandler {
         if (!(player instanceof ServerPlayer sp)) return false;
         if (sp.isSpectator()) return false;
 
-        if (right && !Config.COMMON.biomeBlockRightClick.get()) return false;
-        if (left && !Config.COMMON.biomeBlockLeftClick.get()) return false;
+        if (right && !Config.GAMEPLAY.biomeBlockRightClick.get()) return false;
+        if (left && !Config.GAMEPLAY.biomeBlockLeftClick.get()) return false;
 
         if (isInsideLockedBiome(sp)) return true;
         return targetPos != null && isBlockInLockedBiome(sp, targetPos);
@@ -406,7 +406,7 @@ public class BiomeLockHandler {
     @SubscribeEvent
     public static void onProjectileImpact(ProjectileImpactEvent event) {
         if (event.getProjectile().level().isClientSide()) return;
-        if (!Config.COMMON.biomeBlockProjectiles.get()) return;
+        if (!Config.GAMEPLAY.biomeBlockProjectiles.get()) return;
         if (!(event.getProjectile().getOwner() instanceof ServerPlayer shooter)) return;
 
         Vec3 hit = event.getRayTraceResult().getLocation();

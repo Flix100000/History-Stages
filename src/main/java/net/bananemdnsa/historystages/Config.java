@@ -3,16 +3,14 @@ package net.bananemdnsa.historystages;
 
 import net.bananemdnsa.historystages.data.ScrollCompletion;
 import net.minecraftforge.common.ForgeConfigSpec;
-import net.minecraftforge.fml.common.Mod;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.List;
 
-@Mod.EventBusSubscriber(modid = HistoryStages.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD)
 public class Config {
 
-    // --- CLIENT CONFIG (Nur Dinge, die die eigene Anzeige/UI betreffen) ---
-    public static class Client {
+    // --- VISUAL CONFIG (everything a player sees, reads or hears) ---
+    public static class Visual {
         public final ForgeConfigSpec.BooleanValue showTooltips;
         public final ForgeConfigSpec.BooleanValue showStageName;
         public final ForgeConfigSpec.BooleanValue showAllUntilComplete;
@@ -20,7 +18,6 @@ public class Config {
         public final ForgeConfigSpec.BooleanValue jadeShowInfo;
         public final ForgeConfigSpec.BooleanValue jadeStageName;
         public final ForgeConfigSpec.BooleanValue jadeShowAllUntilComplete;
-
         public final ForgeConfigSpec.BooleanValue dimUseActionbar;
         public final ForgeConfigSpec.BooleanValue dimShowChat;
         public final ForgeConfigSpec.BooleanValue dimShowStagesInChat;
@@ -28,7 +25,7 @@ public class Config {
         public final ForgeConfigSpec.BooleanValue showBoosterTooltips;
         public final ForgeConfigSpec.BooleanValue showScrollTierTooltip;
         public final ForgeConfigSpec.IntValue openScrollBackdrop;
-        // Structure lock visuals
+        public final ForgeConfigSpec.BooleanValue showWelcomeMessage;
         public final ForgeConfigSpec.BooleanValue structureBorderEnabled;
         public final ForgeConfigSpec.DoubleValue structureBorderDistance;
         public final ForgeConfigSpec.BooleanValue structureLockOverlayEnabled;
@@ -46,12 +43,50 @@ public class Config {
         public final ForgeConfigSpec.BooleanValue hideLockedRecipesInJei;
         public final ForgeConfigSpec.EnumValue<MultiStagePolicy> lockedItemMultiStagePolicy;
 
+        // Central notifications (chat, actionbar, sounds, texts)
+        public final ForgeConfigSpec.BooleanValue broadcastChat;
+        public final ForgeConfigSpec.ConfigValue<String> unlockMessageFormat;
+        public final ForgeConfigSpec.BooleanValue useActionbar;
+        public final ForgeConfigSpec.BooleanValue useSounds;
+        public final ForgeConfigSpec.BooleanValue useToasts;
+        public final ForgeConfigSpec.ConfigValue<String> defaultStageIcon;
+
+        // The same notifications, for individual stages
+        public final ForgeConfigSpec.BooleanValue individualBroadcastChat;
+        public final ForgeConfigSpec.ConfigValue<String> individualUnlockMessageFormat;
+        public final ForgeConfigSpec.BooleanValue individualUseActionbar;
+        public final ForgeConfigSpec.BooleanValue individualUseSounds;
+        public final ForgeConfigSpec.BooleanValue individualUseToasts;
+
+        // Lock-Message Overrides (empty = the translation key is used)
+        public final ForgeConfigSpec.ConfigValue<String> msgDimensionUnknown;
+        public final ForgeConfigSpec.ConfigValue<String> msgMobUnknown;
+        public final ForgeConfigSpec.ConfigValue<String> msgItemLocked;
+        public final ForgeConfigSpec.ConfigValue<String> msgBlockLocked;
+        public final ForgeConfigSpec.ConfigValue<String> msgEntityItemLocked;
+        public final ForgeConfigSpec.ConfigValue<String> msgEnchantmentLocked;
+
+        // Scroll tooltip
+        public final ForgeConfigSpec.ConfigValue<List<? extends String>> scrollTooltipLines;
+        public final ForgeConfigSpec.BooleanValue hideFulfilledDependencies;
+
+        // Open scroll document
+        public final ForgeConfigSpec.ConfigValue<List<? extends String>> openScrollChapters;
+        public final ForgeConfigSpec.ConfigValue<String> openScrollLockedDisplay;
+        public final ForgeConfigSpec.ConfigValue<List<? extends String>> openScrollOverviewBlocks;
+        public final ForgeConfigSpec.BooleanValue openScrollShowSearch;
+        public final ForgeConfigSpec.BooleanValue openScrollShowEntryIds;
+        public final ForgeConfigSpec.ConfigValue<String> openScrollEntrySort;
+        public final ForgeConfigSpec.ConfigValue<String> openScrollInkHeading;
+        public final ForgeConfigSpec.ConfigValue<String> openScrollInkBody;
+        public final ForgeConfigSpec.ConfigValue<String> openScrollInkFaint;
+
         public enum MultiStagePolicy {
             STRICT,   // locked while ANY assigned stage is locked
             LENIENT   // unlocked as soon as ANY assigned stage is unlocked
         }
 
-        public Client(ForgeConfigSpec.Builder builder) {
+        public Visual(ForgeConfigSpec.Builder builder) {
             builder.comment(
                     "Found a bug or have a feature request?",
                     "Report it on GitHub: https://github.com/Flix100000/History-Stages/issues",
@@ -88,8 +123,16 @@ public class Config {
                             "0 = not at all, 100 = black. [Default: 60]")
                     .defineInRange("openScrollBackdrop", 60, 0, 100);
 
+            showWelcomeMessage = builder
+                    .comment("Show a welcome message in chat when a player joins the world? [Default: true]")
+                    .define("showWelcomeMessage", true);
+
+            builder.pop();
+
+            builder.comment("Visual feedback for locked structures (border + overlay)").push("structure_overlay");
+
             structureBorderEnabled = builder
-                    .comment("Render a red force-field overlay on the walls of locked structures as you approach them? [Default: true]")
+                    .comment("Render a force-field-style border on the walls of locked structures when you get close? [Default: true]")
                     .define("structureBorderEnabled", true);
 
             structureBorderDistance = builder
@@ -151,6 +194,7 @@ public class Config {
             mobShowStagesInChat = builder
                     .comment("If mobShowChat is true, should the required stages also be listed? [Default: true]")
                     .define("showStagesInChat", true);
+
             builder.pop();
 
             builder.comment("Individual Stage Visual Settings").push("individual_stages");
@@ -165,7 +209,7 @@ public class Config {
 
             builder.pop();
 
-            builder.comment("JEI hiding (Issue #64) — opt-in toggle for fully hiding locked items/recipes in JEI.")
+            builder.comment("JEI integration — fully hide locked items/recipes instead of using the lock overlay")
                     .push("jei_hiding");
 
             hideLockedItemsInJei = builder
@@ -183,172 +227,6 @@ public class Config {
                     .defineEnum("lockedItemMultiStagePolicy", MultiStagePolicy.STRICT);
 
             builder.pop();
-        }
-
-    }
-
-    // --- COMMON CONFIG (Server-Einstellungen und globale Logik) ---
-    public static class Common {
-        public final ForgeConfigSpec.BooleanValue showWelcomeMessage;
-        public final ForgeConfigSpec.BooleanValue showDebugErrors;
-        public final ForgeConfigSpec.BooleanValue enableRuntimeLogging;
-
-        public final ForgeConfigSpec.BooleanValue lockMobLoot;
-        public final ForgeConfigSpec.BooleanValue lockBlockBreaking;
-        public final ForgeConfigSpec.DoubleValue lockedBlockBreakSpeedMultiplier;
-        public final ForgeConfigSpec.BooleanValue lockItemUsage;
-        public final ForgeConfigSpec.BooleanValue lockEntityItems;
-        public final ForgeConfigSpec.BooleanValue lockBlockInteraction;
-        public final ForgeConfigSpec.BooleanValue lockContainerInteraction;
-        public final ForgeConfigSpec.BooleanValue lockEnchanting;
-
-        // Zentrale Benachrichtigungen (Chat, Actionbar, Sounds, Texte)
-        public final ForgeConfigSpec.BooleanValue broadcastChat;
-        public final ForgeConfigSpec.ConfigValue<String> unlockMessageFormat;
-        public final ForgeConfigSpec.BooleanValue useActionbar;
-        public final ForgeConfigSpec.BooleanValue useSounds;
-        public final ForgeConfigSpec.BooleanValue useToasts;
-        public final ForgeConfigSpec.ConfigValue<String> defaultStageIcon;
-
-        // Forschungsstation
-        public final ForgeConfigSpec.IntValue researchTimeInSeconds;
-        public final ForgeConfigSpec.BooleanValue showDependencyScreenInPedestal;
-        public final ForgeConfigSpec.BooleanValue lockScrollWhileResearching;
-        public final ForgeConfigSpec.ConfigValue<String> defaultScrollCompletion;
-        public final ForgeConfigSpec.BooleanValue enableScrollResealing;
-        public final ForgeConfigSpec.ConfigValue<List<? extends String>> researchBoosters;
-
-        // Open scroll document
-        public final ForgeConfigSpec.ConfigValue<List<? extends String>> openScrollChapters;
-        public final ForgeConfigSpec.ConfigValue<String> openScrollLockedDisplay;
-        public final ForgeConfigSpec.ConfigValue<List<? extends String>> openScrollOverviewBlocks;
-        public final ForgeConfigSpec.BooleanValue openScrollShowSearch;
-        public final ForgeConfigSpec.BooleanValue openScrollShowEntryIds;
-        public final ForgeConfigSpec.ConfigValue<String> openScrollEntrySort;
-        public final ForgeConfigSpec.ConfigValue<String> openScrollInkHeading;
-        public final ForgeConfigSpec.ConfigValue<String> openScrollInkBody;
-        public final ForgeConfigSpec.ConfigValue<String> openScrollInkFaint;
-
-        // Loot-Ersetzungen
-        public final ForgeConfigSpec.BooleanValue useReplacements;
-        public final ForgeConfigSpec.ConfigValue<List<? extends String>> replacementItems;
-        public final ForgeConfigSpec.ConfigValue<List<? extends String>> replacementTags;
-
-        // Scroll tooltip
-        public final ForgeConfigSpec.ConfigValue<List<? extends String>> scrollTooltipLines;
-        public final ForgeConfigSpec.BooleanValue hideFulfilledDependencies;
-
-        // Individual Stages - Gameplay
-        public final ForgeConfigSpec.BooleanValue individualLockItemPickup;
-        public final ForgeConfigSpec.BooleanValue individualLockLoot;
-        public final ForgeConfigSpec.BooleanValue individualDropOnRevoke;
-        public final ForgeConfigSpec.BooleanValue individualLockBlockBreaking;
-        public final ForgeConfigSpec.DoubleValue individualLockedBlockBreakSpeedMultiplier;
-        public final ForgeConfigSpec.BooleanValue individualLockItemUsage;
-        public final ForgeConfigSpec.BooleanValue individualLockBlockInteraction;
-        public final ForgeConfigSpec.BooleanValue individualLockEnchanting;
-
-        // Individual Stages - Notifications
-        public final ForgeConfigSpec.BooleanValue individualBroadcastChat;
-        public final ForgeConfigSpec.ConfigValue<String> individualUnlockMessageFormat;
-        public final ForgeConfigSpec.BooleanValue individualUseActionbar;
-        public final ForgeConfigSpec.BooleanValue individualUseSounds;
-        public final ForgeConfigSpec.BooleanValue individualUseToasts;
-
-        // Structure Lock
-        public final ForgeConfigSpec.IntValue structureCheckInterval;
-        public final ForgeConfigSpec.BooleanValue structureDamageEnabled;
-        public final ForgeConfigSpec.DoubleValue structureDamageAmount;
-        public final ForgeConfigSpec.IntValue structureDamageInterval;
-        public final ForgeConfigSpec.BooleanValue structureMessageEnabled;
-        public final ForgeConfigSpec.ConfigValue<String> structureLockMessageFormat;
-        public final ForgeConfigSpec.BooleanValue structureLockInChat;
-        public final ForgeConfigSpec.IntValue structureLockPadding;
-        public final ForgeConfigSpec.IntValue structureClusterDistance;
-        public final ForgeConfigSpec.BooleanValue structureBlockRightClick;
-        public final ForgeConfigSpec.BooleanValue structureBlockLeftClick;
-        public final ForgeConfigSpec.BooleanValue structureBlockProjectiles;
-
-        // Biome Lock
-        public final ForgeConfigSpec.IntValue biomeCheckInterval;
-        public final ForgeConfigSpec.BooleanValue biomeEffectsEnabled;
-        public final ForgeConfigSpec.ConfigValue<List<? extends String>> biomeEffects;
-        public final ForgeConfigSpec.BooleanValue biomeClearEffectsOnLeave;
-        public final ForgeConfigSpec.BooleanValue biomeMessageEnabled;
-        public final ForgeConfigSpec.ConfigValue<String> biomeLockMessageFormat;
-        public final ForgeConfigSpec.BooleanValue biomeLockInChat;
-        public final ForgeConfigSpec.BooleanValue biomeDamageEnabled;
-        public final ForgeConfigSpec.DoubleValue biomeDamageAmount;
-        public final ForgeConfigSpec.IntValue biomeDamageInterval;
-        public final ForgeConfigSpec.BooleanValue biomeBlockRightClick;
-        public final ForgeConfigSpec.BooleanValue biomeBlockLeftClick;
-        public final ForgeConfigSpec.BooleanValue biomeBlockProjectiles;
-
-        // Lock-Message Overrides (leer = Translation Key wird verwendet)
-        public final ForgeConfigSpec.ConfigValue<String> msgDimensionUnknown;
-        public final ForgeConfigSpec.ConfigValue<String> msgMobUnknown;
-        public final ForgeConfigSpec.ConfigValue<String> msgItemLocked;
-        public final ForgeConfigSpec.ConfigValue<String> msgBlockLocked;
-        public final ForgeConfigSpec.ConfigValue<String> msgEntityItemLocked;
-        public final ForgeConfigSpec.ConfigValue<String> msgEnchantmentLocked;
-
-        public Common(ForgeConfigSpec.Builder builder) {
-            builder.comment(
-                    "Found a bug or have a feature request?",
-                    "Report it on GitHub: https://github.com/Flix100000/History-Stages/issues",
-                    "",
-                    "Chat messages settings"
-            ).push("messages");
-
-            showWelcomeMessage = builder
-                    .comment("Show a welcome message in chat when a player joins the world? [Default: true]")
-                    .define("showWelcomeMessage", true);
-
-            showDebugErrors = builder
-                    .comment("Show debug messages in chat if a JSON stage has errors or missing items? [Default: true]")
-                    .define("showDebugErrors", true);
-
-            enableRuntimeLogging = builder
-                    .comment("Log runtime events (stage unlock/lock, blocked actions, loot replacements) to config/historystages/logs/runtime-*.log? [Default: false]")
-                    .define("enableRuntimeLogging", false);
-
-            builder.pop(); // general
-
-            builder.comment("Gameplay and Server-side settings").push("gameplay");
-
-            lockMobLoot = builder
-                    .comment("Handle locked items in mob loot tables? [Default: true]")
-                    .define("lockMobLoot", true);
-
-            lockBlockBreaking = builder
-                    .comment("Make locked blocks much harder to break and prevent their drops? [Default: true]")
-                    .define("lockBlockBreaking", true);
-
-            lockedBlockBreakSpeedMultiplier = builder
-                    .comment("Break speed multiplier for locked blocks. Lower = slower. 0.05 = 20x slower (like using wrong tool). [Default: 0.05]")
-                    .defineInRange("lockedBlockBreakSpeedMultiplier", 0.05, 0.001, 1.0);
-
-            lockItemUsage = builder
-                    .comment("Prevent using locked items? (Blocks equipping armor, using weapons, eating food, etc.) [Default: true]")
-                    .define("lockItemUsage", true);
-
-            lockEntityItems = builder
-                    .comment("Prevent interacting with or breaking armor stands and item frames that contain locked items? [Default: true]")
-                    .define("lockEntityItems", true);
-
-            lockBlockInteraction = builder
-                    .comment("Prevent opening the GUI of locked blocks? (Chests, furnaces, crafting tables, etc.) [Default: true]")
-                    .define("lockBlockInteraction", true);
-
-            lockContainerInteraction = builder
-                    .comment("Prevent moving individually-locked items in containers? (Blocks taking items from chests, machines, etc.) [Default: true]")
-                    .define("lockContainerInteraction", true);
-
-            lockEnchanting = builder
-                    .comment("Prevent applying locked enchantments via anvil (locked enchanted books) and enchanting table? [Default: true]")
-                    .define("lockEnchanting", true);
-
-            builder.pop(); // gameplay
 
             // --- NOTIFICATIONS SECTION ---
             builder.comment("Global Notification Settings (Server-controlled)").push("notifications");
@@ -374,61 +252,94 @@ public class Config {
                     .define("useToasts", true);
 
             defaultStageIcon = builder
-                    .comment("Default icon used in unlock toasts for stages that don't define their own icon. [Default: historystages:research_scroll]")
+                    .comment("Default icon item shown in unlock toasts when a stage has no icon set. Use the item's full registry ID. [Default: historystages:research_scroll]")
                     .define("defaultStageIcon", "historystages:research_scroll");
 
-            builder.pop(); // Schließt "notifications"
+            // Nested rather than a block of its own: these five mirror the six above key for key,
+            // and a top-level table would put the same setting in two far-apart places depending
+            // only on how far its stage reaches.
+            builder.comment("The same notifications, for individual (per-player) stages").push("individual");
 
-            // --- RESEARCH Pedestal SECTION ---
-            builder.comment("Research Pedestal Settings").push("research");
-            researchTimeInSeconds = builder
-                    .comment("Default research time in seconds. Used as fallback if a stage does not define its own 'research_time' in the JSON. [Default: 20]")
-                    .defineInRange("researchTimeInSeconds", 20, 1, 86400);
+            individualBroadcastChat = builder
+                    .comment("Show individual stage unlock/lock messages in the chat for the player? [Default: true]")
+                    .define("broadcastChat", true);
 
-            showDependencyScreenInPedestal = builder
-                    .comment("Show dependency checklist screen when interacting with pedestal that has dependency requirements? [Default: true]")
-                    .define("showDependencyScreenInPedestal", true);
+            individualUnlockMessageFormat = builder
+                    .comment("Message format for individual stage unlocks (chat). Use {stage} for the name, {player} for the player name, and & for colors.")
+                    .define("unlockMessageFormat", "&fYou have unlocked &b{stage}&f!");
 
-            lockScrollWhileResearching = builder
-                    .comment("Lock the scroll in the pedestal once research has started? Prevents players (and hoppers) from removing the scroll until research completes or the pedestal is broken. [Default: false]")
-                    .define("lockScrollWhileResearching", false);
+            individualUseActionbar = builder
+                    .comment("Show individual stage messages in the actionbar? [Default: false]")
+                    .define("useActionbar", false);
 
-            defaultScrollCompletion = builder
-                    .comment(
-                            "What happens to a research scroll when its research finishes.",
-                            "  consume: the scroll is used up (behaviour before this option existed).",
-                            "  replace: a fresh scroll for the same stage is placed back into the pedestal,",
-                            "           so the next player can research it without needing a second copy.",
-                            "  open:    an open scroll is placed into the pedestal as a keepsake. No refill.",
-                            "A single stage can override this with its own 'scroll_completion'. [Default: consume]")
-                    .define("defaultScrollCompletion", "consume",
-                            o -> o instanceof String s && ScrollCompletion.isKnown(s));
+            individualUseSounds = builder
+                    .comment("Play notification sounds for individual stage unlocks? [Default: true]")
+                    .define("useSounds", true);
 
-            enableScrollResealing = builder
-                    .comment("Allow crafting a sealed scroll back out of an open one?",
-                            "The open scroll acts as a template and is not consumed; one sheet of",
-                            "paper is. Turn this off for a pack where a finished stage's scroll is",
-                            "meant to stay a one-off.",
-                            "Crafting follows this immediately. JEI and EMI build their recipe lists",
-                            "once at startup, so the entry only appears or disappears there after a",
-                            "restart. [Default: true]")
-                    .define("enableScrollResealing", true);
+            individualUseToasts = builder
+                    .comment("Show an advancement-style toast popup when an individual stage is unlocked? [Default: true]")
+                    .define("useToasts", true);
 
-            researchBoosters = builder
-                    .comment(
-                            "Booster blocks placed directly UNDER a Research Pedestal modify the active research.",
-                            "Format per entry: \"block_id, speed_percent, cost_percent, tier, mode\"",
-                            "  speed_percent: research time reduction (0-90). 90% = max (research runs 10x).",
-                            "  cost_percent:  item-dependency count reduction (0-90). Locked into the scroll on first deposit.",
-                            "  tier:          minimum pedestal tier the booster works under (1-4).",
-                            "  mode:          'min' = this tier and higher, 'exact' = only this tier.",
-                            "Legacy 3-column rows are accepted and treated as tier=1, mode=min.",
-                            "Unknown block ids and out-of-range values are logged and skipped/clamped.")
-                    .defineListAllowEmpty("researchBoosters",
-                            List.of(),
-                            obj -> obj instanceof String);
+            builder.pop(); // notifications.individual
 
-            builder.pop(); // Schließt "research"
+            builder.pop(); // notifications
+
+            // --- LOCK MESSAGES SECTION ---
+            builder.comment(
+                    "Override the displayed text for the six 'is locked' / 'unknown' messages.",
+                    "Leave a value empty (\"\") to fall back to the default messages.",
+                    "Use & for color codes (e.g. &c for red)."
+            ).push("lock_messages");
+
+            msgDimensionUnknown = builder
+                    .comment("Actionbar message when entering a locked dimension. Lang key: message.historystages.dimension_unknown")
+                    .define("dimensionUnknown", "");
+
+            msgMobUnknown = builder
+                    .comment("Actionbar message when attacking a locked mob. Lang key: message.historystages.mob_unknown")
+                    .define("mobUnknown", "");
+
+            msgItemLocked = builder
+                    .comment("Actionbar message when interacting with a locked item. Lang key: message.historystages.item_locked")
+                    .define("itemLocked", "");
+
+            msgBlockLocked = builder
+                    .comment("Actionbar message when interacting with a locked block. Lang key: message.historystages.block_locked")
+                    .define("blockLocked", "");
+
+            msgEntityItemLocked = builder
+                    .comment("Actionbar message when interacting with armor stands / item frames holding locked items. Lang key: message.historystages.entity_item_locked")
+                    .define("entityItemLocked", "");
+
+            msgEnchantmentLocked = builder
+                    .comment("Actionbar message when applying a locked enchantment. Lang key: message.historystages.enchantment_locked")
+                    .define("enchantmentLocked", "");
+
+            builder.pop(); // lock_messages
+
+            builder.comment(
+                    "Layout of the Research Scroll tooltip.",
+                    "Each entry is one line: id|enabled|spacerBefore|style|text",
+                    "  text  empty = use the built-in translation",
+                    "  style empty = use the line's built-in colour;",
+                    "        otherwise ChatFormatting names joined with '+', e.g. gray+italic",
+                    "The order of the movable ids (individual_badge, owner, info1, info2, tier,",
+                    "dependencies) is the order they render in. Unknown ids are ignored, missing",
+                    "ones fall back to their default, so an update can add lines safely.",
+                    "Easiest way to edit this is the in-game config editor.")
+                    .push("scroll_tooltip");
+
+            scrollTooltipLines = builder
+                    .comment("The tooltip lines, in render order.")
+                    .defineList("lines",
+                            net.bananemdnsa.historystages.data.tooltip.ScrollTooltipLayout.defaultsEncoded(),
+                            entry -> entry instanceof String);
+
+            hideFulfilledDependencies = builder
+                    .comment("Hide already fulfilled dependencies in scroll tooltips? [Default: false]")
+                    .define("hideFulfilledDependencies", false);
+
+            builder.pop(); // scroll_tooltip
 
             builder.comment("The document an Open Scroll shows when right-clicked.",
                             "Chapters are drawn in the order they appear below.",
@@ -495,6 +406,167 @@ public class Config {
                     .define("inkFaint", "#7A5A2C");
 
             builder.pop(); // open_scroll
+        }
+    }
+
+    // --- GAMEPLAY CONFIG (everything that happens in the background) ---
+    public static class Gameplay {
+        public final ForgeConfigSpec.BooleanValue showDebugErrors;
+        public final ForgeConfigSpec.BooleanValue enableRuntimeLogging;
+
+        public final ForgeConfigSpec.BooleanValue lockMobLoot;
+        public final ForgeConfigSpec.BooleanValue lockBlockBreaking;
+        public final ForgeConfigSpec.DoubleValue lockedBlockBreakSpeedMultiplier;
+        public final ForgeConfigSpec.BooleanValue lockItemUsage;
+        public final ForgeConfigSpec.BooleanValue lockEntityItems;
+        public final ForgeConfigSpec.BooleanValue lockBlockInteraction;
+        public final ForgeConfigSpec.BooleanValue lockContainerInteraction;
+        public final ForgeConfigSpec.BooleanValue lockEnchanting;
+
+        // Forschungsstation
+        public final ForgeConfigSpec.IntValue researchTimeInSeconds;
+        public final ForgeConfigSpec.ConfigValue<List<? extends String>> researchBoosters;
+        public final ForgeConfigSpec.ConfigValue<String> defaultScrollCompletion;
+        public final ForgeConfigSpec.BooleanValue enableScrollResealing;
+
+        // Loot-Ersetzungen
+        public final ForgeConfigSpec.BooleanValue useReplacements;
+        public final ForgeConfigSpec.ConfigValue<List<? extends String>> replacementItems;
+        public final ForgeConfigSpec.ConfigValue<List<? extends String>> replacementTags;
+
+        // Individual Stages - Gameplay
+        public final ForgeConfigSpec.BooleanValue individualLockItemPickup;
+        public final ForgeConfigSpec.BooleanValue individualLockLoot;
+        public final ForgeConfigSpec.BooleanValue individualDropOnRevoke;
+        public final ForgeConfigSpec.BooleanValue individualLockBlockBreaking;
+        public final ForgeConfigSpec.DoubleValue individualLockedBlockBreakSpeedMultiplier;
+        public final ForgeConfigSpec.BooleanValue individualLockItemUsage;
+        public final ForgeConfigSpec.BooleanValue individualLockBlockInteraction;
+        public final ForgeConfigSpec.BooleanValue individualLockEnchanting;
+
+        // Structure Lock
+        public final ForgeConfigSpec.IntValue structureCheckInterval;
+        public final ForgeConfigSpec.BooleanValue structureDamageEnabled;
+        public final ForgeConfigSpec.DoubleValue structureDamageAmount;
+        public final ForgeConfigSpec.IntValue structureDamageInterval;
+        public final ForgeConfigSpec.BooleanValue structureMessageEnabled;
+        public final ForgeConfigSpec.ConfigValue<String> structureLockMessageFormat;
+        public final ForgeConfigSpec.BooleanValue structureLockInChat;
+        public final ForgeConfigSpec.IntValue structureLockPadding;
+        public final ForgeConfigSpec.IntValue structureClusterDistance;
+        public final ForgeConfigSpec.BooleanValue structureBlockRightClick;
+        public final ForgeConfigSpec.BooleanValue structureBlockLeftClick;
+        public final ForgeConfigSpec.BooleanValue structureBlockProjectiles;
+
+        public final ForgeConfigSpec.IntValue biomeCheckInterval;
+        public final ForgeConfigSpec.BooleanValue biomeEffectsEnabled;
+        public final ForgeConfigSpec.ConfigValue<List<? extends String>> biomeEffects;
+        public final ForgeConfigSpec.BooleanValue biomeClearEffectsOnLeave;
+        public final ForgeConfigSpec.BooleanValue biomeMessageEnabled;
+        public final ForgeConfigSpec.ConfigValue<String> biomeLockMessageFormat;
+        public final ForgeConfigSpec.BooleanValue biomeLockInChat;
+        public final ForgeConfigSpec.BooleanValue biomeDamageEnabled;
+        public final ForgeConfigSpec.DoubleValue biomeDamageAmount;
+        public final ForgeConfigSpec.IntValue biomeDamageInterval;
+        public final ForgeConfigSpec.BooleanValue biomeBlockRightClick;
+        public final ForgeConfigSpec.BooleanValue biomeBlockLeftClick;
+        public final ForgeConfigSpec.BooleanValue biomeBlockProjectiles;
+
+        public Gameplay(ForgeConfigSpec.Builder builder) {
+            builder.comment(
+                    "Found a bug or have a feature request?",
+                    "Report it on GitHub: https://github.com/Flix100000/History-Stages/issues",
+                    "",
+                    "Diagnostics and log output"
+            ).push("logging");
+
+            showDebugErrors = builder
+                    .comment("Show debug messages in chat if a JSON stage has errors or missing items? [Default: true]")
+                    .define("showDebugErrors", true);
+
+            enableRuntimeLogging = builder
+                    .comment("Log runtime events (stage unlock/lock, blocked actions, loot replacements) to config/historystages/logs/runtime-*.log? [Default: false]")
+                    .define("enableRuntimeLogging", false);
+
+            builder.pop(); // logging
+
+            builder.comment("Gameplay and Server-side settings").push("gameplay");
+
+            lockMobLoot = builder
+                    .comment("Handle locked items in mob loot tables? [Default: true]")
+                    .define("lockMobLoot", true);
+
+            lockBlockBreaking = builder
+                    .comment("Make locked blocks much harder to break and prevent their drops? [Default: true]")
+                    .define("lockBlockBreaking", true);
+
+            lockedBlockBreakSpeedMultiplier = builder
+                    .comment("Break speed multiplier for locked blocks. Lower = slower. 0.05 = 20x slower (like using wrong tool). [Default: 0.05]")
+                    .defineInRange("lockedBlockBreakSpeedMultiplier", 0.05, 0.001, 1.0);
+
+            lockItemUsage = builder
+                    .comment("Prevent using locked items? (Blocks equipping armor, using weapons, eating food, etc.) [Default: true]")
+                    .define("lockItemUsage", true);
+
+            lockEntityItems = builder
+                    .comment("Prevent interacting with or breaking armor stands and item frames that contain locked items? [Default: true]")
+                    .define("lockEntityItems", true);
+
+            lockBlockInteraction = builder
+                    .comment("Prevent opening the GUI of locked blocks? (Chests, furnaces, crafting tables, etc.) [Default: true]")
+                    .define("lockBlockInteraction", true);
+
+            lockContainerInteraction = builder
+                    .comment("Prevent moving individually-locked items in containers? (Blocks taking items from chests, machines, etc.) [Default: true]")
+                    .define("lockContainerInteraction", true);
+
+            lockEnchanting = builder
+                    .comment("Prevent applying locked enchantments via anvil (locked enchanted books) and enchanting table? [Default: true]")
+                    .define("lockEnchanting", true);
+
+            builder.pop(); // gameplay
+
+            // --- RESEARCH Pedestal SECTION ---
+            builder.comment("Research Pedestal Settings").push("research");
+            researchTimeInSeconds = builder
+                    .comment("Default research time in seconds. Used as fallback if a stage does not define its own 'research_time' in the JSON. [Default: 20]")
+                    .defineInRange("researchTimeInSeconds", 20, 1, 86400);
+
+            researchBoosters = builder
+                    .comment(
+                            "Booster blocks placed directly UNDER a Research Pedestal modify the active research.",
+                            "Format per entry: \"block_id, speed_percent, cost_percent, tier, mode\"",
+                            "  speed_percent: research time reduction (0-90). 90% = max (research runs 10x).",
+                            "  cost_percent:  item-dependency count reduction (0-90). Locked into the scroll on first deposit.",
+                            "  tier:          minimum pedestal tier the booster works under (1-4).",
+                            "  mode:          'min' = this tier and higher, 'exact' = only this tier.",
+                            "Unknown block ids and out-of-range values are logged and skipped/clamped.")
+                    .defineListAllowEmpty("researchBoosters",
+                            List.of(),
+                            obj -> obj instanceof String);
+
+            defaultScrollCompletion = builder
+                    .comment(
+                            "What happens to a research scroll when its research finishes.",
+                            "  consume: the scroll is used up (behaviour before this option existed).",
+                            "  replace: a fresh scroll for the same stage is placed back into the pedestal,",
+                            "           so the next player can research it without needing a second copy.",
+                            "  open:    an open scroll is placed into the pedestal as a keepsake. No refill.",
+                            "A single stage can override this with its own 'scroll_completion'. [Default: consume]")
+                    .define("defaultScrollCompletion", "consume",
+                            o -> o instanceof String s && ScrollCompletion.isKnown(s));
+
+            enableScrollResealing = builder
+                    .comment("Allow crafting a sealed scroll back out of an open one?",
+                            "The open scroll acts as a template and is not consumed; one sheet of",
+                            "paper is. Turn this off for a pack where a finished stage's scroll is",
+                            "meant to stay a one-off.",
+                            "Crafting follows this immediately. JEI and EMI build their recipe lists",
+                            "once at startup, so the entry only appears or disappears there after a",
+                            "restart. [Default: true]")
+                    .define("enableScrollResealing", true);
+
+            builder.pop(); // research
 
             // --- LOOT REPLACEMENTS SECTION ---
             builder.comment("Settings for replacing locked loot with alternatives").push("loot_replacements");
@@ -508,9 +580,9 @@ public class Config {
                     .defineList("replacementItems", List.of("minecraft:cobblestone", "minecraft:dirt"), o -> o instanceof String);
 
             replacementTags = builder
-                    .comment("{ReplacementPriority:2} A list of tags (e.g. 'forge:dusts') to pick a random replacement from. [Default: empty]")
+                    .comment("{ReplacementPriority:2} A list of tags (e.g. 'c:dusts') to pick a random replacement from. [Default: empty]")
                     .defineList("replacementTags", List.of(), o -> o instanceof String);
-            builder.pop(); // Schließt "loot_replacements"
+            builder.pop(); // loot_replacements
 
             // --- INDIVIDUAL STAGES SECTION ---
             builder.comment("Individual Stage Settings (per-player stages)").push("individual_stages");
@@ -547,27 +619,7 @@ public class Config {
                     .comment("Prevent applying enchantments locked by individual stages via anvil and enchanting table? [Default: true]")
                     .define("lockEnchanting", true);
 
-            individualBroadcastChat = builder
-                    .comment("Show individual stage unlock/lock messages in the chat for the player? [Default: true]")
-                    .define("broadcastChat", true);
-
-            individualUnlockMessageFormat = builder
-                    .comment("Message format for individual stage unlocks (chat). Use {stage} for the name, {player} for the player name, and & for colors.")
-                    .define("unlockMessageFormat", "&fYou have unlocked &b{stage}&f!");
-
-            individualUseActionbar = builder
-                    .comment("Show individual stage messages in the actionbar? [Default: false]")
-                    .define("useActionbar", false);
-
-            individualUseSounds = builder
-                    .comment("Play notification sounds for individual stage unlocks? [Default: true]")
-                    .define("useSounds", true);
-
-            individualUseToasts = builder
-                    .comment("Show an advancement-style toast popup when an individual stage is unlocked? [Default: true]")
-                    .define("useToasts", true);
-
-            builder.pop(); // Schließt "individual_stages"
+            builder.pop(); // individual_stages
 
             // --- STRUCTURE LOCK SECTION ---
             builder.comment("Structure Lock Settings (locks player entry into specified structures)").push("structure_lock");
@@ -633,7 +685,7 @@ public class Config {
                     .comment("Cancel projectiles (arrows, snowballs, ender pearls, etc.) the moment they would impact something inside a locked structure? [Default: true]")
                     .define("blockProjectiles", true);
 
-            builder.pop(); // Schließt "structure_lock"
+            builder.pop(); // structure_lock
 
             // --- BIOME LOCK SECTION ---
             builder.comment("Biome Lock Settings (punishes players standing in a biome they haven't unlocked yet)").push("biome_lock");
@@ -698,79 +750,22 @@ public class Config {
                     .comment("Cancel projectiles (arrows, snowballs, ender pearls, etc.) the moment they would impact inside a locked biome? [Default: true]")
                     .define("blockProjectiles", true);
 
-            builder.pop(); // Schließt "biome_lock"
-
-            // --- LOCK MESSAGES SECTION ---
-            builder.comment(
-                    "Override the displayed text for the six 'is locked' / 'unknown' messages.",
-                    "Leave a value empty (\"\") to fall back to the default messages.",
-                    "Use & for color codes (e.g. &c for red)."
-            ).push("lock_messages");
-
-            msgDimensionUnknown = builder
-                    .comment("Actionbar message when entering a locked dimension. Lang key: message.historystages.dimension_unknown")
-                    .define("dimensionUnknown", "");
-
-            msgMobUnknown = builder
-                    .comment("Actionbar message when attacking a locked mob. Lang key: message.historystages.mob_unknown")
-                    .define("mobUnknown", "");
-
-            msgItemLocked = builder
-                    .comment("Actionbar message when interacting with a locked item. Lang key: message.historystages.item_locked")
-                    .define("itemLocked", "");
-
-            msgBlockLocked = builder
-                    .comment("Actionbar message when interacting with a locked block. Lang key: message.historystages.block_locked")
-                    .define("blockLocked", "");
-
-            msgEntityItemLocked = builder
-                    .comment("Actionbar message when interacting with armor stands / item frames holding locked items. Lang key: message.historystages.entity_item_locked")
-                    .define("entityItemLocked", "");
-
-            msgEnchantmentLocked = builder
-                    .comment("Actionbar message when applying a locked enchantment. Lang key: message.historystages.enchantment_locked")
-                    .define("enchantmentLocked", "");
-
-            builder.pop(); // lock_messages
-
-            builder.comment(
-                    "Layout of the Research Scroll tooltip.",
-                    "Each entry is one line: id|enabled|spacerBefore|style|text",
-                    "  text  empty = use the built-in translation",
-                    "  style empty = use the line's built-in colour;",
-                    "        otherwise ChatFormatting names joined with '+', e.g. gray+italic",
-                    "The order of the movable ids (individual_badge, owner, info1, info2, tier,",
-                    "dependencies) is the order they render in. Unknown ids are ignored, missing",
-                    "ones fall back to their default, so an update can add lines safely.",
-                    "Easiest way to edit this is the in-game config editor.")
-                    .push("scroll_tooltip");
-
-            scrollTooltipLines = builder
-                    .comment("The tooltip lines, in render order.")
-                    .defineList("lines",
-                            net.bananemdnsa.historystages.data.tooltip.ScrollTooltipLayout.defaultsEncoded(),
-                            entry -> entry instanceof String);
-
-            hideFulfilledDependencies = builder
-                    .comment("Hide already fulfilled dependencies in scroll tooltips? [Default: false]")
-                    .define("hideFulfilledDependencies", false);
-
-            builder.pop(); // scroll_tooltip
+            builder.pop(); // biome_lock
         }
     }
 
-    public static final ForgeConfigSpec CLIENT_SPEC;
-    public static final Client CLIENT;
-    public static final ForgeConfigSpec COMMON_SPEC;
-    public static final Common COMMON;
+    public static final ForgeConfigSpec VISUAL_SPEC;
+    public static final Visual VISUAL;
+    public static final ForgeConfigSpec GAMEPLAY_SPEC;
+    public static final Gameplay GAMEPLAY;
 
     static {
-        final Pair<Client, ForgeConfigSpec> clientPair = new ForgeConfigSpec.Builder().configure(Client::new);
-        CLIENT = clientPair.getLeft();
-        CLIENT_SPEC = clientPair.getRight();
+        final Pair<Visual, ForgeConfigSpec> visualPair = new ForgeConfigSpec.Builder().configure(Visual::new);
+        VISUAL = visualPair.getLeft();
+        VISUAL_SPEC = visualPair.getRight();
 
-        final Pair<Common, ForgeConfigSpec> commonPair = new ForgeConfigSpec.Builder().configure(Common::new);
-        COMMON = commonPair.getLeft();
-        COMMON_SPEC = commonPair.getRight();
+        final Pair<Gameplay, ForgeConfigSpec> gameplayPair = new ForgeConfigSpec.Builder().configure(Gameplay::new);
+        GAMEPLAY = gameplayPair.getLeft();
+        GAMEPLAY_SPEC = gameplayPair.getRight();
     }
 }

@@ -1,29 +1,26 @@
 package net.bananemdnsa.historystages.network.serverbound;
-
 import net.bananemdnsa.historystages.network.PacketHandler;
-import net.bananemdnsa.historystages.network.CommonConfigSync;
 import net.bananemdnsa.historystages.network.clientbound.SyncConfigPacket;
 import net.bananemdnsa.historystages.network.clientbound.EditorFeedbackPacket;
+import net.bananemdnsa.historystages.network.clientbound.SyncVisualConfigPacket;
+
 import net.bananemdnsa.historystages.Config;
+import net.bananemdnsa.historystages.HistoryStages;
+import net.bananemdnsa.historystages.data.config.AddonConfigSections;
+import net.bananemdnsa.historystages.data.config.ConfigDerivedCaches;
+import net.bananemdnsa.historystages.data.config.ConfigSpecCodec;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
+import java.util.function.Supplier;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Supplier;
 
-public class SaveConfigPacket {
-    private final Map<String, String> configValues;
-    private final boolean isClient; // true = client config, false = common config
-
-    public SaveConfigPacket(Map<String, String> configValues, boolean isClient) {
-        this.configValues = configValues;
-        this.isClient = isClient;
-    }
+public record SaveConfigPacket(Map<String, String> configValues, boolean visual) {
 
     public static void encode(SaveConfigPacket msg, FriendlyByteBuf buffer) {
-        buffer.writeBoolean(msg.isClient);
+        buffer.writeBoolean(msg.visual);
         buffer.writeInt(msg.configValues.size());
         for (Map.Entry<String, String> entry : msg.configValues.entrySet()) {
             buffer.writeUtf(entry.getKey());
@@ -32,26 +29,38 @@ public class SaveConfigPacket {
     }
 
     public static SaveConfigPacket decode(FriendlyByteBuf buffer) {
-        boolean isClient = buffer.readBoolean();
+        boolean visual = buffer.readBoolean();
         int size = buffer.readInt();
         Map<String, String> values = new HashMap<>();
         for (int i = 0; i < size; i++) {
             values.put(buffer.readUtf(), buffer.readUtf());
         }
-        return new SaveConfigPacket(values, isClient);
+        return new SaveConfigPacket(values, visual);
     }
 
     public static void handle(SaveConfigPacket msg, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
             ServerPlayer player = ctx.get().getSender();
-            if (player == null || !player.hasPermissions(2)) return;
+            if (player == null) return;
+            if (!player.hasPermissions(2)) return;
 
-            // Apply common config values on the server
-            if (!msg.isClient) {
-                applyCommonConfig(msg.configValues);
-                // Force Forge to persist the TOML file to disk
-                Config.COMMON_SPEC.save();
-                // Sync updated config to all connected clients
+            if (msg.visual) {
+                // The visual settings are server-owned now, so this arrives instead of the editor
+                // writing them into its own client and nowhere else.
+                applyVisualConfig(msg.configValues);
+                Config.VISUAL_SPEC.save();
+
+                // Everyone, including the sender: the sender's own spec is only updated by the
+                // sync path, so it must not be skipped here.
+                PacketHandler.sendVisualConfigToAll(SyncVisualConfigPacket.fromServerConfig());
+                PacketHandler.sendEditorFeedback(
+                        EditorFeedbackPacket.success(
+                                "editor.historystages.toast.visual_config_saved.title",
+                                "editor.historystages.toast.visual_config_saved.message"),
+                        player);
+            } else {
+                applyGameplayConfig(msg.configValues);
+                Config.GAMEPLAY_SPEC.save();
                 PacketHandler.sendConfigToAll(SyncConfigPacket.fromServerConfig());
                 PacketHandler.sendEditorFeedback(
                         EditorFeedbackPacket.success(
@@ -66,13 +75,38 @@ public class SaveConfigPacket {
     /**
      * Applies wire values to the common config. Runs on the server when an admin saves the editor,
      * and on the client when the server syncs back.
-     * <p>
-     * The per-key handling lives in {@link CommonConfigSync}, which also produces the synced map —
-     * one list for both directions. Before that, this was a switch and the sync packet was a
-     * separate list of puts; keys kept being added here and forgotten there, so admins could change
-     * a setting the server saved but no client ever heard about.
+     *
+     * <p>The values are addressed by dotted toml path and written by walking the spec. The two
+     * hand-maintained key lists this replaced kept drifting apart — at one point 28 keys the
+     * editor could change were never sent to any client.
+     *
+     * <p>Addon values are not in the spec and are applied separately: an addon holds its own state
+     * behind the write callback it registered, so there is nothing in {@code GAMEPLAY_SPEC} for the
+     * walk to find. Their wire keys come from {@link AddonConfigSections}, which mints them in one
+     * place precisely so collect and apply cannot disagree about what a value is called.
      */
-    public static void applyCommonConfig(Map<String, String> values) {
-        CommonConfigSync.applyAll(values);
+    public static void applyGameplayConfig(Map<String, String> values) {
+        ConfigSpecCodec.apply(Config.GAMEPLAY_SPEC, values, true, ConfigSpecCodec.NO_EXTRA_CHECK);
+
+        for (AddonConfigSections.CommonEntry entry : AddonConfigSections.commonEntries()) {
+            String incoming = values.get(entry.wireKey());
+            if (incoming != null) entry.write().accept(incoming);
+        }
+
+        ConfigDerivedCaches.rebuildGameplay();
+    }
+
+    /**
+     * The visual half of {@link #applyGameplayConfig(Map)}. Runs on the server when an admin saves the
+     * editor, and on the client when the server syncs back.
+     *
+     * <p>It exists for the rebuild below. The scroll tooltip layout parses a config list into an
+     * in-memory object once, and that list is a visual setting now — leaving the rebuild on the
+     * common path would have meant an admin's layout change only took effect the next time somebody
+     * happened to save an unrelated gameplay setting.
+     */
+    public static void applyVisualConfig(Map<String, String> values) {
+        ConfigSpecCodec.apply(Config.VISUAL_SPEC, values, true, ConfigSpecCodec.NO_EXTRA_CHECK);
+        ConfigDerivedCaches.rebuildVisual();
     }
 }

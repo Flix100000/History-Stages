@@ -88,7 +88,7 @@ public class StructureLockHandler {
 
         PlayerState state = STATE.computeIfAbsent(player.getUUID(), u -> new PlayerState());
 
-        int interval = Config.COMMON.structureCheckInterval.get();
+        int interval = Config.GAMEPLAY.structureCheckInterval.get();
         long chunkKey = (((long) player.chunkPosition().x) << 32) | (player.chunkPosition().z & 0xFFFFFFFFL);
         boolean chunkChanged = chunkKey != state.lastChunkKey;
 
@@ -108,7 +108,7 @@ public class StructureLockHandler {
 
         if (state.cachedLockedStructureIds.isEmpty()) return;
 
-        if (Config.COMMON.structureMessageEnabled.get()) {
+        if (Config.GAMEPLAY.structureMessageEnabled.get()) {
             state.messageCooldown--;
             if (state.messageCooldown <= 0) {
                 state.messageCooldown = 40;
@@ -116,11 +116,11 @@ public class StructureLockHandler {
             }
         }
 
-        if (Config.COMMON.structureDamageEnabled.get() && !player.isCreative()) {
+        if (Config.GAMEPLAY.structureDamageEnabled.get() && !player.isCreative()) {
             state.damageCooldown--;
             if (state.damageCooldown <= 0) {
-                state.damageCooldown = Config.COMMON.structureDamageInterval.get();
-                float amount = Config.COMMON.structureDamageAmount.get().floatValue();
+                state.damageCooldown = Config.GAMEPLAY.structureDamageInterval.get();
+                float amount = Config.GAMEPLAY.structureDamageAmount.get().floatValue();
                 player.hurt(player.level().damageSources().magic(), amount);
             }
         }
@@ -130,8 +130,8 @@ public class StructureLockHandler {
         ServerLevel level = player.serverLevel();
         BlockPos pos = player.blockPosition();
 
-        int padding = Config.COMMON.structureLockPadding.get();
-        int clusterDistance = Config.COMMON.structureClusterDistance.get();
+        int padding = Config.GAMEPLAY.structureLockPadding.get();
+        int clusterDistance = Config.GAMEPLAY.structureClusterDistance.get();
 
         List<StructureCluster> nearby = ClusterBuilder.collectClustersNear(
                 level, pos, CHUNK_SCAN_RADIUS, padding, clusterDistance);
@@ -397,7 +397,7 @@ public class StructureLockHandler {
     }
 
     private static void sendLockMessage(ServerPlayer player, PlayerState state) {
-        String format = Config.COMMON.structureLockMessageFormat.get();
+        String format = Config.GAMEPLAY.structureLockMessageFormat.get();
         String structureId = state.cachedLockedStructureIds.get(0);
         String stageName = state.cachedLockedStageIds.isEmpty() ? structureId : resolveStageDisplayName(state.cachedLockedStageIds.get(0));
 
@@ -408,7 +408,7 @@ public class StructureLockHandler {
 
         Component msg = Component.literal(formatted);
 
-        if (Config.COMMON.structureLockInChat.get()) {
+        if (Config.GAMEPLAY.structureLockInChat.get()) {
             player.sendSystemMessage(msg);
         } else {
             player.displayClientMessage(msg, true);
@@ -603,8 +603,8 @@ public class StructureLockHandler {
         boolean targetInside = targetPos != null && isBlockInLockedZone(sp, targetPos);
         if (!playerInside && !targetInside) return false;
 
-        if (right && !Config.COMMON.structureBlockRightClick.get()) return false;
-        if (left && !Config.COMMON.structureBlockLeftClick.get()) return false;
+        if (right && !Config.GAMEPLAY.structureBlockRightClick.get()) return false;
+        if (left && !Config.GAMEPLAY.structureBlockLeftClick.get()) return false;
         return true;
     }
 
@@ -616,7 +616,7 @@ public class StructureLockHandler {
     @SubscribeEvent
     public static void onProjectileImpact(ProjectileImpactEvent event) {
         if (event.getProjectile().level().isClientSide()) return;
-        if (!Config.COMMON.structureBlockProjectiles.get()) return;
+        if (!Config.GAMEPLAY.structureBlockProjectiles.get()) return;
         if (!(event.getProjectile().getOwner() instanceof ServerPlayer shooter)) return;
 
         PlayerState state = STATE.get(shooter.getUUID());

@@ -57,11 +57,11 @@ public class TakeLecternScrollPacket {
 
             // Mirror BlockLockHandler.onRightClickBlock: a locked lectern denies its GUI on the
             // open path, so a forged take packet must not be able to loot it either.
-            if (Config.COMMON.lockBlockInteraction.get() || Config.COMMON.individualLockBlockInteraction.get()) {
+            if (Config.GAMEPLAY.lockBlockInteraction.get() || Config.GAMEPLAY.individualLockBlockInteraction.get()) {
                 ItemStack blockItem = new ItemStack(state.getBlock().asItem());
                 if (!blockItem.isEmpty()
                         && LockGate.isActionLockedServer(blockItem, player, "gui",
-                                Config.COMMON.lockBlockInteraction, Config.COMMON.individualLockBlockInteraction)) {
+                                Config.GAMEPLAY.lockBlockInteraction, Config.GAMEPLAY.individualLockBlockInteraction)) {
                     return;
                 }
             }
