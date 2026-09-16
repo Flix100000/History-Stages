@@ -40,9 +40,10 @@ import net.minecraft.world.level.Level;
  * enchanted-book trade picks an enchantment per offer, and a single run would name one book.
  *
  * <p><strong>The answer is good, not complete.</strong> A recipe that refuses to run outside a
- * real trade contributes nothing, and on a dedicated server a client's copy of the table holds
- * only the vanilla recipes — a mod's are added when a world loads its data, which a client never
- * does. That second gap is what the server's own answer is for; see {@code ClientTradeGoods}.
+ * real trade contributes nothing, one that takes too long to answer is dropped by
+ * {@link TradeScanBudget}, and on a dedicated server a client's copy of the table holds only the
+ * vanilla recipes — a mod's are added when a world loads its data, which a client never does.
+ * That last gap is what the server's own answer is for; see {@code ClientTradeGoods}.
  * Both fail quietly on purpose: this list narrows a picker, and one missing item is a click's
  * worth of annoyance where a scan that breaks the editor is not.
  */
@@ -102,7 +103,8 @@ public final class TradeGoodsScanner {
         Map<String, TradePreview> offers = new LinkedHashMap<>();
         if (level == null) return List.of();
 
-        long startedAt = System.currentTimeMillis();
+        TradeScanBudget budget = new TradeScanBudget(System::currentTimeMillis);
+        long startedAt = budget.now();
         // Someone for the recipes to be dealt to. Several of them ask what kind of villager they
         // are dealing with and hand back nothing for anything else. It never enters the world, and
         // it is never asked for its offers — that is the call that refuses.
@@ -112,6 +114,7 @@ public final class TradeGoodsScanner {
         int recipes = 0;
 
         for (VillagerProfession profession : BuiltInRegistries.VILLAGER_PROFESSION) {
+            if (budget.spent()) break;
             Int2ObjectMap<VillagerTrades.ItemListing[]> byLevel =
                     VillagerTrades.TRADES.get(profession);
             if (byLevel == null) continue;
@@ -124,37 +127,46 @@ public final class TradeGoodsScanner {
                 ResourceLocation professionId =
                         BuiltInRegistries.VILLAGER_PROFESSION.getKey(profession);
                 recipes += run(listings, trader, random, offers,
-                        professionId == null ? "" : professionId.toString(), merchantLevel);
+                        professionId == null ? "" : professionId.toString(), merchantLevel,
+                        budget);
             }
         }
 
         for (Int2ObjectMap.Entry<VillagerTrades.ItemListing[]> entry
                 : VillagerTrades.WANDERING_TRADER_TRADES.int2ObjectEntrySet()) {
+            if (budget.spent()) break;
             // Its own two tiers are "generic" and "rare"; both are level 1 as far as a lock is
             // concerned, because a wandering trader never has another.
             recipes += run(entry.getValue(), trader, random, offers,
-                    TradePreview.WANDERING_TRADER, 1);
+                    TradePreview.WANDERING_TRADER, 1, budget);
         }
 
         trader.discard();
         // Timed because this runs while a screen opens, and "the game hiccuped once" is otherwise
         // a mystery nobody can attribute.
         DebugLogger.runtime("Trade Goods", "scan",
-                "ran " + recipes + " merchant recipes in "
-                        + (System.currentTimeMillis() - startedAt) + "ms, found "
-                        + offers.size() + " distinct offers");
+                "ran " + recipes + " merchant recipes in " + (budget.now() - startedAt)
+                        + "ms, found " + offers.size() + " distinct offers");
+        if (budget.spent()) {
+            DebugLogger.runtime("Trade Goods",
+                    "the scan ran out of its " + TradeScanBudget.TOTAL_MILLIS + "ms and stopped "
+                            + "where it was. Trades behind that point are missing from the picker; "
+                            + "locking those items by hand still works.");
+        }
         return List.copyOf(offers.values());
     }
 
     /** @return how many recipes were run */
     private static int run(VillagerTrades.ItemListing[] listings, Villager trader,
                            RandomSource random, Map<String, TradePreview> offers,
-                           String professionId, int level) {
+                           String professionId, int level, TradeScanBudget budget) {
         int ran = 0;
         for (VillagerTrades.ItemListing listing : listings) {
             if (listing == null) continue;
             if (searchesTheWorld(listing)) continue;
+            if (budget.spent()) break;
             for (int attempt = 0; attempt < RUNS_PER_LISTING; attempt++) {
+                long runStartedAt = budget.now();
                 try {
                     MerchantOffer offer = listing.getOffer(trader, random);
                     if (offer == null) continue;
@@ -163,6 +175,17 @@ public final class TradeGoodsScanner {
                 } catch (Exception recipeRefused) {
                     // One mod's recipe will not run outside a real trade. Give up on that one and
                     // keep the rest — see the note on the class about why this is quiet.
+                    break;
+                }
+                if (budget.tooSlow(runStartedAt)) {
+                    // Not quiet, unlike the refusal above: this one cost real time and the pack
+                    // author is the only person who can do anything about it.
+                    DebugLogger.runtime("Trade Goods",
+                            listing.getClass().getName() + " took "
+                                    + (budget.now() - runStartedAt) + "ms to name one offer and "
+                                    + "was not asked again. A trade that searches the world for "
+                                    + "its answer cannot be listed in the picker; lock the item "
+                                    + "itself instead.");
                     break;
                 }
             }
