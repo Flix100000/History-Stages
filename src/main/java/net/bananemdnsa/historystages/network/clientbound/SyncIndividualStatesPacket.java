@@ -1,4 +1,4 @@
-package net.bananemdnsa.historystages.network;
+package net.bananemdnsa.historystages.network.clientbound;
 
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.api.distmarker.Dist;

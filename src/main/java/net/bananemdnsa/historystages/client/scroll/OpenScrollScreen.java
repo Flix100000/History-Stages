@@ -26,7 +26,7 @@ import net.bananemdnsa.historystages.data.scroll.OpenScrollSort;
 import net.bananemdnsa.historystages.data.scroll.OpenScrollVisibility;
 import net.bananemdnsa.historystages.data.scroll.OpenScrollWorldGroup;
 import net.bananemdnsa.historystages.network.PacketHandler;
-import net.bananemdnsa.historystages.network.TakeLecternScrollPacket;
+import net.bananemdnsa.historystages.network.serverbound.TakeLecternScrollPacket;
 import net.bananemdnsa.historystages.screen.OpenScrollGeometry;
 import net.bananemdnsa.historystages.screen.OpenScrollPagination;
 import net.bananemdnsa.historystages.screen.OpenScrollTabs;

@@ -22,8 +22,8 @@ import net.bananemdnsa.historystages.research.TierMode;
 import net.bananemdnsa.historystages.data.saveddata.IndividualStageData;
 import net.bananemdnsa.historystages.data.saveddata.StageData;
 import net.bananemdnsa.historystages.network.PacketHandler;
-import net.bananemdnsa.historystages.network.SyncIndividualStagesPacket;
-import net.bananemdnsa.historystages.network.SyncStagesPacket;
+import net.bananemdnsa.historystages.network.clientbound.SyncIndividualStagesPacket;
+import net.bananemdnsa.historystages.network.clientbound.SyncStagesPacket;
 import net.bananemdnsa.historystages.util.ScrollVariants;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
@@ -181,7 +181,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
                         // under this stage id.
                         net.bananemdnsa.historystages.network.PacketHandler.INSTANCE.send(
                                 net.minecraftforge.network.PacketDistributor.PLAYER.with(() -> player),
-                                new net.bananemdnsa.historystages.network.SyncDependencyStatusPacket(
+                                new net.bananemdnsa.historystages.network.clientbound.SyncDependencyStatusPacket(
                                         stageId, isCurrentScrollIndividual(), result));
                     }
                 }
@@ -670,7 +670,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
             if (Config.COMMON.useToasts.get()) {
                 String iconId = (stageEntry != null && stageEntry.getIcon() != null) ? stageEntry.getIcon() : "";
                 PacketHandler
-                        .sendToastToAll(new net.bananemdnsa.historystages.network.StageUnlockedToastPacket(stagename, iconId));
+                        .sendToastToAll(new net.bananemdnsa.historystages.network.clientbound.StageUnlockedToastPacket(stagename, iconId));
             }
         }
     }
@@ -727,7 +727,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
                         String iconId = (stageEntry != null && stageEntry.getIcon() != null) ? stageEntry.getIcon() : "";
                         PacketHandler.INSTANCE.send(
                                 net.minecraftforge.network.PacketDistributor.PLAYER.with(() -> ownerPlayer),
-                                new net.bananemdnsa.historystages.network.StageUnlockedToastPacket(stagename, iconId));
+                                new net.bananemdnsa.historystages.network.clientbound.StageUnlockedToastPacket(stagename, iconId));
                     }
                 }
             }

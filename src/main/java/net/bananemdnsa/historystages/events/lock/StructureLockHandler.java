@@ -5,7 +5,7 @@ import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.network.PacketHandler;
-import net.bananemdnsa.historystages.network.SyncLockBordersPacket;
+import net.bananemdnsa.historystages.network.clientbound.SyncLockBordersPacket;
 import net.bananemdnsa.historystages.structure.ClusterBuilder;
 import net.bananemdnsa.historystages.structure.ClusterDebugRenderer;
 import net.bananemdnsa.historystages.structure.StructureCluster;

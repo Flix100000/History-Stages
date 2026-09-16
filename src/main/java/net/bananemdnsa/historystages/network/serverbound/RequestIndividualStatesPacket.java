@@ -1,5 +1,7 @@
-package net.bananemdnsa.historystages.network;
+package net.bananemdnsa.historystages.network.serverbound;
 
+import net.bananemdnsa.historystages.network.PacketHandler;
+import net.bananemdnsa.historystages.network.clientbound.SyncIndividualStatesPacket;
 import net.bananemdnsa.historystages.data.saveddata.IndividualStageData;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;

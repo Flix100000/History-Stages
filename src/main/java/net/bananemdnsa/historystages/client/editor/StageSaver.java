@@ -5,7 +5,7 @@ import net.bananemdnsa.historystages.client.editor.toast.EditorToastHandler;
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.StageJsonLimits;
 import net.bananemdnsa.historystages.network.PacketHandler;
-import net.bananemdnsa.historystages.network.SaveStagePacket;
+import net.bananemdnsa.historystages.network.serverbound.SaveStagePacket;
 import net.minecraft.network.chat.Component;
 
 /**

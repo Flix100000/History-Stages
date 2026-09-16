@@ -7,9 +7,9 @@ import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.data.StageUnlockHelper;
 import net.bananemdnsa.historystages.data.auto.AutoTriggerManager;
 import net.bananemdnsa.historystages.network.PacketHandler;
-import net.bananemdnsa.historystages.network.SyncIndividualStagesPacket;
-import net.bananemdnsa.historystages.network.SyncStageDefinitionsPacket;
-import net.bananemdnsa.historystages.network.SyncStagesPacket;
+import net.bananemdnsa.historystages.network.clientbound.SyncIndividualStagesPacket;
+import net.bananemdnsa.historystages.network.clientbound.SyncStageDefinitionsPacket;
+import net.bananemdnsa.historystages.network.clientbound.SyncStagesPacket;
 import net.bananemdnsa.historystages.util.DebugLogger;
 import net.bananemdnsa.historystages.data.saveddata.IndividualStageData;
 import net.bananemdnsa.historystages.util.lock.StageLockHelper;
@@ -493,7 +493,7 @@ public class StageCommand {
         if (isUnlock && Config.COMMON.useToasts.get()) {
             var stageEntry = StageManager.getStages().get(stageID);
             String iconId = (stageEntry != null && stageEntry.getIcon() != null) ? stageEntry.getIcon() : "";
-            PacketHandler.sendToastToAll(new net.bananemdnsa.historystages.network.StageUnlockedToastPacket(name, iconId));
+            PacketHandler.sendToastToAll(new net.bananemdnsa.historystages.network.clientbound.StageUnlockedToastPacket(name, iconId));
         }
     }
 
@@ -684,7 +684,7 @@ public class StageCommand {
             String iconId = (entry != null && entry.getIcon() != null) ? entry.getIcon() : "";
             PacketHandler.INSTANCE.send(
                     net.minecraftforge.network.PacketDistributor.PLAYER.with(() -> target),
-                    new net.bananemdnsa.historystages.network.StageUnlockedToastPacket(displayName, iconId)
+                    new net.bananemdnsa.historystages.network.clientbound.StageUnlockedToastPacket(displayName, iconId)
             );
         }
 

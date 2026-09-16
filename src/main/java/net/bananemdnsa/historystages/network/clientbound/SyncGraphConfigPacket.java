@@ -1,4 +1,4 @@
-package net.bananemdnsa.historystages.network;
+package net.bananemdnsa.historystages.network.clientbound;
 
 import net.bananemdnsa.historystages.client.editor.graph.StageGraphConfig;
 import net.bananemdnsa.historystages.data.graph.GraphConfigCodec;

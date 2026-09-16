@@ -7,10 +7,10 @@ import net.bananemdnsa.historystages.commands.StageCommand;
 import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.init.*;
 import net.bananemdnsa.historystages.network.PacketHandler;
-import net.bananemdnsa.historystages.network.SyncConfigPacket;
-import net.bananemdnsa.historystages.network.SyncIndividualStagesPacket;
-import net.bananemdnsa.historystages.network.SyncStageDefinitionsPacket;
-import net.bananemdnsa.historystages.network.SyncStagesPacket;
+import net.bananemdnsa.historystages.network.clientbound.SyncConfigPacket;
+import net.bananemdnsa.historystages.network.clientbound.SyncIndividualStagesPacket;
+import net.bananemdnsa.historystages.network.clientbound.SyncStageDefinitionsPacket;
+import net.bananemdnsa.historystages.network.clientbound.SyncStagesPacket;
 import net.bananemdnsa.historystages.screen.ResearchPedestalScreen;
 import net.bananemdnsa.historystages.util.DebugLogger;
 import net.bananemdnsa.historystages.util.ScrollVariants;
@@ -190,7 +190,7 @@ public class HistoryStages {
             PacketHandler.sendToPlayer(new SyncStagesPacket(data.getUnlockedStages()), player);
             PacketHandler.sendConfigToPlayer(SyncConfigPacket.fromServerConfig(), player);
             PacketHandler.sendGraphConfigToPlayer(
-                    net.bananemdnsa.historystages.network.SyncGraphConfigPacket.fromServerConfig(), player);
+                    net.bananemdnsa.historystages.network.clientbound.SyncGraphConfigPacket.fromServerConfig(), player);
 
             // Sync individual stages for this player
             IndividualStageData individualData = IndividualStageData.get(player.serverLevel());
@@ -200,7 +200,7 @@ public class HistoryStages {
 
             // Sync structure registry so editor UI can populate the searchable list
             PacketHandler.sendStructureRegistryToPlayer(
-                    net.bananemdnsa.historystages.network.SyncStructureRegistryPacket.fromServer(player),
+                    net.bananemdnsa.historystages.network.clientbound.SyncStructureRegistryPacket.fromServer(player),
                     player);
 
             DebugLogger.runtime("Player Login", player.getName().getString(),

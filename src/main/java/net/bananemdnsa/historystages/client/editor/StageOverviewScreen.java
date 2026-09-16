@@ -17,15 +17,15 @@ import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.data.StageMode;
 import net.bananemdnsa.historystages.data.StagePaths;
 import net.bananemdnsa.historystages.data.auto.AutoTrigger;
-import net.bananemdnsa.historystages.network.CreateFolderPacket;
-import net.bananemdnsa.historystages.network.DeleteFolderPacket;
-import net.bananemdnsa.historystages.network.DeleteStagePacket;
-import net.bananemdnsa.historystages.network.MoveFoldersPacket;
-import net.bananemdnsa.historystages.network.MoveStagesPacket;
+import net.bananemdnsa.historystages.network.serverbound.CreateFolderPacket;
+import net.bananemdnsa.historystages.network.serverbound.DeleteFolderPacket;
+import net.bananemdnsa.historystages.network.serverbound.DeleteStagePacket;
+import net.bananemdnsa.historystages.network.serverbound.MoveFoldersPacket;
+import net.bananemdnsa.historystages.network.serverbound.MoveStagesPacket;
 import net.bananemdnsa.historystages.network.PacketHandler;
-import net.bananemdnsa.historystages.network.RenameFolderPacket;
-import net.bananemdnsa.historystages.network.ToggleIndividualStageLockPacket;
-import net.bananemdnsa.historystages.network.ToggleStageLockPacket;
+import net.bananemdnsa.historystages.network.serverbound.RenameFolderPacket;
+import net.bananemdnsa.historystages.network.serverbound.ToggleIndividualStageLockPacket;
+import net.bananemdnsa.historystages.network.serverbound.ToggleStageLockPacket;
 import net.bananemdnsa.historystages.client.cache.ClientPlayerStageCache;
 import net.bananemdnsa.historystages.client.cache.ClientStageCache;
 import net.minecraft.client.Minecraft;
@@ -215,7 +215,7 @@ public class StageOverviewScreen extends Screen {
         if (++tempCountRefreshTimer >= 20) { // ~1s
             tempCountRefreshTimer = 0;
             requestTemporaryCounts();
-            PacketHandler.sendToServer(new net.bananemdnsa.historystages.network.RequestIndividualStatesPacket());
+            PacketHandler.sendToServer(new net.bananemdnsa.historystages.network.serverbound.RequestIndividualStatesPacket());
         }
     }
 
@@ -229,7 +229,7 @@ public class StageOverviewScreen extends Screen {
         UUID target = playerPicker == null ? null : playerPicker.getSelected();
         lastRequestedTarget = target;
         PacketHandler.sendToServer(
-                new net.bananemdnsa.historystages.network.RequestTemporaryCountsPacket(target));
+                new net.bananemdnsa.historystages.network.serverbound.RequestTemporaryCountsPacket(target));
     }
 
     @Override
@@ -239,7 +239,7 @@ public class StageOverviewScreen extends Screen {
 
         // Pull the live temporary-stage unlock counts from the server for display.
         requestTemporaryCounts();
-        PacketHandler.sendToServer(new net.bananemdnsa.historystages.network.RequestIndividualStatesPacket());
+        PacketHandler.sendToServer(new net.bananemdnsa.historystages.network.serverbound.RequestIndividualStatesPacket());
 
         searchFilter = "";
         int searchW = 120;

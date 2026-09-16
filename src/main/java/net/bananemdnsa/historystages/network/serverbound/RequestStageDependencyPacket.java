@@ -1,5 +1,7 @@
-package net.bananemdnsa.historystages.network;
+package net.bananemdnsa.historystages.network.serverbound;
 
+import net.bananemdnsa.historystages.network.PacketHandler;
+import net.bananemdnsa.historystages.network.clientbound.SyncDependencyStatusPacket;
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.data.StagePaths;

@@ -23,7 +23,7 @@ import net.bananemdnsa.historystages.data.auto.AutoTrigger;
 import net.bananemdnsa.historystages.data.graph.GraphStageData;
 import net.bananemdnsa.historystages.data.temporary.TemporaryConfig;
 import net.bananemdnsa.historystages.network.PacketHandler;
-import net.bananemdnsa.historystages.network.SaveStageGraphInfoPacket;
+import net.bananemdnsa.historystages.network.serverbound.SaveStageGraphInfoPacket;
 import net.bananemdnsa.historystages.research.TierMode;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;

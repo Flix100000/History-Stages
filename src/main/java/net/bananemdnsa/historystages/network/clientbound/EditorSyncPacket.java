@@ -1,5 +1,6 @@
-package net.bananemdnsa.historystages.network;
+package net.bananemdnsa.historystages.network.clientbound;
 
+import net.bananemdnsa.historystages.network.EditorDataCache;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import net.bananemdnsa.historystages.data.StageEntry;

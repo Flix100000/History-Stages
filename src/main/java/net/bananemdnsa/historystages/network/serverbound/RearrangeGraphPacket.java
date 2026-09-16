@@ -1,5 +1,8 @@
-package net.bananemdnsa.historystages.network;
+package net.bananemdnsa.historystages.network.serverbound;
 
+import net.bananemdnsa.historystages.network.PacketHandler;
+import net.bananemdnsa.historystages.network.clientbound.SyncStageDefinitionsPacket;
+import net.bananemdnsa.historystages.network.clientbound.EditorFeedbackPacket;
 import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.data.graph.GraphLayoutData;
 import net.minecraft.network.FriendlyByteBuf;

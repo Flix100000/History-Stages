@@ -1,4 +1,4 @@
-package net.bananemdnsa.historystages.network;
+package net.bananemdnsa.historystages.network.clientbound;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;

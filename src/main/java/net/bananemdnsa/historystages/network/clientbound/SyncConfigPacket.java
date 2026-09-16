@@ -1,5 +1,7 @@
-package net.bananemdnsa.historystages.network;
+package net.bananemdnsa.historystages.network.clientbound;
 
+import net.bananemdnsa.historystages.network.CommonConfigSync;
+import net.bananemdnsa.historystages.network.serverbound.SaveConfigPacket;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
 

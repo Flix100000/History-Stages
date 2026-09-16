@@ -23,7 +23,7 @@ import net.bananemdnsa.historystages.data.graph.StageStyle;
 import net.bananemdnsa.historystages.data.graph.StageStyleFields;
 import net.bananemdnsa.historystages.data.graph.StateStyles;
 import net.bananemdnsa.historystages.network.PacketHandler;
-import net.bananemdnsa.historystages.network.SaveStageGraphStylePacket;
+import net.bananemdnsa.historystages.network.serverbound.SaveStageGraphStylePacket;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;

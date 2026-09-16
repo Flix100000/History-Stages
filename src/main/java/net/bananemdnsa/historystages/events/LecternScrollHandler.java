@@ -2,7 +2,7 @@ package net.bananemdnsa.historystages.events;
 
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.init.ModItems;
-import net.bananemdnsa.historystages.network.OpenLecternScrollPacket;
+import net.bananemdnsa.historystages.network.clientbound.OpenLecternScrollPacket;
 import net.bananemdnsa.historystages.network.PacketHandler;
 import net.bananemdnsa.historystages.util.ScrollVariants;
 import net.minecraft.core.BlockPos;

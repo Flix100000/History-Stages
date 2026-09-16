@@ -1,4 +1,4 @@
-package net.bananemdnsa.historystages.network;
+package net.bananemdnsa.historystages.network.serverbound;
 
 import net.bananemdnsa.historystages.events.lock.StructureLockHandler;
 import net.minecraft.core.BlockPos;

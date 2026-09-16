@@ -3,7 +3,7 @@ package net.bananemdnsa.historystages.client.editor.dialog;
 import net.bananemdnsa.historystages.client.editor.widget.dialog.FormattedTextScreen;
 import net.bananemdnsa.historystages.data.graph.GraphStageData;
 import net.bananemdnsa.historystages.network.PacketHandler;
-import net.bananemdnsa.historystages.network.SaveStageGraphInfoPacket;
+import net.bananemdnsa.historystages.network.serverbound.SaveStageGraphInfoPacket;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
