@@ -1,6 +1,7 @@
 package net.bananemdnsa.historystages.events.lock;
 
 import net.bananemdnsa.historystages.HistoryStages;
+import net.bananemdnsa.historystages.data.lock.engine.FluidContent;
 import net.bananemdnsa.historystages.util.DebugLogger;
 import net.bananemdnsa.historystages.util.lock.LockFeedback;
 import net.bananemdnsa.historystages.util.lock.LockMessages;
@@ -20,7 +21,6 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.common.util.TriState;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.fluids.CauldronFluidContent;
@@ -83,7 +83,7 @@ public class FluidPickupLockHandler {
 
         // Only a fluid container can take a fluid out of the world. Everything else is a plain
         // right-click and none of our business.
-        if (held.getCapability(Capabilities.FluidHandler.ITEM) == null) return false;
+        if (!FluidContent.isContainer(held)) return false;
 
         String fluidId = fluidWithinReach(level, player, clickedPos);
         if (fluidId == null) return false;

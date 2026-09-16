@@ -33,22 +33,7 @@ public final class FluidContent {
      */
     @Nullable
     public static String of(@Nullable ItemStack stack) {
-        if (stack == null || stack.isEmpty()) return null;
-
-        IFluidHandlerItem handler;
-        try {
-            handler = stack.getCapability(Capabilities.FluidHandler.ITEM);
-        } catch (Exception e) {
-            // Whoever owns the item decides what comes back here, and some of them read their own
-            // config to decide — which throws outright while a world is still being opened
-            // (Sophisticated Backpacks, #130). An item that cannot say what it holds holds nothing
-            // as far as the locks are concerned; taking the game down over it is not proportionate.
-            ResourceLocation item = BuiltInRegistries.ITEM.getKey(stack.getItem());
-            DebugLogger.runtimeThrottled("Fluid Locks", "fluid-cap-" + item,
-                    "Asking " + item + " what fluid it holds failed: " + e
-                            + ". Treated as holding none.");
-            return null;
-        }
+        IFluidHandlerItem handler = handlerOf(stack);
         if (handler == null || handler.getTanks() == 0) return null;
 
         FluidStack contents = handler.getFluidInTank(0);
@@ -56,5 +41,37 @@ public final class FluidContent {
 
         ResourceLocation id = BuiltInRegistries.FLUID.getKey(contents.getFluid());
         return id != null ? id.toString() : null;
+    }
+
+    /**
+     * Whether this stack can carry a fluid at all, full or empty.
+     *
+     * <p>The question {@link #of} cannot answer: an empty bucket holds nothing and is still the
+     * thing a player scoops lava with.
+     */
+    public static boolean isContainer(@Nullable ItemStack stack) {
+        return handlerOf(stack) != null;
+    }
+
+    /**
+     * The one place that asks another mod about an item.
+     *
+     * <p>Whoever owns the item decides what comes back, and some of them read their own config to
+     * decide — which throws outright while a world is still being opened (Sophisticated Backpacks,
+     * #130). An item that will not answer holds nothing as far as the locks are concerned; taking
+     * the game down over it is not proportionate.
+     */
+    @Nullable
+    private static IFluidHandlerItem handlerOf(@Nullable ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return null;
+        try {
+            return stack.getCapability(Capabilities.FluidHandler.ITEM);
+        } catch (Exception e) {
+            ResourceLocation item = BuiltInRegistries.ITEM.getKey(stack.getItem());
+            DebugLogger.runtimeThrottled("Fluid Locks", "fluid-cap-" + item,
+                    "Asking " + item + " what fluid it holds failed: " + e
+                            + ". Treated as holding none.");
+            return null;
+        }
     }
 }
