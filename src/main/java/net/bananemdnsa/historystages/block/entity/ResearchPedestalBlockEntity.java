@@ -25,7 +25,7 @@ import net.bananemdnsa.historystages.network.PacketHandler;
 import net.bananemdnsa.historystages.network.clientbound.SyncIndividualStagesPacket;
 import net.bananemdnsa.historystages.network.clientbound.SyncStagesPacket;
 import net.bananemdnsa.historystages.data.lock.engine.StageScope;
-import net.bananemdnsa.historystages.util.ScrollVariants;
+import net.bananemdnsa.historystages.compat.ScrollVariants;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;

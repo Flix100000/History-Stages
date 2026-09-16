@@ -1,4 +1,4 @@
-package net.bananemdnsa.historystages.spellengine;
+package net.bananemdnsa.historystages.compat.spellengine;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;

@@ -3,7 +3,7 @@ package net.bananemdnsa.historystages.init;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.data.StageMode;
-import net.bananemdnsa.historystages.util.ScrollVariants;
+import net.bananemdnsa.historystages.compat.ScrollVariants;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.CreativeModeTab;

@@ -18,7 +18,7 @@ import mezz.jei.api.runtime.IJeiRuntime;
 import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.data.StageMode;
-import net.bananemdnsa.historystages.util.ScrollVariants;
+import net.bananemdnsa.historystages.compat.ScrollVariants;
 import net.bananemdnsa.historystages.init.ModBlocks;
 import net.bananemdnsa.historystages.init.ModItems;
 import net.bananemdnsa.historystages.research.BoosterUtil;

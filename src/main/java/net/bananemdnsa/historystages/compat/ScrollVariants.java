@@ -1,4 +1,4 @@
-package net.bananemdnsa.historystages.util;
+package net.bananemdnsa.historystages.compat;
 
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.StageManager;

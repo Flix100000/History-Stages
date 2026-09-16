@@ -1,5 +1,6 @@
-package net.bananemdnsa.historystages.spellengine;
+package net.bananemdnsa.historystages.compat;
 
+import net.bananemdnsa.historystages.compat.spellengine.SpellEngineCompat;
 import com.mojang.logging.LogUtils;
 import net.minecraftforge.fml.ModList;
 import org.slf4j.Logger;

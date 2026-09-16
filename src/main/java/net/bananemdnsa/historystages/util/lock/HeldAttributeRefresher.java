@@ -1,4 +1,4 @@
-package net.bananemdnsa.historystages.util;
+package net.bananemdnsa.historystages.util.lock;
 
 import com.google.common.collect.Multimap;
 

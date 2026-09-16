@@ -13,7 +13,7 @@ import net.bananemdnsa.historystages.network.clientbound.SyncStageDefinitionsPac
 import net.bananemdnsa.historystages.network.clientbound.SyncStagesPacket;
 import net.bananemdnsa.historystages.screen.ResearchPedestalScreen;
 import net.bananemdnsa.historystages.util.DebugLogger;
-import net.bananemdnsa.historystages.util.ScrollVariants;
+import net.bananemdnsa.historystages.compat.ScrollVariants;
 import net.bananemdnsa.historystages.data.saveddata.IndividualStageData;
 import net.bananemdnsa.historystages.data.saveddata.StageData;
 import net.minecraft.client.gui.screens.MenuScreens;
@@ -149,7 +149,7 @@ public class HistoryStages {
 
         // Optional per-mod lock adapters (custom actions that bypass vanilla interaction events).
         try {
-            net.bananemdnsa.historystages.spellengine.LockInterceptors.init();
+            net.bananemdnsa.historystages.compat.LockInterceptors.init();
         } catch (Throwable t) {
             LOGGER.error("[HistoryStages] Failed to init lock interceptors.", t);
         }

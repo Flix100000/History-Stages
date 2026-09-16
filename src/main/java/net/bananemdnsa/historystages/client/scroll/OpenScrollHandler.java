@@ -2,7 +2,7 @@ package net.bananemdnsa.historystages.client.scroll;
 
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.init.ModItems;
-import net.bananemdnsa.historystages.util.ScrollVariants;
+import net.bananemdnsa.historystages.compat.ScrollVariants;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.api.distmarker.Dist;

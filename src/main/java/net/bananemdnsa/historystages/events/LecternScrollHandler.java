@@ -4,7 +4,7 @@ import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.init.ModItems;
 import net.bananemdnsa.historystages.network.clientbound.OpenLecternScrollPacket;
 import net.bananemdnsa.historystages.network.PacketHandler;
-import net.bananemdnsa.historystages.util.ScrollVariants;
+import net.bananemdnsa.historystages.compat.ScrollVariants;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.stats.Stats;

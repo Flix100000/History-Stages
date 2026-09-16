@@ -3,7 +3,7 @@ package net.bananemdnsa.historystages.recipe;
 import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.init.ModItems;
 import net.bananemdnsa.historystages.init.ModRecipes;
-import net.bananemdnsa.historystages.util.ScrollVariants;
+import net.bananemdnsa.historystages.compat.ScrollVariants;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.resources.ResourceLocation;

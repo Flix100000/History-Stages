@@ -1,9 +1,10 @@
-package net.bananemdnsa.historystages.events;
+package net.bananemdnsa.historystages.events.lock;
 
+import net.bananemdnsa.historystages.events.StageEvent;
 import java.util.UUID;
 
 import net.bananemdnsa.historystages.HistoryStages;
-import net.bananemdnsa.historystages.util.HeldAttributeRefresher;
+import net.bananemdnsa.historystages.util.lock.HeldAttributeRefresher;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
