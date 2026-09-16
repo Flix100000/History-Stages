@@ -24,6 +24,7 @@ import net.bananemdnsa.historystages.data.saveddata.StageData;
 import net.bananemdnsa.historystages.network.PacketHandler;
 import net.bananemdnsa.historystages.network.clientbound.SyncIndividualStagesPacket;
 import net.bananemdnsa.historystages.network.clientbound.SyncStagesPacket;
+import net.bananemdnsa.historystages.data.lock.engine.StageScope;
 import net.bananemdnsa.historystages.util.ScrollVariants;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
@@ -173,7 +174,8 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
                         double tickCost = scrollTag.contains("LockedCostReduction")
                                 ? scrollTag.getDouble("LockedCostReduction") : 0.0;
                         var result = net.bananemdnsa.historystages.data.dependency.DependencyChecker.checkAll(entry,
-                                player, level, scroll.getTag().getCompound("DepositedDependencies"),
+                                player, level, isCurrentScrollIndividual() ? StageScope.INDIVIDUAL : StageScope.GLOBAL,
+                                scroll.getTag().getCompound("DepositedDependencies"),
                                 tickCost);
                         // To the one player the result was computed for, not the chunk: the
                         // status is personal (their inventory, their stages, their deposits), so
@@ -493,6 +495,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
                                                 ? stack.getTag().getDouble("LockedCostReduction")
                                                 : 0.0;
                                 DependencyResult result = DependencyChecker.checkAll(stageEntry, researchPlayer, level,
+                                        isIndividual ? StageScope.INDIVIDUAL : StageScope.GLOBAL,
                                         depositedTag, tickCost);
                                 metTotal = result.isFulfilled();
                             } else {

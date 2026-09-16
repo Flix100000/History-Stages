@@ -33,6 +33,16 @@ public final class ClientCategoryEditorSetup {
             ModLoader.get().postEvent(new net.bananemdnsa.historystages.client.editor.trigger
                     .RegisterTriggerEditorsEvent());
             net.bananemdnsa.historystages.client.editor.trigger.TriggerEditors.freeze();
+
+            ModLoader.get().postEvent(new net.bananemdnsa.historystages.client.editor.dep
+                    .RegisterRequirementEditorsEvent());
+            net.bananemdnsa.historystages.client.editor.dep.RequirementEditors.freeze();
+
+            // One window for both declarative axes: a CUSTOM_SCREEN field on a stage setting and
+            // one in the config screen ask the same question, which screen edits this value.
+            ModLoader.get().postEvent(new net.bananemdnsa.historystages.client.editor.field
+                    .RegisterCustomFieldScreensEvent());
+            net.bananemdnsa.historystages.client.editor.field.CustomFieldScreens.freeze();
         });
     }
 }

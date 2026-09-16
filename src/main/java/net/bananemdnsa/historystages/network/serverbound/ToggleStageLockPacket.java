@@ -1,18 +1,15 @@
 package net.bananemdnsa.historystages.network.serverbound;
 
 import net.bananemdnsa.historystages.network.PacketHandler;
-import net.bananemdnsa.historystages.network.clientbound.SyncStagesPacket;
 import net.bananemdnsa.historystages.network.clientbound.EditorFeedbackPacket;
 import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.data.StageManager;
-import net.bananemdnsa.historystages.events.StageEvent;
-import net.bananemdnsa.historystages.data.saveddata.StageData;
+import net.bananemdnsa.historystages.data.StageUnlockHelper;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.network.NetworkEvent;
-
 import java.util.ArrayList;
 import java.util.function.Supplier;
 
@@ -41,30 +38,19 @@ public class ToggleStageLockPacket {
 
             if (!StageManager.getStages().containsKey(msg.stageId)) return;
 
-            StageData data = StageData.get(player.serverLevel());
             var entry = StageManager.getStages().get(msg.stageId);
             String displayName = entry != null ? entry.getDisplayName() : msg.stageId;
 
+            // Through the helper, not rebuilt here. This handler used to do its own version of
+            // unlockGlobal and the two drifted in both directions: the editor never played the
+            // unlock sound or sent the toast, and every other caller — pedestal, command,
+            // auto-trigger, quest reward — never cleared the structure and biome caches or
+            // reloaded recipes. Everything either side had is now in the helper.
             if (msg.unlock) {
-                data.addStage(msg.stageId);
-                MinecraftForge.EVENT_BUS.post(new StageEvent.Unlocked(msg.stageId, displayName));
+                StageUnlockHelper.unlockGlobal(msg.stageId, player.serverLevel());
             } else {
-                data.removeStage(msg.stageId);
-                MinecraftForge.EVENT_BUS.post(new StageEvent.Locked(msg.stageId, displayName));
+                StageUnlockHelper.relockGlobal(msg.stageId, player.serverLevel());
             }
-
-            data.setDirty();
-            StageData.refreshCache(data.getUnlockedStages());
-            // Structure-lock caches are keyed off lockedStructureIds — force every
-            // tracked player to recompute on the next tick so the force-field /
-            // screen overlay appear immediately when a stage gets locked again.
-            net.bananemdnsa.historystages.events.lock.StructureLockHandler.invalidateAll();
-            net.bananemdnsa.historystages.events.lock.BiomeLockHandler.invalidateAll();
-            net.bananemdnsa.historystages.util.lock.StructureGenerationGate.rebuild();
-            PacketHandler.sendToAll(new SyncStagesPacket(new ArrayList<>(data.getUnlockedStages())));
-            // The editor's own lock toggle changes a global stage like any other path, so the
-            // recipe lists have to be told the same way.
-            PacketHandler.reloadForLockChange(player.server);
 
             String titleKey = msg.unlock
                     ? "editor.historystages.toast.stage_unlocked_editor.title"

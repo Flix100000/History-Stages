@@ -55,6 +55,7 @@ public final class StageUnlockHelper {
         // Config-gated chat/actionbar/sound broadcast + toast
         broadcastGlobalUnlock(level.getServer(), stageId, displayName, entry);
 
+        invalidateLockCaches();
         MinecraftServer unlockServer = level.getServer();
         if (unlockServer != null) {
             // Recipes gate globally only, so this belongs on the global paths and nowhere else.
@@ -95,6 +96,10 @@ public final class StageUnlockHelper {
         // Config-gated chat/actionbar/sound/toast notification to the player
         notifyIndividualUnlock(player, stageId, displayName, entry);
 
+        // Structures and biomes can be gated per player, so their caches go stale here too.
+        // Recipes cannot — that category is global-only — so no reload belongs on this path.
+        invalidateLockCaches();
+
         return true;
     }
 
@@ -123,6 +128,8 @@ public final class StageUnlockHelper {
         // Config-gated chat/actionbar/sound broadcast — same "locked" feedback the
         // /stage lock command produces.
         broadcastGlobalLock(level.getServer(), displayName);
+
+        invalidateLockCaches();
 
         MinecraftServer server = level.getServer();
         if (server != null) {
@@ -162,7 +169,26 @@ public final class StageUnlockHelper {
 
         // Config-gated "locked" feedback to the affected player.
         notifyIndividualLock(player, displayName);
+
+        invalidateLockCaches();
         return true;
+    }
+
+    /**
+     * Drops the structure and biome lock caches so the next tick recomputes them.
+     *
+     * <p>Both are keyed off which stages are unlocked, and neither notices on its own. Without
+     * this the force field around a locked structure stays up until the next chunk scan, which
+     * can be minutes — and it used to happen on every path but the editor's, because the editor
+     * had these two calls written into its packet handler instead of here.
+     *
+     * <p>{@code StructureGenerationGate.rebuild()} is deliberately absent: {@code StageData}
+     * already calls it from {@code addStage} and {@code removeStage}, so it is covered whichever
+     * way the stage moved.
+     */
+    private static void invalidateLockCaches() {
+        net.bananemdnsa.historystages.events.lock.StructureLockHandler.invalidateAll();
+        net.bananemdnsa.historystages.events.lock.BiomeLockHandler.invalidateAll();
     }
 
     // --- private notification helpers ---------------------------------------

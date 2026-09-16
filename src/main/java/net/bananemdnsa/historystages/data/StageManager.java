@@ -300,6 +300,60 @@ public class StageManager {
     }
 
     /**
+     * Drops dependency groups beyond {@link DependencyGroup#MAX_GROUPS}. Hand-written JSON can
+     * declare any number; only the first {@code MAX_GROUPS} are evaluated, so the surplus is
+     * removed here instead of silently taking effect.
+     */
+    private static void trimDependencyGroups(String stageId, StageEntry entry) {
+        List<DependencyGroup> deps = entry.getDependencies();
+        if (deps.size() <= DependencyGroup.MAX_GROUPS) return;
+
+        int dropped = deps.size() - DependencyGroup.MAX_GROUPS;
+        entry.setDependencies(new ArrayList<>(deps.subList(0, DependencyGroup.MAX_GROUPS)));
+
+        String msg = "Stage '" + stageId + "' declares " + deps.size() + " dependency groups, "
+                + "but only " + DependencyGroup.MAX_GROUPS + " are supported. Dropped the last "
+                + dropped + ".";
+        addMessage(MessageLevel.WARN, msg);
+        DebugLogger.warn("Dependency Groups", msg);
+    }
+
+    /**
+     * Reports requirements a stage declares that its scope cannot answer — a kill or an
+     * advancement on a global stage, for instance, where there is no single player to ask.
+     *
+     * <p>Reports only. The entry stays in the file and evaluation skips it. Hand editing is a
+     * supported path here, and quietly deleting what somebody wrote is the problem the stage-file
+     * overwrite guard exists to prevent.
+     */
+    private static void warnAboutScopeMismatches(String stageId, StageEntry entry, StageScope scope) {
+        for (DependencyGroup group : entry.getDependencies()) {
+            List<String> unusable = RequirementScopeScan.unusable(group, scope);
+            if (unusable.isEmpty()) continue;
+
+            String msg = "Stage '" + stageId + "' declares " + String.join(", ", unusable)
+                    + " requirements, which only work on individual stages. They are ignored.";
+            addMessage(MessageLevel.WARN, msg);
+            DebugLogger.warn("Dependency Scope", msg);
+        }
+    }
+
+    private static void validateFileName(String id, String fileName) {
+        if (!id.equals(id.toLowerCase())) {
+            addMessage(MessageLevel.INFO, "File '" + fileName + "' contains uppercase letters. Lowercase recommended.");
+            DebugLogger.info("File Names", "'" + fileName + "' contains uppercase letters. Use lowercase for consistency (e.g. '" + id.toLowerCase() + ".json').");
+        }
+        if (id.contains(" ")) {
+            addMessage(MessageLevel.INFO, "File '" + fileName + "' contains spaces. Use underscores instead.");
+            DebugLogger.info("File Names", "'" + fileName + "' contains spaces. Use underscores instead (e.g. '" + id.replace(" ", "_") + ".json').");
+        }
+        if (!id.matches("[a-zA-Z0-9_\\-]+")) {
+            addMessage(MessageLevel.INFO, "File '" + fileName + "' contains special characters.");
+            DebugLogger.info("File Names", "'" + fileName + "' contains special characters. Only use a-z, 0-9, _ and -.");
+        }
+    }
+
+    /**
      * Collects every stage file below {@code dir} as a path relative to the tree root, and
      * records the folders it walks through — including empty ones. Names starting with
      * {@code _} are skipped, which now covers directories too: {@code _backup/} is ignored
@@ -412,40 +466,6 @@ public class StageManager {
         return false;
     }
 
-    /**
-     * Drops dependency groups beyond {@link DependencyGroup#MAX_GROUPS}. Hand-written JSON can
-     * declare any number; only the first {@code MAX_GROUPS} are evaluated, so the surplus is
-     * removed here instead of silently taking effect.
-     */
-    private static void trimDependencyGroups(String stageId, StageEntry entry) {
-        List<DependencyGroup> deps = entry.getDependencies();
-        if (deps.size() <= DependencyGroup.MAX_GROUPS) return;
-
-        int dropped = deps.size() - DependencyGroup.MAX_GROUPS;
-        entry.setDependencies(new ArrayList<>(deps.subList(0, DependencyGroup.MAX_GROUPS)));
-
-        String msg = "Stage '" + stageId + "' declares " + deps.size() + " dependency groups, "
-                + "but only " + DependencyGroup.MAX_GROUPS + " are supported. Dropped the last "
-                + dropped + ".";
-        addMessage(MessageLevel.WARN, msg);
-        DebugLogger.warn("Dependency Groups", msg);
-    }
-
-    private static void validateFileName(String id, String fileName) {
-        if (!id.equals(id.toLowerCase())) {
-            addMessage(MessageLevel.INFO, "File '" + fileName + "' contains uppercase letters. Lowercase recommended.");
-            DebugLogger.info("File Names", "'" + fileName + "' contains uppercase letters. Use lowercase for consistency (e.g. '" + id.toLowerCase() + ".json').");
-        }
-        if (id.contains(" ")) {
-            addMessage(MessageLevel.INFO, "File '" + fileName + "' contains spaces. Use underscores instead.");
-            DebugLogger.info("File Names", "'" + fileName + "' contains spaces. Use underscores instead (e.g. '" + id.replace(" ", "_") + ".json').");
-        }
-        if (!id.matches("[a-zA-Z0-9_\\-]+")) {
-            addMessage(MessageLevel.INFO, "File '" + fileName + "' contains special characters.");
-            DebugLogger.info("File Names", "'" + fileName + "' contains special characters. Only use a-z, 0-9, _ and -.");
-        }
-    }
-
     private static void detectUnknownKeys(String stageId, String content) {
         try {
             JsonObject json = JsonParser.parseString(content).getAsJsonObject();
@@ -529,6 +549,7 @@ public class StageManager {
         }
 
         trimDependencyGroups(stageId, entry);
+        warnAboutScopeMismatches(stageId, entry, StageScope.GLOBAL);
 
         // --- Empty strings & duplicates helper ---
         removeEmptyItemEntries(entry.getItemEntries(), stageId);
@@ -1832,6 +1853,9 @@ public class StageManager {
         }
 
         trimDependencyGroups(stageId, entry);
+        // No-op today, because every built-in works at INDIVIDUAL scope. Here anyway, so a
+        // requirement that later declares itself global-only is caught on this side too.
+        warnAboutScopeMismatches(stageId, entry, StageScope.INDIVIDUAL);
 
         // Reuse global validation (empty strings, duplicates, format checks)
         removeEmptyItemEntries(entry.getItemEntries(), stageId);

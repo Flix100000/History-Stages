@@ -101,6 +101,9 @@ public class HistoryStages {
                             new net.bananemdnsa.historystages.data.auto.RegisterTriggerTypesEvent());
                     net.bananemdnsa.historystages.data.auto.TriggerTypes.freeze();
                     net.minecraftforge.fml.ModLoader.get().postEvent(
+                            new net.bananemdnsa.historystages.data.dependency.RegisterRequirementTypesEvent());
+                    net.bananemdnsa.historystages.data.dependency.RequirementTypes.freeze();
+                    net.minecraftforge.fml.ModLoader.get().postEvent(
                             new net.bananemdnsa.historystages.data.settings.RegisterStageSettingsGroupsEvent());
                     net.bananemdnsa.historystages.data.settings.StageSettingsGroups.freeze();
                     net.minecraftforge.fml.ModLoader.get().postEvent(

@@ -14,6 +14,10 @@ public class SyncStagesPacket {
         this.unlockedStages = unlockedStages;
     }
 
+    public List<String> unlockedStages() {
+        return unlockedStages;
+    }
+
     // Wandelt die Liste in Daten um, die durch das Internet passen (Senden)
     public static void encode(SyncStagesPacket msg, FriendlyByteBuf buffer) {
         buffer.writeInt(msg.unlockedStages.size());
