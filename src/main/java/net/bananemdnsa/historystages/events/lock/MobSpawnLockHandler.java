@@ -5,18 +5,23 @@ import net.bananemdnsa.historystages.data.lock.engine.LockResolution;
 import net.bananemdnsa.historystages.data.lock.engine.StageLocks;
 import net.bananemdnsa.historystages.api.stage.StageScope;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.bananemdnsa.historystages.data.StageManager;
-import net.bananemdnsa.historystages.data.saveddata.StageData;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.MobSpawnType;
+import net.minecraft.world.level.Level;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
 import net.minecraftforge.event.entity.living.BabyEntitySpawnEvent;
 import net.minecraftforge.event.entity.living.MobSpawnEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.bananemdnsa.historystages.data.StageManager;
+import net.bananemdnsa.historystages.data.saveddata.StageData;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.registries.ForgeRegistries;
 
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Mod.EventBusSubscriber(modid = HistoryStages.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class MobSpawnLockHandler {
@@ -25,13 +30,28 @@ public class MobSpawnLockHandler {
      * Source-aware spawn locking for mobs. Maps the vanilla {@link MobSpawnType}
      * to one of our 6 buckets and cancels the spawn if any required stage is missing.
      */
+    /**
+     * Dimension ids as strings, kept per level key.
+     *
+     * <p>{@code dimension().location().toString()} builds a new string every call, and the three
+     * handlers below ask for it per spawn - which on EntityJoinLevel means per arrow, per dropped
+     * item, per XP orb. There are only ever a handful of dimensions.
+     */
+    private static final Map<ResourceKey<Level>, String> DIMENSION_IDS = new ConcurrentHashMap<>();
+
+    private static String dimensionId(Level level) {
+        return DIMENSION_IDS.computeIfAbsent(level.dimension(), key -> key.location().toString());
+    }
+
     @SubscribeEvent
     public static void onFinalizeSpawn(MobSpawnEvent.FinalizeSpawn event) {
+        if (!StageLocks.engine().anyEntitySpawnLocks()) return;
+
         ResourceLocation entityType = ForgeRegistries.ENTITY_TYPES.getKey(event.getEntity().getType());
         if (entityType == null) return;
 
         String source = mapSpawnSource(event.getSpawnType());
-        String dimension = event.getLevel().getLevel().dimension().location().toString();
+        String dimension = dimensionId(event.getLevel().getLevel());
         List<String> requiredStageIds = StageLocks.engine()
                 .gatingStagesForEntitySpawn(entityType.toString(), source, dimension, StageScope.GLOBAL);
         if (requiredStageIds.isEmpty()) return;
@@ -49,11 +69,12 @@ public class MobSpawnLockHandler {
      */
     @SubscribeEvent
     public static void onBabySpawn(BabyEntitySpawnEvent event) {
+        if (!StageLocks.engine().anyEntitySpawnLocks()) return;
         if (event.getChild() == null) return;
         ResourceLocation entityType = ForgeRegistries.ENTITY_TYPES.getKey(event.getChild().getType());
         if (entityType == null) return;
 
-        String dimension = event.getParentA().level().dimension().location().toString();
+        String dimension = dimensionId(event.getParentA().level());
         List<String> requiredStageIds = StageLocks.engine()
                 .gatingStagesForEntitySpawn(entityType.toString(), "breeding", dimension, StageScope.GLOBAL);
         if (requiredStageIds.isEmpty()) return;
@@ -71,13 +92,16 @@ public class MobSpawnLockHandler {
     @SubscribeEvent
     public static void onEntityJoinLevel(EntityJoinLevelEvent event) {
         if (event.getLevel().isClientSide()) return;
+        // Before anything else, including the two toString calls below: this fires for every
+        // arrow, dropped item, XP orb and falling block in the world.
+        if (!StageLocks.engine().anyEntitySpawnLocks()) return;
         if (event.getEntity() instanceof net.minecraft.world.entity.Mob) return;
 
         ResourceLocation entityType = ForgeRegistries.ENTITY_TYPES.getKey(event.getEntity().getType());
         if (entityType == null) return;
 
         // For non-mob entities we treat any matching entry as a full block (subject to dimension filter).
-        String dimension = event.getLevel().dimension().location().toString();
+        String dimension = dimensionId(event.getLevel());
         List<String> requiredStageIds = StageLocks.engine()
                 .gatingStagesWithSpawnEntry(entityType.toString(), dimension, StageScope.GLOBAL);
         if (requiredStageIds.isEmpty()) return;

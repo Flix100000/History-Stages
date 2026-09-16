@@ -1,6 +1,7 @@
 package net.bananemdnsa.historystages.network.serverbound;
 
 import net.bananemdnsa.historystages.block.entity.ResearchPedestalBlockEntity;
+import net.bananemdnsa.historystages.network.PacketReach;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
@@ -38,11 +39,7 @@ public class PedestalControlPacket {
                 return;
 
             // Reach check: refuse anything the player could not plausibly be using.
-            if (!player.level().isLoaded(packet.pos)) return;
-            if (player.distanceToSqr(packet.pos.getX() + 0.5, packet.pos.getY() + 0.5,
-                    packet.pos.getZ() + 0.5) > 64.0) return;
-
-            BlockEntity be = player.level().getBlockEntity(packet.pos);
+            BlockEntity be = PacketReach.blockEntityInReach(player, packet.pos);
             if (!(be instanceof ResearchPedestalBlockEntity pedestal)) return;
 
             if (packet.start) {

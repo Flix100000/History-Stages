@@ -1,42 +1,43 @@
 package net.bananemdnsa.historystages.block.entity;
 
 import net.bananemdnsa.historystages.Config;
-import net.bananemdnsa.historystages.block.MultiBlockResearchPedestalBlock;
 import net.bananemdnsa.historystages.block.ResearchPedestalBlock;
-import net.bananemdnsa.historystages.block.TieredPedestal;
-import net.bananemdnsa.historystages.init.ModBlockEntities;
-import net.bananemdnsa.historystages.init.ModItems;
-import net.bananemdnsa.historystages.screen.ResearchPedestalMenu;
+import net.bananemdnsa.historystages.compat.ScrollVariants;
+import net.bananemdnsa.historystages.data.ScrollCompletion;
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.data.StageMode;
 import net.bananemdnsa.historystages.data.NbtMatcher;
-import net.bananemdnsa.historystages.data.ScrollCompletion;
 import net.bananemdnsa.historystages.data.dependency.DependencyChecker;
 import net.bananemdnsa.historystages.data.dependency.DependencyProgress;
 import net.bananemdnsa.historystages.api.dependency.RequirementResult;
+import net.bananemdnsa.historystages.block.MultiBlockResearchPedestalBlock;
+import net.bananemdnsa.historystages.block.TieredPedestal;
 import net.bananemdnsa.historystages.research.BoosterUtil;
 import net.bananemdnsa.historystages.research.ResearchBooster;
 import net.bananemdnsa.historystages.research.ResearchBoosterRegistry;
 import net.bananemdnsa.historystages.research.TierMatcher;
 import net.bananemdnsa.historystages.research.TierMode;
+import net.bananemdnsa.historystages.init.ModBlockEntities;
+import net.bananemdnsa.historystages.init.ModItems;
+import net.bananemdnsa.historystages.screen.ResearchPedestalMenu;
 import net.bananemdnsa.historystages.data.saveddata.IndividualStageData;
 import net.bananemdnsa.historystages.data.saveddata.StageData;
 import net.bananemdnsa.historystages.network.PacketHandler;
+import net.bananemdnsa.historystages.network.clientbound.SyncDependencyStatusPacket;
 import net.bananemdnsa.historystages.network.clientbound.SyncIndividualStagesPacket;
 import net.bananemdnsa.historystages.network.clientbound.SyncStagesPacket;
 import net.bananemdnsa.historystages.api.stage.StageScope;
-import net.bananemdnsa.historystages.compat.ScrollVariants;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.MenuProvider;
-import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -45,20 +46,28 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.items.ItemStackHandler;
 import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.common.capabilities.ForgeCapabilities;
 import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.items.IItemHandler;
-import net.minecraftforge.items.ItemStackHandler;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.UUID;
 
 public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProvider {
 
+    // Slot 0: Research Scroll, Slot 1: Deposit item
     private final ItemStackHandler itemHandler = new ItemStackHandler(2) {
+        @Override
+        public @NotNull ItemStack extractItem(int slot, int amount, boolean simulate) {
+            if (slot == 0 && isScrollLocked()) return ItemStack.EMPTY;
+            return super.extractItem(slot, amount, simulate);
+        }
+
         @Override
         protected void onContentsChanged(int slot) {
             if (slot == 0) {
@@ -73,7 +82,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
                     ResearchPedestalBlockEntity.this.resetResearchState();
                 }
             } else if (slot == 1) {
-                // Reset deposit delay when item changed
+                // Reset deposit delay when deposit slot changes
                 depositDelay = 0;
             }
             setChanged();
@@ -84,114 +93,10 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
             if (slot == 0) {
                 return stack.is(ModItems.RESEARCH_SCROLL.get()) || stack.is(ModItems.CREATIVE_SCROLL.get());
             }
-            // All items are potentially valid for deposit (checked during processing)
+            // Slot 1: all items are potentially valid for deposit
             return true;
         }
-
-        @Override
-        public @NotNull ItemStack extractItem(int slot, int amount, boolean simulate) {
-            if (slot == 0 && isScrollLocked()) return ItemStack.EMPTY;
-            return super.extractItem(slot, amount, simulate);
-        }
     };
-
-    /** True when the scroll cannot be removed: a research is actively running. Pausing
-     *  releases it, which is how a scroll is handed to the next player. */
-    public boolean isScrollLocked() {
-        return this.running;
-    }
-
-    private void tryProcessDeposit(ItemStack depositStack) {
-        ItemStack scroll = getScrollStack();
-        if (scroll.isEmpty() || !scroll.hasTag() || !scroll.getTag().contains("StageResearch"))
-            return;
-
-        String stageId = scroll.getTag().getString("StageResearch");
-        boolean isIndividual = StageManager.isIndividualStage(stageId);
-        StageEntry entry = isIndividual ? StageManager.getIndividualStages().get(stageId)
-                : StageManager.getStages().get(stageId);
-
-        if (entry == null || entry.getDependencies() == null)
-            return;
-
-        ResourceLocation depositRl = ForgeRegistries.ITEMS.getKey(depositStack.getItem());
-        if (depositRl == null)
-            return;
-
-        CompoundTag scrollTag = scroll.getOrCreateTag();
-        CompoundTag deposited = scroll.getOrCreateTagElement("DepositedDependencies");
-        boolean changed = false;
-
-        // Use locked cost reduction if present, else preview using the current pedestal's booster.
-        boolean alreadyLocked = scrollTag.contains("LockedCostReduction");
-        double costReduction = alreadyLocked
-                ? getLockedCostReduction(scrollTag)
-                : getActiveBooster().costReduction();
-
-        for (int i = 0; i < entry.getDependencies().size(); i++) {
-            net.bananemdnsa.historystages.data.DependencyGroup group = entry.getDependencies().get(i);
-            for (net.bananemdnsa.historystages.data.dependency.DependencyItem reqItem : group.getItems()) {
-                ResourceLocation reqRl = ResourceLocation.tryParse(reqItem.getId());
-                if (reqRl != null && reqRl.equals(depositRl)
-                        && (!reqItem.hasNbt() || NbtMatcher.matches(depositStack, reqItem.getNbt()))) {
-                    String key = DependencyProgress.key(DependencyProgress.groupKey(group, i),
-                            DependencyProgress.itemSuffix(reqRl.toString()));
-                    int current = deposited.getInt(key);
-                    int effectiveRequired = BoosterUtil.effectiveCount(reqItem.getCount(), costReduction);
-                    int needed = effectiveRequired - current;
-
-                    if (needed > 0) {
-                        int toTake = Math.min(needed, depositStack.getCount());
-                        depositStack.shrink(toTake);
-                        deposited.putInt(key, current + toTake);
-                        changed = true;
-
-                        if (depositStack.isEmpty())
-                            break;
-                    }
-                }
-            }
-            if (depositStack.isEmpty())
-                break;
-        }
-
-        if (changed) {
-            // First deposit ever for this scroll: lock the cost reduction value.
-            if (!alreadyLocked) {
-                scrollTag.putDouble("LockedCostReduction", costReduction);
-            }
-            scroll.setTag(scrollTag); // Trigger sync
-            setChanged();
-
-            // Push update to watching players immediately
-            if (entry != null && level != null && !level.isClientSide) {
-                // Same fallback as tick(): before a start there is no owner, and the player
-                // depositing still needs their checklist refreshed.
-                UUID checkUUID = isCurrentScrollIndividual() && this.ownerUUID != null
-                        ? this.ownerUUID
-                        : this.lastInteractingPlayer;
-                if (checkUUID != null) {
-                    var player = level.getServer().getPlayerList().getPlayer(checkUUID);
-                    if (player != null) {
-                        double tickCost = scrollTag.contains("LockedCostReduction")
-                                ? scrollTag.getDouble("LockedCostReduction") : 0.0;
-                        var result = net.bananemdnsa.historystages.data.dependency.DependencyChecker.checkAll(entry,
-                                player, level, isCurrentScrollIndividual() ? StageScope.INDIVIDUAL : StageScope.GLOBAL,
-                                scroll.getTag().getCompound("DepositedDependencies"),
-                                tickCost);
-                        // To the one player the result was computed for, not the chunk: the
-                        // status is personal (their inventory, their stages, their deposits), so
-                        // a broadcast would have every client nearby cache someone else's answer
-                        // under this stage id.
-                        net.bananemdnsa.historystages.network.PacketHandler.INSTANCE.send(
-                                net.minecraftforge.network.PacketDistributor.PLAYER.with(() -> player),
-                                new net.bananemdnsa.historystages.network.clientbound.SyncDependencyStatusPacket(
-                                        stageId, isCurrentScrollIndividual(), result));
-                    }
-                }
-            }
-        }
-    }
 
     private LazyOptional<IItemHandler> lazyItemHandler = LazyOptional.empty();
     protected final ContainerData data;
@@ -202,7 +107,11 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
     private int syncTickDelay = -1;
     private UUID ownerUUID = null;
     private UUID lastInteractingPlayer = null;
-    private boolean dependenciesMet = true; // Tracks if current stage's dependencies are fulfilled
+    private boolean dependenciesMet = true;
+    /** Counts down to the next {@link #checkDependencies} run; see {@link #DEPENDENCY_CHECK_INTERVAL}. */
+    private int dependencyCheckCooldown = 0;
+    /** What that run last answered. Neither saved nor synced: it is re-derived within half a second. */
+    private boolean lastDependencyVerdict = false;
     private boolean running = false;
     private double progressAccumulator = 0.0;
     private int currentSpeedPercent = 0;
@@ -211,10 +120,109 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
     private TierMode requiredTierMode = TierMode.MIN;
     private int lastComparatorOutput = -1;
 
-    /** Read the cost reduction locked into the scroll on first deposit, or 0.0 if not yet locked. */
+    public ResearchPedestalBlockEntity(BlockPos pPos, BlockState pBlockState) {
+        super(ModBlockEntities.RESEARCH_PEDESTAL_BE.get(), pPos, pBlockState);
+        this.data = new ContainerData() {
+            @Override
+            public int get(int pIndex) {
+                return switch (pIndex) {
+                    case 0 -> ResearchPedestalBlockEntity.this.progress;
+                    case 1 -> ResearchPedestalBlockEntity.this.getMaxProgressForCurrentStage();
+                    case 2 -> ResearchPedestalBlockEntity.this.finishDelay;
+                    case 3 -> ResearchPedestalBlockEntity.this.isCurrentScrollIndividual() ? 1 : 0;
+                    case 4 -> ResearchPedestalBlockEntity.this.dependenciesMet ? 1 : 0;
+                    case 5 -> ResearchPedestalBlockEntity.this.depositDelay;
+                    case 6 -> ResearchPedestalBlockEntity.this.currentSpeedPercent;
+                    case 7 -> ResearchPedestalBlockEntity.this.tierMismatch ? 1 : 0;
+                    case 8 -> ResearchPedestalBlockEntity.this.requiredTier;
+                    case 9 -> ResearchPedestalBlockEntity.this.requiredTierMode.ordinal();
+                    case 10 -> ResearchPedestalBlockEntity.this.running ? 1 : 0;
+                    default -> 0;
+                };
+            }
+
+            @Override
+            public void set(int pIndex, int pValue) {
+                switch (pIndex) {
+                    case 0 -> ResearchPedestalBlockEntity.this.progress = pValue;
+                    case 2 -> ResearchPedestalBlockEntity.this.finishDelay = pValue;
+                    case 4 -> ResearchPedestalBlockEntity.this.dependenciesMet = pValue == 1;
+                    case 5 -> ResearchPedestalBlockEntity.this.depositDelay = pValue;
+                    case 6 -> ResearchPedestalBlockEntity.this.currentSpeedPercent = pValue;
+                    case 7 -> ResearchPedestalBlockEntity.this.tierMismatch = pValue == 1;
+                    case 8 -> ResearchPedestalBlockEntity.this.requiredTier = pValue;
+                    case 9 -> ResearchPedestalBlockEntity.this.requiredTierMode =
+                            pValue == TierMode.EXACT.ordinal() ? TierMode.EXACT : TierMode.MIN;
+                    case 10 -> ResearchPedestalBlockEntity.this.running = pValue == 1;
+                }
+            }
+
+            @Override
+            public int getCount() {
+                return 11;
+            }
+        };
+    }
+
+    public ItemStackHandler getItemHandler() {
+        return itemHandler;
+    }
+
+    /** Drop both inventory slots at the given position. Saves current research progress to the
+     *  scroll first so the dropped item reflects the latest tick. */
+    public void dropContents(Level dropLevel, BlockPos pos) {
+        ItemStack scroll = itemHandler.getStackInSlot(0);
+        if (!scroll.isEmpty()) {
+            CompoundTag tag = (scroll.hasTag() ? scroll.getTag().copy() : new net.minecraft.nbt.CompoundTag());
+            if (tag.contains("StageResearch")) {
+                tag.putInt("ResearchProgress", this.progress);
+                tag.putInt("MaxProgress", getMaxProgressForCurrentStage());
+                scroll.setTag(tag);
+            }
+        }
+        for (int i = 0; i < itemHandler.getSlots(); i++) {
+            ItemStack stack = itemHandler.getStackInSlot(i);
+            if (!stack.isEmpty()) {
+                net.minecraft.world.Containers.dropItemStack(dropLevel,
+                        pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, stack);
+                itemHandler.setStackInSlot(i, ItemStack.EMPTY);
+            }
+        }
+    }
+
+    public ItemStack getScrollStack() {
+        return this.itemHandler.getStackInSlot(0);
+    }
+
+    /**
+     * True for the scroll types the pedestal may research. An open scroll carries the same
+     * {@code StageResearch} tag as a fresh one, so the tag alone is not enough: without this
+     * check an {@code open} completion would leave a scroll the next player could research
+     * again, turning the mode into an endless refill.
+     */
+    private static boolean isResearchable(ItemStack stack) {
+        return stack.is(ModItems.RESEARCH_SCROLL.get()) || stack.is(ModItems.CREATIVE_SCROLL.get());
+    }
+
+    public boolean hasScrollWithDependencies() {
+        ItemStack stack = getScrollStack();
+        if (stack.isEmpty()) return false;
+        CompoundTag tag = (stack.hasTag() ? stack.getTag().copy() : new net.minecraft.nbt.CompoundTag());
+        if (!tag.contains("StageResearch")) return false;
+        String stageId = tag.getString("StageResearch");
+        StageEntry entry = StageManager.isIndividualStage(stageId)
+                ? StageManager.getIndividualStages().get(stageId)
+                : StageManager.getStages().get(stageId);
+        return entry != null && entry.hasDependencies();
+    }
+
+    /**
+     * Read the cost reduction locked into the scroll on first deposit, or 0.0 if not yet locked.
+     */
     public static double getLockedCostReduction(ItemStack scroll) {
-        if (scroll.isEmpty() || !scroll.hasTag()) return 0.0;
-        return getLockedCostReduction(scroll.getTag());
+        if (scroll.isEmpty()) return 0.0;
+        CompoundTag tag = (scroll.hasTag() ? scroll.getTag().copy() : new net.minecraft.nbt.CompoundTag());
+        return getLockedCostReduction(tag);
     }
 
     /** Read the locked cost reduction from an already-copied scroll tag. */
@@ -271,79 +279,18 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
         this.requiredTier = 1;
         this.requiredTierMode = TierMode.MIN;
         this.running = false;
-    }
-
-    public ResearchPedestalBlockEntity(BlockPos pPos, BlockState pBlockState) {
-        super(ModBlockEntities.RESEARCH_PEDESTAL_BE.get(), pPos, pBlockState);
-        this.data = new ContainerData() {
-            @Override
-            public int get(int pIndex) {
-                return switch (pIndex) {
-                    case 0 -> ResearchPedestalBlockEntity.this.progress;
-                    case 1 -> ResearchPedestalBlockEntity.this.getMaxProgressForCurrentStage();
-                    case 2 -> ResearchPedestalBlockEntity.this.finishDelay;
-                    case 3 -> ResearchPedestalBlockEntity.this.isCurrentScrollIndividual() ? 1 : 0;
-                    case 4 -> ResearchPedestalBlockEntity.this.dependenciesMet ? 1 : 0;
-                    case 5 -> ResearchPedestalBlockEntity.this.depositDelay;
-                    case 6 -> ResearchPedestalBlockEntity.this.currentSpeedPercent;
-                    case 7 -> ResearchPedestalBlockEntity.this.tierMismatch ? 1 : 0;
-                    case 8 -> ResearchPedestalBlockEntity.this.requiredTier;
-                    case 9 -> ResearchPedestalBlockEntity.this.requiredTierMode.ordinal();
-                    case 10 -> ResearchPedestalBlockEntity.this.running ? 1 : 0;
-                    default -> 0;
-                };
-            }
-
-            @Override
-            public void set(int pIndex, int pValue) {
-                switch (pIndex) {
-                    case 0 -> ResearchPedestalBlockEntity.this.progress = pValue;
-                    case 2 -> ResearchPedestalBlockEntity.this.finishDelay = pValue;
-                    case 4 -> ResearchPedestalBlockEntity.this.dependenciesMet = pValue == 1;
-                    case 5 -> ResearchPedestalBlockEntity.this.depositDelay = pValue;
-                    case 6 -> ResearchPedestalBlockEntity.this.currentSpeedPercent = pValue;
-                    case 7 -> ResearchPedestalBlockEntity.this.tierMismatch = pValue == 1;
-                    case 8 -> ResearchPedestalBlockEntity.this.requiredTier = pValue;
-                    case 9 -> ResearchPedestalBlockEntity.this.requiredTierMode =
-                            pValue == TierMode.EXACT.ordinal() ? TierMode.EXACT : TierMode.MIN;
-                    case 10 -> ResearchPedestalBlockEntity.this.running = pValue == 1;
-                }
-            }
-
-            @Override
-            public int getCount() {
-                return 11;
-            }
-        };
+        // Whatever the last scroll's requirements answered says nothing about the next one's,
+        // so the next tick that sees a scroll checks rather than reading a leftover verdict.
+        this.dependencyCheckCooldown = 0;
+        this.lastDependencyVerdict = false;
     }
 
     private void loadProgressFromItem(ItemStack stack) {
-        if (stack.hasTag() && stack.getTag().contains("ResearchProgress")) {
-            this.progress = stack.getTag().getInt("ResearchProgress");
+        CompoundTag tag = (stack.hasTag() ? stack.getTag().copy() : new net.minecraft.nbt.CompoundTag());
+        if (tag.contains("ResearchProgress")) {
+            this.progress = tag.getInt("ResearchProgress");
         } else {
             this.progress = 0;
-        }
-    }
-
-    /** Drop both inventory slots at the given position. Saves current research progress to the
-     *  scroll first so the dropped item reflects the latest tick. */
-    public void dropContents(Level dropLevel, BlockPos pos) {
-        ItemStack scroll = itemHandler.getStackInSlot(0);
-        if (!scroll.isEmpty()) {
-            CompoundTag tag = scroll.hasTag() ? scroll.getTag().copy() : new CompoundTag();
-            if (tag.contains("StageResearch")) {
-                tag.putInt("ResearchProgress", this.progress);
-                tag.putInt("MaxProgress", getMaxProgressForCurrentStage());
-                scroll.setTag(tag);
-            }
-        }
-        for (int i = 0; i < itemHandler.getSlots(); i++) {
-            ItemStack stack = itemHandler.getStackInSlot(i);
-            if (!stack.isEmpty()) {
-                net.minecraft.world.Containers.dropItemStack(dropLevel,
-                        pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, stack);
-                itemHandler.setStackInSlot(i, ItemStack.EMPTY);
-            }
         }
     }
 
@@ -355,31 +302,6 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
         return Component.translatable("block.historystages.research_pedestal");
     }
 
-    public ItemStack getScrollStack() {
-        return this.itemHandler.getStackInSlot(0);
-    }
-
-    /**
-     * True for the scroll types the pedestal may research. An open scroll carries the same
-     * {@code StageResearch} tag as a fresh one, so the tag alone is not enough: without this
-     * check an {@code open} completion would leave a scroll the next player could research
-     * again, turning the mode into an endless refill.
-     */
-    private static boolean isResearchable(ItemStack stack) {
-        return stack.is(ModItems.RESEARCH_SCROLL.get()) || stack.is(ModItems.CREATIVE_SCROLL.get());
-    }
-
-    public boolean hasScrollWithDependencies() {
-        ItemStack stack = getScrollStack();
-        if (stack.isEmpty() || !stack.hasTag() || !stack.getTag().contains("StageResearch"))
-            return false;
-        String stageId = stack.getTag().getString("StageResearch");
-        StageEntry entry = StageManager.isIndividualStage(stageId)
-                ? StageManager.getIndividualStages().get(stageId)
-                : StageManager.getStages().get(stageId);
-        return entry != null && entry.hasDependencies();
-    }
-
     @Nullable
     @Override
     public AbstractContainerMenu createMenu(int pContainerId, Inventory pPlayerInventory, Player pPlayer) {
@@ -387,15 +309,156 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
         return new ResearchPedestalMenu(pContainerId, pPlayerInventory, this, this.data);
     }
 
+    /**
+     * Try to consume items from the deposit slot (slot 1) into the scroll's
+     * DepositedDependencies NBT.
+     */
+    private void tryProcessDeposit(ItemStack depositStack) {
+        ItemStack scroll = getScrollStack();
+        if (scroll.isEmpty()) return;
+        CompoundTag scrollTag = (scroll.hasTag() ? scroll.getTag().copy() : new net.minecraft.nbt.CompoundTag());
+        if (!scrollTag.contains("StageResearch")) return;
+
+        String stageId = scrollTag.getString("StageResearch");
+        boolean isIndividual = StageManager.isIndividualStage(stageId);
+        StageEntry entry = isIndividual
+                ? StageManager.getIndividualStages().get(stageId)
+                : StageManager.getStages().get(stageId);
+        if (entry == null || entry.getDependencies() == null) return;
+
+        ResourceLocation depositRl = BuiltInRegistries.ITEM.getKey(depositStack.getItem());
+        if (depositRl == null) return;
+
+        CompoundTag deposited = scrollTag.contains("DepositedDependencies")
+                ? scrollTag.getCompound("DepositedDependencies")
+                : new CompoundTag();
+        boolean changed = false;
+
+        // Use locked cost reduction if present, else preview using the current pedestal's booster.
+        boolean alreadyLocked = scrollTag.contains("LockedCostReduction");
+        double costReduction = alreadyLocked
+                ? getLockedCostReduction(scrollTag)
+                : getActiveBooster().costReduction();
+
+        outer:
+        for (int i = 0; i < entry.getDependencies().size(); i++) {
+            var group = entry.getDependencies().get(i);
+            for (var reqItem : group.getItems()) {
+                ResourceLocation reqRl = ResourceLocation.tryParse(reqItem.getId());
+                if (reqRl != null && reqRl.equals(depositRl)
+                        && (!reqItem.hasNbt() || NbtMatcher.matches(depositStack, reqItem.getNbt()))) {
+                    String key = DependencyProgress.key(DependencyProgress.groupKey(group, i),
+                            DependencyProgress.itemSuffix(reqRl.toString()));
+                    int current = deposited.getInt(key);
+                    int effectiveRequired = BoosterUtil.effectiveCount(reqItem.getCount(), costReduction);
+                    int needed = effectiveRequired - current;
+                    if (needed > 0) {
+                        int toTake = Math.min(needed, depositStack.getCount());
+                        depositStack.shrink(toTake);
+                        deposited.putInt(key, current + toTake);
+                        changed = true;
+                        if (depositStack.isEmpty()) break outer;
+                    }
+                }
+            }
+        }
+
+        if (changed) {
+            scrollTag.put("DepositedDependencies", deposited);
+            // First deposit ever for this scroll: lock the cost reduction value.
+            if (!alreadyLocked) {
+                scrollTag.putDouble("LockedCostReduction", costReduction);
+            }
+            scroll.setTag(scrollTag);
+            setChanged();
+
+            // Push updated dependency status to the researching player immediately
+            if (level != null && !level.isClientSide && level.getServer() != null) {
+                // Same fallback as tick(): before a start there is no owner, and the player
+                // depositing still needs their checklist refreshed.
+                UUID checkUUID = isCurrentScrollIndividual() && this.ownerUUID != null
+                        ? this.ownerUUID
+                        : this.lastInteractingPlayer;
+                if (checkUUID != null) {
+                    var player = level.getServer().getPlayerList().getPlayer(checkUUID);
+                    if (player != null) {
+                        CompoundTag updatedDeposited = scrollTag.contains("DepositedDependencies")
+                                ? scrollTag.getCompound("DepositedDependencies") : null;
+                        double scrollCost = scrollTag.contains("LockedCostReduction")
+                                ? scrollTag.getDouble("LockedCostReduction") : 0.0;
+                        var result = DependencyChecker.checkAll(entry, player, level,
+                                isCurrentScrollIndividual() ? StageScope.INDIVIDUAL : StageScope.GLOBAL,
+                                updatedDeposited, scrollCost);
+                        PacketHandler.INSTANCE.send(
+                                net.minecraftforge.network.PacketDistributor.PLAYER.with(() -> player),
+                                new SyncDependencyStatusPacket(stageId, isCurrentScrollIndividual(), result));
+                    }
+                }
+            }
+        }
+    }
+
+    private boolean isItemNeeded(ItemStack depositStack) {
+        if (depositStack.isEmpty()) return false;
+        ItemStack scroll = getScrollStack();
+        if (scroll.isEmpty()) return false;
+        CompoundTag scrollTag = (scroll.hasTag() ? scroll.getTag().copy() : new net.minecraft.nbt.CompoundTag());
+        if (!scrollTag.contains("StageResearch")) return false;
+
+        String stageId = scrollTag.getString("StageResearch");
+        StageEntry entry = StageManager.isIndividualStage(stageId)
+                ? StageManager.getIndividualStages().get(stageId)
+                : StageManager.getStages().get(stageId);
+        if (entry == null || !entry.hasDependencies()) return false;
+
+        ResourceLocation depositRl = BuiltInRegistries.ITEM.getKey(depositStack.getItem());
+        if (depositRl == null) return false;
+
+        CompoundTag depositedData = scrollTag.contains("DepositedDependencies")
+                ? scrollTag.getCompound("DepositedDependencies") : new CompoundTag();
+
+        double costReduction = scrollTag.contains("LockedCostReduction")
+                ? getLockedCostReduction(scrollTag)
+                : getActiveBooster().costReduction();
+
+        for (int i = 0; i < entry.getDependencies().size(); i++) {
+            var group = entry.getDependencies().get(i);
+            for (var item : group.getItems()) {
+                if (item.getId().equals(depositRl.toString())) {
+                    String key = DependencyProgress.key(DependencyProgress.groupKey(group, i),
+                            DependencyProgress.itemSuffix(item.getId()));
+                    int count = depositedData.getInt(key);
+                    int effectiveRequired = BoosterUtil.effectiveCount(item.getCount(), costReduction);
+                    if (count < effectiveRequired) return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Ticks between two dependency checks while a scroll sits in a pedestal.
+     *
+     * <p>{@link DependencyChecker#checkAll} does not answer "is it met" — it builds the whole
+     * checklist the screen draws: a list per group, an entry record per requirement, a formatted
+     * label per item, and {@code item.getDescription().getString()} to get that label. Running
+     * that every tick meant every pedestal in the world rebuilt a GUI nobody was looking at,
+     * twenty times a second.
+     *
+     * <p>Half a second of staleness is invisible against a research that takes hundreds of ticks,
+     * and the two moments where it would be visible are both covered: depositing pushes a fresh
+     * check of its own, and {@link #tryStart} re-checks rather than trusting this.
+     */
+    private static final int DEPENDENCY_CHECK_INTERVAL = 10;
+
     public static void tick(Level level, BlockPos pos, BlockState state, ResearchPedestalBlockEntity entity) {
-        if (level.isClientSide)
-            return;
+        if (level.isClientSide) return;
 
         // Refresh active speed multiplier from the booster below (synced to client via data slot 6).
         ResearchBooster activeBooster = entity.getActiveBooster();
         entity.currentSpeedPercent = BoosterUtil.percent(activeBooster.speedReduction());
 
-        // Handle item deposit delay logic
+        // Handle item deposit (slot 1): wait MAX_DEPOSIT_DELAY ticks then process
         ItemStack depositSlot = entity.itemHandler.getStackInSlot(1);
         if (!depositSlot.isEmpty() && entity.isItemNeeded(depositSlot)) {
             entity.depositDelay++;
@@ -407,7 +470,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
             entity.depositDelay = 0;
         }
 
-        // Neu: Warte kurz, bevor das Sync-Paket gesendet wird (Timing-Fix)
+        // Sync delay timer
         if (entity.syncTickDelay > 0) {
             entity.syncTickDelay--;
         } else if (entity.syncTickDelay == 0) {
@@ -418,23 +481,25 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
         ItemStack stack = entity.itemHandler.getStackInSlot(0);
         int maxProgress = entity.getMaxProgressForCurrentStage();
 
+        // Checking the tag in place before copying it means a pedestal holding nothing, or holding something that is not a
+        // research scroll, no longer pays for a copy every tick. Everything below reads stackTag
+        // only inside the hasValidBook branch.
         boolean hasValidBook = isResearchable(stack) && stack.hasTag() && stack.getTag().contains("StageResearch");
+        CompoundTag stackTag = hasValidBook ? stack.getTag().copy() : new CompoundTag();
         boolean isResearching = false;
 
         if (hasValidBook) {
-            String stageId = stack.getTag().getString("StageResearch");
+            String stageId = stackTag.getString("StageResearch");
             boolean isCreative = ModItems.CREATIVE_STAGE_ID.equals(stageId);
             boolean isIndividual = !isCreative && StageManager.isIndividualStage(stageId);
             boolean alreadyUnlocked;
 
             if (isCreative) {
-                // Creative scroll: never "already unlocked"
                 alreadyUnlocked = false;
             } else if (isIndividual) {
-                // Individual: check if the owner has this stage
                 UUID owner = entity.ownerUUID;
-                if (owner == null && stack.hasTag() && stack.getTag().hasUUID("OwnerUUID")) {
-                    owner = stack.getTag().getUUID("OwnerUUID");
+                if (owner == null && stackTag.hasUUID("OwnerUUID")) {
+                    owner = stackTag.getUUID("OwnerUUID");
                     entity.ownerUUID = owner;
                 }
                 alreadyUnlocked = owner != null && IndividualStageData.hasStageCached(owner, stageId);
@@ -444,8 +509,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
             }
 
             if (!alreadyUnlocked) {
-                // Check non-item dependencies before allowing research
-                boolean metTotal = false;
+                boolean metTotal;
                 StageEntry stageEntryForTier = isCreative ? null
                         : (isIndividual
                             ? StageManager.getIndividualStages().get(stageId)
@@ -461,7 +525,10 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
                 entity.requiredTierMode = needMode;
                 entity.tierMismatch = !TierMatcher.matches(pedestalTier, needTier, needMode);
 
-                if (!isCreative) {
+                if (isCreative) {
+                    // Creative always fulfills
+                    metTotal = true;
+                } else {
                     StageEntry stageEntry = stageEntryForTier;
 
                     // Only DEFAULT-mode stages can be researched at the Pedestal.
@@ -474,44 +541,20 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
 
                     if (stageEntry != null) {
                         if (stageEntry.hasDependencies()) {
-                            // Find the researching player for dependency checks
-                            net.minecraft.server.level.ServerPlayer researchPlayer = null;
-                            // Before anyone has started, an individual scroll has no owner yet,
-                            // so fall back to whoever is at the pedestal. Checking against a
-                            // null owner would report "requirements not met", which disables the
-                            // start button — and only starting can set the owner.
-                            UUID checkUUID = isIndividual && entity.ownerUUID != null
-                                    ? entity.ownerUUID
-                                    : entity.lastInteractingPlayer;
-                            if (checkUUID != null && level.getServer() != null) {
-                                researchPlayer = level.getServer().getPlayerList().getPlayer(checkUUID);
+                            entity.dependencyCheckCooldown--;
+                            if (entity.dependencyCheckCooldown <= 0) {
+                                entity.dependencyCheckCooldown = DEPENDENCY_CHECK_INTERVAL;
+                                entity.lastDependencyVerdict =
+                                        entity.checkDependencies(stageEntry, isIndividual, stackTag);
                             }
-
-                            if (researchPlayer != null) {
-                                CompoundTag depositedTag = stack.hasTag()
-                                        && stack.getTag().contains("DepositedDependencies")
-                                                ? stack.getTag().getCompound("DepositedDependencies")
-                                                : null;
-                                double tickCost = stack.hasTag()
-                                        && stack.getTag().contains("LockedCostReduction")
-                                                ? stack.getTag().getDouble("LockedCostReduction")
-                                                : 0.0;
-                                RequirementResult result = DependencyChecker.checkAll(stageEntry, researchPlayer, level,
-                                        isIndividual ? StageScope.INDIVIDUAL : StageScope.GLOBAL,
-                                        depositedTag, tickCost);
-                                metTotal = result.isFulfilled();
-                            } else {
-                                // No player available to check - pause research
-                                metTotal = false;
-                            }
+                            metTotal = entity.lastDependencyVerdict;
                         } else {
-                            // No dependencies defined - fulfill automatically
+                            // No dependencies defined — always fulfilled
                             metTotal = true;
                         }
+                    } else {
+                        metTotal = false;
                     }
-                } else {
-                    // Creative always fulfills
-                    metTotal = true;
                 }
 
                 // Tier mismatch acts like an unmet dependency: pause progress.
@@ -539,9 +582,10 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
                             entity.progressAccumulator -= wholeTicks;
                         }
                         if (entity.progress % 10 == 0 || entity.progress >= maxProgress) {
-                            CompoundTag nbt = stack.getOrCreateTag();
+                            CompoundTag nbt = (stack.hasTag() ? stack.getTag().copy() : new net.minecraft.nbt.CompoundTag());
                             nbt.putInt("ResearchProgress", entity.progress);
                             nbt.putInt("MaxProgress", maxProgress);
+                            stack.setTag(nbt);
                         }
                     } else {
                         entity.finishDelay++;
@@ -580,14 +624,47 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
         entity.updateComparatorIfChanged(level, pos, state);
     }
 
-    private void finishResearch(ItemStack stack) {
-        String stageId = (stack.hasTag() && stack.getTag().contains("StageResearch"))
-                ? stack.getTag().getString("StageResearch")
+    /**
+     * Whether the scroll's requirements are met right now, asked properly.
+     *
+     * <p>Lifted out of {@code tick} so {@link #tryStart} can ask the same question without
+     * waiting for the next scheduled check — a player who deposits the last item and presses
+     * start in the same moment must not be turned away by a verdict from nine ticks ago.
+     */
+    private boolean checkDependencies(StageEntry stageEntry, boolean isIndividual, CompoundTag stackTag) {
+        if (level == null) return false;
+
+        // Before anyone has started, an individual scroll has no owner yet, so fall back to
+        // whoever is at the pedestal. Checking against a null owner would report "requirements
+        // not met", which disables the start button — and only starting can set the owner.
+        UUID checkUUID = isIndividual && this.ownerUUID != null
+                ? this.ownerUUID
+                : this.lastInteractingPlayer;
+        if (checkUUID == null || level.getServer() == null) return false;
+
+        net.minecraft.server.level.ServerPlayer researchPlayer =
+                level.getServer().getPlayerList().getPlayer(checkUUID);
+        // No player available — pause research
+        if (researchPlayer == null) return false;
+
+        CompoundTag depositedTag = stackTag.contains("DepositedDependencies")
+                ? stackTag.getCompound("DepositedDependencies")
                 : null;
+        double tickCost = stackTag.contains("LockedCostReduction")
+                ? stackTag.getDouble("LockedCostReduction") : 0.0;
+
+        RequirementResult result = DependencyChecker.checkAll(stageEntry, researchPlayer, level,
+                isIndividual ? StageScope.INDIVIDUAL : StageScope.GLOBAL,
+                depositedTag, tickCost);
+        return result.isFulfilled();
+    }
+
+    private void finishResearch(ItemStack stack) {
+        CompoundTag stackTag = (stack.hasTag() ? stack.getTag().copy() : new net.minecraft.nbt.CompoundTag());
+        String stageId = stackTag.contains("StageResearch") ? stackTag.getString("StageResearch") : null;
 
         if (!level.isClientSide && stageId != null) {
-            // Consuming items and XP is now handled when depositing into the scroll
-            // so we don't need to do it here anymore.
+            // Consuming items and XP is now handled when depositing into the scroll.
 
             if (ModItems.CREATIVE_STAGE_ID.equals(stageId)) {
                 finishCreativeResearch();
@@ -598,7 +675,6 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
             }
         }
 
-        // Station zurücksetzen und Buch entsprechend dem Completion-Modus behandeln
         this.resetResearchState();
         this.finishDelay = 0;
         applyCompletion(stack, stageId);
@@ -647,7 +723,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
             data.setDirty();
 
             String eventDisplayName = (stageEntry != null) ? stageEntry.getDisplayName() : stageId;
-            net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(
+            MinecraftForge.EVENT_BUS.post(
                     new net.bananemdnsa.historystages.api.stage.StageEvent.Unlocked(stageId, eventDisplayName));
 
             if (level.getServer() != null) {
@@ -682,8 +758,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
     }
 
     private void finishIndividualResearch(ItemStack stack, String stageId) {
-        if (ownerUUID == null)
-            return;
+        if (ownerUUID == null) return;
 
         var stageEntry = StageManager.getIndividualStages().get(stageId);
         IndividualStageData data = IndividualStageData.get(level);
@@ -693,26 +768,24 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
             data.setDirty();
 
             String eventDisplayName = (stageEntry != null) ? stageEntry.getDisplayName() : stageId;
-            net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(
+            MinecraftForge.EVENT_BUS.post(
                     new net.bananemdnsa.historystages.api.stage.StageEvent.IndividualUnlocked(stageId, eventDisplayName,
                             ownerUUID));
 
-            // Sync individual stages to the owner player only
             if (level.getServer() != null) {
-                net.minecraft.server.level.ServerPlayer ownerPlayer = level.getServer().getPlayerList()
-                        .getPlayer(ownerUUID);
+                net.minecraft.server.level.ServerPlayer ownerPlayer =
+                        level.getServer().getPlayerList().getPlayer(ownerUUID);
                 if (ownerPlayer != null) {
                     PacketHandler.sendIndividualStagesToPlayer(
                             new SyncIndividualStagesPacket(data.getUnlockedStages(ownerUUID)),
                             ownerPlayer);
 
-                    // Notify the owner player
                     String stagename = (stageEntry != null) ? stageEntry.getDisplayName() : stageId;
                     if (Config.VISUAL.individualBroadcastChat.get()) {
                         String configChat = Config.VISUAL.individualUnlockMessageFormat.get();
                         String finalChat = configChat.replace("{stage}", stagename)
                                 .replace("{player}", ownerPlayer.getName().getString())
-                                .replace("&", "§");
+                                .replace("&", "\u00A7");
                         ownerPlayer.sendSystemMessage(
                                 Component.literal("[HistoryStages] ")
                                         .withStyle(ChatFormatting.GRAY)
@@ -722,7 +795,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
                         String configChat = Config.VISUAL.individualUnlockMessageFormat.get();
                         String finalChat = configChat.replace("{stage}", stagename)
                                 .replace("{player}", ownerPlayer.getName().getString())
-                                .replace("&", "§");
+                                .replace("&", "\u00A7");
                         ownerPlayer.displayClientMessage(Component.literal(finalChat), true);
                     }
                     if (Config.VISUAL.individualUseSounds.get()) {
@@ -738,15 +811,12 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
                     }
                 }
             }
-            // No recipe reload needed for individual stages
         }
     }
 
     private void finishCreativeResearch() {
-        if (level.getServer() == null)
-            return;
+        if (level.getServer() == null) return;
 
-        // Unlock all global stages
         StageData stageData = StageData.get(level);
         for (String id : StageManager.getStages().keySet()) {
             if (!stageData.getUnlockedStages().contains(id)) {
@@ -755,12 +825,10 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
         }
         stageData.setDirty();
 
-        // Reload recipes
         level.getServer().getCommands().performPrefixedCommand(
                 level.getServer().createCommandSourceStack().withSuppressedOutput(),
                 "history reload");
 
-        // Unlock all individual stages for all online players
         IndividualStageData individualData = IndividualStageData.get(level);
         for (net.minecraft.server.level.ServerPlayer player : level.getServer().getPlayerList().getPlayers()) {
             for (String id : StageManager.getIndividualStages().keySet()) {
@@ -768,15 +836,13 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
                     individualData.addStage(player.getUUID(), id);
                 }
             }
-            // Sync individual stages to each player
             PacketHandler.sendIndividualStagesToPlayer(
                     new SyncIndividualStagesPacket(individualData.getUnlockedStages(player.getUUID())),
                     player);
         }
         individualData.setDirty();
 
-        // Sync global stages and notify
-        PacketHandler.sendToAll(new SyncStagesPacket(new java.util.ArrayList<>(StageData.SERVER_CACHE)));
+        PacketHandler.sendToAll(new SyncStagesPacket(new ArrayList<>(StageData.SERVER_CACHE)));
 
         level.getServer().getPlayerList().getPlayers().forEach(player -> {
             if (Config.VISUAL.broadcastChat.get()) {
@@ -788,22 +854,25 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
             }
             if (Config.VISUAL.useSounds.get()) {
                 player.playNotifySound(net.minecraft.sounds.SoundEvents.UI_TOAST_CHALLENGE_COMPLETE,
-                        net.minecraft.sounds.SoundSource.MASTER, 0.75F, 1.0F);
+                        SoundSource.MASTER, 0.75F, 1.0F);
             }
         });
     }
 
     private int getMaxProgressForCurrentStage() {
         ItemStack stack = this.itemHandler.getStackInSlot(0);
-        if (!stack.isEmpty() && stack.hasTag() && stack.getTag().contains("StageResearch")) {
-            String stageId = stack.getTag().getString("StageResearch");
-            if (ModItems.CREATIVE_STAGE_ID.equals(stageId)) {
-                return Config.GAMEPLAY.researchTimeInSeconds.get() * 20;
+        if (!stack.isEmpty()) {
+            CompoundTag tag = (stack.hasTag() ? stack.getTag().copy() : new net.minecraft.nbt.CompoundTag());
+            if (tag.contains("StageResearch")) {
+                String stageId = tag.getString("StageResearch");
+                if (ModItems.CREATIVE_STAGE_ID.equals(stageId)) {
+                    return Config.GAMEPLAY.researchTimeInSeconds.get() * 20;
+                }
+                if (StageManager.isIndividualStage(stageId)) {
+                    return StageManager.getIndividualResearchTimeInTicks(stageId);
+                }
+                return StageManager.getResearchTimeInTicks(stageId);
             }
-            if (StageManager.isIndividualStage(stageId)) {
-                return StageManager.getIndividualResearchTimeInTicks(stageId);
-            }
-            return StageManager.getResearchTimeInTicks(stageId);
         }
         return Config.GAMEPLAY.researchTimeInSeconds.get() * 20;
     }
@@ -811,6 +880,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
     /**
      * Comparator output (0-15) based on research progress.
      * 0 = no scroll or no progress, 15 = research complete.
+     * Linear mapping in between so a comparator can drive redstone proportional to progress.
      */
     public int getComparatorOutput() {
         if (this.itemHandler.getStackInSlot(0).isEmpty()) return 0;
@@ -836,10 +906,19 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
         }
     }
 
+    /** True when the scroll cannot be removed: a research is actively running. Pausing
+     *  releases it, which is how a scroll is handed to the next player. */
+    public boolean isScrollLocked() {
+        return this.running;
+    }
+
     public boolean isCurrentScrollIndividual() {
         ItemStack stack = this.itemHandler.getStackInSlot(0);
-        if (!stack.isEmpty() && stack.hasTag() && stack.getTag().contains("StageResearch")) {
-            return StageManager.isIndividualStage(stack.getTag().getString("StageResearch"));
+        if (!stack.isEmpty()) {
+            CompoundTag tag = (stack.hasTag() ? stack.getTag().copy() : new net.minecraft.nbt.CompoundTag());
+            if (tag.contains("StageResearch")) {
+                return StageManager.isIndividualStage(tag.getString("StageResearch"));
+            }
         }
         return false;
     }
@@ -855,8 +934,8 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
 
         ItemStack scroll = getScrollStack();
         if (!isResearchable(scroll)) return false;
-        if (!scroll.hasTag() || !scroll.getTag().contains("StageResearch")) return false;
-        CompoundTag tag = scroll.getOrCreateTag();
+        CompoundTag tag = (scroll.hasTag() ? scroll.getTag().copy() : new net.minecraft.nbt.CompoundTag());
+        if (!tag.contains("StageResearch")) return false;
         String stageId = tag.getString("StageResearch");
 
         if (!ModItems.CREATIVE_STAGE_ID.equals(stageId)) {
@@ -867,10 +946,22 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
             // Only DEFAULT stages are researchable here; AUTO/EXTERNAL/TEMPORARY are not.
             if (entry == null || entry.getMode() != StageMode.DEFAULT) return false;
 
-            // The same two conditions the screen greys the button out for. Both are kept
-            // current by tick(). Without them a start would latch `running` on and lock the
-            // scroll into a pedestal where progress can never advance.
-            if (this.tierMismatch || !this.dependenciesMet) return false;
+            // The same two conditions the screen greys the button out for. Without them a start
+            // would latch `running` on and lock the scroll into a pedestal where progress can
+            // never advance.
+            //
+            // The tier comes from tick(), which recomputes it every tick. The requirements do
+            // not: tick() only refreshes them every DEPENDENCY_CHECK_INTERVAL ticks, and a
+            // button press is exactly the moment a stale answer would be felt - deposit the last
+            // item, press start, get refused. So this asks again rather than reading the field,
+            // and stores what it learns so the screen agrees with what just happened.
+            if (this.tierMismatch) return false;
+            if (entry.hasDependencies()) {
+                this.lastDependencyVerdict = checkDependencies(entry, individual, tag);
+                this.dependencyCheckCooldown = DEPENDENCY_CHECK_INTERVAL;
+                this.dependenciesMet = this.lastDependencyVerdict;
+                if (!this.lastDependencyVerdict) return false;
+            }
 
             if (individual) {
                 // Anyone may press start, but the research belongs to whoever started it
@@ -910,10 +1001,13 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
         // tick() only writes progress onto the scroll every 10 ticks, and pausing is exactly
         // when the scroll may be carried off — flush it so nothing is lost on the way out.
         ItemStack scroll = getScrollStack();
-        if (!scroll.isEmpty() && scroll.hasTag() && scroll.getTag().contains("StageResearch")) {
-            CompoundTag tag = scroll.getOrCreateTag();
-            tag.putInt("ResearchProgress", this.progress);
-            tag.putInt("MaxProgress", getMaxProgressForCurrentStage());
+        if (!scroll.isEmpty()) {
+            CompoundTag tag = (scroll.hasTag() ? scroll.getTag().copy() : new net.minecraft.nbt.CompoundTag());
+            if (tag.contains("StageResearch")) {
+                tag.putInt("ResearchProgress", this.progress);
+                tag.putInt("MaxProgress", getMaxProgressForCurrentStage());
+                scroll.setTag(tag);
+            }
         }
         setChanged();
     }
@@ -968,12 +1062,11 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
     public void load(CompoundTag nbt) {
         super.load(nbt);
 
-        // Manual loading to prevent shrinking if loaded from old NBT
+        // Manual loading with size check for backward compatibility (old NBT had 1 slot)
         CompoundTag invTag = nbt.getCompound("inventory");
-        if (invTag.contains("Size", 3)) { // 3 is Tag.TAG_INT
+        if (invTag.contains("Size", 3)) {
             int savedSize = invTag.getInt("Size");
             if (savedSize != itemHandler.getSlots()) {
-                // If the saved size is different, we load what we can but keep our 2 slots
                 ItemStackHandler temp = new ItemStackHandler(savedSize);
                 temp.deserializeNBT(invTag);
                 for (int i = 0; i < Math.min(savedSize, itemHandler.getSlots()); i++) {
@@ -995,43 +1088,5 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
         if (nbt.hasUUID("research.lastPlayer")) {
             lastInteractingPlayer = nbt.getUUID("research.lastPlayer");
         }
-    }
-
-    private boolean isItemNeeded(ItemStack depositStack) {
-        if (depositStack.isEmpty())
-            return false;
-        ItemStack scroll = getScrollStack();
-        if (scroll.isEmpty() || !scroll.hasTag() || !scroll.getTag().contains("StageResearch"))
-            return false;
-
-        String stageId = scroll.getTag().getString("StageResearch");
-        StageEntry entry = StageManager.isIndividualStage(stageId)
-                ? StageManager.getIndividualStages().get(stageId)
-                : StageManager.getStages().get(stageId);
-        if (entry == null || !entry.hasDependencies())
-            return false;
-
-        String itemId = ForgeRegistries.ITEMS.getKey(depositStack.getItem()).toString();
-        CompoundTag scrollTag = scroll.getTag();
-        CompoundTag depositedData = scrollTag.getCompound("DepositedDependencies");
-        double costReduction = scrollTag.contains("LockedCostReduction")
-                ? getLockedCostReduction(scrollTag)
-                : getActiveBooster().costReduction();
-
-        for (int i = 0; i < entry.getDependencies().size(); i++) {
-            net.bananemdnsa.historystages.data.DependencyGroup group = entry.getDependencies().get(i);
-            for (net.bananemdnsa.historystages.data.dependency.DependencyItem item : group.getItems()) {
-                if (item.getId().equals(itemId)
-                        && (!item.hasNbt() || NbtMatcher.matches(depositStack, item.getNbt()))) {
-                    String key = DependencyProgress.key(DependencyProgress.groupKey(group, i),
-                            DependencyProgress.itemSuffix(item.getId()));
-                    int count = depositedData.getInt(key);
-                    int effectiveRequired = BoosterUtil.effectiveCount(item.getCount(), costReduction);
-                    if (count < effectiveRequired)
-                        return true;
-                }
-            }
-        }
-        return false;
     }
 }

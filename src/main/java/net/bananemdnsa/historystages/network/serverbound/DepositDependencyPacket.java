@@ -1,6 +1,7 @@
 package net.bananemdnsa.historystages.network.serverbound;
 
 import net.bananemdnsa.historystages.block.entity.ResearchPedestalBlockEntity;
+import net.bananemdnsa.historystages.network.PacketReach;
 import net.bananemdnsa.historystages.data.DependencyGroup;
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.StageManager;
@@ -54,9 +55,8 @@ public class DepositDependencyPacket {
             if (player == null)
                 return;
 
-            BlockEntity be = player.level().getBlockEntity(pos);
-            if (!(be instanceof ResearchPedestalBlockEntity pedestal))
-                return;
+            BlockEntity be = PacketReach.blockEntityInReach(player, pos);
+            if (!(be instanceof ResearchPedestalBlockEntity pedestal)) return;
 
             ItemStack scroll = pedestal.getScrollStack();
             if (scroll.isEmpty() || !scroll.hasTag() || !scroll.getTag().contains("StageResearch"))
