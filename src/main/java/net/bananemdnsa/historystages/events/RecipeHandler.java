@@ -143,7 +143,8 @@ public class RecipeHandler {
         }
         if (!result.isEmpty() && StageLockHelper.isActionLockedForServer(result, "recipe")) return true;
 
-        return StageLockHelper.isRecipeLockedForServer(recipe.getId().toString());
+        String id = recipe.getId().toString();
+        return isFluidGated(id, false, false, null) || StageLockHelper.isRecipeLockedForServer(id);
     }
 
     public static boolean isRecipeIdLocked(ResourceLocation recipeId, boolean isClientSide) {
