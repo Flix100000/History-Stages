@@ -21,10 +21,14 @@ import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.alchemy.Potion;
+import net.minecraft.world.item.enchantment.Enchantment;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraftforge.registries.ForgeRegistries;
 
 import java.util.ArrayList;
@@ -82,6 +86,11 @@ public class SearchableItemList implements PickerOverlay {
      * per-entry NBT (then Ctrl is treated as a regular add).
      */
     private BiConsumer<String, JsonObject> onSelectWithNbt = null;
+    /** See {@link #setValueMode()}. */
+    private boolean alwaysWithNbt = false;
+    private boolean openOnInventory = false;
+    /** See {@link #setStackFilter}. */
+    private java.util.function.Predicate<ItemStack> stackFilter = null;
     private final Supplier<Collection<String>> alreadyAddedSupplier;
     private final SearchBar searchBar;
 
@@ -149,13 +158,34 @@ public class SearchableItemList implements PickerOverlay {
         this.onSelectWithNbt = onSelectWithNbt;
     }
 
+    /**
+     * Opens on the inventory tab and makes every pick there carry its NBT, without Ctrl.
+     *
+     * <p>For callers that want a value read off a real stack rather than an item id — the NBT
+     * editor filling in one component's encoded form. Ctrl-add is a shortcut for callers that want
+     * either; here the stack is the whole point, so requiring the modifier would only produce
+     * clicks that appear to do nothing.
+     */
+    public void setValueMode() {
+        this.alwaysWithNbt = true;
+        this.openOnInventory = true;
+    }
+
+    /**
+     * Hides inventory stacks the predicate rejects, so the grid only offers what the caller can
+     * actually use — an item that lacks the component being filled in has nothing to give.
+     */
+    public void setStackFilter(java.util.function.Predicate<ItemStack> stackFilter) {
+        this.stackFilter = stackFilter;
+    }
+
     public void show(int centerX, int centerY, int parentWidth) {
         this.centerX = centerX;
         this.centerY = centerY;
         this.visible = true;
         this.scrollRow = 0;
-        searchBar.setFocused(true);
-        this.currentTab = TAB_REGISTRY;
+        this.currentTab = openOnInventory ? TAB_INVENTORY : TAB_REGISTRY;
+        searchBar.setFocused(currentTab != TAB_INVENTORY);
         this.selectedRegistryIds.clear();
         this.selectedInventorySlots.clear();
         this.nbtSelectedInventorySlots.clear();
@@ -700,7 +730,9 @@ public class SearchableItemList implements PickerOverlay {
     private boolean isItemAllowedByModFilter(ItemStack stack) {
         if (stack.isEmpty())
             return false;
-        ResourceLocation key = ForgeRegistries.ITEMS.getKey(stack.getItem());
+        if (stackFilter != null && !stackFilter.test(stack))
+            return false;
+        ResourceLocation key = BuiltInRegistries.ITEM.getKey(stack.getItem());
         if (key == null)
             return false;
         if (modFilterSet != null && !modFilterSet.contains(key.getNamespace()))
@@ -1202,7 +1234,7 @@ public class SearchableItemList implements PickerOverlay {
                 nbtSelectedInventorySlots.clear();
             }
             selectedInventorySlots.add(slot);
-            if (withNbt && onSelectWithNbt != null) {
+            if ((withNbt || alwaysWithNbt) && onSelectWithNbt != null) {
                 nbtSelectedInventorySlots.add(slot);
             }
         }
