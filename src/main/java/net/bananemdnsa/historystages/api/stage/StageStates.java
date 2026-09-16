@@ -72,6 +72,7 @@ public final class StageStates {
         broadcastGlobalUnlock(level.getServer(), stageId, displayName, entry);
 
         invalidateLockCaches();
+
         MinecraftServer unlockServer = level.getServer();
         if (unlockServer != null) {
             // Recipes gate globally only, so this belongs on the global paths and nowhere else.

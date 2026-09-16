@@ -54,6 +54,11 @@ public class SyncStagesPacket {
                             mc.levelRenderer.allChanged();
                         }
 
+                        // Same for the vanilla recipe book. The global path also triggers a recipe
+                        // resync, which rebuilds it too, but doing it here keeps the book correct
+                        // without depending on that.
+                        net.bananemdnsa.historystages.client.ClientRecipeBookRefresh.rebuild();
+
                         // EMI extra reload (hat eigenen Reload-Mechanismus)
                         if (net.minecraftforge.fml.ModList.get().isLoaded("emi")) {
                             ExternalMods.refreshEMI();

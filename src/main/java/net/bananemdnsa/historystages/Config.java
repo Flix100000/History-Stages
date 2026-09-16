@@ -38,6 +38,9 @@ public class Config {
         public final ForgeConfigSpec.BooleanValue showSilverLockIcons;
         public final ForgeConfigSpec.BooleanValue showIndividualTooltips;
 
+        // Vanilla recipe book
+        public final ForgeConfigSpec.BooleanValue hideLockedRecipesInBook;
+
         // JEI Hiding (Issue #64)
         public final ForgeConfigSpec.BooleanValue hideLockedItemsInJei;
         public final ForgeConfigSpec.BooleanValue hideLockedRecipesInJei;
@@ -65,6 +68,7 @@ public class Config {
         public final ForgeConfigSpec.ConfigValue<String> msgBlockLocked;
         public final ForgeConfigSpec.ConfigValue<String> msgEntityItemLocked;
         public final ForgeConfigSpec.ConfigValue<String> msgEnchantmentLocked;
+        public final ForgeConfigSpec.ConfigValue<String> msgRecipeLocked;
 
         // Scroll tooltip
         public final ForgeConfigSpec.ConfigValue<List<? extends String>> scrollTooltipLines;
@@ -209,6 +213,19 @@ public class Config {
 
             builder.pop();
 
+            builder.comment("Vanilla recipe book").push("recipe_book");
+
+            hideLockedRecipesInBook = builder
+                    .comment("Hide locked recipes from the vanilla recipe book at the crafting table?",
+                            "Covers both halves of recipe gating: a recipe id on a stage, and an item",
+                            "whose lock_actions include \"recipe\". Individual stages count too — the book",
+                            "belongs to one player, so it is filtered for that player.",
+                            "Off shows them, which is what the game did before 6.0.0: visible in the book,",
+                            "and still not craftable. [Default: true]")
+                    .define("hideLockedRecipesInBook", true);
+
+            builder.pop();
+
             builder.comment("JEI integration — fully hide locked items/recipes instead of using the lock overlay")
                     .push("jei_hiding");
 
@@ -314,6 +331,10 @@ public class Config {
             msgEnchantmentLocked = builder
                     .comment("Actionbar message when applying a locked enchantment. Lang key: message.historystages.enchantment_locked")
                     .define("enchantmentLocked", "");
+
+            msgRecipeLocked = builder
+                    .comment("Actionbar message when clicking a locked recipe in the recipe book. Lang key: message.historystages.recipe_locked")
+                    .define("recipeLocked", "");
 
             builder.pop(); // lock_messages
 
@@ -443,6 +464,7 @@ public class Config {
         public final ForgeConfigSpec.BooleanValue individualLockItemUsage;
         public final ForgeConfigSpec.BooleanValue individualLockBlockInteraction;
         public final ForgeConfigSpec.BooleanValue individualLockEnchanting;
+        public final ForgeConfigSpec.BooleanValue individualLockRecipes;
 
         // Structure Lock
         public final ForgeConfigSpec.IntValue structureCheckInterval;
@@ -618,6 +640,13 @@ public class Config {
             individualLockEnchanting = builder
                     .comment("Prevent applying enchantments locked by individual stages via anvil and enchanting table? [Default: true]")
                     .define("lockEnchanting", true);
+
+            individualLockRecipes = builder
+                    .comment("Let individual stages gate recipes at the stations that know who is crafting",
+                            "(crafting table, 2x2 inventory grid, stonecutter, smithing table)?",
+                            "Furnaces, hoppers and autocrafters resolve recipes with nobody there and stay global-only.",
+                            "[Default: true]")
+                    .define("lockRecipes", true);
 
             builder.pop(); // individual_stages
 

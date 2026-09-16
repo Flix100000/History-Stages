@@ -8,6 +8,10 @@
     "AttributeLockMixin",
     "RecipeManagerMixin",
     "PlayerListMixin",
+    "CraftingMenuMixin",
+    "StonecutterMenuMixin",
+    "SmithingMenuMixin",
+    "RecipeBookPlacementMixin",
     "StructureGenerationMixin",
     "ContainerClickMixin",
     "EnchantmentMenuMixin"
@@ -15,8 +19,9 @@
   "client": [
     "bettercombat.AttackStartLockMixin",
     "bettercombat.WeaponRegistryMixin",
-    "ItemStackMixin",
     "ClientAdvancementsAccessor",
+    "ClientRecipeBookMixin",
+    "ItemStackMixin",
     "toast.ToastComponentMixin",
     "toast.ToastComponentAccessor",
     "toast.ToastInstanceMixin",

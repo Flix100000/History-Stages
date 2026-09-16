@@ -8,11 +8,12 @@ import dev.emi.emi.api.stack.Comparison;
 import dev.emi.emi.api.stack.EmiStack;
 import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.HistoryStages;
+import net.bananemdnsa.historystages.compat.ScrollVariants;
+import net.bananemdnsa.historystages.compat.StageDisplayPath;
 import net.bananemdnsa.historystages.init.ModBlocks;
 import net.bananemdnsa.historystages.init.ModItems;
 import net.bananemdnsa.historystages.research.BoosterUtil;
 import net.bananemdnsa.historystages.research.ResearchBoosterRegistry;
-import net.bananemdnsa.historystages.compat.ScrollVariants;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -50,7 +51,7 @@ public class EMIPlugin implements EmiPlugin {
                         List.of(open.copy().setRemainder(open.copy()), EmiStack.of(Items.PAPER)),
                         EmiStack.of(ScrollVariants.createScroll(stageId)),
                         new ResourceLocation(HistoryStages.MOD_ID,
-                                "reseal_scroll/" + stageId.replace(':', '_'))));
+                                "reseal_scroll/" + StageDisplayPath.of(stageId))));
             }
         }
 
