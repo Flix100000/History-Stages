@@ -30,4 +30,18 @@ public final class DemoAddonCategoryEditor {
                 "editor.historystages.demo.search.relics",
                 DemoAddonCategory::candidateRelics));
     }
+
+    @SubscribeEvent
+    public static void onRegisterTriggerEditors(
+            net.bananemdnsa.historystages.client.editor.trigger.RegisterTriggerEditorsEvent event) {
+        if (!DemoAddonCategory.enabled()) return;
+
+        event.register(net.bananemdnsa.historystages.client.editor.trigger.TriggerEditor.ofIdList(
+                DemoAddonCategory.TRIGGER_TYPE,
+                "editor.historystages.demo.auto_trigger.relic_found",
+                "editor.historystages.demo.search.relics",
+                DemoAddonCategory::candidateRelics,
+                RelicFoundTrigger::new,
+                t -> t instanceof RelicFoundTrigger r ? r.relic() : ""));
+    }
 }

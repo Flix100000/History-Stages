@@ -97,6 +97,9 @@ public class HistoryStages {
                     net.minecraftforge.fml.ModLoader.get().postEvent(
                             new net.bananemdnsa.historystages.data.lock.category.RegisterLockCategoriesEvent());
                     net.bananemdnsa.historystages.data.lock.category.LockCategories.freeze();
+                    net.minecraftforge.fml.ModLoader.get().postEvent(
+                            new net.bananemdnsa.historystages.data.auto.RegisterTriggerTypesEvent());
+                    net.bananemdnsa.historystages.data.auto.TriggerTypes.freeze();
 
                     // Logged here rather than inside freeze(): LockCategories is unit-tested, and
                     // the unit tests must be able to load it without a running game. This line is

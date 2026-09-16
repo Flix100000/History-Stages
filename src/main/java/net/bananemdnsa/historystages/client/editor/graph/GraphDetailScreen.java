@@ -9,15 +9,7 @@ import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.data.auto.AutoTrigger;
 import net.bananemdnsa.historystages.data.auto.CombineMode;
-import net.bananemdnsa.historystages.data.auto.conditions.AdvancementTrigger;
-import net.bananemdnsa.historystages.data.auto.conditions.BiomeTrigger;
-import net.bananemdnsa.historystages.data.auto.conditions.BlockBreakTrigger;
-import net.bananemdnsa.historystages.data.auto.conditions.BlockPlaceTrigger;
-import net.bananemdnsa.historystages.data.auto.conditions.DimensionTrigger;
-import net.bananemdnsa.historystages.data.auto.conditions.EntityTrigger;
-import net.bananemdnsa.historystages.data.auto.conditions.ItemTrigger;
-import net.bananemdnsa.historystages.data.auto.conditions.PlaytimeTrigger;
-import net.bananemdnsa.historystages.data.auto.conditions.StructureTrigger;
+import net.bananemdnsa.historystages.client.editor.trigger.TriggerLabels;
 import net.bananemdnsa.historystages.data.auto.conditions.TriggerCondition;
 import net.bananemdnsa.historystages.data.dependency.DependencyResult;
 import net.bananemdnsa.historystages.data.graph.GraphStageData;
@@ -398,7 +390,7 @@ public final class GraphDetailScreen extends AbstractModalScreen {
             out.add(new LineRow(line, HINT_COLOR, LINE_H));
         }
         for (TriggerCondition t : trigger.getTriggers()) {
-            String line = Component.translatable(triggerTypeKey(t)).getString() + ": " + triggerValueText(t);
+            String line = TriggerLabels.typeLabel(t) + ": " + TriggerLabels.valueText(t);
             for (FormattedCharSequence wrapped : font.split(Component.literal(line), textWidth)) {
                 out.add(new LineRow(wrapped, TEXT_COLOR, LINE_H));
             }
@@ -604,28 +596,4 @@ public final class GraphDetailScreen extends AbstractModalScreen {
         };
     }
 
-    private static String triggerTypeKey(TriggerCondition t) {
-        return "editor.historystages.auto_trigger.type." + t.type();
-    }
-
-    /** Mirrors {@code AutoTriggerEditorScreen.triggerValueText}, as the docked panel did. */
-    private static String triggerValueText(TriggerCondition t) {
-        if (t instanceof BiomeTrigger b) return b.id();
-        if (t instanceof StructureTrigger s) return s.id();
-        if (t instanceof DimensionTrigger d) return d.id();
-        if (t instanceof ItemTrigger i) return i.id();
-        if (t instanceof EntityTrigger e) {
-            return e.id() + " ("
-                    + Component.translatable("editor.historystages.auto_trigger.entity."
-                            + e.resolvedSubMode().serialize()).getString()
-                    + ")";
-        }
-        if (t instanceof BlockPlaceTrigger bp) return bp.id();
-        if (t instanceof BlockBreakTrigger bb) return bb.id();
-        if (t instanceof AdvancementTrigger a) return a.id();
-        if (t instanceof PlaytimeTrigger p) {
-            return Component.translatable("editor.historystages.auto_trigger.playtime.days", p.days()).getString();
-        }
-        return "";
-    }
 }

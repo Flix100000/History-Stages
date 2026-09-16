@@ -114,6 +114,8 @@
   "editor.historystages.demo.tab.relics": "Relics (demo)",
   "editor.historystages.demo.tooltip.relics": "Stand-in addon category, only present with -Dhistorystages.demoCategory=true.",
   "editor.historystages.demo.search.relics": "Search relics...",
+  "editor.historystages.auto_trigger.unknown.title": "Trigger not editable",
+  "editor.historystages.auto_trigger.unknown.message": "'%s' comes from a mod that is not loaded. It is kept in the file untouched.",
   "editor.historystages.search.placeholder.biomes": "Search biomes...",
   "editor.historystages.search.placeholder.biome_tags": "Search biome tags...",
   "editor.historystages.search.placeholder.effects": "Search effects...",
@@ -645,6 +647,9 @@
   "editor.historystages.auto_trigger.empty": "No triggers yet. Click '+ Add' to add one.",
   "editor.historystages.auto_trigger.no_matches": "No triggers match the current search / filter.",
   "editor.historystages.auto_trigger.search": "Search triggers...",
+
+  "editor.historystages.demo.auto_trigger.relic_found": "Relic found (demo)",
+  "editor.historystages.auto_trigger.type.unknown": "Unknown",
   "editor.historystages.auto_trigger.type.biome": "Biome",
   "editor.historystages.auto_trigger.type.structure": "Structure",
   "editor.historystages.auto_trigger.type.dimension": "Dimension",

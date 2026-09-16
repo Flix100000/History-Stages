@@ -97,7 +97,7 @@ public class StageManager {
             "mod_exceptions", "recipes", "dimensions", "structures", "biomes", "entities", "dependencies",
             "min_pedestal_tier", "pedestal_tier_mode",
             "mode", "auto_trigger", "temporary", "hidden_display", "lose_on_death",
-            "scroll_completion"
+            "scroll_completion", "addons"
     );
     private static final Set<String> KNOWN_ENTITY_KEYS = Set.of(
             "spawnlock", "attacklock", "interactionlock", "modLinked"
@@ -2415,8 +2415,14 @@ public class StageManager {
                 addMessage(MessageLevel.WARN, "Playtime trigger in stage '" + stageId + "' has negative days (" + pt.days() + "). Treated as 0.");
                 DebugLogger.warn("Invalid AutoTrigger Days", "Playtime trigger in stage '" + stageId + "' has days=" + pt.days() + ". Negative values are clamped to 0 at runtime.");
             }
+        } else {
+            // Not a warning: a trigger whose mod is absent is expected, is kept untouched, and
+            // simply never fires. Calling it invalid would push someone to delete it.
+            String msg = "Stage '" + stageId + "' has an auto_trigger of type '" + typeName
+                    + "' that no loaded mod understands. It is kept unchanged and never fires.";
+            addMessage(MessageLevel.INFO, msg);
+            DebugLogger.info("Unknown AutoTrigger", msg);
         }
-        // else: unknown trigger type — the adapter already logged it, nothing to validate.
     }
 
     private static void checkTriggerRl(String stageId, String triggerType, String id) {
