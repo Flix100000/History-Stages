@@ -85,6 +85,30 @@ public class HistoryStages {
         ConfigHandler.setupConfig();
         StageManager.load();
 
+        // Registration window for addon lock categories. StageManager.load() above already
+        // parsed every stage's `addons` block into raw JsonElement — that needs no registry at
+        // all — so nothing upstream of this point ever needed a category to exist. Firing here,
+        // once every mod has been constructed and FMLCommonSetupEvent's own parallel dispatch has
+        // fully returned (postEvent is called from the deferred work queue, not from inside that
+        // dispatch), lets every mod's RegisterLockCategoriesEvent listener run before the
+        // registry closes for good.
+        modEventBus.addListener((net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent event) ->
+                event.enqueueWork(() -> {
+                    net.minecraftforge.fml.ModLoader.get().postEvent(
+                            new net.bananemdnsa.historystages.data.lock.category.RegisterLockCategoriesEvent());
+                    net.bananemdnsa.historystages.data.lock.category.LockCategories.freeze();
+
+                    // Logged here rather than inside freeze(): LockCategories is unit-tested, and
+                    // the unit tests must be able to load it without a running game. This line is
+                    // also how an in-game check confirms the event actually fired.
+                    var addonCategories =
+                            net.bananemdnsa.historystages.data.lock.category.LockCategories.addonIds();
+                    LOGGER.info("[HistoryStages] Lock categories closed: {} total, {} from other mods {}",
+                            net.bananemdnsa.historystages.data.lock.category.LockCategories.all().size(),
+                            addonCategories.size(), addonCategories);
+                }));
+
+        // Conditional FTB Quests integration
         if (ModList.get().isLoaded("ftbquests")) {
             try {
                 net.bananemdnsa.historystages.compat.ftbquests.FTBQuestsIntegration.init();
@@ -445,7 +469,7 @@ public class HistoryStages {
             ItemStack stack = player.getInventory().getItem(i);
             if (stack.isEmpty())
                 continue;
-            if (StageManager.isItemLockedForServer(stack)) {
+            if (net.bananemdnsa.historystages.util.lock.StageLockHelper.isItemLockedForServer(stack)) {
                 ResourceLocation itemRL = ForgeRegistries.ITEMS.getKey(stack.getItem());
                 lockedItems.add(itemRL + " x" + stack.getCount());
             }

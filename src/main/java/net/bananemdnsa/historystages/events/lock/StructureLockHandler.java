@@ -4,6 +4,7 @@ import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.StageManager;
+import net.bananemdnsa.historystages.data.lock.engine.StageLocks;
 import net.bananemdnsa.historystages.network.PacketHandler;
 import net.bananemdnsa.historystages.network.clientbound.SyncLockBordersPacket;
 import net.bananemdnsa.historystages.structure.ClusterBuilder;
@@ -83,7 +84,7 @@ public class StructureLockHandler {
         if (!(event.player instanceof ServerPlayer player)) return;
         if (player.isSpectator()) return;
 
-        if (!StageManager.anyStageHasStructures()) return;
+        if (!StageLocks.engine().anyStructureLocks()) return;
 
         PlayerState state = STATE.computeIfAbsent(player.getUUID(), u -> new PlayerState());
 
