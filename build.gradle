@@ -1,7 +1,6 @@
 plugins {
     id 'eclipse'
     id 'idea'
-    id 'maven-publish'
     id 'net.minecraftforge.gradle' version '[6.0,6.2)'
     id 'org.spongepowered.mixin' version '0.7.+'
     id 'org.parchmentmc.librarian.forgegradle' version '1.+'
@@ -16,8 +15,9 @@ base {
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
 
+jarJar.enable()
+
 minecraft {
-    // Hier nutzen wir wieder deine Variablen aus der gradle.properties
     mappings channel: mapping_channel, version: mapping_version
 
     copyIdeResources = true
@@ -39,11 +39,26 @@ minecraft {
             property 'mixin.env.remapRefMap', 'true'
             property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
             property 'forge.enabledGameTestNamespaces', mod_id
+
+            // Adds the stand-in addon category so the addon path can be exercised in the dev
+            // client. Nothing ships with it: without this property the demo never registers.
+            property 'historystages.demoCategory', 'true'
         }
 
         server {
+            // Its own directory, or the server and a client cannot run at the same time — which is
+            // the entire point of a dedicated-server test.
+            workingDirectory project.file('run-server-forge')
             property 'forge.enabledGameTestNamespaces', mod_id
+            property 'historystages.demoCategory', 'true'
             args '--nogui'
+        }
+
+        // Runs every registered GameTest and exits. Vanilla refuses to start it with no tests at all.
+        gameTestServer {
+            workingDirectory project.file('run-gametest-forge')
+            property 'forge.enabledGameTestNamespaces', mod_id
+            property 'historystages.demoCategory', 'true'
         }
 
         data {
@@ -53,7 +68,6 @@ minecraft {
     }
 }
 
-// FIX: Ressourcen korrekt einbinden
 sourceSets.main.resources { srcDirs += 'src/generated/resources' }
 
 repositories {
@@ -64,7 +78,6 @@ repositories {
         name = "TerraformersMC"
         url = "https://maven.terraformersmc.com/"
     }
-
     maven {
         url "https://cursemaven.com"
     }
@@ -81,34 +94,47 @@ repositories {
 dependencies {
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
 
-    // Mixin Support
+    // ---- Mixin ----
+
     annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
 
-    // JEI (Lokal)
-    implementation fg.deobf("curse.maven:jei-238222:7391695")
+    // Forge 1.20.1 does not ship MixinExtras, NeoForge does. Wrapping a call instead of
+    // redirecting it is what keeps us from claiming vanilla call sites other mods need too.
+    compileOnly(annotationProcessor("io.github.llamalad7:mixinextras-common:0.5.3"))
+    implementation(jarJar("io.github.llamalad7:mixinextras-forge:0.5.3")) {
+        jarJar.ranged(it, "[0.5.3,)")
+    }
 
-    // LOOTR (Über CurseMaven - Das ist die sauberste Lösung)
-    // Wir nutzen 'implementation' statt 'compileOnly', damit die Klassen im Projekt bekannt sind
+    // ---- Required ----
+
+    // The only hard dependency, see mods.toml.
     implementation fg.deobf("curse.maven:lootr-361276:5420132")
 
-    //FTB Quests + Dependencies
+    // ---- Recipe viewers ----
+
+    implementation fg.deobf("curse.maven:jei-238222:7391695")
+
+    compileOnly fg.deobf("dev.emi:emi-forge:${emi_version}:api")
+    //runtimeOnly fg.deobf("dev.emi:emi-forge:${emi_version}")
+
+    // ---- Optional integrations ----
+
+    // FTB Quests will not start without Teams, Library and Architectury.
     implementation fg.deobf("curse.maven:ftb-quests-forge-289412:7608804")
     implementation fg.deobf("curse.maven:ftb-library-forge-404465:7296748")
     implementation fg.deobf("curse.maven:ftb-teams-forge-404468:7499810")
     implementation fg.deobf("curse.maven:architectury-api-419699:5137938")
 
-    // EMI
-    compileOnly fg.deobf("dev.emi:emi-forge:${emi_version}:api")
-    //runtimeOnly fg.deobf("dev.emi:emi-forge:${emi_version}")
-
-    // Better Combat (optional integration — compile-only)
-    compileOnly fg.deobf("curse.maven:better-combat-by-daedelus-639842:7287334")
-    
-    //Jade
     implementation fg.deobf("curse.maven:jade-324717:6855440")
 
-    // Curios (optional)
+    compileOnly fg.deobf("curse.maven:better-combat-by-daedelus-639842:7287334")
     compileOnly fg.deobf("top.theillusivec4.curios:curios-forge:5.14.1+1.20.1:api")
+
+    // ---- Unit tests ----
+
+    testImplementation platform('org.junit:junit-bom:5.10.2')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 // Mods pulled in only to reproduce a bug report - Create, KubeJS and the like. They live in
@@ -135,6 +161,10 @@ tasks.named('processResources', ProcessResources).configure {
 }
 
 tasks.named('jar', Jar).configure {
+    // The jar without MixinExtras inside; jarJar below is what ships. Kept out of build/libs so
+    // the workflows, which upload everything there, still find exactly one jar.
+    archiveClassifier = 'slim'
+    destinationDirectory = layout.buildDirectory.dir('devlibs')
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     manifest {
         attributes([
@@ -151,12 +181,31 @@ tasks.named('jar', Jar).configure {
     finalizedBy 'reobfJar'
 }
 
+tasks.named('jarJar').configure {
+    archiveClassifier = ''
+    manifest.from(tasks.jar.manifest)
+    finalizedBy 'reobfJarJar'
+}
+
+reobf {
+    jarJar {}
+}
+
 mixin {
-    // Das verknüpft deine Mixins mit dem Code
     add sourceSets.main, "historystages.refmap.json"
     config "historystages.mixins.json"
 }
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
+}
+
+tasks.named('test', Test) {
+    useJUnitPlatform()
+    testLogging {
+        events "passed", "skipped", "failed"
+    }
+    // The lock benchmark is an instrument, not a test: half a million iterations per
+    // measurement turn a three-second suite into thirty-five. Off by default, on with -Pbench.
+    systemProperty 'historystages.bench', project.hasProperty('bench') ? 'true' : 'false'
 }
