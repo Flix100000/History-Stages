@@ -8,9 +8,9 @@ import net.bananemdnsa.historystages.data.lock.FluidRecipeIndex;
 import net.bananemdnsa.historystages.data.lock.FluidRecipeScanner;
 
 import net.bananemdnsa.historystages.Config;
+import net.bananemdnsa.historystages.util.CurrentRegistries;
 import net.bananemdnsa.historystages.util.lock.RecipeCraftContext;
 import net.bananemdnsa.historystages.util.lock.StageLockHelper;
-import net.minecraft.core.RegistryAccess;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeHolder;
@@ -38,7 +38,7 @@ public class RecipeHandler {
 
         ItemStack result;
         try {
-            result = holder.value().getResultItem(RegistryAccess.EMPTY);
+            result = holder.value().getResultItem(CurrentRegistries.orEmpty());
         } catch (Exception e) {
             return false;
         }
@@ -156,7 +156,7 @@ public class RecipeHandler {
 
         ItemStack result;
         try {
-            result = holder.value().getResultItem(RegistryAccess.EMPTY);
+            result = holder.value().getResultItem(CurrentRegistries.orEmpty());
         } catch (Exception e) {
             result = ItemStack.EMPTY;
         }

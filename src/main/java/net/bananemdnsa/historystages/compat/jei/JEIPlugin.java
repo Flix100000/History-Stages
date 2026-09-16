@@ -24,7 +24,8 @@ import net.bananemdnsa.historystages.init.ModBlocks;
 import net.bananemdnsa.historystages.init.ModItems;
 import net.bananemdnsa.historystages.research.BoosterUtil;
 import net.bananemdnsa.historystages.research.ResearchBoosterRegistry;
-import net.minecraft.core.RegistryAccess;
+import net.bananemdnsa.historystages.util.CurrentRegistries;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
@@ -212,7 +213,10 @@ public class JEIPlugin implements IModPlugin {
         }
 
         final Set<ItemStack> lockedFinal = lockedItems;
-        RegistryAccess registryAccess = RegistryAccess.EMPTY;
+        // The world's own registries, not an empty set. A modded recipe asked for its result
+        // against nothing either throws — and was then silently left visible — or answers with a
+        // result it built out of an empty world.
+        HolderLookup.Provider registryAccess = CurrentRegistries.orEmpty();
 
         runtime.getJeiHelpers().getAllRecipeTypes().forEach(type ->
                 hideForType(rm, (RecipeType) type, lockedFinal, registryAccess));
@@ -220,7 +224,8 @@ public class JEIPlugin implements IModPlugin {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     private static <R> void hideForType(IRecipeManager rm, RecipeType<R> type,
-                                         Set<ItemStack> lockedItems, RegistryAccess registryAccess) {
+                                         Set<ItemStack> lockedItems,
+                                         HolderLookup.Provider registryAccess) {
         try {
             List<R> all = rm.createRecipeLookup(type).includeHidden().get().toList();
             List<R> toHide = LockedJeiVisibility.filterRecipesWithLockedOutput(
@@ -243,13 +248,14 @@ public class JEIPlugin implements IModPlugin {
      * Modded recipe types with custom recipe objects return empty — the lock
      * overlay decorator still works for them.
      */
-    private static List<ItemStack> extractOutputs(Object recipe, RegistryAccess registryAccess) {
+    private static List<ItemStack> extractOutputs(Object recipe, HolderLookup.Provider registryAccess) {
         if (recipe instanceof RecipeHolder<?> holder) {
             try {
                 ItemStack out = holder.value().getResultItem(registryAccess);
                 if (out != null && !out.isEmpty()) return List.of(out);
             } catch (Exception ignored) {
-                // Some modded recipes throw if registryAccess is empty — skip them.
+                // A recipe that will not say what it makes cannot be matched against a locked
+                // item; it keeps its overlay from the decorator either way.
             }
         }
         return List.of();
