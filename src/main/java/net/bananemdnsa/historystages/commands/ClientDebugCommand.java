@@ -2,7 +2,6 @@ package net.bananemdnsa.historystages.commands;
 
 import com.mojang.brigadier.CommandDispatcher;
 import net.bananemdnsa.historystages.HistoryStages;
-import net.bananemdnsa.historystages.client.editor.StageOverviewScreen;
 import net.bananemdnsa.historystages.network.PacketHandler;
 import net.bananemdnsa.historystages.network.serverbound.RequestClusterShapesPacket;
 import net.bananemdnsa.historystages.network.serverbound.RequestStructureDebugPacket;
@@ -49,8 +48,6 @@ public final class ClientDebugCommand {
         dispatcher.register(Commands.literal("history")
                 .then(Commands.literal("debug")
                         .requires(source -> source.hasPermission(2))
-                        .then(Commands.literal("editor")
-                                .executes(ctx -> openEditor(ctx.getSource())))
                         .then(Commands.literal("structure")
                                 .executes(ctx -> requestStructure(ctx.getSource())))
                         .then(Commands.literal("viz")
@@ -62,18 +59,6 @@ public final class ClientDebugCommand {
                                         .executes(ctx -> handlePreset(ctx.getSource())))
                                 .then(Commands.literal("custom")
                                         .executes(ctx -> handleCustom(ctx.getSource()))))));
-    }
-
-    // ---------- editor ----------
-
-    private static int openEditor(CommandSourceStack source) {
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null) {
-            source.sendFailure(Component.literal("This command can only be run by a player."));
-            return 0;
-        }
-        mc.tell(() -> mc.setScreen(new StageOverviewScreen()));
-        return 1;
     }
 
     // ---------- structure (server round-trip) ----------

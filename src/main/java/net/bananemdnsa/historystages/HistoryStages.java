@@ -125,6 +125,9 @@ public class HistoryStages {
                     // packets, which now go to AddonConfigSections directly rather than through a
                     // registry the values had to be copied into first.
                     net.bananemdnsa.historystages.data.config.AddonConfigSections.freeze();
+                    net.minecraftforge.fml.ModLoader.get().postEvent(
+                            new net.bananemdnsa.historystages.api.lock.RegisterIndividualRecipeSupportEvent());
+                    net.bananemdnsa.historystages.data.lock.IndividualRecipeSupport.freeze();
 
                     // Logged here rather than inside freeze(): LockCategories is unit-tested, and
                     // the unit tests must be able to load it without a running game. This line is

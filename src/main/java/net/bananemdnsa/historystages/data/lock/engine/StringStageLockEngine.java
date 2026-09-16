@@ -174,6 +174,27 @@ public class StringStageLockEngine implements StageLockEngine {
     }
 
     @Override
+    public List<String> gatingStagesForItemAction(String itemId, String modId,
+                                                  @Nullable ItemStack stack, String action,
+                                                  StageScope scope) {
+        List<String> gating = gatingStagesForItem(itemId, modId, stack, scope);
+        if (gating.isEmpty()) return gating;
+
+        Map<String, StageEntry> stages = stagesOf(scope);
+        LockSubjects.ItemSubject subject = new LockSubjects.ItemSubject(
+                itemId, modId, stack, stack != null ? stack.getItem() : null, FluidContent.of(stack));
+
+        List<String> narrowed = new ArrayList<>(gating.size());
+        for (String stageId : gating) {
+            StageEntry entry = stages.get(stageId);
+            if (entry != null && ItemActionLocks.isBlockedBy(entry, subject, action)) {
+                narrowed.add(stageId);
+            }
+        }
+        return narrowed;
+    }
+
+    @Override
     public boolean isItemActionLocked(ItemStack stack, String action, StageScope scope, StageStateView state) {
         ResourceLocation res = BuiltInRegistries.ITEM.getKey(stack.getItem());
         if (res == null) return false;
@@ -306,6 +327,10 @@ public class StringStageLockEngine implements StageLockEngine {
     @Override
     public void stagesChanged() {
         CategoryLockIndexes.markRelevanceDirty();
+        // Stages do not change what a recipe contains, only whether the fluid recipe index is
+        // worth having — so this is a relevance signal, not a re-scan. A pack adding its first
+        // fluid entry still gets one built; the editor no longer re-encodes the pack per save.
+        net.bananemdnsa.historystages.data.lock.FluidRecipeIndex.markRelevanceDirty();
     }
 
 
