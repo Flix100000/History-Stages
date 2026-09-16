@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.compat.emi;
 
+import com.mojang.logging.LogUtils;
 import dev.emi.emi.api.EmiEntrypoint;
 import dev.emi.emi.api.EmiPlugin;
 import dev.emi.emi.api.EmiRegistry;
@@ -14,14 +15,19 @@ import net.bananemdnsa.historystages.init.ModBlocks;
 import net.bananemdnsa.historystages.init.ModItems;
 import net.bananemdnsa.historystages.research.BoosterUtil;
 import net.bananemdnsa.historystages.research.ResearchBoosterRegistry;
+import net.bananemdnsa.historystages.util.lock.StageLockHelper;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import org.slf4j.Logger;
 
-import java.util.List;
+import java.util.*;
+import java.util.function.Predicate;
 
 @EmiEntrypoint
 public class EMIPlugin implements EmiPlugin {
+    private static final Logger LOGGER = LogUtils.getLogger();
+
     @Override
     public void register(EmiRegistry registry) {
         // Register the locked recipe decorator globally for all categories
@@ -68,5 +74,48 @@ public class EMIPlugin implements EmiPlugin {
 
         // Pedestal opens the category too (parity with JEI registerRecipeCatalysts)
         registry.addWorkstation(category, EmiStack.of(new ItemStack(ModBlocks.RESEARCH_PEDESTAL.get())));
+
+        // Fortunately, as long as actually reload EMI, we don't have to calculate diffs and can always recalculate
+        // everything from scratch! Actually, EMI errors if we try to manually re-insert the diffs.
+        try {
+            boolean hideItems = Config.VISUAL.hideLockedItemsInJei.get();
+            boolean hideRecipes = Config.VISUAL.hideLockedRecipesInJei.get();
+            applyItemHiding(hideItems, registry);
+            applyRecipeHiding(hideRecipes, registry);
+            LOGGER.info("[HistoryStages/EMI] Initial hide pass complete (items={}, recipes={}).", hideItems, hideRecipes);
+        } catch (Exception e) {
+            LOGGER.warn("[HistoryStages/EMI] Initial hide pass failed", e);
+        }
+    }
+
+    private static boolean isItemLocked(EmiStack emiStack) {
+        Predicate<ItemStack> isLocked = switch (Config.VISUAL.lockedItemMultiStagePolicy.get()) {
+            case STRICT  -> stack -> StageLockHelper.isItemActionLockedForClient(stack, "recipe");
+            case LENIENT -> stack -> StageLockHelper.isItemActionLockedForClientLenient(stack, "recipe");
+        };
+        return isLocked.test(emiStack.getItemStack());
+    }
+
+    /**
+     * Hides/un-hides locked items.
+     */
+    public static synchronized void applyItemHiding(boolean enabled, EmiRegistry registry) {
+        if (!enabled) return;
+        registry.removeEmiStacks(EMIPlugin::isItemLocked);
+    }
+
+    /**
+     * Hides/un-hides recipes whose outputs contain a locked item.
+     */
+    private static synchronized void applyRecipeHiding(boolean enabled, EmiRegistry registry) {
+        if (!enabled) return;
+        registry.removeRecipes(recipe -> {
+            for (EmiStack stack : recipe.getOutputs()) {
+                if (isItemLocked(stack)) {
+                    return true;
+                }
+            }
+            return false;
+        });
     }
 }
