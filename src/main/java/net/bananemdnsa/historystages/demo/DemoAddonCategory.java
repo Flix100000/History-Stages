@@ -7,6 +7,7 @@ import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.data.lock.category.AddonLockCategory;
 import net.bananemdnsa.historystages.data.lock.category.CategoryStorage;
 import net.bananemdnsa.historystages.data.lock.category.RegisterLockCategoriesEvent;
+import net.bananemdnsa.historystages.data.lock.engine.StageScope;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 
@@ -55,7 +56,7 @@ public final class DemoAddonCategory {
     public static void onRegisterTriggerTypes(
             net.bananemdnsa.historystages.data.auto.RegisterTriggerTypesEvent event) {
         if (!enabled()) return;
-        event.register(TRIGGER_TYPE, RelicFoundTrigger.class);
+        event.register(TRIGGER_TYPE, RelicFoundTrigger.class, StageScope.GLOBAL);
     }
 
     /**

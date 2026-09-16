@@ -100,6 +100,16 @@ public class HistoryStages {
                     net.minecraftforge.fml.ModLoader.get().postEvent(
                             new net.bananemdnsa.historystages.data.auto.RegisterTriggerTypesEvent());
                     net.bananemdnsa.historystages.data.auto.TriggerTypes.freeze();
+                    net.minecraftforge.fml.ModLoader.get().postEvent(
+                            new net.bananemdnsa.historystages.data.settings.RegisterStageSettingsGroupsEvent());
+                    net.bananemdnsa.historystages.data.settings.StageSettingsGroups.freeze();
+                    net.minecraftforge.fml.ModLoader.get().postEvent(
+                            new net.bananemdnsa.historystages.data.config.RegisterConfigSectionsEvent());
+                    net.bananemdnsa.historystages.data.config.AddonConfigSections.freeze();
+                    // Publish after the freeze, not before: publishing first would let a
+                    // registration that arrives later in the same dispatch slip through
+                    // unpublished — it would appear in the editor and silently never save.
+                    net.bananemdnsa.historystages.data.config.AddonConfigPublisher.publishCommonSections();
 
                     // Logged here rather than inside freeze(): LockCategories is unit-tested, and
                     // the unit tests must be able to load it without a running game. This line is
@@ -109,6 +119,10 @@ public class HistoryStages {
                     LOGGER.info("[HistoryStages] Lock categories closed: {} total, {} from other mods {}",
                             net.bananemdnsa.historystages.data.lock.category.LockCategories.all().size(),
                             addonCategories.size(), addonCategories);
+                    LOGGER.info("[HistoryStages] Stage settings groups closed: {} total",
+                            net.bananemdnsa.historystages.data.settings.StageSettingsGroups.all().size());
+                    LOGGER.info("[HistoryStages] Config sections closed: {} total",
+                            net.bananemdnsa.historystages.data.config.AddonConfigSections.all().size());
                 }));
 
         // Conditional FTB Quests integration

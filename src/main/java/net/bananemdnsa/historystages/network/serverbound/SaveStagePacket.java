@@ -6,8 +6,10 @@ import net.bananemdnsa.historystages.network.clientbound.SyncStageDefinitionsPac
 import net.bananemdnsa.historystages.network.clientbound.EditorFeedbackPacket;
 import com.google.gson.Gson;
 import net.bananemdnsa.historystages.data.StageEntry;
+import net.bananemdnsa.historystages.data.StageFileGuard;
 import net.bananemdnsa.historystages.data.StageJsonLimits;
 import net.bananemdnsa.historystages.data.StageManager;
+import net.bananemdnsa.historystages.data.lock.engine.StageScope;
 import net.bananemdnsa.historystages.data.saveddata.StageData;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
@@ -91,6 +93,22 @@ public class SaveStagePacket {
                 return;
             }
 
+            // Guards against silently clobbering a hand edit made to the file while the editor
+            // held a stale in-memory copy: refuse the write unless the file on disk still
+            // matches what the server last loaded, or the player already confirmed this exact
+            // on-disk state once.
+            StageScope scope = msg.individual ? StageScope.INDIVIDUAL : StageScope.GLOBAL;
+            byte[] onDisk = StageManager.stageFileBytes(msg.stageId, msg.individual, msg.folder);
+            if (!StageFileGuard.mayWrite(player.getUUID(), msg.stageId, scope, onDisk)) {
+                PacketHandler.sendEditorFeedback(
+                        EditorFeedbackPacket.error(
+                                "editor.historystages.toast.stage_changed_on_disk.title",
+                                "editor.historystages.toast.stage_changed_on_disk.message",
+                                msg.stageId),
+                        player);
+                return;
+            }
+
             boolean success;
             if (msg.individual) {
                 success = StageManager.saveIndividualStage(msg.stageId, entry, msg.folder);
@@ -99,6 +117,7 @@ public class SaveStagePacket {
             }
 
             if (success) {
+                StageFileGuard.consume(player.getUUID(), msg.stageId, scope);
                 StageManager.reloadStages();
                 StageData data = StageData.get(player.serverLevel());
                 // Stage edits can add/remove structure entries — invalidate the
