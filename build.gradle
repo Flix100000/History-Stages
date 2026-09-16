@@ -88,6 +88,29 @@ repositories {
         name = "Curios"
         url = "https://maven.theillusivec4.top/"
     }
+    maven {
+        name = "Jared's Maven"
+        url = "https://maven.blamejared.com"
+        content {
+            includeGroup "com.blamejared.crafttweaker"
+            includeGroup "org.openzen.zencode"
+            includeGroup "com.faux.ingredientextension"
+        }
+    }
+    maven {
+        name = "Architectury"
+        url = "https://maven.architectury.dev/"
+        content {
+            includeGroup "dev.architectury"
+        }
+    }
+    maven {
+        name = "KubeJS"
+        url = "https://maven.latvian.dev/releases"
+        content {
+            includeGroup "dev.latvian.mods"
+        }
+    }
     mavenCentral()
 }
 
@@ -129,6 +152,12 @@ dependencies {
 
     compileOnly fg.deobf("curse.maven:better-combat-by-daedelus-639842:7287334")
     compileOnly fg.deobf("top.theillusivec4.curios:curios-forge:5.14.1+1.20.1:api")
+
+    // Script bridges. KubeJS finds its plugin through kubejs.plugins.txt and CraftTweaker scans for
+    // @ZenRegister, so nothing here is a hard dependency.
+    compileOnly(fg.deobf("dev.latvian.mods:kubejs-forge:2001.6.5-build.26"))
+    compileOnly(fg.deobf("dev.latvian.mods:rhino-forge:2001.2.3-build.10"))
+    compileOnly(fg.deobf("com.blamejared.crafttweaker:CraftTweaker-forge-1.20.1:14.0.60"))
 
     // ---- Unit tests ----
 
