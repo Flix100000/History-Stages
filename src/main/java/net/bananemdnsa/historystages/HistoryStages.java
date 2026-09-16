@@ -440,6 +440,15 @@ public class HistoryStages {
             }
         }
 
+        // Deliberately here and not in RecipeManager.apply: KubeJS and CraftTweaker rewrite
+        // recipes after that call, so an index built there would miss a script pack entirely.
+        // A tick has, by definition, waited for all of them. Costs one boolean read when clean.
+        // The ungated list, because getRecipes on the server already hides what is locked.
+        if (event.getServer() != null) {
+            net.bananemdnsa.historystages.data.lock.FluidRecipeIndex.rebuildIfDirty(
+                    net.bananemdnsa.historystages.data.lock.UngatedRecipes.of(event.getServer().getRecipeManager()));
+        }
+
         // Last in the tick on purpose: a stage unlocked anywhere above asks for a resend, and in
         // the case that needs it for a datapack reload, which blocks until it is finished. Running
         // it here rather than where it was asked for turns a bundle of unlocks into one piece of

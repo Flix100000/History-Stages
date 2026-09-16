@@ -58,6 +58,7 @@ public class SyncStagesPacket {
                         // resync, which rebuilds it too, but doing it here keeps the book correct
                         // without depending on that.
                         net.bananemdnsa.historystages.client.ClientRecipeBookRefresh.rebuild();
+                        net.bananemdnsa.historystages.client.ClientFluidRecipeIndex.refresh();
 
                         // EMI extra reload (hat eigenen Reload-Mechanismus)
                         if (net.minecraftforge.fml.ModList.get().isLoaded("emi")) {

@@ -85,6 +85,7 @@ public class RecipeManagerMixin implements UngatedRecipes {
         // server would look like a change to the gated set whatever it did, and pay for a datapack
         // reload it did not need.
         VisibleRecipes.gatedSetChanged(this.byName.values());
+        net.bananemdnsa.historystages.data.lock.FluidRecipeIndex.markDirty();
         auditRecipeLocks();
     }
 

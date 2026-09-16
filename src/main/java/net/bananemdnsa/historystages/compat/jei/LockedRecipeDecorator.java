@@ -65,7 +65,9 @@ public class LockedRecipeDecorator<T> implements IRecipeCategoryDecorator<T> {
         if (recipe instanceof Recipe<?> vanillaRecipe) {
             ResourceLocation recipeId = vanillaRecipe.getId();
             if (recipeId != null
-                    && StageLockHelper.isRecipeLockedForClient(recipeId.toString())) {
+                    && (StageLockHelper.isRecipeLockedForClient(recipeId.toString())
+                        || net.bananemdnsa.historystages.events.RecipeHandler
+                                .isFluidGatedForViewer(recipeId.toString()))) {
                 return true;
             }
         }
