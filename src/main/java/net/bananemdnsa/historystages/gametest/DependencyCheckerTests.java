@@ -8,10 +8,11 @@ import net.bananemdnsa.historystages.data.DependencyGroup;
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.dependency.DependencyChecker;
 import net.bananemdnsa.historystages.data.dependency.DependencyItem;
-import net.bananemdnsa.historystages.data.dependency.DependencyResult;
+import net.bananemdnsa.historystages.data.dependency.DependencyProgress;
+import net.bananemdnsa.historystages.api.dependency.RequirementResult;
 import net.bananemdnsa.historystages.data.dependency.StatDep;
 import net.bananemdnsa.historystages.data.dependency.XpLevelDep;
-import net.bananemdnsa.historystages.data.lock.engine.StageScope;
+import net.bananemdnsa.historystages.api.stage.StageScope;
 import net.bananemdnsa.historystages.data.saveddata.StageData;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -95,6 +96,37 @@ public final class DependencyCheckerTests {
             if (check(stage, player, StageScope.GLOBAL, deposited).isFulfilled()) {
                 helper.fail("two of three diamonds are deposited, "
                         + "but the checker reported the stage as fulfilled");
+                return;
+            }
+            helper.succeed();
+        } finally {
+            GameTestStages.removeAll();
+        }
+    }
+
+    @GameTest(template = "empty")
+    public static void depositedItemsStayWithTheirGroupWhenAnEarlierGroupIsDeleted(GameTestHelper helper) {
+        try {
+            DependencyGroup first = new DependencyGroup();
+            first.setItems(new ArrayList<>(List.of(new DependencyItem("minecraft:emerald", 1))));
+            DependencyGroup second = itemGroup();
+            StageEntry stage = GameTestStages.global("group_identity", first, second);
+            // What loading a stage file does, and the only reason the group below can be told
+            // apart from the one that is about to take its place.
+            DependencyProgress.assignIds(stage.getDependencies());
+            ServerPlayer player = GameTestPlayers.create(helper);
+
+            CompoundTag deposited = new CompoundTag();
+            deposited.putInt(DependencyProgress.key(DependencyProgress.groupKey(second, 1),
+                    DependencyProgress.itemSuffix("minecraft:diamond")), 3);
+
+            // The editor's "remove group" on the first one. Groups are AND-connected, so what is
+            // left is exactly the diamond requirement the player has already paid.
+            stage.getDependencies().remove(0);
+
+            if (!check(stage, player, StageScope.GLOBAL, deposited).isFulfilled()) {
+                helper.fail("three diamonds were deposited into the second group and the first"
+                        + " group was then deleted, but the checker no longer counts them");
                 return;
             }
             helper.succeed();
@@ -260,7 +292,7 @@ public final class DependencyCheckerTests {
      * empty group counts as fulfilled. Passing the wrong scope therefore produces a test that
      * passes while checking nothing, which is worse than one that fails.
      */
-    private static DependencyResult check(StageEntry stage, ServerPlayer player, StageScope scope,
+    private static RequirementResult check(StageEntry stage, ServerPlayer player, StageScope scope,
             CompoundTag deposited) {
         return DependencyChecker.checkAll(stage, player, player.level(), scope, deposited);
     }

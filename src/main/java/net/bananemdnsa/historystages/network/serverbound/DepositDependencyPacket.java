@@ -6,6 +6,7 @@ import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.data.NbtMatcher;
 import net.bananemdnsa.historystages.data.dependency.DependencyItem;
+import net.bananemdnsa.historystages.data.dependency.DependencyProgress;
 import net.bananemdnsa.historystages.data.dependency.XpLevelDep;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
@@ -71,6 +72,9 @@ public class DepositDependencyPacket {
                 return;
 
             DependencyGroup group = stageEntry.getDependencies().get(groupIndex);
+            // The packet carries a position — that is all the GUI knows — and it is turned into
+            // the group's own identity here, before anything is written under it.
+            String groupKey = DependencyProgress.groupKey(group, groupIndex);
             CompoundTag deposited = scroll.getOrCreateTagElement("DepositedDependencies");
 
             if ("ITEM".equals(type)) {
@@ -91,7 +95,7 @@ public class DepositDependencyPacket {
                     return;
                 int required = matched.getCount();
 
-                String key = "Group_" + groupIndex + "_Item_" + rl.toString();
+                String key = DependencyProgress.key(groupKey, DependencyProgress.itemSuffix(rl.toString()));
                 int current = deposited.getInt(key);
                 int needed = required - current;
                 if (needed <= 0)
@@ -120,7 +124,7 @@ public class DepositDependencyPacket {
             } else if ("XP".equals(type)) {
                 XpLevelDep xpLevel = group.getXpLevel();
                 if (xpLevel != null && xpLevel.isConsume() && xpLevel.getLevel() > 0) {
-                    String key = "Group_" + groupIndex + "_XP";
+                    String key = DependencyProgress.key(groupKey, DependencyProgress.XP_SUFFIX);
                     if (!deposited.getBoolean(key) && player.experienceLevel >= xpLevel.getLevel()) {
                         player.giveExperienceLevels(-xpLevel.getLevel());
                         deposited.putBoolean(key, true);

@@ -4,18 +4,20 @@ import net.bananemdnsa.historystages.GraphConfig;
 import net.bananemdnsa.historystages.client.cache.ClientDependencyCache;
 import net.bananemdnsa.historystages.client.editor.widget.MarqueeText;
 import net.bananemdnsa.historystages.client.editor.widget.Scrollbar;
-import net.bananemdnsa.historystages.client.editor.widget.dialog.AbstractModalScreen;
+import net.bananemdnsa.historystages.api.editor.widget.AbstractModalScreen;
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.data.auto.AutoTrigger;
 import net.bananemdnsa.historystages.data.auto.CombineMode;
 import net.bananemdnsa.historystages.client.editor.trigger.TriggerLabels;
-import net.bananemdnsa.historystages.data.auto.conditions.TriggerCondition;
-import net.bananemdnsa.historystages.data.dependency.DependencyResult;
-import net.bananemdnsa.historystages.data.dependency.RequirementDisplay;
-import net.bananemdnsa.historystages.data.dependency.Requirement;
+import net.bananemdnsa.historystages.api.trigger.TriggerCondition;
+import net.bananemdnsa.historystages.api.dependency.RequirementResult;
+import net.bananemdnsa.historystages.api.dependency.RequirementDisplay;
+import net.bananemdnsa.historystages.api.dependency.Requirement;
 import net.bananemdnsa.historystages.data.dependency.RequirementTypes;
 import net.bananemdnsa.historystages.data.graph.GraphStageData;
+import net.bananemdnsa.historystages.network.PacketHandler;
+import net.bananemdnsa.historystages.network.serverbound.RequestStageDependencyPacket;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
@@ -46,7 +48,7 @@ import java.util.Set;
  * that {@code GuiGraphics.renderItem} draws at, which is what lets this screen show real item
  * icons without them punching through the frame.
  *
- * <p>Requirement rows render {@link DependencyResult} exactly as received from
+ * <p>Requirement rows render {@link RequirementResult} exactly as received from
  * {@link ClientDependencyCache} and never re-derive fulfilment — the same rule the docked panel
  * carried. Rows are rebuilt whenever the cache version changes, because the reply to a
  * dependency request can land while this screen is already open.
@@ -73,6 +75,21 @@ public final class GraphDetailScreen extends AbstractModalScreen {
     private static final int ENTRY_INDENT = STRIPE_W + STRIPE_GAP;
     /** The fixed band under the title holding the pills and the stage id. */
     private static final int HEADER_BAND_H = PILL_H + 10;
+
+    /**
+     * Ticks between dependency requests while no reply has landed. Two seconds: long enough
+     * that a server under load is not asked again while its answer is still on the wire.
+     */
+    private static final int REQUEST_RETRY_TICKS = 40;
+    /**
+     * How often this window asks before it stops and says so.
+     *
+     * <p>There are requests that will never be answered — the server drops one for a stage it
+     * no longer has, silently and by design. Asking forever would leave such a node spinning on
+     * "loading" for as long as the window stays open, which reads as a hang rather than an
+     * answer.
+     */
+    private static final int MAX_REQUEST_ATTEMPTS = 3;
 
     private static final int MIN_WIDTH = 280;
     private static final int MAX_WIDTH = 420;
@@ -155,7 +172,13 @@ public final class GraphDetailScreen extends AbstractModalScreen {
     /** Content height the box was last built for; a change means the box has to be rebuilt. */
     private int builtForHeight = -1;
     /** Dependency-cache state the rows were built from, so {@link #tick} knows when to rebuild. */
-    private DependencyResult builtFromDependency;
+    private RequirementResult builtFromDependency;
+
+    /** Dependency requests sent by this window so far; see {@link #pollDependencies}. */
+    private int requestAttempts;
+    private int ticksSinceRequest;
+    /** Set once the last attempt has gone unanswered, and never cleared while this window lives. */
+    private boolean requestUnanswered;
 
     private float scroll;
     private float maxScroll;
@@ -229,12 +252,38 @@ public final class GraphDetailScreen extends AbstractModalScreen {
     @Override
     public void tick() {
         super.tick();
-        DependencyResult current = ClientDependencyCache.get(node.stageId(), node.individual());
-        if (current == builtFromDependency) return;
+        boolean gaveUp = pollDependencies();
+        RequirementResult current = ClientDependencyCache.get(node.stageId(), node.individual());
+        if (current == builtFromDependency && !gaveUp) return;
         rebuildRows();
         if (HEADER_BAND_H + listHeight() != builtForHeight) {
             this.rebuildWidgets(); // re-runs init, which re-measures through contentHeight()
         }
+    }
+
+    /**
+     * Asks the server for this node's requirement data, and asks again while nothing comes back.
+     *
+     * <p>The request used to go out once, from {@code StageGraphScreen}, when the window opened.
+     * A reply that never arrived left the node reading "loading" until the whole graph was closed
+     * and reopened — and the graph screen could not have noticed, because a screen that is not
+     * the current one does not tick. This window does, so the retry belongs here, where the
+     * "loading" line it would otherwise leave standing is also drawn.
+     *
+     * @return true when this call was the one that gave up, so the caller rebuilds to say so
+     */
+    private boolean pollDependencies() {
+        if (requestUnanswered) return false;
+        if (ClientDependencyCache.get(node.stageId(), node.individual()) != null) return false;
+        if (requestAttempts > 0 && ++ticksSinceRequest < REQUEST_RETRY_TICKS) return false;
+        if (requestAttempts >= MAX_REQUEST_ATTEMPTS) {
+            requestUnanswered = true;
+            return true;
+        }
+        requestAttempts++;
+        ticksSinceRequest = 0;
+        PacketHandler.sendToServer(new RequestStageDependencyPacket(node.stageId(), node.individual()));
+        return false;
     }
 
     // --- Content ------------------------------------------------------------------------------
@@ -261,14 +310,18 @@ public final class GraphDetailScreen extends AbstractModalScreen {
             }
         }
 
-        DependencyResult dep = ClientDependencyCache.get(node.stageId(), node.individual());
+        RequirementResult dep = ClientDependencyCache.get(node.stageId(), node.individual());
         builtFromDependency = dep;
         boolean anyRequirementSection = cfg.showStageDeps.get() || cfg.showItems.get() || cfg.showXp.get()
                 || cfg.showAdvancements.get() || cfg.showKills.get() || cfg.showStats.get()
                 || cfg.showScoreboard.get();
         if (anyRequirementSection && dep == null) {
-            for (FormattedCharSequence line : font.split(
-                    Component.translatable("editor.historystages.graph.detail.loading"), textWidth)) {
+            // Once the asking has stopped, saying so beats a "loading" line that will never
+            // turn into anything.
+            String key = requestUnanswered
+                    ? "editor.historystages.graph.detail.no_answer"
+                    : "editor.historystages.graph.detail.loading";
+            for (FormattedCharSequence line : font.split(Component.translatable(key), textWidth)) {
                 out.add(new LineRow(line, HINT_COLOR, LINE_H));
             }
             out.add(new SpacerRow(SPACER_H));
@@ -355,13 +408,13 @@ public final class GraphDetailScreen extends AbstractModalScreen {
     }
 
     private void addRequirements(List<Row> out, Font font, int width, boolean enabled,
-                                 DependencyResult dep, String headerKey, String... types) {
+                                 RequirementResult dep, String headerKey, String... types) {
         if (!enabled || dep == null) return;
 
         Set<String> typeSet = Set.of(types);
         List<Row> body = new ArrayList<>();
-        for (DependencyResult.GroupResult group : dep.getGroups()) {
-            for (DependencyResult.EntryResult e : group.getEntries()) {
+        for (RequirementResult.GroupResult group : dep.getGroups()) {
+            for (RequirementResult.EntryResult e : group.getEntries()) {
                 if (typeSet.contains(e.getType())) addRequirement(body, font, e, width);
             }
         }
@@ -380,7 +433,7 @@ public final class GraphDetailScreen extends AbstractModalScreen {
      * be a claim this screen cannot make. They are listed as what they are here — the shopping
      * list for the stage.
      */
-    private void addRequirement(List<Row> out, Font font, DependencyResult.EntryResult e, int width) {
+    private void addRequirement(List<Row> out, Font font, RequirementResult.EntryResult e, int width) {
         RequirementDisplay.Kind kind = RequirementDisplay.kindOf(e.getType(), e.canDeposit());
         boolean met = e.isFulfilled();
         String amount = RequirementDisplay.showsAmount(kind) && !met
@@ -407,7 +460,7 @@ public final class GraphDetailScreen extends AbstractModalScreen {
      * id names nothing. {@code BuiltInRegistries.ITEM.get} answers with air rather than null for
      * an unknown id, so the emptiness check is the real guard here.
      */
-    private static ItemStack iconFor(DependencyResult.EntryResult e) {
+    private static ItemStack iconFor(RequirementResult.EntryResult e) {
         if (!"item".equals(e.getType())) return ItemStack.EMPTY;
         ResourceLocation id = ResourceLocation.tryParse(e.getId());
         if (id == null) return ItemStack.EMPTY;

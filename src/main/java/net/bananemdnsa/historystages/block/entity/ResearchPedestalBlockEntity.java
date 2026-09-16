@@ -13,7 +13,8 @@ import net.bananemdnsa.historystages.data.StageMode;
 import net.bananemdnsa.historystages.data.NbtMatcher;
 import net.bananemdnsa.historystages.data.ScrollCompletion;
 import net.bananemdnsa.historystages.data.dependency.DependencyChecker;
-import net.bananemdnsa.historystages.data.dependency.DependencyResult;
+import net.bananemdnsa.historystages.data.dependency.DependencyProgress;
+import net.bananemdnsa.historystages.api.dependency.RequirementResult;
 import net.bananemdnsa.historystages.research.BoosterUtil;
 import net.bananemdnsa.historystages.research.ResearchBooster;
 import net.bananemdnsa.historystages.research.ResearchBoosterRegistry;
@@ -24,7 +25,7 @@ import net.bananemdnsa.historystages.data.saveddata.StageData;
 import net.bananemdnsa.historystages.network.PacketHandler;
 import net.bananemdnsa.historystages.network.clientbound.SyncIndividualStagesPacket;
 import net.bananemdnsa.historystages.network.clientbound.SyncStagesPacket;
-import net.bananemdnsa.historystages.data.lock.engine.StageScope;
+import net.bananemdnsa.historystages.api.stage.StageScope;
 import net.bananemdnsa.historystages.compat.ScrollVariants;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
@@ -133,7 +134,8 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
                 ResourceLocation reqRl = ResourceLocation.tryParse(reqItem.getId());
                 if (reqRl != null && reqRl.equals(depositRl)
                         && (!reqItem.hasNbt() || NbtMatcher.matches(depositStack, reqItem.getNbt()))) {
-                    String key = "Group_" + i + "_Item_" + reqRl.toString();
+                    String key = DependencyProgress.key(DependencyProgress.groupKey(group, i),
+                            DependencyProgress.itemSuffix(reqRl.toString()));
                     int current = deposited.getInt(key);
                     int effectiveRequired = BoosterUtil.effectiveCount(reqItem.getCount(), costReduction);
                     int needed = effectiveRequired - current;
@@ -494,7 +496,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
                                         && stack.getTag().contains("LockedCostReduction")
                                                 ? stack.getTag().getDouble("LockedCostReduction")
                                                 : 0.0;
-                                DependencyResult result = DependencyChecker.checkAll(stageEntry, researchPlayer, level,
+                                RequirementResult result = DependencyChecker.checkAll(stageEntry, researchPlayer, level,
                                         isIndividual ? StageScope.INDIVIDUAL : StageScope.GLOBAL,
                                         depositedTag, tickCost);
                                 metTotal = result.isFulfilled();
@@ -646,7 +648,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
 
             String eventDisplayName = (stageEntry != null) ? stageEntry.getDisplayName() : stageId;
             net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(
-                    new net.bananemdnsa.historystages.events.StageEvent.Unlocked(stageId, eventDisplayName));
+                    new net.bananemdnsa.historystages.api.stage.StageEvent.Unlocked(stageId, eventDisplayName));
 
             if (level.getServer() != null) {
                 level.getServer().getCommands().performPrefixedCommand(
@@ -691,7 +693,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
 
             String eventDisplayName = (stageEntry != null) ? stageEntry.getDisplayName() : stageId;
             net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(
-                    new net.bananemdnsa.historystages.events.StageEvent.IndividualUnlocked(stageId, eventDisplayName,
+                    new net.bananemdnsa.historystages.api.stage.StageEvent.IndividualUnlocked(stageId, eventDisplayName,
                             ownerUUID));
 
             // Sync individual stages to the owner player only
@@ -920,7 +922,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
 
     private void performGlobalSync() {
         StageData data = StageData.get(this.level);
-        StageData.refreshCache(data.getUnlockedStages());
+        StageData.replaceCache(data.getUnlockedStages());
         PacketHandler.sendToAll(new SyncStagesPacket(new ArrayList<>(StageData.SERVER_CACHE)));
     }
 
@@ -1019,7 +1021,8 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
             for (net.bananemdnsa.historystages.data.dependency.DependencyItem item : group.getItems()) {
                 if (item.getId().equals(itemId)
                         && (!item.hasNbt() || NbtMatcher.matches(depositStack, item.getNbt()))) {
-                    String key = "Group_" + i + "_Item_" + item.getId();
+                    String key = DependencyProgress.key(DependencyProgress.groupKey(group, i),
+                            DependencyProgress.itemSuffix(item.getId()));
                     int count = depositedData.getInt(key);
                     int effectiveRequired = BoosterUtil.effectiveCount(item.getCount(), costReduction);
                     if (count < effectiveRequired)

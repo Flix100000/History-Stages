@@ -1,4 +1,5 @@
 package net.bananemdnsa.historystages.client.editor.widget;
+import net.bananemdnsa.historystages.api.editor.widget.SearchBar;
 
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.Font;

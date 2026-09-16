@@ -4,7 +4,7 @@ import net.bananemdnsa.historystages.network.PacketHandler;
 import net.bananemdnsa.historystages.network.clientbound.EditorFeedbackPacket;
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.StageManager;
-import net.bananemdnsa.historystages.data.StageUnlockHelper;
+import net.bananemdnsa.historystages.api.stage.StageStates;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
@@ -18,7 +18,7 @@ import java.util.function.Supplier;
 /**
  * Client → Server: editor toggle for an individual stage. An empty {@code target}
  * means "@a" — every online player. Mirrors {@link ToggleStageLockPacket}, but routes
- * through {@link StageUnlockHelper} so affected players get the same sync packet,
+ * through {@link StageStates} so affected players get the same sync packet,
  * events, notifications and (on lock) inventory cleanup the /stage command produces.
  *
  * <p>Like the global editor toggle, this deliberately bypasses dependency checks —
@@ -70,8 +70,8 @@ public class ToggleIndividualStageLockPacket {
             int changed = 0;
             for (ServerPlayer target : targets) {
                 boolean applied = msg.unlock
-                        ? StageUnlockHelper.unlockIndividual(msg.stageId, target)
-                        : StageUnlockHelper.relockIndividual(msg.stageId, target);
+                        ? StageStates.unlockIndividual(msg.stageId, target)
+                        : StageStates.relockIndividual(msg.stageId, target);
                 if (applied) changed++;
             }
 

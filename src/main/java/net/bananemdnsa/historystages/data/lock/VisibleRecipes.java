@@ -146,7 +146,7 @@ public final class VisibleRecipes {
     }
 
     private static Stamp stamp() {
-        return new Stamp(StageData.cacheVersion(), StageManager.definitionsVersion(), recipeGeneration);
+        return new Stamp(StageData.cacheVersion(), net.bananemdnsa.historystages.data.lock.engine.StageLocks.definitionsVersion(), recipeGeneration);
     }
 
     /**

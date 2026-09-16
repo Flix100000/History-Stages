@@ -1,6 +1,6 @@
 package net.bananemdnsa.historystages.events.lock;
 
-import net.bananemdnsa.historystages.events.StageEvent;
+import net.bananemdnsa.historystages.api.stage.StageEvent;
 import java.util.UUID;
 
 import net.bananemdnsa.historystages.HistoryStages;

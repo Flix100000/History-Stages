@@ -5,8 +5,8 @@ import net.bananemdnsa.historystages.network.clientbound.SyncDependencyStatusPac
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.data.dependency.DependencyChecker;
-import net.bananemdnsa.historystages.data.dependency.DependencyResult;
-import net.bananemdnsa.historystages.data.lock.engine.StageScope;
+import net.bananemdnsa.historystages.api.dependency.RequirementResult;
+import net.bananemdnsa.historystages.api.stage.StageScope;
 import net.minecraft.core.BlockPos;
 
 import net.minecraft.nbt.CompoundTag;
@@ -72,7 +72,7 @@ public class CheckDependencyPacket {
                 }
             }
 
-            DependencyResult result = DependencyChecker.checkAll(entry, player, player.level(),
+            RequirementResult result = DependencyChecker.checkAll(entry, player, player.level(),
                     packet.isIndividual ? StageScope.INDIVIDUAL : StageScope.GLOBAL,
                     depositedTag, costReduction);
             PacketHandler.INSTANCE.send(

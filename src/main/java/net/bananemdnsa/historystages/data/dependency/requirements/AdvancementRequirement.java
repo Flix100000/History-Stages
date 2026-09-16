@@ -5,12 +5,12 @@ import java.util.List;
 import java.util.Set;
 
 import net.bananemdnsa.historystages.data.DependencyGroup;
-import net.bananemdnsa.historystages.data.dependency.DependencyResult;
-import net.bananemdnsa.historystages.data.dependency.Requirement;
-import net.bananemdnsa.historystages.data.dependency.RequirementContext;
-import net.bananemdnsa.historystages.data.dependency.RequirementDisplay;
-import net.bananemdnsa.historystages.data.lock.engine.StageScope;
+import net.bananemdnsa.historystages.api.dependency.RequirementResult;
+import net.bananemdnsa.historystages.api.dependency.Requirement;
+import net.bananemdnsa.historystages.api.dependency.RequirementContext;
+import net.bananemdnsa.historystages.api.stage.StageScope;
 import net.minecraft.advancements.Advancement;
+import net.bananemdnsa.historystages.api.dependency.RequirementDisplay;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -48,11 +48,11 @@ public class AdvancementRequirement implements Requirement {
     }
 
     @Override
-    public List<DependencyResult.EntryResult> evaluate(DependencyGroup group, RequirementContext ctx) {
-        List<DependencyResult.EntryResult> results = new ArrayList<>();
+    public List<RequirementResult.EntryResult> evaluate(DependencyGroup group, RequirementContext ctx) {
+        List<RequirementResult.EntryResult> results = new ArrayList<>();
         for (String advId : group.getAdvancements()) {
             boolean met = ctx.player() != null && checkAdvancement(ctx.player(), advId);
-            results.add(new DependencyResult.EntryResult("advancement", advId, advId, met, met ? 1 : 0, 1));
+            results.add(new RequirementResult.EntryResult("advancement", advId, advId, met, met ? 1 : 0, 1));
         }
         return results;
     }

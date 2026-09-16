@@ -1,11 +1,13 @@
 package net.bananemdnsa.historystages.screen;
 
+import net.bananemdnsa.historystages.api.dependency.Requirement;
+
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.block.TieredPedestal;
 import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.StageMode;
-import net.bananemdnsa.historystages.data.dependency.DependencyResult;
+import net.bananemdnsa.historystages.api.dependency.RequirementResult;
 import net.bananemdnsa.historystages.init.ModItems;
 import net.bananemdnsa.historystages.network.serverbound.CheckDependencyPacket;
 import net.bananemdnsa.historystages.network.serverbound.DepositDependencyPacket;
@@ -243,7 +245,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
     private static final int CARD_PAD = 3;
 
     /** What kind of requirement this is, shown above the value. */
-    private Component requirementKind(DependencyResult.EntryResult entry) {
+    private Component requirementKind(RequirementResult.EntryResult entry) {
         return Component.translatable("gui.historystages.pedestal.req." + entry.getType());
     }
 
@@ -251,7 +253,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
      * The requirement itself. Items get a count instead of their description, because the
      * icon already says which item it is and the number is what the player is watching.
      */
-    private Component requirementValue(DependencyResult.EntryResult entry) {
+    private Component requirementValue(RequirementResult.EntryResult entry) {
         if ("item".equals(entry.getType())) {
             MutableComponent count = Component.literal(entry.getCurrent() + "/" + entry.getRequired());
             // A booster under the pedestal cuts the cost; show what it would have been.
@@ -269,7 +271,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
      * identity on the card, but a tooltip has no icon — so the item's name goes in here,
      * ahead of the count.
      */
-    private Component requirementTooltip(DependencyResult.EntryResult entry) {
+    private Component requirementTooltip(RequirementResult.EntryResult entry) {
         MutableComponent value;
         if ("item".equals(entry.getType())) {
             ItemStack icon = requirementIcon(entry);
@@ -285,7 +287,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
     }
 
     /** The icon for a card, or an empty stack when the kind has none. */
-    private ItemStack requirementIcon(DependencyResult.EntryResult entry) {
+    private ItemStack requirementIcon(RequirementResult.EntryResult entry) {
         if ("item".equals(entry.getType())) {
             ResourceLocation rl = ResourceLocation.tryParse(entry.getId());
             if (rl != null && ForgeRegistries.ITEMS.containsKey(rl)) {
@@ -547,12 +549,12 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
             ItemStack scroll = menu.getSlot(36).getItem();
             if (!scroll.isEmpty() && scroll.hasTag() && scroll.getTag().contains("StageResearch")) {
                 String stageId = scroll.getTag().getString("StageResearch");
-                DependencyResult result = ClientDependencyCache.get(stageId, StageManager.isIndividualStage(stageId));
+                RequirementResult result = ClientDependencyCache.get(stageId, StageManager.isIndividualStage(stageId));
 
                 if (result != null) {
                     int groupIdx = 0;
-                    for (DependencyResult.GroupResult group : result.getGroups()) {
-                        for (DependencyResult.EntryResult entry : group.getEntries()) {
+                    for (RequirementResult.GroupResult group : result.getGroups()) {
+                        for (RequirementResult.EntryResult entry : group.getEntries()) {
                             if (entry.canDeposit()) {
                                 // XP deposit icon position
                                 int xpX = this.leftPos + PedestalLayout.WIDTH + PedestalLayout.DEP_GAP
@@ -586,7 +588,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
      * player sits at level 0 with the XP bar hidden, which is exactly how a button that looks
      * live ends up doing nothing.
      */
-    private static boolean canAfford(DependencyResult.EntryResult entry) {
+    private static boolean canAfford(RequirementResult.EntryResult entry) {
         return entry.getCurrent() >= entry.getRequired();
     }
 
@@ -598,7 +600,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
         String stageId = tag.getString("StageResearch");
         boolean individual = StageManager.isIndividualStage(stageId);
 
-        DependencyResult result = ClientDependencyCache.get(stageId, individual);
+        RequirementResult result = ClientDependencyCache.get(stageId, individual);
 
         // Poll server once per second to keep dep status fresh
         long now = System.currentTimeMillis();
@@ -685,7 +687,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
 
         int currentY = 0;
         int groupIdx = 0;
-        for (DependencyResult.GroupResult group : result.getGroups()) {
+        for (RequirementResult.GroupResult group : result.getGroups()) {
             if (result.getGroups().size() > 1) {
                 guiGraphics.drawString(this.font,
                         Component.translatable("gui.historystages.pedestal.group", groupIdx + 1),
@@ -693,7 +695,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
                 currentY += 12;
             }
 
-            for (DependencyResult.EntryResult entry : group.getEntries()) {
+            for (RequirementResult.EntryResult entry : group.getEntries()) {
                 boolean fulfilled = entry.isFulfilled();
 
                 // One card shape for every requirement: a kind on top, the value under it.
@@ -756,8 +758,8 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
         }
 
         // XP deposit icon (shown when an XP deposit is needed and not yet fulfilled)
-        for (DependencyResult.GroupResult group : result.getGroups()) {
-            for (DependencyResult.EntryResult entry : group.getEntries()) {
+        for (RequirementResult.GroupResult group : result.getGroups()) {
+            for (RequirementResult.EntryResult entry : group.getEntries()) {
                 if (entry.canDeposit()) {
                     int xpX = this.leftPos + PedestalLayout.WIDTH + PedestalLayout.DEP_GAP
                             + PedestalLayout.DEP_XP_BUTTON_X;

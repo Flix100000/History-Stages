@@ -95,19 +95,19 @@ public class HistoryStages {
         modEventBus.addListener((net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent event) ->
                 event.enqueueWork(() -> {
                     net.minecraftforge.fml.ModLoader.get().postEvent(
-                            new net.bananemdnsa.historystages.data.lock.category.RegisterLockCategoriesEvent());
+                            new net.bananemdnsa.historystages.api.lock.RegisterLockCategoriesEvent());
                     net.bananemdnsa.historystages.data.lock.category.LockCategories.freeze();
                     net.minecraftforge.fml.ModLoader.get().postEvent(
-                            new net.bananemdnsa.historystages.data.auto.RegisterTriggerTypesEvent());
+                            new net.bananemdnsa.historystages.api.trigger.RegisterTriggerTypesEvent());
                     net.bananemdnsa.historystages.data.auto.TriggerTypes.freeze();
                     net.minecraftforge.fml.ModLoader.get().postEvent(
-                            new net.bananemdnsa.historystages.data.dependency.RegisterRequirementTypesEvent());
+                            new net.bananemdnsa.historystages.api.dependency.RegisterRequirementTypesEvent());
                     net.bananemdnsa.historystages.data.dependency.RequirementTypes.freeze();
                     net.minecraftforge.fml.ModLoader.get().postEvent(
-                            new net.bananemdnsa.historystages.data.settings.RegisterStageSettingsGroupsEvent());
+                            new net.bananemdnsa.historystages.api.settings.RegisterStageSettingsGroupsEvent());
                     net.bananemdnsa.historystages.data.settings.StageSettingsGroups.freeze();
                     net.minecraftforge.fml.ModLoader.get().postEvent(
-                            new net.bananemdnsa.historystages.data.config.RegisterConfigSectionsEvent());
+                            new net.bananemdnsa.historystages.api.config.RegisterConfigSectionsEvent());
                     net.bananemdnsa.historystages.data.config.AddonConfigSections.freeze();
                     // Publish after the freeze, not before: publishing first would let a
                     // registration that arrives later in the same dispatch slip through

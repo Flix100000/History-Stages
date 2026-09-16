@@ -4,7 +4,7 @@ import net.bananemdnsa.historystages.network.PacketHandler;
 import net.bananemdnsa.historystages.network.clientbound.EditorFeedbackPacket;
 import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.data.StageManager;
-import net.bananemdnsa.historystages.data.StageUnlockHelper;
+import net.bananemdnsa.historystages.api.stage.StageStates;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -47,9 +47,9 @@ public class ToggleStageLockPacket {
             // auto-trigger, quest reward — never cleared the structure and biome caches or
             // reloaded recipes. Everything either side had is now in the helper.
             if (msg.unlock) {
-                StageUnlockHelper.unlockGlobal(msg.stageId, player.serverLevel());
+                StageStates.unlockGlobal(msg.stageId, player.serverLevel());
             } else {
-                StageUnlockHelper.relockGlobal(msg.stageId, player.serverLevel());
+                StageStates.relockGlobal(msg.stageId, player.serverLevel());
             }
 
             String titleKey = msg.unlock

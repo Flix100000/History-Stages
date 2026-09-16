@@ -1,12 +1,23 @@
 package net.bananemdnsa.historystages.util;
 
+import com.google.gson.Gson;
+
 import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.data.DependencyGroup;
 import net.bananemdnsa.historystages.data.lock.EntityLocks;
 import net.bananemdnsa.historystages.data.ItemEntry;
 import net.bananemdnsa.historystages.data.lock.NamedLockEntry;
 import net.bananemdnsa.historystages.data.StageEntry;
+import net.bananemdnsa.historystages.data.StageMode;
+import net.bananemdnsa.historystages.data.auto.AutoTrigger;
+import net.bananemdnsa.historystages.api.lock.LockCategory;
+import net.bananemdnsa.historystages.data.lock.category.LockCategories;
+import net.bananemdnsa.historystages.api.trigger.TriggerCondition;
+import net.bananemdnsa.historystages.data.dependency.DependencyItem;
+import net.bananemdnsa.historystages.data.dependency.EntityKillDep;
 import net.bananemdnsa.historystages.data.dependency.IndividualStageDep;
+import net.bananemdnsa.historystages.data.dependency.ScoreboardDep;
+import net.bananemdnsa.historystages.data.dependency.StatDep;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.loading.FMLPaths;
 
@@ -28,12 +39,9 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * Dedicated debug logger for History Stages.
- * <p>
  * Two modes:
- * <ul>
- *   <li><b>Load-time report</b> — categorized issues written to debug-*.log after stage loading</li>
- *   <li><b>Runtime log</b> — timestamped event log appended to runtime-YYYY-MM-DD.log, buffered and flushed periodically</li>
- * </ul>
+ * - Load-time report: categorized issues written to debug-*.log after stage loading
+ * - Runtime log: timestamped event log appended to runtime-YYYY-MM-DD.log, buffered and flushed periodically
  */
 public class DebugLogger {
 
@@ -94,14 +102,6 @@ public class DebugLogger {
         return CATEGORIES.values().stream().mapToInt(List::size).sum();
     }
 
-    /**
-     * Write a comprehensive diagnostic report.
-     * Only creates a file when there are issues (errors/warnings/info).
-     * Includes: issues, successfully loaded stages with full contents, config snapshot, and summary.
-     *
-     * @param stages the loaded global stage map (pass StageManager.getStages())
-     * @param individualStages the loaded individual stage map (pass StageManager.getIndividualStages())
-     */
     public static void writeLogFile(Map<String, StageEntry> stages, Map<String, StageEntry> individualStages) {
         if (CATEGORIES.isEmpty()) return;
 
@@ -132,26 +132,20 @@ public class DebugLogger {
                     .map(c -> c.getModInfo().getVersion().toString())
                     .orElse("unknown");
 
-            // Count totals across all stages
-            int totalItems = 0, totalTags = 0, totalMods = 0, totalModExceptions = 0;
-            int totalRecipes = 0, totalDimensions = 0, totalStructures = 0, totalBiomes = 0;
-            int totalAttacklock = 0, totalSpawnlock = 0;
-            for (StageEntry entry : stages.values()) {
-                totalItems += entry.getItemEntries().size();
-                totalTags += entry.getTagEntries().size();
-                totalMods += entry.getModEntries().size();
-                totalModExceptions += entry.getAllModExceptionIds().size();
-                totalRecipes += entry.getRecipes().size();
-                totalDimensions += entry.getDimensions().size();
-                totalStructures += entry.getStructures().size();
-                totalBiomes += entry.getBiomes().size();
-                totalAttacklock += entry.getEntities().getAttacklock().size();
-                totalSpawnlock += entry.getEntities().getSpawnlock().size();
+            // Counted through the category registry rather than one accumulator per kind. The
+            // hand-written version listed ten of the eleven built-ins — interaction locks never
+            // made it in — and could not have counted an addon's category at all, which is the
+            // opposite of what a report about what got loaded is for.
+            Map<String, Integer> categoryTotals = new LinkedHashMap<>();
+            for (LockCategory<?> category : LockCategories.all()) {
+                int total = 0;
+                for (StageEntry entry : stages.values()) {
+                    total += category.read(entry).size();
+                }
+                categoryTotals.put(category.id(), total);
             }
 
             try (PrintWriter pw = new PrintWriter(new FileWriter(logFile))) {
-
-                // ── Header ──
                 pw.println("================================================================");
                 pw.println("  History Stages - Diagnostic Report");
                 pw.println("  Generated: " + now.format(DISPLAY_FORMAT));
@@ -160,19 +154,17 @@ public class DebugLogger {
                 pw.println("================================================================");
                 pw.println();
 
-                // ── Summary ──
                 pw.println("  Global stages loaded:     " + stagesLoaded);
                 pw.println("  Individual stages loaded: " + (individualStages != null ? individualStages.size() : 0));
                 pw.println("  Total issues:             " + getTotalEntries()
                         + "  (Errors: " + errorCount + "  |  Warnings: " + warnCount + "  |  Info: " + infoCount + ")");
                 pw.println();
                 pw.println("  Total entries across global stages:");
-                pw.println("    Items: " + totalItems + "  |  Tags: " + totalTags + "  |  Mods: " + totalMods + "  |  Mod Exceptions: " + totalModExceptions);
-                pw.println("    Recipes: " + totalRecipes + "  |  Dimensions: " + totalDimensions + "  |  Structures: " + totalStructures + "  |  Biomes: " + totalBiomes);
-                pw.println("    Entities (attacklock): " + totalAttacklock + "  |  Entities (spawnlock): " + totalSpawnlock);
+                for (Map.Entry<String, Integer> total : categoryTotals.entrySet()) {
+                    pw.println("    " + total.getKey() + ": " + total.getValue());
+                }
                 pw.println();
 
-                // ── Issues ──
                 pw.println("================================================================");
                 pw.println("  ISSUES");
                 pw.println("================================================================");
@@ -184,15 +176,14 @@ public class DebugLogger {
                     for (LoadEntry entry : category.getValue()) {
                         String prefix = switch (entry.level) {
                             case ERROR -> "[ERROR] ";
-                            case WARN ->  "[WARN]  ";
-                            case INFO ->  "[INFO]  ";
+                            case WARN -> "[WARN]  ";
+                            case INFO -> "[INFO]  ";
                         };
                         pw.println("  " + prefix + entry.message);
                     }
                     pw.println();
                 }
 
-                // ── Loaded Global Stages ──
                 pw.println("================================================================");
                 pw.println("  LOADED GLOBAL STAGES (" + stagesLoaded + ")");
                 pw.println("================================================================");
@@ -202,7 +193,6 @@ public class DebugLogger {
                     printStage(pw, stageEntry.getKey(), stageEntry.getValue());
                 }
 
-                // ── Loaded Individual Stages ──
                 if (individualStages != null && !individualStages.isEmpty()) {
                     pw.println("================================================================");
                     pw.println("  LOADED INDIVIDUAL STAGES (" + individualStages.size() + ")");
@@ -214,7 +204,6 @@ public class DebugLogger {
                     }
                 }
 
-                // ── Config Snapshot ──
                 pw.println("================================================================");
                 pw.println("  CONFIG SNAPSHOT");
                 pw.println("================================================================");
@@ -239,7 +228,6 @@ public class DebugLogger {
                 }
                 pw.println();
 
-                // ── Footer ──
                 pw.println("================================================================");
                 pw.println("  This file was auto-generated by History Stages.");
                 pw.println("  It is created when issues are found during stage loading.");
@@ -260,25 +248,57 @@ public class DebugLogger {
         }
     }
 
+    /**
+     * The categories {@link #printStage} spells out itself, each in its own shape.
+     *
+     * <p>A skip list, not a whitelist: a category missing from it still gets printed, only
+     * plainly. That is the safe direction — the interaction locks this report has always left
+     * out, and every category an addon registers, land in {@link #printOtherCategories} rather
+     * than nowhere.
+     */
+    private static final List<String> DETAILED_CATEGORY_IDS = List.of(
+            "historystages:items", "historystages:tags", "historystages:mods",
+            "historystages:mod_exceptions", "historystages:recipes", "historystages:dimensions",
+            "historystages:structures", "historystages:biomes", "historystages:attacklock",
+            "historystages:spawnlock");
+
+    /** Entries are printed as JSON: it is the only shape that fits a type this class never saw. */
+    private static final Gson ENTRY_GSON = new Gson();
+
+    private static void printOtherCategories(PrintWriter pw, StageEntry s) {
+        for (LockCategory<?> category : LockCategories.all()) {
+            if (DETAILED_CATEGORY_IDS.contains(category.id())) continue;
+            List<?> entries = category.read(s);
+            if (entries.isEmpty()) continue;
+            pw.println("  " + category.id() + " (" + entries.size() + "):");
+            for (Object entry : entries) {
+                pw.println("    - " + (entry instanceof String text ? text : ENTRY_GSON.toJson(entry)));
+            }
+        }
+    }
+
     private static void printStage(PrintWriter pw, String id, StageEntry s) {
         EntityLocks ent = s.getEntities();
-        List<String> structures = s.getStructures();
-        List<String> structureModLinked = s.getStructureModLinked();
-        List<String> biomes = s.getBiomes();
-        List<String> biomeModLinked = s.getBiomeModLinked();
         List<String> modExceptions = s.getAllModExceptionIds();
-        List<String> attacklock = ent.getAttacklock();
-        List<String> spawnlock = ent.getSpawnlockIds();
-        List<String> entModLinked = ent.getModLinked();
 
-        int entryCount = s.getItemEntries().size() + s.getTagEntries().size() + s.getModEntries().size()
-                + modExceptions.size() + s.getRecipes().size() + s.getDimensions().size()
-                + structures.size() + biomes.size() + attacklock.size() + spawnlock.size();
+        // Summed over the registry, so the number matches what the stage actually holds — the
+        // hand-written sum left out interaction locks and could never have seen an addon's
+        // category.
+        int entryCount = 0;
+        for (LockCategory<?> category : LockCategories.all()) {
+            entryCount += category.read(s).size();
+        }
 
-        pw.println("--- " + id + " (" + s.getDisplayName() + ") "
-                + "-".repeat(Math.max(0, 50 - id.length() - s.getDisplayName().length())));
+        pw.println("--- " + id + " (" + s.getDisplayName() + ") " + "-".repeat(Math.max(0, 50 - id.length() - s.getDisplayName().length())));
+        StageMode mode = s.getMode();
+        String rawMode = s.getRawMode();
+        if (rawMode != null && !StageMode.isKnown(rawMode)) {
+            pw.println("  Mode: " + mode.serialize() + " (raw=\"" + rawMode + "\" → unknown, defaulted)");
+        } else {
+            pw.println("  Mode: " + mode.serialize());
+        }
         pw.println("  Research time: " + (s.getResearchTime() > 0 ? s.getResearchTime() + "s (custom)" : "global default"));
-        if (s.getIcon() != null) pw.println("  Icon: " + s.getIcon());
+        if (!s.getIcon().isEmpty()) pw.println("  Icon: " + s.getIcon());
         if (s.isLoseOnDeath()) pw.println("  Lose on death: yes");
         pw.println("  Total entries: " + entryCount);
 
@@ -288,50 +308,85 @@ public class DebugLogger {
         if (!modExceptions.isEmpty()) printList(pw, "Mod Exceptions", modExceptions);
         printList(pw, "Recipes", s.getRecipes());
         printList(pw, "Dimensions", s.getDimensions());
-        if (!structures.isEmpty()) {
-            printList(pw, "Structures", structures);
-            if (!structureModLinked.isEmpty()) printList(pw, "  Structures (mod-linked)", structureModLinked);
-            List<net.bananemdnsa.historystages.data.lock.StructureGenerationRule> generationRules =
-                    s.getStructureGenerationRules();
-            if (!generationRules.isEmpty()) {
-                pw.println("  Structures (generation restricted) (" + generationRules.size() + "):");
-                for (net.bananemdnsa.historystages.data.lock.StructureGenerationRule rule : generationRules) {
+
+        if (!s.getStructures().isEmpty()) {
+            pw.println("  Structures (" + s.getStructures().size() + "):");
+            for (String struct : s.getStructures()) {
+                pw.println("    - " + struct);
+            }
+            if (!s.getStructureModLinked().isEmpty()) {
+                pw.println("  Structures (mod-linked) (" + s.getStructureModLinked().size() + "):");
+                for (String mod : s.getStructureModLinked()) {
+                    pw.println("    - " + mod);
+                }
+            }
+            if (!s.getStructureGenerationRules().isEmpty()) {
+                pw.println("  Structures (generation restricted) (" + s.getStructureGenerationRules().size() + "):");
+                for (net.bananemdnsa.historystages.data.lock.StructureGenerationRule rule : s.getStructureGenerationRules()) {
                     pw.println("    - " + rule.id() + " [" + rule.phase().serialize() + ", max " + rule.max()
                             + (rule.resetOnRelock() ? ", reset" : "") + "]");
                 }
             }
         }
-        if (!biomes.isEmpty()) {
-            printList(pw, "Biomes", biomes);
-            if (!biomeModLinked.isEmpty()) printList(pw, "  Biomes (mod-linked)", biomeModLinked);
+
+        if (!s.getBiomes().isEmpty()) {
+            pw.println("  Biomes (" + s.getBiomes().size() + "):");
+            for (String biome : s.getBiomes()) {
+                pw.println("    - " + biome);
+            }
+            if (!s.getBiomeModLinked().isEmpty()) {
+                pw.println("  Biomes (mod-linked) (" + s.getBiomeModLinked().size() + "):");
+                for (String mod : s.getBiomeModLinked()) {
+                    pw.println("    - " + mod);
+                }
+            }
         }
-        if (!attacklock.isEmpty()) {
-            printList(pw, "Entities — Attacklock", attacklock);
-        }
-        if (!ent.getSpawnlock().isEmpty()) {
-            printSpawnlockEntries(pw, ent.getSpawnlock());
-        }
-        if (!entModLinked.isEmpty()) printList(pw, "  Entities (mod-linked)", entModLinked);
+
+        printList(pw, "Entities (attacklock)", ent.getAttacklock());
+        printSpawnlockEntries(pw, ent.getSpawnlock());
+        printList(pw, "Entities (mod-linked)", ent.getModLinked());
+        printOtherCategories(pw, s);
+
         if (s.hasDependencies()) {
             pw.println("  Dependencies (" + s.getDependencies().size() + " group(s)):");
-            int gi = 0;
+            int gIdx = 0;
             for (DependencyGroup group : s.getDependencies()) {
-                gi++;
-                pw.println("    Group " + gi + " [" + group.getLogic() + "]:");
-                for (var item : group.getItems())
-                    pw.println("      item: " + item.getId() + " x" + item.getCount() + (item.hasNbt() ? " [nbt]" : ""));
-                for (String sid : group.getStages())
-                    pw.println("      stage: " + sid);
+                gIdx++;
+                pw.println("    [Group " + gIdx + " | logic=" + group.getLogic() + "]");
+                for (String stage : group.getStages())
+                    pw.println("      stage: " + stage);
                 for (IndividualStageDep dep : group.getIndividualStages())
-                    pw.println("      individual_stage: " + dep.getStageId() + " (" + dep.getMode() + ")");
-                for (String adv : group.getAdvancements())
-                    pw.println("      advancement: " + adv);
+                    pw.println("      individual_stage: " + dep.getStageId() + " (mode=" + dep.getMode() + ")");
+                for (DependencyItem item : group.getItems())
+                    pw.println("      item: " + item.getId() + " x" + item.getCount());
                 if (group.getXpLevel() != null)
                     pw.println("      xp_level: " + group.getXpLevel().getLevel() + (group.getXpLevel().isConsume() ? " (consume)" : ""));
-                for (var kill : group.getEntityKills())
+                for (EntityKillDep kill : group.getEntityKills())
                     pw.println("      entity_kill: " + kill.getEntityId() + " x" + kill.getCount());
-                for (var stat : group.getStats())
+                for (StatDep stat : group.getStats())
                     pw.println("      stat: " + stat.getStatId() + " >= " + stat.getMinValue());
+                for (ScoreboardDep sb : group.getScoreboard()) {
+                    String holder = sb.isPlayerSelf() ? "<player>" : sb.getScoreHolder();
+                    pw.println("      scoreboard: " + sb.getObjective() + " " + sb.getOp() + " "
+                            + sb.getValue() + " (holder=" + holder + ")");
+                }
+                for (String adv : group.getAdvancements())
+                    pw.println("      advancement: " + adv);
+            }
+        }
+
+        AutoTrigger auto = s.getAutoTrigger();
+        if (auto != null && !auto.isEmpty()) {
+            String rawCombine = auto.getRawMode();
+            String combine = auto.resolvedMode().serialize();
+            if (rawCombine != null && !rawCombine.equalsIgnoreCase(combine)) {
+                pw.println("  Auto-trigger (" + auto.getTriggers().size() + ", mode=" + combine
+                        + " | raw=\"" + rawCombine + "\" → unknown, defaulted):");
+            } else {
+                pw.println("  Auto-trigger (" + auto.getTriggers().size() + ", mode=" + combine + "):");
+            }
+            for (TriggerCondition tc : auto.getTriggers()) {
+                pw.println("    - " + tc.type() + ": " + tc);
             }
         }
 
@@ -391,34 +446,22 @@ public class DebugLogger {
 
     private static final ConcurrentLinkedQueue<String> RUNTIME_BUFFER = new ConcurrentLinkedQueue<>();
     private static final Map<String, Long> THROTTLE_MAP = new HashMap<>();
-    private static final long THROTTLE_MS = 5000; // 5s throttle for high-frequency events
+    private static final long THROTTLE_MS = 5000;
     private static volatile String runtimeFileName = null;
     private static volatile boolean headerWritten = false;
 
-    /**
-     * Log a runtime event. Thread-safe, buffered.
-     * Will only be written to file when flush() is called.
-     */
     public static void runtime(String category, String message) {
         if (!isRuntimeEnabled()) return;
         String timestamp = LocalDateTime.now().format(TIME_FORMAT);
         RUNTIME_BUFFER.add("[" + timestamp + "] [" + category + "] " + message);
     }
 
-    /**
-     * Log a runtime event with player context.
-     */
     public static void runtime(String category, String playerName, String message) {
         if (!isRuntimeEnabled()) return;
         String timestamp = LocalDateTime.now().format(TIME_FORMAT);
         RUNTIME_BUFFER.add("[" + timestamp + "] [" + category + "] <" + playerName + "> " + message);
     }
 
-    /**
-     * Log a throttled runtime event. Events with the same throttleKey
-     * are suppressed for THROTTLE_MS after the first occurrence.
-     * Use this for high-frequency events like mob spawn blocks.
-     */
     public static void runtimeThrottled(String category, String throttleKey, String message) {
         if (!isRuntimeEnabled()) return;
         long now = System.currentTimeMillis();
@@ -430,10 +473,6 @@ public class DebugLogger {
         runtime(category, message);
     }
 
-    /**
-     * Initialize a new runtime log file for this server session.
-     * Call this once when the server/world starts.
-     */
     public static void initRuntimeSession() {
         runtimeFileName = "runtime-" + LocalDateTime.now().format(FILE_FORMAT) + ".log";
         headerWritten = false;
@@ -444,10 +483,6 @@ public class DebugLogger {
         }
     }
 
-    /**
-     * Flush the runtime buffer to the session log file.
-     * Call this periodically from a server tick handler.
-     */
     public static void flushRuntimeBuffer() {
         if (RUNTIME_BUFFER.isEmpty()) return;
         if (runtimeFileName == null) initRuntimeSession();
@@ -491,10 +526,6 @@ public class DebugLogger {
         }
     }
 
-    /**
-     * Clean up old throttle entries to prevent memory leaks.
-     * Call periodically (e.g., every few minutes).
-     */
     public static void cleanupThrottleMap() {
         long now = System.currentTimeMillis();
         synchronized (THROTTLE_MAP) {

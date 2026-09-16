@@ -1,20 +1,29 @@
 package net.bananemdnsa.historystages.data;
-
-import net.bananemdnsa.historystages.data.lock.EntityLocks;
-import net.bananemdnsa.historystages.data.lock.EntityInteractionLockEntry;
-import net.bananemdnsa.historystages.data.lock.EntitySpawnLockEntry;
 import net.bananemdnsa.historystages.data.lock.NamedLockEntry;
-import net.bananemdnsa.historystages.data.lock.LockRelevanceIndex;
+import net.bananemdnsa.historystages.data.lock.EntitySpawnLockEntry;
+import net.bananemdnsa.historystages.data.lock.EntityInteractionLockEntry;
+import net.bananemdnsa.historystages.data.lock.EntityLocks;
 import net.bananemdnsa.historystages.data.lock.category.DualPhaseIndex;
-import net.bananemdnsa.historystages.data.lock.engine.StageScope;
+import net.bananemdnsa.historystages.data.lock.engine.CategoryLockIndexes;
+import net.bananemdnsa.historystages.data.lock.engine.StageLocks;
+import net.bananemdnsa.historystages.api.stage.StageScope;
 
 import com.google.gson.Gson;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.Item;
+import net.minecraftforge.fml.ModList;
+import net.minecraftforge.fml.loading.FMLPaths;
+import net.minecraftforge.server.ServerLifecycleHooks;
+import net.minecraft.server.MinecraftServer;
+
 import net.bananemdnsa.historystages.data.dependency.*;
 import net.bananemdnsa.historystages.data.auto.AutoTrigger;
-import net.bananemdnsa.historystages.data.auto.conditions.TriggerCondition;
+import net.bananemdnsa.historystages.data.auto.AutoTriggerManager;
+import net.bananemdnsa.historystages.api.trigger.TriggerCondition;
 import net.bananemdnsa.historystages.data.auto.conditions.BiomeTrigger;
 import net.bananemdnsa.historystages.data.auto.conditions.StructureTrigger;
 import net.bananemdnsa.historystages.data.auto.conditions.DimensionTrigger;
@@ -24,21 +33,12 @@ import net.bananemdnsa.historystages.data.auto.conditions.BlockPlaceTrigger;
 import net.bananemdnsa.historystages.data.auto.conditions.BlockBreakTrigger;
 import net.bananemdnsa.historystages.data.auto.conditions.AdvancementTrigger;
 import net.bananemdnsa.historystages.data.auto.conditions.PlaytimeTrigger;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.fml.ModList;
-import net.minecraftforge.fml.loading.FMLPaths;
-import net.minecraftforge.registries.ForgeRegistries;
-
 import net.bananemdnsa.historystages.util.DebugLogger;
 
 import java.io.File;
 import java.io.FileWriter;
 import java.io.Writer;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -74,19 +74,6 @@ public class StageManager {
     private static final List<LoadingMessage> LOADING_MESSAGES = new ArrayList<>();
     private static final Gson GSON = new Gson();
 
-    // Fast-reject filter in front of the linear item scans. Rebuilt lazily, so the many
-    // mutations a load() makes cost one rebuild in total. IMPORTANT: every place that writes
-    // to STAGES/INDIVIDUAL_STAGES must call markLockIndexDirty() — a stale index would report
-    // a staged item as irrelevant and silently unlock it.
-    private static volatile LockRelevanceIndex GLOBAL_LOCK_INDEX = LockRelevanceIndex.EMPTY;
-    private static volatile LockRelevanceIndex INDIVIDUAL_LOCK_INDEX = LockRelevanceIndex.EMPTY;
-    private static volatile boolean LOCK_INDEX_DIRTY = true;
-    private static final Object LOCK_INDEX_LOCK = new Object();
-
-    // Dual-phase: entries gated by a global stage and an individual stage at once. Rebuilt
-    // wholesale (never mutated in place) by rebuildDualPhase() — see DualPhaseIndex.
-    private static volatile DualPhaseIndex DUAL_PHASE = DualPhaseIndex.empty();
-
     public enum MessageLevel { ERROR, WARN, INFO }
     public record LoadingMessage(MessageLevel level, String message) {}
 
@@ -94,14 +81,20 @@ public class StageManager {
         LOADING_MESSAGES.add(new LoadingMessage(level, message));
     }
 
+    /** In MC 1.21+, ResourceLocation.isValidResourceLocation() was removed. Use tryParse() instead. */
+    private static boolean isValidResourceLocation(String value) {
+        return value != null && ResourceLocation.tryParse(value) != null;
+    }
 
     private static final Set<String> KNOWN_KEYS = Set.of(
-            "display_name", "research_time", "icon", "items", "tags", "mods",
-            "mod_exceptions", "recipes", "dimensions", "structures", "biomes", "entities", "dependencies",
+            "display_name", "research_time", "items", "tags", "mods",
+            "mod_exceptions", "recipes", "dimensions", "structures", "biomes", "entities", "dependencies", "icon",
             "min_pedestal_tier", "pedestal_tier_mode",
             "mode", "auto_trigger", "temporary", "hidden_display", "lose_on_death",
             "scroll_completion", "addons", "addon_settings"
     );
+
+
     private static final Set<String> KNOWN_ENTITY_KEYS = Set.of(
             "spawnlock", "attacklock", "interactionlock", "modLinked"
     );
@@ -127,8 +120,8 @@ public class StageManager {
     public static void load() {
         STAGES.clear();
         INDIVIDUAL_STAGES.clear();
-        markLockIndexDirty();
-        DUAL_PHASE = DualPhaseIndex.empty();
+        stagesChanged();
+        CategoryLockIndexes.clearDualPhase();
         LOADING_MESSAGES.clear();
         DebugLogger.clear();
 
@@ -151,7 +144,6 @@ public class StageManager {
                 continue;
             }
 
-            // Validate file name
             validateFileName(id, file.getName());
 
             try {
@@ -160,7 +152,6 @@ public class StageManager {
                 String content = new String(raw);
                 detectUnknownKeys(id, content);
 
-                // Now parse into StageEntry
                 StageEntry entry = GSON.fromJson(content, StageEntry.class);
 
                 if (entry != null) {
@@ -182,13 +173,8 @@ public class StageManager {
 
         DebugLogger.setStagesLoaded(STAGES.size());
 
-        // Load individual stages after global stages
         loadIndividual();
 
-        // Check for circular dependencies across all stages
-        checkCircularDependencies();
-
-        // Rebuild the auto-trigger type index from the freshly loaded stage set.
         net.bananemdnsa.historystages.data.auto.AutoTriggerManager.rebuildIndex();
 
         // reloadStages() funnels through here, so both the initial load and every editor-driven
@@ -319,6 +305,23 @@ public class StageManager {
     }
 
     /**
+     * Hands the stage's dependency groups their ids, and says so when two of them clashed.
+     *
+     * <p>The work itself is {@link DependencyProgress#assignIds}, which is where the reasoning
+     * about what an id is for lives. This method exists to turn its answer into the two places
+     * this class reports to.
+     */
+    private static void assignDependencyGroupIds(String stageId, StageEntry entry) {
+        for (String duplicate : DependencyProgress.assignIds(entry.getDependencies())) {
+            String msg = "Stage '" + stageId + "' has two dependency groups with id '" + duplicate
+                    + "'. The later one was given a new id; anything already deposited against it"
+                    + " counts for the first group.";
+            addMessage(MessageLevel.WARN, msg);
+            DebugLogger.warn("Dependency Groups", msg);
+        }
+    }
+
+    /**
      * Reports requirements a stage declares that its scope cannot answer — a kill or an
      * advancement on a global stage, for instance, where there is no single player to ask.
      *
@@ -403,69 +406,6 @@ public class StageManager {
         return files;
     }
 
-    /**
-     * Detects circular dependencies between stages.
-     * A cycle like A -> B -> A will produce an error message.
-     */
-    private static void checkCircularDependencies() {
-        Map<String, Set<String>> graph = new HashMap<>();
-
-        // Build adjacency list from all stages (global + individual)
-        for (Map.Entry<String, StageEntry> e : STAGES.entrySet()) {
-            Set<String> refs = new HashSet<>();
-            for (DependencyGroup group : e.getValue().getDependencies()) {
-                refs.addAll(group.getReferencedStageIds());
-            }
-            if (!refs.isEmpty()) graph.put(e.getKey(), refs);
-        }
-        for (Map.Entry<String, StageEntry> e : INDIVIDUAL_STAGES.entrySet()) {
-            Set<String> refs = new HashSet<>();
-            for (DependencyGroup group : e.getValue().getDependencies()) {
-                refs.addAll(group.getReferencedStageIds());
-            }
-            if (!refs.isEmpty()) graph.put(e.getKey(), refs);
-        }
-
-        // DFS cycle detection
-        Set<String> visited = new HashSet<>();
-        Set<String> inStack = new HashSet<>();
-
-        for (String node : graph.keySet()) {
-            if (!visited.contains(node)) {
-                List<String> path = new ArrayList<>();
-                if (hasCycleDFS(node, graph, visited, inStack, path)) {
-                    String cycle = String.join(" -> ", path);
-                    String msg = "Circular dependency detected: " + cycle;
-                    addMessage(MessageLevel.ERROR, msg);
-                    DebugLogger.error("Circular Dependencies", msg);
-                }
-            }
-        }
-    }
-
-    private static boolean hasCycleDFS(String node, Map<String, Set<String>> graph,
-                                       Set<String> visited, Set<String> inStack, List<String> path) {
-        visited.add(node);
-        inStack.add(node);
-        path.add(node);
-
-        Set<String> neighbors = graph.getOrDefault(node, Set.of());
-        for (String neighbor : neighbors) {
-            if (!visited.contains(neighbor)) {
-                if (hasCycleDFS(neighbor, graph, visited, inStack, path)) {
-                    return true;
-                }
-            } else if (inStack.contains(neighbor)) {
-                path.add(neighbor);
-                return true;
-            }
-        }
-
-        inStack.remove(node);
-        path.remove(path.size() - 1);
-        return false;
-    }
-
     private static void detectUnknownKeys(String stageId, String content) {
         try {
             JsonObject json = JsonParser.parseString(content).getAsJsonObject();
@@ -475,7 +415,6 @@ public class StageManager {
                     DebugLogger.warn("Unknown Keys", "Unknown key '" + key + "' in stage '" + stageId + "'. Known keys: " + KNOWN_KEYS + ". This key will be ignored.");
                 }
             }
-            // Check entity sub-keys
             if (json.has("entities") && json.get("entities").isJsonObject()) {
                 JsonObject entities = json.getAsJsonObject("entities");
                 for (String key : entities.keySet()) {
@@ -485,27 +424,24 @@ public class StageManager {
                     }
                 }
             }
-            // Check structures sub-keys
             if (json.has("structures") && json.get("structures").isJsonObject()) {
-                JsonObject structuresObj = json.getAsJsonObject("structures");
-                for (String key : structuresObj.keySet()) {
+                JsonObject structures = json.getAsJsonObject("structures");
+                for (String key : structures.keySet()) {
                     if (!KNOWN_STRUCTURE_KEYS.contains(key)) {
-                        addMessage(MessageLevel.WARN, "Unknown structures key '" + key + "' in stage '" + stageId + "'. Typo?");
+                        addMessage(MessageLevel.WARN, "Unknown structure key '" + key + "' in stage '" + stageId + "'. Typo?");
                         DebugLogger.warn("Unknown Keys", "Unknown key 'structures." + key + "' in stage '" + stageId + "'. Known structure keys: " + KNOWN_STRUCTURE_KEYS + ".");
                     }
                 }
             }
-            // Check biomes sub-keys
             if (json.has("biomes") && json.get("biomes").isJsonObject()) {
-                JsonObject biomesObj = json.getAsJsonObject("biomes");
-                for (String key : biomesObj.keySet()) {
+                JsonObject biomes = json.getAsJsonObject("biomes");
+                for (String key : biomes.keySet()) {
                     if (!KNOWN_BIOME_KEYS.contains(key)) {
-                        addMessage(MessageLevel.WARN, "Unknown biomes key '" + key + "' in stage '" + stageId + "'. Typo?");
+                        addMessage(MessageLevel.WARN, "Unknown biome key '" + key + "' in stage '" + stageId + "'. Typo?");
                         DebugLogger.warn("Unknown Keys", "Unknown key 'biomes." + key + "' in stage '" + stageId + "'. Known biome keys: " + KNOWN_BIOME_KEYS + ".");
                     }
                 }
             }
-            // Check hidden_display sub-keys
             if (json.has("hidden_display") && json.get("hidden_display").isJsonObject()) {
                 JsonObject hd = json.getAsJsonObject("hidden_display");
                 for (String key : hd.keySet()) {
@@ -518,9 +454,7 @@ public class StageManager {
                 checkDisplayMode(stageId, hd, "name_mode", Set.of("off", "replace"));
                 checkDisplayMode(stageId, hd, "tooltip_mode", Set.of("off", "hidden", "replace"));
             }
-        } catch (Exception ignored) {
-            // JSON parsing errors are handled in the main load loop
-        }
+        } catch (Exception ignored) {}
     }
 
     private static void checkDisplayMode(String stageId, JsonObject hd, String key, Set<String> allowed) {
@@ -535,23 +469,15 @@ public class StageManager {
 
     private static void validateAndAdd(String stageId, StageEntry entry) {
 
-        // --- Display Name ---
         if (entry.getDisplayName().equals("Unknown Stage")) {
             addMessage(MessageLevel.WARN, "Stage '" + stageId + "' has no 'display_name'. Defaults to 'Unknown Stage'.");
             DebugLogger.warn("Missing Fields", "Stage '" + stageId + "' has no 'display_name' set. It will show as 'Unknown Stage'.");
         }
 
-        // --- Icon ---
-        if (entry.getIcon() != null && !ResourceLocation.isValidResourceLocation(entry.getIcon())) {
-            addMessage(MessageLevel.WARN, "Stage '" + stageId + "' has invalid icon '" + entry.getIcon() + "'. Ignored.");
-            DebugLogger.warn("Invalid Icon", "Stage '" + stageId + "' has an invalid icon ResourceLocation: '" + entry.getIcon() + "'. It will be ignored.");
-            entry.setIcon(null);
-        }
-
         trimDependencyGroups(stageId, entry);
+        assignDependencyGroupIds(stageId, entry);
         warnAboutScopeMismatches(stageId, entry, StageScope.GLOBAL);
 
-        // --- Empty strings & duplicates helper ---
         removeEmptyItemEntries(entry.getItemEntries(), stageId);
         removeEmptyStrings(entry.getTags(), stageId, "tags");
         removeEmptyStrings(entry.getMods(), stageId, "mods");
@@ -574,10 +500,9 @@ public class StageManager {
         checkDuplicateInteractionlock(entry.getEntities().getInteractionlock(), stageId);
         checkDuplicateSpawnlock(entry.getEntities().getSpawnlock(), stageId);
 
-        // --- Items: format validation only (registries not yet available at load time) ---
         entry.getItemEntries().removeIf(item -> {
             String itemId = item.getId();
-            if (!ResourceLocation.isValidResourceLocation(itemId)) {
+            if (!isValidResourceLocation(itemId)) {
                 addMessage(MessageLevel.WARN, "Item '" + itemId + "' invalid format (Stage: " + stageId + "). Removed.");
                 DebugLogger.warn("Invalid Items", "Item '" + itemId + "' is not a valid ResourceLocation (Stage: " + stageId + "). Removed.");
                 return true;
@@ -585,9 +510,8 @@ public class StageManager {
             return false;
         });
 
-        // --- Tags ---
         entry.getTags().removeIf(tagId -> {
-            if (!ResourceLocation.isValidResourceLocation(tagId)) {
+            if (!isValidResourceLocation(tagId)) {
                 addMessage(MessageLevel.WARN, "Tag '" + tagId + "' invalid format (Stage: " + stageId + "). Removed.");
                 DebugLogger.warn("Invalid Tags", "Tag '" + tagId + "' is not a valid ResourceLocation (Stage: " + stageId + "). Removed.");
                 return true;
@@ -595,7 +519,6 @@ public class StageManager {
             return false;
         });
 
-        // --- Mods: format only, missing mods are not removed (optional dependencies) ---
         entry.getMods().removeIf(modId -> {
             if (modId == null || modId.isEmpty() || modId.contains(" ")) {
                 addMessage(MessageLevel.WARN, "Mod ID '" + modId + "' invalid format (Stage: " + stageId + "). Removed.");
@@ -609,11 +532,10 @@ public class StageManager {
             return false;
         });
 
-        // --- Mod Exceptions: format validation + must belong to a locked mod ---
         Set<String> lockedMods = new HashSet<>(entry.getMods());
         entry.getModExceptionEntries().removeIf(exceptionEntry -> {
             String exItemId = exceptionEntry.getId();
-            if (!ResourceLocation.isValidResourceLocation(exItemId)) {
+            if (!isValidResourceLocation(exItemId)) {
                 addMessage(MessageLevel.WARN, "Mod exception '" + exItemId + "' invalid format (Stage: " + stageId + "). Removed.");
                 DebugLogger.warn("Invalid Mod Exceptions", "Mod exception '" + exItemId + "' is not a valid ResourceLocation (Stage: " + stageId + "). Removed.");
                 return true;
@@ -627,9 +549,8 @@ public class StageManager {
             return false;
         });
 
-        // --- Dimensions ---
         entry.getDimensions().removeIf(dimId -> {
-            if (!ResourceLocation.isValidResourceLocation(dimId)) {
+            if (!isValidResourceLocation(dimId)) {
                 addMessage(MessageLevel.WARN, "Dimension '" + dimId + "' invalid format (Stage: " + stageId + "). Removed.");
                 DebugLogger.warn("Invalid Dimensions", "Dimension '" + dimId + "' is not a valid ResourceLocation (Stage: " + stageId + "). Removed.");
                 return true;
@@ -640,7 +561,7 @@ public class StageManager {
         // --- Structures (plain IDs and "#tag" entries allowed) ---
         entry.getStructures().removeIf(structId -> {
             String check = structId != null && structId.startsWith("#") ? structId.substring(1) : structId;
-            if (!ResourceLocation.isValidResourceLocation(check)) {
+            if (!isValidResourceLocation(check)) {
                 addMessage(MessageLevel.WARN, "Structure '" + structId + "' invalid format (Stage: " + stageId + "). Removed.");
                 DebugLogger.warn("Invalid Structures", "Structure '" + structId + "' is not a valid ResourceLocation (Stage: " + stageId + "). Removed.");
                 return true;
@@ -648,9 +569,8 @@ public class StageManager {
             return false;
         });
 
-        // --- Recipes ---
         entry.getRecipes().removeIf(recipeId -> {
-            if (!ResourceLocation.isValidResourceLocation(recipeId)) {
+            if (!isValidResourceLocation(recipeId)) {
                 addMessage(MessageLevel.WARN, "Recipe '" + recipeId + "' invalid format (Stage: " + stageId + "). Removed.");
                 DebugLogger.warn("Invalid Recipes", "Recipe '" + recipeId + "' is not a valid ResourceLocation (Stage: " + stageId + "). Removed.");
                 return true;
@@ -658,9 +578,8 @@ public class StageManager {
             return false;
         });
 
-        // --- Entities (attacklock) ---
         entry.getEntities().getAttacklock().removeIf(entityId -> {
-            if (!ResourceLocation.isValidResourceLocation(entityId)) {
+            if (!isValidResourceLocation(entityId)) {
                 addMessage(MessageLevel.WARN, "Entity attacklock '" + entityId + "' invalid format (Stage: " + stageId + "). Removed.");
                 DebugLogger.warn("Invalid Entities", "Entity attacklock '" + entityId + "' is not a valid ResourceLocation (Stage: " + stageId + "). Removed.");
                 return true;
@@ -668,9 +587,8 @@ public class StageManager {
             return false;
         });
 
-        // --- Entities (interactionlock) ---
         entry.getEntities().getInteractionlock().removeIf(inEntry -> {
-            if (!ResourceLocation.isValidResourceLocation(inEntry.getId())) {
+            if (!isValidResourceLocation(inEntry.getId())) {
                 addMessage(MessageLevel.WARN, "Entity interactionlock '" + inEntry.getId() + "' invalid format (Stage: " + stageId + "). Removed.");
                 DebugLogger.warn("Invalid Entities", "Entity interactionlock '" + inEntry.getId() + "' is not a valid ResourceLocation (Stage: " + stageId + "). Removed.");
                 return true;
@@ -678,16 +596,15 @@ public class StageManager {
             return false;
         });
 
-        // --- Validate per-entry interaction action + item filters ---
+        // Validate per-entry interaction action + item filters
         for (EntityInteractionLockEntry inEntry : entry.getEntities().getInteractionlock()) {
             validateInteractionActions(inEntry.getLockActions(), stageId, inEntry.getId());
             validateInteractionItems(inEntry.getLockItems(), stageId, inEntry.getId());
         }
 
-        // --- Entities (spawnlock) ---
         entry.getEntities().getSpawnlock().removeIf(spEntry -> {
             String entityId = spEntry.getId();
-            if (!ResourceLocation.isValidResourceLocation(entityId)) {
+            if (!isValidResourceLocation(entityId)) {
                 addMessage(MessageLevel.WARN, "Entity spawnlock '" + entityId + "' invalid format (Stage: " + stageId + "). Removed.");
                 DebugLogger.warn("Invalid Entities", "Entity spawnlock '" + entityId + "' is not a valid ResourceLocation (Stage: " + stageId + "). Removed.");
                 return true;
@@ -695,18 +612,32 @@ public class StageManager {
             return false;
         });
 
-        // --- Validate per-entry unlock_sources lists ---
+        // Validate per-entry unlock_sources lists
         for (EntitySpawnLockEntry spEntry : entry.getEntities().getSpawnlock()) {
             validateLockSources(spEntry.getLockSources(), stageId, spEntry.getId());
         }
 
-        // --- Redundant entities: in both spawnlock AND attacklock ---
         for (EntitySpawnLockEntry spEntry : entry.getEntities().getSpawnlock()) {
             String entityId = spEntry.getId();
             // Only "block all sources" entries imply attacklock — selective ones don't.
             if (!spEntry.hasLockSources() && entry.getEntities().getAttacklock().contains(entityId)) {
                 addMessage(MessageLevel.INFO, "Entity '" + entityId + "' in both attacklock and spawnlock (Stage: " + stageId + "). Redundant.");
                 DebugLogger.info("Redundant Entities", "Entity '" + entityId + "' is in both attacklock and spawnlock (Stage: " + stageId + "). Spawnlock already implies attacklock — the attacklock entry is redundant.");
+            }
+        }
+
+        if (entry.getResearchTime() < 0) {
+            addMessage(MessageLevel.INFO, "Stage '" + stageId + "' has negative research_time (" + entry.getResearchTime() + "). Using global default.");
+            DebugLogger.info("Configuration", "Stage '" + stageId + "' has negative research_time (" + entry.getResearchTime() + "). Falling back to global default.");
+        }
+
+        // --- Icon validation ---
+        String iconVal = entry.getIcon();
+        if (iconVal != null && !iconVal.isEmpty()) {
+            if (!isValidResourceLocation(iconVal)) {
+                addMessage(MessageLevel.WARN, "Icon '" + iconVal + "' invalid format (Stage: " + stageId + "). Cleared.");
+                DebugLogger.warn("Invalid Icon", "Icon '" + iconVal + "' is not a valid ResourceLocation (Stage: " + stageId + "). Cleared.");
+                entry.setIcon(null);
             }
         }
 
@@ -726,129 +657,128 @@ public class StageManager {
             int groupIdx = 0;
             for (DependencyGroup group : entry.getDependencies()) {
                 groupIdx++;
-                String ctx = "Stage: " + stageId + ", group " + groupIdx;
+                String groupLabel = "Stage: " + stageId + ", group " + groupIdx;
 
-                // logic field
+                // Validate logic field
                 String logic = group.getLogic();
                 if (!"AND".equalsIgnoreCase(logic) && !"OR".equalsIgnoreCase(logic)) {
-                    addMessage(MessageLevel.WARN, "Dependency group " + groupIdx + " has invalid logic '" + logic + "' (Stage: " + stageId + "). Expected AND or OR. Defaulting to AND.");
-                    DebugLogger.warn("Invalid Dependencies", "Dependency group " + groupIdx + " has invalid logic value '" + logic + "' (" + ctx + "). Expected 'AND' or 'OR'. Defaulting to AND.");
+                    String msg = "Dependency group has invalid logic '" + logic + "' (" + groupLabel + "). Must be AND or OR. Defaulting to AND.";
+                    addMessage(MessageLevel.WARN, msg);
+                    DebugLogger.warn("Invalid Dependencies", msg);
                     group.setLogic("AND");
                 }
 
-                // items
+                // Validate items
                 group.getItems().removeIf(depItem -> {
-                    if (depItem.getId() == null || !ResourceLocation.isValidResourceLocation(depItem.getId())) {
-                        addMessage(MessageLevel.WARN, "Dependency item '" + depItem.getId() + "' invalid format (" + ctx + "). Removed.");
-                        DebugLogger.warn("Invalid Dependencies", "Dependency item '" + depItem.getId() + "' is not a valid ResourceLocation (" + ctx + "). Removed.");
+                    if (depItem.getId() == null || !isValidResourceLocation(depItem.getId())) {
+                        String msg = "Dependency item '" + depItem.getId() + "' invalid format (" + groupLabel + "). Removed.";
+                        addMessage(MessageLevel.WARN, msg);
+                        DebugLogger.warn("Invalid Dependencies", msg);
                         return true;
                     }
                     if (depItem.getCount() < 1) {
-                        addMessage(MessageLevel.WARN, "Dependency item '" + depItem.getId() + "' has count < 1 (" + ctx + "). Clamped to 1.");
-                        DebugLogger.warn("Invalid Dependencies", "Dependency item '" + depItem.getId() + "' has count " + depItem.getCount() + " (" + ctx + "). Clamped to 1.");
+                        String msg = "Dependency item '" + depItem.getId() + "' has invalid count " + depItem.getCount() + " (" + groupLabel + "). Corrected to 1.";
+                        addMessage(MessageLevel.WARN, msg);
+                        DebugLogger.warn("Invalid Dependencies", msg);
                         depItem.setCount(1);
                     }
                     return false;
                 });
 
-                // entity kills
-                group.getEntityKills().removeIf(kill -> {
-                    if (kill.getEntityId() == null || !ResourceLocation.isValidResourceLocation(kill.getEntityId())) {
-                        addMessage(MessageLevel.WARN, "Dependency entity kill '" + kill.getEntityId() + "' invalid format (" + ctx + "). Removed.");
-                        DebugLogger.warn("Invalid Dependencies", "Dependency entity_kill '" + kill.getEntityId() + "' is not a valid ResourceLocation (" + ctx + "). Removed.");
-                        return true;
-                    }
-                    if (kill.getCount() < 1) {
-                        addMessage(MessageLevel.WARN, "Dependency entity kill '" + kill.getEntityId() + "' has count < 1 (" + ctx + "). Clamped to 1.");
-                        DebugLogger.warn("Invalid Dependencies", "Dependency entity_kill '" + kill.getEntityId() + "' has count " + kill.getCount() + " (" + ctx + "). Clamped to 1.");
-                        kill.setCount(1);
-                    }
-                    return false;
-                });
-
-                // stats
-                group.getStats().removeIf(stat -> {
-                    if (stat.getStatId() == null || !ResourceLocation.isValidResourceLocation(stat.getStatId())) {
-                        addMessage(MessageLevel.WARN, "Dependency stat '" + stat.getStatId() + "' invalid format (" + ctx + "). Removed.");
-                        DebugLogger.warn("Invalid Dependencies", "Dependency stat '" + stat.getStatId() + "' is not a valid ResourceLocation (" + ctx + "). Removed.");
-                        return true;
-                    }
-                    if (stat.getMinValue() < 0) {
-                        addMessage(MessageLevel.WARN, "Dependency stat '" + stat.getStatId() + "' has negative min_value (" + ctx + "). Clamped to 0.");
-                        DebugLogger.warn("Invalid Dependencies", "Dependency stat '" + stat.getStatId() + "' has min_value " + stat.getMinValue() + " (" + ctx + "). Clamped to 0.");
-                        stat.setMinValue(0);
-                    }
-                    return false;
-                });
-
-                // advancements
-                group.getAdvancements().removeIf(adv -> {
-                    if (adv == null || !ResourceLocation.isValidResourceLocation(adv)) {
-                        addMessage(MessageLevel.WARN, "Dependency advancement '" + adv + "' invalid format (" + ctx + "). Removed.");
-                        DebugLogger.warn("Invalid Dependencies", "Dependency advancement '" + adv + "' is not a valid ResourceLocation (" + ctx + "). Removed.");
-                        return true;
-                    }
-                    return false;
-                });
-
-                // xp_level
-                if (group.getXpLevel() != null && group.getXpLevel().getLevel() < 0) {
-                    addMessage(MessageLevel.WARN, "Dependency xp_level has negative level (" + ctx + "). Clamped to 0.");
-                    DebugLogger.warn("Invalid Dependencies", "Dependency xp_level has negative level " + group.getXpLevel().getLevel() + " (" + ctx + "). Clamped to 0.");
-                    group.getXpLevel().setLevel(0);
-                }
-
-                // individual_stages
+                // Validate individual_stages
                 group.getIndividualStages().removeIf(dep -> {
                     if (dep.getStageId() == null || dep.getStageId().isBlank()) {
-                        addMessage(MessageLevel.WARN, "Dependency individual_stage has null/empty stage_id (" + ctx + "). Removed.");
-                        DebugLogger.warn("Invalid Dependencies", "Dependency individual_stage entry has null or empty stage_id (" + ctx + "). Removed.");
+                        String msg = "Dependency individual_stage entry has no stage_id (" + groupLabel + "). Removed.";
+                        addMessage(MessageLevel.WARN, msg);
+                        DebugLogger.warn("Invalid Dependencies", msg);
                         return true;
                     }
                     String mode = dep.getMode();
                     if (!"all_online".equals(mode) && !"all_ever".equals(mode)) {
-                        addMessage(MessageLevel.WARN, "Dependency individual_stage '" + dep.getStageId() + "' has invalid mode '" + mode + "' (" + ctx + "). Defaulting to all_online.");
-                        DebugLogger.warn("Invalid Dependencies", "Dependency individual_stage '" + dep.getStageId() + "' has invalid mode '" + mode + "' (" + ctx + "). Expected 'all_online' or 'all_ever'. Defaulting to all_online.");
+                        String msg = "Dependency individual_stage '" + dep.getStageId() + "' has invalid mode '" + mode + "' (" + groupLabel + "). Defaulting to all_online.";
+                        addMessage(MessageLevel.WARN, msg);
+                        DebugLogger.warn("Invalid Dependencies", msg);
                         dep.setMode("all_online");
                     }
                     return false;
                 });
 
-                // global stage references
+                // Validate entity kills
+                group.getEntityKills().removeIf(kill -> {
+                    if (kill.getEntityId() == null || !isValidResourceLocation(kill.getEntityId())) {
+                        String msg = "Dependency entity kill '" + kill.getEntityId() + "' invalid format (" + groupLabel + "). Removed.";
+                        addMessage(MessageLevel.WARN, msg);
+                        DebugLogger.warn("Invalid Dependencies", msg);
+                        return true;
+                    }
+                    if (kill.getCount() < 1) {
+                        String msg = "Dependency entity kill '" + kill.getEntityId() + "' has invalid count " + kill.getCount() + " (" + groupLabel + "). Corrected to 1.";
+                        addMessage(MessageLevel.WARN, msg);
+                        DebugLogger.warn("Invalid Dependencies", msg);
+                        kill.setCount(1);
+                    }
+                    return false;
+                });
+
+                // Validate stats
+                group.getStats().removeIf(stat -> {
+                    if (stat.getStatId() == null || !isValidResourceLocation(stat.getStatId())) {
+                        String msg = "Dependency stat '" + stat.getStatId() + "' invalid format (" + groupLabel + "). Removed.";
+                        addMessage(MessageLevel.WARN, msg);
+                        DebugLogger.warn("Invalid Dependencies", msg);
+                        return true;
+                    }
+                    if (stat.getMinValue() < 0) {
+                        String msg = "Dependency stat '" + stat.getStatId() + "' has invalid min_value " + stat.getMinValue() + " (" + groupLabel + "). Corrected to 0.";
+                        addMessage(MessageLevel.WARN, msg);
+                        DebugLogger.warn("Invalid Dependencies", msg);
+                        stat.setMinValue(0);
+                    }
+                    return false;
+                });
+
+                // Validate advancements
+                group.getAdvancements().removeIf(adv -> {
+                    if (adv == null || !isValidResourceLocation(adv)) {
+                        String msg = "Dependency advancement '" + adv + "' invalid format (" + groupLabel + "). Removed.";
+                        addMessage(MessageLevel.WARN, msg);
+                        DebugLogger.warn("Invalid Dependencies", msg);
+                        return true;
+                    }
+                    return false;
+                });
+
+                // Validate xp_level
+                if (group.getXpLevel() != null && group.getXpLevel().getLevel() < 0) {
+                    String msg = "Dependency xp_level has negative level " + group.getXpLevel().getLevel() + " (" + groupLabel + "). Corrected to 0.";
+                    addMessage(MessageLevel.WARN, msg);
+                    DebugLogger.warn("Invalid Dependencies", msg);
+                    group.getXpLevel().setLevel(0);
+                }
+
+                // Warn about unknown stage references (non-fatal, stage might not be loaded yet)
                 for (String depStageId : group.getStages()) {
                     StageEntry depEntry = STAGES.get(depStageId);
                     if (depEntry == null) {
                         addMessage(MessageLevel.INFO, "Dependency stage '" + depStageId + "' not found (Stage: " + stageId + "). May load later.");
-                        DebugLogger.info("Unresolved Dependencies", "Dependency references global stage '" + depStageId + "' which is not yet loaded (" + ctx + "). This is only a problem if the stage never loads.");
+                        DebugLogger.info("Invalid Dependencies", "Dependency stage '" + depStageId + "' not found (" + groupLabel + "). May be loaded later or is an individual stage.");
                     } else if (depEntry.getMode() == StageMode.TEMPORARY) {
                         // Temporary stages re-lock on their own without cascading to dependents,
                         // so a dependency on one only reflects its state at the moment of the
                         // dependent's own unlock check. The editor hides temporary stages from the
                         // dependency picker — this only fires for hand-edited JSON.
                         addMessage(MessageLevel.WARN, "Dependency stage '" + depStageId + "' is mode=temporary (Stage: " + stageId + "). Not recommended.");
-                        DebugLogger.warn("Temporary Dependency", "Stage '" + stageId + "' depends on temporary stage '" + depStageId + "' (" + ctx + "). When a temporary stage re-locks, dependents are NOT re-locked — the dependency only matters at the dependent's own unlock check. Depending on a temporary stage is not recommended.");
+                        DebugLogger.warn("Temporary Dependency", "Stage '" + stageId + "' depends on temporary stage '" + depStageId + "' (" + groupLabel + "). When a temporary stage re-locks, dependents are NOT re-locked — the dependency only matters at the dependent's own unlock check. Depending on a temporary stage is not recommended.");
                     }
                 }
-
-                // empty group warning
-                if (group.isEmpty()) {
-                    addMessage(MessageLevel.INFO, "Dependency group " + groupIdx + " is empty (Stage: " + stageId + "). It will always be satisfied.");
-                    DebugLogger.info("Empty Dependencies", "Dependency group " + groupIdx + " has no conditions defined (" + ctx + "). An empty group is always satisfied — this is likely unintentional.");
-                }
             }
-        }
-
-        // --- Research Time ---
-        if (entry.getResearchTime() < 0) {
-            addMessage(MessageLevel.INFO, "Stage '" + stageId + "' has negative research_time (" + entry.getResearchTime() + "). Using global default.");
-            DebugLogger.info("Configuration", "Stage '" + stageId + "' has negative research_time (" + entry.getResearchTime() + "). Falling back to global default.");
         }
 
         // --- Mode ---
         String rawMode = entry.getRawMode();
         if (rawMode != null && !StageMode.isKnown(rawMode)) {
             addMessage(MessageLevel.WARN, "Stage '" + stageId + "' has unknown mode '" + rawMode + "'. Defaulting to 'default'.");
-            DebugLogger.warn("Invalid Mode", "Stage '" + stageId + "' has unknown mode '" + rawMode + "'. Allowed: default, auto, external, temporary. Defaulting to 'default'.");
+            DebugLogger.warn("Invalid Mode", "Stage '" + stageId + "' has unknown mode '" + rawMode + "'. Allowed: default, auto, external. Defaulting to 'default'.");
         }
 
         StageMode resolvedMode = entry.getMode();
@@ -877,7 +807,7 @@ public class StageManager {
         }
 
         // --- Temporary-mode config ---
-        net.bananemdnsa.historystages.data.temporary.TemporaryConfig tempCfg = entry.getTemporary();
+        var tempCfg = entry.getTemporary();
         if (resolvedMode == StageMode.TEMPORARY) {
             if (tempCfg == null) {
                 addMessage(MessageLevel.WARN, "Stage '" + stageId + "' is mode=temporary but has no 'temporary' config. Using defaults (1 hour, not re-triggerable).");
@@ -914,7 +844,7 @@ public class StageManager {
         }
 
         STAGES.put(stageId, entry);
-        markLockIndexDirty();
+        stagesChanged();
         System.out.println("[HistoryStages] Stage geladen: " + stageId);
     }
 
@@ -1059,7 +989,7 @@ public class StageManager {
         items.removeIf(item -> {
             String itemId = item.getId();
             String check = (itemId != null && itemId.startsWith("#")) ? itemId.substring(1) : itemId;
-            if (!ResourceLocation.isValidResourceLocation(check)) {
+            if (!isValidResourceLocation(check)) {
                 addMessage(MessageLevel.WARN, "Interaction item filter '" + itemId + "' on '" + entryId + "' invalid format (Stage: " + stageId + "). Removed.");
                 DebugLogger.warn("Invalid Interaction Items",
                         "Interaction item filter '" + itemId + "' on '" + entryId + "' is not a valid ResourceLocation (Stage: " + stageId + "). Removed.");
@@ -1109,64 +1039,99 @@ public class StageManager {
         return LOADING_MESSAGES;
     }
 
+    // Keep backwards compat for code that uses getLoadingErrors()
+    public static List<String> getLoadingErrors() {
+        List<String> errors = new ArrayList<>();
+        for (LoadingMessage msg : LOADING_MESSAGES) {
+            String prefix = switch (msg.level()) {
+                case ERROR -> "§c[" + msg.level() + "] ";
+                case WARN -> "§e[" + msg.level() + "] ";
+                case INFO -> "§7[" + msg.level() + "] ";
+            };
+            errors.add(prefix + "§f" + msg.message());
+        }
+        return errors;
+    }
+
     public static void reloadStages() {
         load();
+        // After re-indexing AUTO stages, drop progress entries that no longer
+        // correspond to indexed AUTO stages (e.g. mode flipped AUTO → DEFAULT
+        // via the editor, or auto_trigger was removed).
+        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        if (server != null && server.overworld() != null) {
+            AutoTriggerManager.pruneOrphans(server.overworld());
+            // Drop temporary-timer state for stages that no longer exist or are no
+            // longer mode=temporary (e.g. mode flipped via the editor).
+            net.bananemdnsa.historystages.data.saveddata.TemporaryStageData.get(server.overworld())
+                    .pruneOrphans(temporaryStageIds());
+        }
+    }
+
+    /** Ids of all loaded stages (global + individual) currently in mode=temporary. */
+    public static Set<String> temporaryStageIds() {
+        Set<String> ids = new HashSet<>();
+        for (var e : STAGES.entrySet()) {
+            if (e.getValue().getMode() == StageMode.TEMPORARY) ids.add(e.getKey());
+        }
+        for (var e : INDIVIDUAL_STAGES.entrySet()) {
+            if (e.getValue().getMode() == StageMode.TEMPORARY) ids.add(e.getKey());
+        }
+        return ids;
     }
 
     /**
      * Validates stage entries against the actual registries.
-     * Must be called AFTER registries are fully loaded (e.g. on world load),
-     * NOT during mod construction when load() runs.
+     * Must be called AFTER registries are fully loaded (e.g. on world load).
      */
     public static void validateAgainstRegistries() {
         for (Map.Entry<String, StageEntry> stageEntry : STAGES.entrySet()) {
             String stageId = stageEntry.getKey();
             StageEntry entry = stageEntry.getValue();
 
-            // Validate items exist in registry
             for (String itemId : entry.getAllItemIds()) {
-                if (!ResourceLocation.isValidResourceLocation(itemId)) continue; // already handled by format check
+                if (!isValidResourceLocation(itemId)) continue;
                 ResourceLocation rl = new ResourceLocation(itemId);
-                if (!ForgeRegistries.ITEMS.containsKey(rl)) {
+                if (!BuiltInRegistries.ITEM.containsKey(rl)) {
                     addMessage(MessageLevel.WARN, "Item '" + itemId + "' does not exist in registry (Stage: " + stageId + ").");
                     DebugLogger.warn("Unknown Items", "Item '" + itemId + "' is a valid ResourceLocation but does not exist in the item registry (Stage: " + stageId + "). Typo or missing mod?");
                 }
             }
 
-            // Validate mod exceptions exist in registry
             for (String exItemId : entry.getAllModExceptionIds()) {
-                if (!ResourceLocation.isValidResourceLocation(exItemId)) continue;
+                if (!isValidResourceLocation(exItemId)) continue;
                 ResourceLocation rl = new ResourceLocation(exItemId);
-                if (!ForgeRegistries.ITEMS.containsKey(rl)) {
+                if (!BuiltInRegistries.ITEM.containsKey(rl)) {
                     addMessage(MessageLevel.WARN, "Mod exception '" + exItemId + "' does not exist in registry (Stage: " + stageId + ").");
                     DebugLogger.warn("Unknown Mod Exceptions", "Mod exception '" + exItemId + "' does not exist in the item registry (Stage: " + stageId + "). Typo or missing mod?");
                 }
             }
 
-            // Validate entity types exist in registry
             for (String entityId : entry.getEntities().getAttacklock()) {
-                if (!ResourceLocation.isValidResourceLocation(entityId)) continue;
+                if (!isValidResourceLocation(entityId)) continue;
                 ResourceLocation rl = new ResourceLocation(entityId);
-                if (!ForgeRegistries.ENTITY_TYPES.containsKey(rl)) {
+                if (!BuiltInRegistries.ENTITY_TYPE.containsKey(rl)) {
                     addMessage(MessageLevel.WARN, "Entity '" + entityId + "' does not exist in registry (Stage: " + stageId + ", attacklock).");
                     DebugLogger.warn("Unknown Entities", "Entity '" + entityId + "' does not exist in the entity registry (Stage: " + stageId + ", attacklock). Typo or missing mod?");
                 }
             }
+
             for (EntityInteractionLockEntry inEntry : entry.getEntities().getInteractionlock()) {
                 String entityId = inEntry.getId();
-                if (!ResourceLocation.isValidResourceLocation(entityId)) continue;
-                ResourceLocation rl = new ResourceLocation(entityId);
-                if (!ForgeRegistries.ENTITY_TYPES.containsKey(rl)) {
-                    addMessage(MessageLevel.WARN, "Entity '" + entityId + "' does not exist in registry (Stage: " + stageId + ", interactionlock).");
-                    DebugLogger.warn("Unknown Entities", "Entity '" + entityId + "' does not exist in the entity registry (Stage: " + stageId + ", interactionlock). Typo or missing mod?");
+                if (isValidResourceLocation(entityId)) {
+                    ResourceLocation rl = new ResourceLocation(entityId);
+                    if (!BuiltInRegistries.ENTITY_TYPE.containsKey(rl)) {
+                        addMessage(MessageLevel.WARN, "Entity '" + entityId + "' does not exist in registry (Stage: " + stageId + ", interactionlock).");
+                        DebugLogger.warn("Unknown Entities", "Entity '" + entityId + "' does not exist in the entity registry (Stage: " + stageId + ", interactionlock). Typo or missing mod?");
+                    }
                 }
                 validateInteractionItemsAgainstRegistry(inEntry, stageId, "Stage");
             }
             for (EntitySpawnLockEntry spEntry : entry.getEntities().getSpawnlock()) {
                 String entityId = spEntry.getId();
-                if (!ResourceLocation.isValidResourceLocation(entityId)) continue;
+                if (!isValidResourceLocation(entityId)) continue;
                 ResourceLocation rl = new ResourceLocation(entityId);
-                if (!ForgeRegistries.ENTITY_TYPES.containsKey(rl)) {
+                if (!BuiltInRegistries.ENTITY_TYPE.containsKey(rl)) {
                     addMessage(MessageLevel.WARN, "Entity '" + entityId + "' does not exist in registry (Stage: " + stageId + ", spawnlock).");
                     DebugLogger.warn("Unknown Entities", "Entity '" + entityId + "' does not exist in the entity registry (Stage: " + stageId + ", spawnlock). Typo or missing mod?");
                 }
@@ -1179,27 +1144,27 @@ public class StageManager {
             StageEntry indData = indEntry.getValue();
 
             for (String itemId : indData.getAllItemIds()) {
-                if (!ResourceLocation.isValidResourceLocation(itemId)) continue;
+                if (!isValidResourceLocation(itemId)) continue;
                 ResourceLocation rl = new ResourceLocation(itemId);
-                if (!ForgeRegistries.ITEMS.containsKey(rl)) {
+                if (!BuiltInRegistries.ITEM.containsKey(rl)) {
                     addMessage(MessageLevel.WARN, "Item '" + itemId + "' does not exist in registry (Individual Stage: " + indId + ").");
                     DebugLogger.warn("Unknown Items", "Item '" + itemId + "' does not exist in the item registry (Individual Stage: " + indId + "). Typo or missing mod?");
                 }
             }
 
             for (String exItemId : indData.getAllModExceptionIds()) {
-                if (!ResourceLocation.isValidResourceLocation(exItemId)) continue;
+                if (!isValidResourceLocation(exItemId)) continue;
                 ResourceLocation rl = new ResourceLocation(exItemId);
-                if (!ForgeRegistries.ITEMS.containsKey(rl)) {
+                if (!BuiltInRegistries.ITEM.containsKey(rl)) {
                     addMessage(MessageLevel.WARN, "Mod exception '" + exItemId + "' does not exist in registry (Individual Stage: " + indId + ").");
                     DebugLogger.warn("Unknown Mod Exceptions", "Mod exception '" + exItemId + "' does not exist in the item registry (Individual Stage: " + indId + "). Typo or missing mod?");
                 }
             }
 
             for (String entityId : indData.getEntities().getAttacklock()) {
-                if (!ResourceLocation.isValidResourceLocation(entityId)) continue;
+                if (!isValidResourceLocation(entityId)) continue;
                 ResourceLocation rl = new ResourceLocation(entityId);
-                if (!ForgeRegistries.ENTITY_TYPES.containsKey(rl)) {
+                if (!BuiltInRegistries.ENTITY_TYPE.containsKey(rl)) {
                     addMessage(MessageLevel.WARN, "Entity '" + entityId + "' does not exist in registry (Individual Stage: " + indId + ", attacklock).");
                     DebugLogger.warn("Unknown Entities", "Entity '" + entityId + "' does not exist in the entity registry (Individual Stage: " + indId + ", attacklock). Typo or missing mod?");
                 }
@@ -1207,11 +1172,12 @@ public class StageManager {
 
             for (EntityInteractionLockEntry inEntry : indData.getEntities().getInteractionlock()) {
                 String entityId = inEntry.getId();
-                if (!ResourceLocation.isValidResourceLocation(entityId)) continue;
-                ResourceLocation rl = new ResourceLocation(entityId);
-                if (!ForgeRegistries.ENTITY_TYPES.containsKey(rl)) {
-                    addMessage(MessageLevel.WARN, "Entity '" + entityId + "' does not exist in registry (Individual Stage: " + indId + ", interactionlock).");
-                    DebugLogger.warn("Unknown Entities", "Entity '" + entityId + "' does not exist in the entity registry (Individual Stage: " + indId + ", interactionlock). Typo or missing mod?");
+                if (isValidResourceLocation(entityId)) {
+                    ResourceLocation rl = new ResourceLocation(entityId);
+                    if (!BuiltInRegistries.ENTITY_TYPE.containsKey(rl)) {
+                        addMessage(MessageLevel.WARN, "Entity '" + entityId + "' does not exist in registry (Individual Stage: " + indId + ", interactionlock).");
+                        DebugLogger.warn("Unknown Entities", "Entity '" + entityId + "' does not exist in the entity registry (Individual Stage: " + indId + ", interactionlock). Typo or missing mod?");
+                    }
                 }
                 validateInteractionItemsAgainstRegistry(inEntry, indId, "Individual Stage");
             }
@@ -1227,8 +1193,8 @@ public class StageManager {
         for (ItemEntry item : inEntry.getLockItems()) {
             String itemId = item.getId();
             if (itemId == null || itemId.startsWith("#")) continue;
-            if (!ResourceLocation.isValidResourceLocation(itemId)) continue;
-            if (!ForgeRegistries.ITEMS.containsKey(new ResourceLocation(itemId))) {
+            if (!isValidResourceLocation(itemId)) continue;
+            if (!BuiltInRegistries.ITEM.containsKey(new ResourceLocation(itemId))) {
                 addMessage(MessageLevel.WARN, "Interaction item filter '" + itemId + "' on '" + inEntry.getId()
                         + "' does not exist in registry (" + label + ": " + stageId + ").");
                 DebugLogger.warn("Unknown Interaction Items", "Interaction item filter '" + itemId + "' on '" + inEntry.getId()
@@ -1241,16 +1207,12 @@ public class StageManager {
         return STAGES;
     }
 
-    /**
-     * Replaces all stage definitions with the given map.
-     * Used on the client side to sync stage definitions from the server in multiplayer.
-     */
     public static void setStages(Map<String, StageEntry> stages) {
         STAGES.clear();
         if (stages != null) {
             STAGES.putAll(stages);
         }
-        markLockIndexDirty();
+        stagesChanged();
     }
 
     public static Map<String, String> getStagePaths() { return STAGE_PATHS; }
@@ -1288,327 +1250,18 @@ public class StageManager {
         INDIVIDUAL_FOLDERS.addAll(individual);
     }
 
-    public static String getStageForItemOrMod(String itemId, String modId) {
-        for (var entry : STAGES.entrySet()) {
-            String stageName = entry.getKey();
-            StageEntry data = entry.getValue();
-
-            if (data.getItems() != null && data.getItems().contains(itemId)) return stageName;
-            if (data.getMods() != null && data.getMods().contains(modId)
-                    && !isModException(itemId, null, data)) return stageName;
-
-            List<NamedLockEntry> tags = data.getTagEntries();
-            if (!tags.isEmpty()) {
-                Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemId));
-                if (item != null) {
-                    for (NamedLockEntry tagEntry : tags) {
-                        // NBT tags need a stack to evaluate; this stackless path skips them.
-                        if (!tagEntry.hasNbt() && item.builtInRegistryHolder().is(tagEntry.getItemTagKey())) return stageName;
-                    }
-                }
-            }
-        }
-        return null;
-    }
-
-    public static List<String> getAllStagesForAttackLockedEntity(String entityId) {
-        List<String> allFoundStages = new ArrayList<>();
-        for (Map.Entry<String, StageEntry> entry : STAGES.entrySet()) {
-            EntityLocks locks = entry.getValue().getEntities();
-            if (locks.getAttacklock().contains(entityId)) {
-                allFoundStages.add(entry.getKey());
-                continue;
-            }
-            // A spawnlock entry implies attacklock only when it blocks ALL sources.
-            for (EntitySpawnLockEntry spEntry : locks.getSpawnlock()) {
-                if (spEntry.getId().equals(entityId) && !spEntry.hasLockSources()) {
-                    allFoundStages.add(entry.getKey());
-                    break;
-                }
-            }
-        }
-        return allFoundStages;
-    }
-
     /**
-     * Returns the global stages that block the given interaction action on the given entity.
-     * Unlike attacklock, interactionlock is a standalone list — spawnlock does not imply it.
-     * A stage blocks the action if it has an interactionlock entry for the entity whose action
-     * filter covers this action (no filter = all actions blocked).
-     */
-    public static List<String> getAllStagesForInteractionLockedEntity(String entityId, String action, ItemStack held) {
-        List<String> allFoundStages = new ArrayList<>();
-        for (Map.Entry<String, StageEntry> entry : STAGES.entrySet()) {
-            for (EntityInteractionLockEntry inEntry : entry.getValue().getEntities().getInteractionlock()) {
-                if (inEntry.getId().equals(entityId) && inEntry.blocksAction(action) && inEntry.matchesItem(held)) {
-                    allFoundStages.add(entry.getKey());
-                    break;
-                }
-            }
-        }
-        return allFoundStages;
-    }
-
-    /**
-     * Returns the stages that block the given entity for the given spawn source.
-     * A stage blocks the source if its spawnlock contains an entry for the entity that
-     * either has no source filter (= block all) or explicitly lists this source.
-     */
-    public static List<String> getAllStagesForSpawnLockedEntity(String entityId, String source, String dimension) {
-        List<String> allFoundStages = new ArrayList<>();
-        for (Map.Entry<String, StageEntry> entry : STAGES.entrySet()) {
-            for (EntitySpawnLockEntry spEntry : entry.getValue().getEntities().getSpawnlock()) {
-                if (spEntry.getId().equals(entityId)
-                        && spEntry.blocksSource(source)
-                        && spEntry.blocksDimension(dimension)) {
-                    allFoundStages.add(entry.getKey());
-                    break;
-                }
-            }
-        }
-        return allFoundStages;
-    }
-
-    /** Returns stages that have an entry for this entity blocking the given dimension (any source). Used by EntityJoinLevel fallback. */
-    public static List<String> getAllStagesWithSpawnlockEntry(String entityId, String dimension) {
-        List<String> allFoundStages = new ArrayList<>();
-        for (Map.Entry<String, StageEntry> entry : STAGES.entrySet()) {
-            for (EntitySpawnLockEntry spEntry : entry.getValue().getEntities().getSpawnlock()) {
-                if (spEntry.getId().equals(entityId) && spEntry.blocksDimension(dimension)) {
-                    allFoundStages.add(entry.getKey());
-                    break;
-                }
-            }
-        }
-        return allFoundStages;
-    }
-
-    public static String getStageForDimension(String dimensionId) {
-        for (var entry : STAGES.entrySet()) {
-            StageEntry data = entry.getValue();
-            if (data.getDimensions() != null && data.getDimensions().contains(dimensionId)) {
-                return entry.getKey();
-            }
-        }
-        return null;
-    }
-
-    public static List<String> getAllStagesForDimension(String dimensionId) {
-        List<String> allFoundStages = new ArrayList<>();
-        for (Map.Entry<String, StageEntry> entry : STAGES.entrySet()) {
-            if (entry.getValue().getDimensions() != null && entry.getValue().getDimensions().contains(dimensionId)) {
-                allFoundStages.add(entry.getKey());
-            }
-        }
-        return allFoundStages;
-    }
-
-    public static List<String> getAllStagesForStructure(String structureId) {
-        List<String> allFoundStages = new ArrayList<>();
-        for (Map.Entry<String, StageEntry> entry : STAGES.entrySet()) {
-            if (entry.getValue().getStructures() != null && entry.getValue().getStructures().contains(structureId)) {
-                allFoundStages.add(entry.getKey());
-            }
-        }
-        return allFoundStages;
-    }
-
-    public static boolean anyStageHasStructures() {
-        for (StageEntry entry : STAGES.values()) {
-            if (entry.getStructures() != null && !entry.getStructures().isEmpty()) return true;
-        }
-        for (StageEntry entry : INDIVIDUAL_STAGES.values()) {
-            if (entry.getStructures() != null && !entry.getStructures().isEmpty()) return true;
-        }
-        return false;
-    }
-
-    public static boolean anyStageHasBiomes() {
-        for (StageEntry entry : STAGES.values()) {
-            if (!entry.getBiomes().isEmpty()) return true;
-        }
-        for (StageEntry entry : INDIVIDUAL_STAGES.values()) {
-            if (!entry.getBiomes().isEmpty()) return true;
-        }
-        return false;
-    }
-
-    // =============================================
-    // FAST REJECT (see LockRelevanceIndex)
-    // =============================================
-
-    /** Call after every write to STAGES or INDIVIDUAL_STAGES. */
-    private static void markLockIndexDirty() {
-        LOCK_INDEX_DIRTY = true;
-        DEFINITIONS_VERSION.incrementAndGet();
-    }
-
-    /**
-     * Changes whenever the stage maps do. Never persisted, never sent.
+     * The stages changed. Everything derived from them — the relevance index, the dual-phase
+     * index, and whatever a future engine bakes — is invalidated through the lock seam, not from
+     * here: the store's job is to say <em>that</em> something changed, not to know who cares.
      *
-     * <p>The lock index is told about a change through the flag above; anything else that derives
-     * from the stage maps reads this instead. Same reasoning as {@code StageData.cacheVersion}: a
-     * counter beside the data cannot be forgotten the way a notification at each of a dozen write
-     * sites can, and this one already has a single write site to sit in.
+     * <p>Every write to STAGES or INDIVIDUAL_STAGES must reach this method. A missed call leaves
+     * a stale index, and a stale index does not throw — it quietly unlocks a staged item.
      */
-    public static long definitionsVersion() {
-        return DEFINITIONS_VERSION.get();
+    private static void stagesChanged() {
+        StageLocks.stagesChanged();
     }
 
-    private static final java.util.concurrent.atomic.AtomicLong DEFINITIONS_VERSION =
-            new java.util.concurrent.atomic.AtomicLong();
-
-    private static void rebuildLockIndexIfDirty() {
-        if (!LOCK_INDEX_DIRTY) return;
-        synchronized (LOCK_INDEX_LOCK) {
-            if (!LOCK_INDEX_DIRTY) return;
-            GLOBAL_LOCK_INDEX = LockRelevanceIndex.build(STAGES);
-            INDIVIDUAL_LOCK_INDEX = LockRelevanceIndex.build(INDIVIDUAL_STAGES);
-            LOCK_INDEX_DIRTY = false;
-        }
-    }
-
-    /**
-     * Global stages that could reference this item. Empty means no stage can match, so the
-     * caller can skip its scan; a returned stage still has to be checked properly.
-     */
-    public static Collection<String> globalStageCandidates(String itemId, String modId, Item item) {
-        rebuildLockIndexIfDirty();
-        return GLOBAL_LOCK_INDEX.candidateStages(itemId, modId, item);
-    }
-
-    /** Individual-stage counterpart of {@link #globalStageCandidates}. */
-    public static Collection<String> individualStageCandidates(String itemId, String modId, Item item) {
-        rebuildLockIndexIfDirty();
-        return INDIVIDUAL_LOCK_INDEX.candidateStages(itemId, modId, item);
-    }
-
-    public static List<String> getAllStagesForItemOrMod(String itemId, String modId) {
-        return getAllStagesForItemOrMod(itemId, modId, null);
-    }
-
-    public static List<String> getAllStagesForItemOrMod(String itemId, String modId, net.minecraft.world.item.ItemStack stack) {
-        Item item = stack != null ? stack.getItem() : ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemId));
-        Collection<String> candidates = globalStageCandidates(itemId, modId, item);
-        if (candidates.isEmpty()) return List.of();
-
-        List<String> allFoundStages = new ArrayList<>();
-
-        for (String stageName : candidates) {
-            StageEntry data = STAGES.get(stageName);
-            if (data == null) continue;
-
-            boolean match = false;
-            // Check Item ID (with NBT matching)
-            for (ItemEntry itemEntry : data.getItemEntries()) {
-                if (itemEntry.getId().equals(itemId)) {
-                    if (itemEntry.hasNbt()) {
-                        // NBT matching requires an ItemStack
-                        if (stack != null && NbtMatcher.matches(stack, itemEntry.getNbt())) {
-                            match = true;
-                            break;
-                        }
-                    } else {
-                        match = true;
-                        break;
-                    }
-                }
-            }
-            // Check Mod ID (with exception check)
-            if (!match && data.getMods().contains(modId)) {
-                if (!isModException(itemId, stack, data)) {
-                    match = true;
-                }
-            }
-            // Check Tags
-            if (!match && item != null) {
-                for (NamedLockEntry tagEntry : data.getTagEntries()) {
-                    if (tagEntryMatches(stack, item, tagEntry)) {
-                        match = true;
-                        break;
-                    }
-                }
-            }
-
-            if (match) {
-                allFoundStages.add(stageName);
-            }
-        }
-        return allFoundStages;
-    }
-
-    /** Delegates to StageEntry.isModExcepted for consistency. */
-    private static boolean isModException(String itemId, net.minecraft.world.item.ItemStack stack, StageEntry data) {
-        return data.isModExcepted(itemId, stack);
-    }
-
-    /**
-     * Returns true when {@code item} is in the tag entry's tag AND, if the entry carries an
-     * NBT criterion, the stack matches it. When the entry has NBT but no stack is available,
-     * this returns false (cannot confirm) — mirroring how NBT item entries behave stacklessly.
-     */
-    public static boolean tagEntryMatches(ItemStack stack, Item item, NamedLockEntry tagEntry) {
-        if (item == null) return false;
-        if (!item.builtInRegistryHolder().is(tagEntry.getItemTagKey())) return false;
-        if (!tagEntry.hasNbt()) return true;
-        return stack != null && NbtMatcher.matches(stack, tagEntry.getNbt());
-    }
-
-    /**
-     * Checks whether a specific lock action applies to an item in the given stage entry.
-     * Returns true when the item matches this stage AND the action is restricted
-     * (either because no unlock_actions field is set — all actions locked — or because
-     * the action is NOT in the unlock_actions list).
-     * Returns false when the item does not match this stage at all.
-     */
-    public static boolean isItemActionLockedForStage(String itemId, String modId,
-            net.minecraft.world.item.ItemStack stack, String action, StageEntry data) {
-        // Use the Item directly from the stack — avoids a registry lookup + ResourceLocation alloc.
-        Item item = stack != null ? stack.getItem() : null;
-
-        // Check item entries
-        for (ItemEntry entry : data.getItemEntries()) {
-            if (!entry.getId().equals(itemId)) continue;
-            boolean nbtMatch = !entry.hasNbt() || (stack != null && NbtMatcher.matches(stack, entry.getNbt()));
-            if (nbtMatch) {
-                return isActionInList(entry.getLockActions(), action);
-            }
-        }
-
-        // Check mod entries
-        for (NamedLockEntry modEntry : data.getModEntries()) {
-            if (modEntry.getId().equals(modId) && !isModException(itemId, stack, data)) {
-                return isActionInList(modEntry.getLockActions(), action);
-            }
-        }
-
-        // Check tag entries — TagKey is cached inside NamedLockEntry to avoid per-call allocations.
-        if (item != null) {
-            for (NamedLockEntry tagEntry : data.getTagEntries()) {
-                if (tagEntryMatches(stack, item, tagEntry)) {
-                    return isActionInList(tagEntry.getLockActions(), action);
-                }
-            }
-        }
-
-        return false; // item not covered by this stage
-    }
-
-    /**
-     * Returns true when the action should be blocked:
-     * null = all actions locked (default, no unlock_actions field in JSON).
-     * empty list = no actions locked (all unlocked).
-     * non-empty list = only the listed actions are locked.
-     */
-    private static boolean isActionInList(List<String> lockActions, String action) {
-        if (lockActions == null) return true;
-        return lockActions.contains(action);
-    }
-
-    /**
-     * Returns the research time in ticks for a stage.
-     * Uses the stage's own research_time if > 0, otherwise falls back to the global config.
-     */
     public static int getResearchTimeInTicks(String stageId) {
         StageEntry entry = STAGES.get(stageId);
         if (entry != null && entry.getResearchTime() > 0) {
@@ -1650,8 +1303,8 @@ public class StageManager {
         try (Writer writer = new FileWriter(file)) {
             writer.write(entry.toJson());
             STAGES.put(stageId, entry);
+            stagesChanged();
             STAGE_PATHS.put(stageId, folder);
-            markLockIndexDirty();
             DebugLogger.runtime("Stage Save", "Saved stage '" + stageId + "' to "
                     + StagePaths.join(folder, file.getName()));
             // Re-read what actually landed on disk so the overwrite guard stays correct even
@@ -1686,8 +1339,8 @@ public class StageManager {
         File file = new File(dir, stageId + ".json");
         if (file.exists() && file.delete()) {
             STAGES.remove(stageId);
+            stagesChanged();
             STAGE_PATHS.remove(stageId);
-            markLockIndexDirty();
             DebugLogger.runtime("Stage Delete", "Deleted stage '" + stageId + "'");
             return true;
         }
@@ -1703,15 +1356,9 @@ public class StageManager {
 
     /** @deprecated Phase 0 seam: use {@link net.bananemdnsa.historystages.util.lock.StageLockHelper}. */
     @Deprecated
-    public static boolean isRecipeIdLockedForServer(String recipeId) {
-        return net.bananemdnsa.historystages.util.lock.StageLockHelper.isRecipeLockedForServer(recipeId);
-    }
-
     // =============================================
     // INDIVIDUAL STAGES
     // =============================================
-
-    private static final Set<String> INDIVIDUAL_UNSUPPORTED_KEYS = Set.of("recipes");
 
     private static void loadIndividual() {
         INDIVIDUAL_STAGE_PATHS.clear();
@@ -1769,10 +1416,75 @@ public class StageManager {
         net.bananemdnsa.historystages.util.lock.StructureGenerationGate.rebuild();
 
         System.out.println("[HistoryStages] Individual Stages geladen: " + INDIVIDUAL_STAGES.size());
+
+        // Check for circular dependencies across all stages
+        checkCircularDependencies();
+    }
+
+    /**
+     * Detects circular dependencies between stages.
+     * A cycle like A -> B -> A will produce an error message.
+     */
+    private static void checkCircularDependencies() {
+        Map<String, Set<String>> graph = new HashMap<>();
+
+        // Build adjacency list from all stages (global + individual)
+        for (Map.Entry<String, StageEntry> e : STAGES.entrySet()) {
+            Set<String> refs = new HashSet<>();
+            for (DependencyGroup group : e.getValue().getDependencies()) {
+                refs.addAll(group.getReferencedStageIds());
+            }
+            if (!refs.isEmpty()) graph.put(e.getKey(), refs);
+        }
+        for (Map.Entry<String, StageEntry> e : INDIVIDUAL_STAGES.entrySet()) {
+            Set<String> refs = new HashSet<>();
+            for (DependencyGroup group : e.getValue().getDependencies()) {
+                refs.addAll(group.getReferencedStageIds());
+            }
+            if (!refs.isEmpty()) graph.put(e.getKey(), refs);
+        }
+
+        // DFS cycle detection
+        Set<String> visited = new HashSet<>();
+        Set<String> inStack = new HashSet<>();
+
+        for (String node : graph.keySet()) {
+            if (!visited.contains(node)) {
+                List<String> path = new ArrayList<>();
+                if (hasCycleDFS(node, graph, visited, inStack, path)) {
+                    String cycle = String.join(" -> ", path);
+                    String msg = "Circular dependency detected: " + cycle;
+                    addMessage(MessageLevel.ERROR, msg);
+                    DebugLogger.error("Circular Dependencies", msg);
+                }
+            }
+        }
+    }
+
+    private static boolean hasCycleDFS(String node, Map<String, Set<String>> graph,
+                                       Set<String> visited, Set<String> inStack, List<String> path) {
+        visited.add(node);
+        inStack.add(node);
+        path.add(node);
+
+        Set<String> neighbors = graph.getOrDefault(node, Set.of());
+        for (String neighbor : neighbors) {
+            if (!visited.contains(neighbor)) {
+                if (hasCycleDFS(neighbor, graph, visited, inStack, path)) {
+                    return true;
+                }
+            } else if (inStack.contains(neighbor)) {
+                path.add(neighbor);
+                return true;
+            }
+        }
+
+        inStack.remove(node);
+        path.remove(path.size() - 1);
+        return false;
     }
 
     private static void stripUnsupportedIndividualCategories(String stageId, StageEntry entry) {
-        // Recipes are not supported for individual stages
         if (entry.getRecipes() != null && !entry.getRecipes().isEmpty()) {
             String msg = "Individual stage '" + stageId + "' contains 'recipes' — not supported for individual stages. Entries removed.";
             addMessage(MessageLevel.ERROR, msg);
@@ -1780,7 +1492,6 @@ public class StageManager {
             entry.getRecipes().clear();
         }
 
-        // Spawnlock is not supported for individual stages
         if (entry.getEntities().getSpawnlock() != null && !entry.getEntities().getSpawnlock().isEmpty()) {
             String msg = "Individual stage '" + stageId + "' contains 'entities.spawnlock' — not supported for individual stages. Entries removed.";
             addMessage(MessageLevel.ERROR, msg);
@@ -1791,7 +1502,7 @@ public class StageManager {
 
     /**
      * Warns about (but does not remove) an addon settings block whose group does not support
-     * {@link net.bananemdnsa.historystages.data.lock.engine.StageScope#INDIVIDUAL}.
+     * {@link net.bananemdnsa.historystages.api.stage.StageScope#INDIVIDUAL}.
      *
      * <p>Deliberately not folded into {@link #stripUnsupportedIndividualCategories}, and
      * deliberately not deleting anything: that method operates on this mod's own built-in
@@ -1802,11 +1513,11 @@ public class StageManager {
      */
     private static void warnUnsupportedScopeSettingsGroups(String stageId, StageEntry entry) {
         for (String groupId : entry.addonSettingsGroupIds()) {
-            net.bananemdnsa.historystages.data.settings.StageSettingsGroup group =
+            net.bananemdnsa.historystages.api.settings.StageSettingsGroup group =
                     net.bananemdnsa.historystages.data.settings.StageSettingsGroups.byId(groupId);
             if (group == null) continue;
             if (group.supportedScopes().contains(
-                    net.bananemdnsa.historystages.data.lock.engine.StageScope.INDIVIDUAL)) {
+                    net.bananemdnsa.historystages.api.stage.StageScope.INDIVIDUAL)) {
                 continue;
             }
             String msg = "Individual stage '" + stageId + "' has settings for group '" + groupId
@@ -1818,7 +1529,7 @@ public class StageManager {
 
     /**
      * Warns about (but does not remove) an auto-trigger whose type does not support
-     * {@link net.bananemdnsa.historystages.data.lock.engine.StageScope#INDIVIDUAL}.
+     * {@link net.bananemdnsa.historystages.api.stage.StageScope#INDIVIDUAL}.
      *
      * <p>Deliberately not folded into {@link #stripUnsupportedIndividualCategories}, and
      * deliberately not deleting anything, for the same reason {@link
@@ -1844,7 +1555,6 @@ public class StageManager {
     }
 
     private static void validateAndAddIndividual(String stageId, StageEntry entry) {
-        // Check for duplicate stage ID across global and individual
         if (STAGES.containsKey(stageId)) {
             String msg = "Individual stage '" + stageId + "' has the same ID as a global stage. Individual stage skipped.";
             addMessage(MessageLevel.ERROR, msg);
@@ -1853,17 +1563,16 @@ public class StageManager {
         }
 
         trimDependencyGroups(stageId, entry);
+        assignDependencyGroupIds(stageId, entry);
         // No-op today, because every built-in works at INDIVIDUAL scope. Here anyway, so a
         // requirement that later declares itself global-only is caught on this side too.
         warnAboutScopeMismatches(stageId, entry, StageScope.INDIVIDUAL);
 
-        // Reuse global validation (empty strings, duplicates, format checks)
         removeEmptyItemEntries(entry.getItemEntries(), stageId);
         removeEmptyStrings(entry.getTags(), stageId, "tags");
         removeEmptyStrings(entry.getMods(), stageId, "mods");
         removeEmptyItemEntries(entry.getModExceptionEntries(), stageId);
         removeEmptyStrings(entry.getDimensions(), stageId, "dimensions");
-        removeEmptyStrings(entry.getStructures(), stageId, "structures");
         removeEmptyStrings(entry.getEntities().getAttacklock(), stageId, "entities.attacklock");
         removeEmptyInteractionlockEntries(entry.getEntities().getInteractionlock(), stageId);
 
@@ -1872,12 +1581,11 @@ public class StageManager {
         checkDuplicates(entry.getMods(), stageId, "mods");
         checkDuplicateItems(entry.getModExceptionEntries(), stageId);
         checkDuplicates(entry.getDimensions(), stageId, "dimensions");
-        checkDuplicates(entry.getStructures(), stageId, "structures");
         checkDuplicates(entry.getEntities().getAttacklock(), stageId, "entities.attacklock");
         checkDuplicateInteractionlock(entry.getEntities().getInteractionlock(), stageId);
 
         entry.getItemEntries().removeIf(item -> {
-            if (!ResourceLocation.isValidResourceLocation(item.getId())) {
+            if (!isValidResourceLocation(item.getId())) {
                 addMessage(MessageLevel.WARN, "Item '" + item.getId() + "' invalid format (Individual Stage: " + stageId + "). Removed.");
                 return true;
             }
@@ -1885,7 +1593,7 @@ public class StageManager {
         });
 
         entry.getTags().removeIf(tagId -> {
-            if (!ResourceLocation.isValidResourceLocation(tagId)) {
+            if (!isValidResourceLocation(tagId)) {
                 addMessage(MessageLevel.WARN, "Tag '" + tagId + "' invalid format (Individual Stage: " + stageId + "). Removed.");
                 return true;
             }
@@ -1900,11 +1608,10 @@ public class StageManager {
             return false;
         });
 
-        // --- Mod Exceptions: format validation + must belong to a locked mod ---
         Set<String> indLockedMods = new HashSet<>(entry.getMods());
         entry.getModExceptionEntries().removeIf(exceptionEntry -> {
             String exItemId = exceptionEntry.getId();
-            if (!ResourceLocation.isValidResourceLocation(exItemId)) {
+            if (!isValidResourceLocation(exItemId)) {
                 addMessage(MessageLevel.WARN, "Mod exception '" + exItemId + "' invalid format (Individual Stage: " + stageId + "). Removed.");
                 return true;
             }
@@ -1917,24 +1624,27 @@ public class StageManager {
         });
 
         entry.getDimensions().removeIf(dimId -> {
-            if (!ResourceLocation.isValidResourceLocation(dimId)) {
+            if (!isValidResourceLocation(dimId)) {
                 addMessage(MessageLevel.WARN, "Dimension '" + dimId + "' invalid format (Individual Stage: " + stageId + "). Removed.");
                 return true;
             }
             return false;
         });
 
+        removeEmptyStrings(entry.getStructures(), stageId, "structures");
+        checkDuplicates(entry.getStructures(), stageId, "structures");
         entry.getStructures().removeIf(structId -> {
             String check = structId != null && structId.startsWith("#") ? structId.substring(1) : structId;
-            if (!ResourceLocation.isValidResourceLocation(check)) {
+            if (!isValidResourceLocation(check)) {
                 addMessage(MessageLevel.WARN, "Structure '" + structId + "' invalid format (Individual Stage: " + stageId + "). Removed.");
+                DebugLogger.warn("Invalid Structures", "Structure '" + structId + "' is not a valid ResourceLocation (Individual Stage: " + stageId + "). Removed.");
                 return true;
             }
             return false;
         });
 
         entry.getEntities().getAttacklock().removeIf(entityId -> {
-            if (!ResourceLocation.isValidResourceLocation(entityId)) {
+            if (!isValidResourceLocation(entityId)) {
                 addMessage(MessageLevel.WARN, "Entity attacklock '" + entityId + "' invalid format (Individual Stage: " + stageId + "). Removed.");
                 return true;
             }
@@ -1942,7 +1652,7 @@ public class StageManager {
         });
 
         entry.getEntities().getInteractionlock().removeIf(inEntry -> {
-            if (!ResourceLocation.isValidResourceLocation(inEntry.getId())) {
+            if (!isValidResourceLocation(inEntry.getId())) {
                 addMessage(MessageLevel.WARN, "Entity interactionlock '" + inEntry.getId() + "' invalid format (Individual Stage: " + stageId + "). Removed.");
                 return true;
             }
@@ -1973,7 +1683,7 @@ public class StageManager {
         }
 
         INDIVIDUAL_STAGES.put(stageId, entry);
-        markLockIndexDirty();
+        stagesChanged();
         System.out.println("[HistoryStages] Individual Stage geladen: " + stageId);
     }
 
@@ -1985,43 +1695,11 @@ public class StageManager {
      * the resulting messages through the two logging sinks the maintainer sees on load.
      */
     public static void rebuildDualPhase() {
-        DualPhaseIndex index = DualPhaseIndex.build(STAGES, INDIVIDUAL_STAGES);
-        DUAL_PHASE = index;
-        for (String msg : index.messages()) {
+        for (String msg : CategoryLockIndexes.rebuildDualPhase(STAGES, INDIVIDUAL_STAGES)) {
             addMessage(MessageLevel.INFO, msg);
             DebugLogger.info("Dual-Phase Detection", msg);
         }
     }
-
-    /**
-     * Dual-phase entries of any category, by id — what a category-driven consumer asks instead of
-     * naming one of the sixteen getters below. Empty when the category has none.
-     */
-    public static Map<String, Set<String>> getDualPhaseGlobal(String categoryId) {
-        return DUAL_PHASE.global(categoryId);
-    }
-
-    /** Individual-scope counterpart of {@link #getDualPhaseGlobal}. */
-    public static Map<String, Set<String>> getDualPhaseIndividual(String categoryId) {
-        return DUAL_PHASE.individual(categoryId);
-    }
-
-    public static Map<String, Set<String>> getDualPhaseItems()         { return DUAL_PHASE.global("historystages:items"); }
-    public static Map<String, Set<String>> getDualPhaseTags()          { return DUAL_PHASE.global("historystages:tags"); }
-    public static Map<String, Set<String>> getDualPhaseMods()          { return DUAL_PHASE.global("historystages:mods"); }
-    public static Map<String, Set<String>> getDualPhaseDimensions()    { return DUAL_PHASE.global("historystages:dimensions"); }
-    public static Map<String, Set<String>> getDualPhaseStructures()    { return DUAL_PHASE.global("historystages:structures"); }
-    public static Map<String, Set<String>> getDualPhaseBiomes()        { return DUAL_PHASE.global("historystages:biomes"); }
-    public static Map<String, Set<String>> getDualPhaseAttacklock()    { return DUAL_PHASE.global("historystages:attacklock"); }
-    public static Map<String, Set<String>> getDualPhaseInteractionlock()    { return DUAL_PHASE.global("historystages:interactionlock"); }
-    public static Map<String, Set<String>> getDualPhaseItemsInd()      { return DUAL_PHASE.individual("historystages:items"); }
-    public static Map<String, Set<String>> getDualPhaseTagsInd()       { return DUAL_PHASE.individual("historystages:tags"); }
-    public static Map<String, Set<String>> getDualPhaseModsInd()       { return DUAL_PHASE.individual("historystages:mods"); }
-    public static Map<String, Set<String>> getDualPhaseDimensionsInd() { return DUAL_PHASE.individual("historystages:dimensions"); }
-    public static Map<String, Set<String>> getDualPhaseStructuresInd() { return DUAL_PHASE.individual("historystages:structures"); }
-    public static Map<String, Set<String>> getDualPhaseBiomesInd()     { return DUAL_PHASE.individual("historystages:biomes"); }
-    public static Map<String, Set<String>> getDualPhaseAttacklockInd() { return DUAL_PHASE.individual("historystages:attacklock"); }
-    public static Map<String, Set<String>> getDualPhaseInteractionlockInd() { return DUAL_PHASE.individual("historystages:interactionlock"); }
 
     public static Map<String, StageEntry> getIndividualStages() {
         return INDIVIDUAL_STAGES;
@@ -2032,101 +1710,7 @@ public class StageManager {
         if (stages != null) {
             INDIVIDUAL_STAGES.putAll(stages);
         }
-        markLockIndexDirty();
-    }
-
-    public static List<String> getAllIndividualStagesForItemOrMod(String itemId, String modId) {
-        return getAllIndividualStagesForItemOrMod(itemId, modId, null);
-    }
-
-    public static List<String> getAllIndividualStagesForItemOrMod(String itemId, String modId, net.minecraft.world.item.ItemStack stack) {
-        Item item = stack != null ? stack.getItem() : ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemId));
-        Collection<String> candidates = individualStageCandidates(itemId, modId, item);
-        if (candidates.isEmpty()) return List.of();
-
-        List<String> allFoundStages = new ArrayList<>();
-
-        for (String stageName : candidates) {
-            StageEntry data = INDIVIDUAL_STAGES.get(stageName);
-            if (data == null) continue;
-
-            boolean match = false;
-            for (ItemEntry itemEntry : data.getItemEntries()) {
-                if (itemEntry.getId().equals(itemId)) {
-                    if (itemEntry.hasNbt()) {
-                        if (stack != null && NbtMatcher.matches(stack, itemEntry.getNbt())) {
-                            match = true;
-                            break;
-                        }
-                    } else {
-                        match = true;
-                        break;
-                    }
-                }
-            }
-            // Check Mod ID (with exception check)
-            if (!match && data.getMods().contains(modId)) {
-                if (!isModException(itemId, stack, data)) {
-                    match = true;
-                }
-            }
-            if (!match && item != null) {
-                for (NamedLockEntry tagEntry : data.getTagEntries()) {
-                    if (tagEntryMatches(stack, item, tagEntry)) {
-                        match = true;
-                        break;
-                    }
-                }
-            }
-
-            if (match) {
-                allFoundStages.add(stageName);
-            }
-        }
-        return allFoundStages;
-    }
-
-    public static List<String> getAllIndividualStagesForAttackLockedEntity(String entityId) {
-        List<String> allFoundStages = new ArrayList<>();
-        for (Map.Entry<String, StageEntry> entry : INDIVIDUAL_STAGES.entrySet()) {
-            if (entry.getValue().getEntities().getAttacklock().contains(entityId)) {
-                allFoundStages.add(entry.getKey());
-            }
-        }
-        return allFoundStages;
-    }
-
-    public static List<String> getAllIndividualStagesForInteractionLockedEntity(String entityId, String action, ItemStack held) {
-        List<String> allFoundStages = new ArrayList<>();
-        for (Map.Entry<String, StageEntry> entry : INDIVIDUAL_STAGES.entrySet()) {
-            for (EntityInteractionLockEntry inEntry : entry.getValue().getEntities().getInteractionlock()) {
-                if (inEntry.getId().equals(entityId) && inEntry.blocksAction(action) && inEntry.matchesItem(held)) {
-                    allFoundStages.add(entry.getKey());
-                    break;
-                }
-            }
-        }
-        return allFoundStages;
-    }
-
-    public static List<String> getAllIndividualStagesForDimension(String dimensionId) {
-        List<String> allFoundStages = new ArrayList<>();
-        for (Map.Entry<String, StageEntry> entry : INDIVIDUAL_STAGES.entrySet()) {
-            if (entry.getValue().getDimensions() != null && entry.getValue().getDimensions().contains(dimensionId)) {
-                allFoundStages.add(entry.getKey());
-            }
-        }
-        return allFoundStages;
-    }
-
-    public static List<String> getAllIndividualStagesForStructure(String structureId) {
-        List<String> allFoundStages = new ArrayList<>();
-        for (Map.Entry<String, StageEntry> entry : INDIVIDUAL_STAGES.entrySet()) {
-            if (entry.getValue().getStructures() != null && entry.getValue().getStructures().contains(structureId)) {
-                allFoundStages.add(entry.getKey());
-            }
-        }
-        return allFoundStages;
+        stagesChanged();
     }
 
     public static boolean saveIndividualStage(String stageId, StageEntry entry) {
@@ -2155,8 +1739,8 @@ public class StageManager {
         try (Writer writer = new FileWriter(file)) {
             writer.write(entry.toJson());
             INDIVIDUAL_STAGES.put(stageId, entry);
+            stagesChanged();
             INDIVIDUAL_STAGE_PATHS.put(stageId, folder);
-            markLockIndexDirty();
             DebugLogger.runtime("Individual Stage Save", "Saved individual stage '" + stageId + "' to "
                     + StagePaths.join(folder, file.getName()));
             // Re-read what actually landed on disk so the overwrite guard stays correct even
@@ -2188,8 +1772,8 @@ public class StageManager {
         File file = new File(dir, stageId + ".json");
         if (file.exists() && file.delete()) {
             INDIVIDUAL_STAGES.remove(stageId);
+            stagesChanged();
             INDIVIDUAL_STAGE_PATHS.remove(stageId);
-            markLockIndexDirty();
             DebugLogger.runtime("Individual Stage Delete", "Deleted individual stage '" + stageId + "'");
             return true;
         }
@@ -2499,10 +2083,6 @@ public class StageManager {
         return order;
     }
 
-    /**
-     * Returns the research time in ticks for an individual stage.
-     * Falls back to global config if stage has no custom time.
-     */
     public static int getIndividualResearchTimeInTicks(String stageId) {
         StageEntry entry = INDIVIDUAL_STAGES.get(stageId);
         if (entry != null && entry.getResearchTime() > 0) {
@@ -2511,9 +2091,6 @@ public class StageManager {
         return net.bananemdnsa.historystages.Config.COMMON.researchTimeInSeconds.get() * 20;
     }
 
-    /**
-     * Checks if a stage ID belongs to an individual stage.
-     */
     public static boolean isIndividualStage(String stageId) {
         return INDIVIDUAL_STAGES.containsKey(stageId);
     }
@@ -2523,8 +2100,6 @@ public class StageManager {
             addMessage(MessageLevel.WARN, "Stage '" + stageId + "' has a null auto_trigger entry (skipped during load).");
             return;
         }
-        // Java 17 target: switch pattern matching is a preview feature here, so use
-        // instanceof pattern chains instead (the NeoForge/Java 21 reference used a switch).
         String typeName = t.type();
         if (t instanceof BiomeTrigger bt) {
             checkTriggerRl(stageId, typeName, bt.id());
@@ -2566,7 +2141,7 @@ public class StageManager {
     }
 
     private static void checkTriggerRl(String stageId, String triggerType, String id) {
-        if (id == null || !ResourceLocation.isValidResourceLocation(id)) {
+        if (!isValidResourceLocation(id)) {
             addMessage(MessageLevel.WARN, "Trigger '" + triggerType + "' in stage '" + stageId + "' has invalid id '" + id + "'. It will never match.");
             DebugLogger.warn("Invalid AutoTrigger Id", "Trigger '" + triggerType + "' in stage '" + stageId + "' has id '" + id + "' which is not a valid ResourceLocation. The trigger will never match — fix the id.");
         }

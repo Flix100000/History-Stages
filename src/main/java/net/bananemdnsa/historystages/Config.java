@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages;
 
+
 import net.bananemdnsa.historystages.data.ScrollCompletion;
 import net.minecraftforge.common.ForgeConfigSpec;
 import net.minecraftforge.fml.common.Mod;

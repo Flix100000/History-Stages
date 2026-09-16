@@ -1,5 +1,5 @@
 package net.bananemdnsa.historystages.client.editor;
-import net.bananemdnsa.historystages.client.editor.dialog.CountInputScreen;
+import net.bananemdnsa.historystages.api.editor.widget.CountInputScreen;
 import net.bananemdnsa.historystages.client.editor.dialog.ScoreboardDepScreen;
 import net.bananemdnsa.historystages.client.editor.toast.EditorToastHandler;
 
@@ -12,33 +12,32 @@ import net.bananemdnsa.historystages.client.editor.anim.Anim;
 import net.bananemdnsa.historystages.client.editor.anim.Ease;
 import net.bananemdnsa.historystages.client.editor.anim.Fade;
 import net.bananemdnsa.historystages.client.editor.anim.Timing;
-import net.bananemdnsa.historystages.client.editor.dep.DependencyTab;
+import net.bananemdnsa.historystages.api.editor.DependencyTab;
 import net.bananemdnsa.historystages.client.editor.dep.IdCountTab;
 import net.bananemdnsa.historystages.client.editor.dep.EntityKillTab;
 import net.bananemdnsa.historystages.client.editor.dep.IndividualStageTab;
 import net.bananemdnsa.historystages.client.editor.dep.ItemRequirementTab;
-import net.bananemdnsa.historystages.client.editor.dep.RequirementEditor;
+import net.bananemdnsa.historystages.api.editor.RequirementEditor;
 import net.bananemdnsa.historystages.client.editor.dep.RequirementEditors;
 import net.bananemdnsa.historystages.client.editor.dep.ScoreboardTab;
 import net.bananemdnsa.historystages.client.editor.dep.StatTab;
 import net.bananemdnsa.historystages.client.editor.dep.StringListTab;
 import net.bananemdnsa.historystages.client.editor.dep.XpLevelTab;
-import net.bananemdnsa.historystages.client.editor.tab.EntryAction;
-import net.bananemdnsa.historystages.client.editor.tab.EntryActionContext;
-import net.bananemdnsa.historystages.client.editor.tab.GenericIdPicker;
-import net.bananemdnsa.historystages.client.editor.tab.TabInputContext;
-import net.bananemdnsa.historystages.client.editor.tab.TabRenderContext;
+import net.bananemdnsa.historystages.api.editor.EntryAction;
+import net.bananemdnsa.historystages.api.editor.EntryActionContext;
+import net.bananemdnsa.historystages.api.editor.TabInputContext;
+import net.bananemdnsa.historystages.api.editor.TabRenderContext;
 import net.bananemdnsa.historystages.client.editor.widget.*;
 import net.bananemdnsa.historystages.client.editor.widget.list.*;
-import net.bananemdnsa.historystages.client.editor.widget.EditorRowList;
-import net.bananemdnsa.historystages.client.editor.widget.list.PickerOverlay;
+import net.bananemdnsa.historystages.api.editor.widget.EditorRowList;
+import net.bananemdnsa.historystages.api.editor.widget.PickerOverlay;
 import net.bananemdnsa.historystages.data.DependencyGroup;
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.data.dependency.*;
-import net.bananemdnsa.historystages.data.dependency.Requirement;
+import net.bananemdnsa.historystages.api.dependency.Requirement;
 import net.bananemdnsa.historystages.data.dependency.RequirementTypes;
-import net.bananemdnsa.historystages.data.lock.engine.StageScope;
+import net.bananemdnsa.historystages.api.stage.StageScope;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.client.gui.GuiGraphics;
@@ -220,7 +219,11 @@ public class DependencyEditorScreen extends Screen {
                     // Store into the group being left before the selection moves, or its addon
                     // entries never reach it — the tabs hold them until told otherwise.
                     if (hasGroup()) storeAddonTabs(currentGroup());
-                    groups.add(new DependencyGroup());
+                    DependencyGroup fresh = new DependencyGroup();
+                    // An id of its own from the start, so what players deposit into it stays with
+                    // it when the group list is later reordered or thinned out.
+                    fresh.setId(DependencyGroup.freshId(groups));
+                    groups.add(fresh);
                     selectedGroup = groups.size() - 1;
                     // And load from the new one, which is empty and therefore clears the tabs.
                     loadAddonTabs(currentGroup());
@@ -902,7 +905,11 @@ public class DependencyEditorScreen extends Screen {
                         });
                         contextMenu.addEntry(t("editor.historystages.duplicate"), () -> {
                             if (atGroupLimit()) return;
-                            groups.add(gi + 1, groups.get(gi).copy());
+                            DependencyGroup duplicate = groups.get(gi).copy();
+                            // The one copy that must not keep the id: two groups sharing one
+                            // would share every deposit made into either of them.
+                            duplicate.setId(DependencyGroup.freshId(groups));
+                            groups.add(gi + 1, duplicate);
                             hasChanges = true;
                         });
                         contextMenu.addEntry(t("editor.historystages.remove"), () -> {

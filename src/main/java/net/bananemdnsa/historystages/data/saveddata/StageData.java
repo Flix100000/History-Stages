@@ -17,8 +17,6 @@ public class StageData extends SavedData {
     private final List<String> unlockedStages = new ArrayList<>();
     private static final String DATA_NAME = "historystages_global";
 
-    // --- NEU: DER CACHE ---
-    // Das Mixin greift hierauf zu, weil es keinen direkten Zugriff auf "SavedData" hat
     public static final Set<String> SERVER_CACHE = ConcurrentHashMap.newKeySet();
 
     /**
@@ -26,7 +24,8 @@ public class StageData extends SavedData {
      * it went stale without being told.
      *
      * <p>A notification would have to be remembered at each of the places that write the cache; a
-     * counter that lives beside the data cannot be forgotten in the same way.
+     * counter that lives beside the data cannot be forgotten in the same way. {@code UnlockedStateGuardTest} keeps
+ * the mutations inside this class, which is what makes the counter trustworthy.
      */
     private static final java.util.concurrent.atomic.AtomicLong VERSION =
             new java.util.concurrent.atomic.AtomicLong();
@@ -36,8 +35,17 @@ public class StageData extends SavedData {
         return VERSION.get();
     }
 
+    /**
+     * Replaces the cache with exactly these stages. The pedestal used to clear and refill
+     * {@link #SERVER_CACHE} itself, which left anything derived from it holding stale data.
+     */
+    public static void replaceCache(java.util.Collection<String> stages) {
+        SERVER_CACHE.clear();
+        SERVER_CACHE.addAll(stages);
+        VERSION.incrementAndGet();
+    }
+
     public StageData() {
-        // Falls das Objekt neu erstellt wird, stellen wir sicher, dass der Cache leer ist
         SERVER_CACHE.clear();
         VERSION.incrementAndGet();
     }
@@ -45,11 +53,11 @@ public class StageData extends SavedData {
     public static StageData load(CompoundTag nbt) {
         StageData data = new StageData();
         ListTag list = nbt.getList("stages", Tag.TAG_STRING);
-        SERVER_CACHE.clear(); // Cache leeren beim Laden
+        SERVER_CACHE.clear();
         for (int i = 0; i < list.size(); i++) {
             String stage = list.getString(i);
             data.unlockedStages.add(stage);
-            SERVER_CACHE.add(stage); // CACHE BEIM LADEN FÜLLEN
+            SERVER_CACHE.add(stage);
         }
         VERSION.incrementAndGet();
         net.bananemdnsa.historystages.util.lock.StructureGenerationGate.rebuild();
@@ -102,7 +110,7 @@ public class StageData extends SavedData {
     public void addStage(String stage) {
         if (!unlockedStages.contains(stage)) {
             unlockedStages.add(stage);
-            SERVER_CACHE.add(stage); // CACHE AKTUALISIEREN
+            SERVER_CACHE.add(stage);
             VERSION.incrementAndGet();
             // Before the rebuild: the reset lookup needs the snapshot that still describes the
             // phase being left behind.
@@ -114,7 +122,7 @@ public class StageData extends SavedData {
 
     public void removeStage(String stage) {
         if (unlockedStages.remove(stage)) {
-            SERVER_CACHE.remove(stage); // AUS CACHE ENTFERNEN
+            SERVER_CACHE.remove(stage);
             VERSION.incrementAndGet();
             // Before the rebuild, for the same reason as in addStage.
             net.bananemdnsa.historystages.util.lock.StructureGenerationGate.onStageLockChanged(stage, false);

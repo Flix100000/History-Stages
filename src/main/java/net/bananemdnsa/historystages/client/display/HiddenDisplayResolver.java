@@ -1,15 +1,16 @@
 package net.bananemdnsa.historystages.client.display;
 
+import net.bananemdnsa.historystages.data.lock.category.BuiltInLockMatching;
+import net.bananemdnsa.historystages.client.cache.ClientIndividualStageCache;
+import net.bananemdnsa.historystages.client.cache.ClientStageCache;
+import net.bananemdnsa.historystages.data.display.DisplayMode;
+import net.bananemdnsa.historystages.data.display.HiddenDisplayConfig;
 import net.bananemdnsa.historystages.data.ItemEntry;
 import net.bananemdnsa.historystages.data.lock.NamedLockEntry;
 import net.bananemdnsa.historystages.data.NbtMatcher;
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.StageManager;
-import net.bananemdnsa.historystages.data.display.DisplayMode;
-import net.bananemdnsa.historystages.data.display.HiddenDisplayConfig;
 import net.bananemdnsa.historystages.data.display.TextOverrideHolder;
-import net.bananemdnsa.historystages.client.cache.ClientIndividualStageCache;
-import net.bananemdnsa.historystages.client.cache.ClientStageCache;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -150,7 +151,7 @@ public final class HiddenDisplayResolver {
     private static NamedLockEntry matchedTag(StageEntry stage, ItemStack stack) {
         Item item = stack.getItem();
         for (NamedLockEntry tagEntry : stage.getTagEntries()) {
-            if (net.bananemdnsa.historystages.data.StageManager.tagEntryMatches(stack, item, tagEntry)) return tagEntry;
+            if (BuiltInLockMatching.tagEntryMatches(tagEntry, stack, item)) return tagEntry;
         }
         return null;
     }
