@@ -2,8 +2,11 @@ package net.bananemdnsa.historystages.gametest;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.OptionalInt;
+import java.util.UUID;
 
 import com.google.gson.JsonObject;
+import com.mojang.authlib.GameProfile;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 
 import net.bananemdnsa.historystages.HistoryStages;
@@ -18,7 +21,10 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.MenuProvider;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.entity.npc.VillagerData;
@@ -33,6 +39,7 @@ import net.minecraft.world.item.trading.MerchantOffer;
 import net.minecraft.world.item.trading.MerchantOffers;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * The trade seam, answered against a live registry.
@@ -43,9 +50,13 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
  * against a real stack, and that the item action {@code trade} reaches an offer through ordinary
  * item entries.
  *
- * <p><strong>Nothing here opens a trade screen.</strong> The test player has no connection, and
- * {@code openTradingScreen} sends it a packet — the failure would say nothing about trade locks.
- * The filter is asked directly instead, which is the same call the seam makes.
+ * <p><strong>Most of these never open a trade screen.</strong> The test player has no connection,
+ * and {@code openTradingScreen} sends it packets — the failure would say nothing about trade
+ * locks. The filter is asked directly instead, which is the same call the seam makes.
+ *
+ * <p>The last two are the exception, and the only ones that touch the seam rather than the filter
+ * behind it. They matter because a mistyped target in {@code MerchantOffersMixin} would leave
+ * every trade lock silently off with every other test in this file still green.
  */
 @GameTestHolder(HistoryStages.MOD_ID)
 @PrefixGameTestTemplate(false)
@@ -114,6 +125,76 @@ public final class TradeLockTests {
         return TradeLockHelper
                 .filterForPlayer(offers, villager, TradeLockHelper.levelOf(villager), player)
                 .keptIndices().size();
+    }
+
+    /**
+     * A player that catches the two calls a trade screen makes through a connection, and
+     * remembers what it was handed.
+     *
+     * <p>Overriding these rather than faking a connection keeps the part under test — the seam on
+     * {@code openTradingScreen} — running against real vanilla code.
+     */
+    private static final class RecordingPlayer extends ServerPlayer {
+        private static final int CONTAINER_ID = 7;
+
+        private boolean menuOpened;
+        private MerchantOffers received;
+
+        RecordingPlayer(GameTestHelper helper) {
+            super(helper.getLevel().getServer(), helper.getLevel(),
+                    new GameProfile(UUID.randomUUID(), "gametest"),
+                    ClientInformation.createDefault());
+        }
+
+        @Override
+        public OptionalInt openMenu(@Nullable MenuProvider menu) {
+            if (menu == null) return OptionalInt.empty();
+            menuOpened = true;
+            return OptionalInt.of(CONTAINER_ID);
+        }
+
+        @Override
+        public void sendMerchantOffers(int containerId, MerchantOffers offers, int villagerLevel,
+                                       int villagerXp, boolean showProgress, boolean canRestock) {
+            received = offers;
+        }
+    }
+
+    /**
+     * Puts exactly these offers on a villager.
+     *
+     * <p>Not {@code overrideOffers}: on a vanilla villager that method has an empty body. The list
+     * {@code getOffers} hands back is the live one, so the way to set trades is to edit it — and
+     * asking for it is also what makes the villager roll its own, which is why they are cleared.
+     */
+    private static void setOffers(Villager villager, MerchantOffers offers) {
+        MerchantOffers live = villager.getOffers();
+        live.clear();
+        live.addAll(offers);
+    }
+
+    /** Two offers: the paper one a stage can name, and one nothing names. */
+    private static MerchantOffers twoOffers() {
+        MerchantOffers offers = paperForEmerald();
+        offers.add(new MerchantOffer(
+                new ItemCost(Items.EMERALD, 5), new ItemStack(Items.BOOK), 16, 2, 0.05f));
+        return offers;
+    }
+
+    /**
+     * Opens the screen for real.
+     *
+     * <p>The notice packet that follows an entirely gated merchant goes through the connection
+     * this player has not got, so that one throw is swallowed — everything the tests ask about has
+     * been recorded before it.
+     */
+    private static void openScreen(Villager villager, RecordingPlayer player) {
+        try {
+            villager.openTradingScreen(player, Component.literal("gametest"),
+                    TradeLockHelper.levelOf(villager));
+        } catch (Exception noConnection) {
+            // see above
+        }
     }
 
     // ---------------------------------------------------------------------------------------
@@ -502,6 +583,87 @@ public final class TradeLockTests {
             GameTestStages.removeAll();
             // Unlocked state lives in SavedData and outlives both the test and the stage entry.
             data.removeStage(stageId);
+        }
+    }
+
+    /**
+     * The seam itself rather than the filter behind it: a real merchant opening a real screen
+     * hands the player the short list.
+     */
+    @GameTest(template = "empty")
+    public static void theSeamShortensTheListTheMerchantHandsOver(GameTestHelper helper) {
+        try {
+            GameTestStages.global("trade_seam_short", stage -> stage.setTradeOffers(
+                    new ArrayList<>(List.of(paperForEmeraldEntry()))));
+
+            Villager villager = librarian(helper, 1);
+            setOffers(villager, twoOffers());
+            RecordingPlayer player = new RecordingPlayer(helper);
+
+            openScreen(villager, player);
+
+            if (!player.menuOpened) {
+                helper.fail("the trade window never opened, so this test says nothing about what "
+                        + "was sent into it");
+                return;
+            }
+            if (player.received == null) {
+                helper.fail("a window opened and no offers followed it at all");
+                return;
+            }
+            if (player.received.size() != 1) {
+                helper.fail("one of the two offers is named by a locked stage, but the player was "
+                        + "sent " + player.received.size() + ". Two means the wrap on "
+                        + "sendMerchantOffers is not applying, and every trade lock is off");
+                return;
+            }
+            if (!player.received.get(0).getResult().is(Items.BOOK)) {
+                helper.fail("the wrong offer survived: the player kept "
+                        + player.received.get(0).getResult() + " rather than the book");
+                return;
+            }
+            if (villager.getOffers().size() != 2) {
+                helper.fail("the merchant itself lost an offer — only the copy sent to this "
+                        + "player may be short, or an unlock could never give it back");
+                return;
+            }
+            helper.succeed();
+        } finally {
+            GameTestStages.removeAll();
+        }
+    }
+
+    /**
+     * A merchant whose every offer is gated still sends a list, an empty one.
+     *
+     * <p>It used to send nothing at all, which left the client sitting on the menu's own empty
+     * list with no way to tell "none for you" from "not arrived yet".
+     */
+    @GameTest(template = "empty")
+    public static void aMerchantWithNothingLeftStillSendsAList(GameTestHelper helper) {
+        try {
+            GameTestStages.global("trade_seam_empty", stage -> stage.setTradeOffers(
+                    new ArrayList<>(List.of(paperForEmeraldEntry()))));
+
+            Villager villager = librarian(helper, 1);
+            setOffers(villager, paperForEmerald());
+            RecordingPlayer player = new RecordingPlayer(helper);
+
+            openScreen(villager, player);
+
+            if (player.received == null) {
+                helper.fail("every offer this merchant has is gated, and the player was sent no "
+                        + "list at all");
+                return;
+            }
+            if (!player.received.isEmpty()) {
+                helper.fail("the only offer is gated, but " + player.received.size()
+                        + " came through");
+                return;
+            }
+            helper.succeed();
+        } finally {
+            GameTestStages.removeAll();
         }
     }
 }

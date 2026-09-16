@@ -1,22 +1,17 @@
 package net.bananemdnsa.historystages.mixin;
 
-import java.util.OptionalInt;
-
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.bananemdnsa.historystages.network.PacketHandler;
 import net.bananemdnsa.historystages.network.clientbound.TradeLockedPacket;
 import net.bananemdnsa.historystages.util.DebugLogger;
 import net.bananemdnsa.historystages.util.lock.TradeLockHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.MerchantMenu;
 import net.minecraft.world.item.trading.Merchant;
 import net.minecraft.world.item.trading.MerchantOffers;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
  * The first trade seam: the player is shown only the offers they may see.
@@ -25,7 +20,14 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * {@code AbstractVillager}, {@code Villager} nor {@code WanderingTrader} overrides
  * {@link Merchant#openTradingScreen} — all three inherit it — and so does every merchant any
  * other mod writes. One seam therefore covers a modded trader nobody here has ever heard of,
- * without naming its class.
+ * without naming its class. A merchant that <em>does</em> override it is past us; the second seam
+ * below still refuses the purchase.
+ *
+ * <p><strong>Only the one call that hands the list over is wrapped.</strong> Not the method around
+ * it. Cancelling {@code openTradingScreen} and running our own version of its body — which is what
+ * this did until #130's round of cleanup — takes the method away from everyone else who injected
+ * into it, every time a stage happens to gate an offer, and leaves a copy of one Minecraft
+ * version's code sitting in the mod for the next port to get wrong.
  *
  * <p><strong>The merchant keeps its real list.</strong> Only the copy sent to this player is
  * short. {@code overrideOffers} would change the merchant permanently, and a stage that is later
@@ -45,34 +47,33 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(Merchant.class)
 public interface MerchantOffersMixin {
 
-    @Inject(method = "openTradingScreen", at = @At("HEAD"), cancellable = true)
-    private void historystages$filterOffers(Player player, Component displayName, int level,
-                                            CallbackInfo ci) {
+    @WrapOperation(
+            method = "openTradingScreen",
+            at = @At(value = "INVOKE",
+                    target = "Lnet/minecraft/world/entity/player/Player;sendMerchantOffers"
+                            + "(ILnet/minecraft/world/item/trading/MerchantOffers;IIZZ)V"))
+    private void historystages$sendOnlyWhatIsUnlocked(Player player, int containerId,
+                                                      MerchantOffers offers, int level, int xp,
+                                                      boolean showProgress, boolean canRestock,
+                                                      Operation<Void> original) {
         Merchant merchant = (Merchant) this;
-        if (merchant.isClientSide()) return;
-        if (!(player instanceof ServerPlayer serverPlayer)) return;
-
-        MerchantOffers offers = merchant.getOffers();
-        if (offers.isEmpty()) return;
+        if (merchant.isClientSide() || !(player instanceof ServerPlayer serverPlayer)) {
+            original.call(player, containerId, offers, level, xp, showProgress, canRestock);
+            return;
+        }
 
         TradeLockHelper.Filtered filtered =
                 TradeLockHelper.filterForPlayer(offers, merchant, level, serverPlayer);
-        if (!filtered.removedAnything()) return;
+        if (!filtered.removedAnything()) {
+            original.call(player, containerId, offers, level, xp, showProgress, canRestock);
+            return;
+        }
 
         MerchantOffers shown = new MerchantOffers();
         for (int index : filtered.keptIndices()) {
             shown.add(offers.get(index));
         }
-
-        // Vanilla's own body, with the shortened list in place of the merchant's. Opening the
-        // menu against the real merchant is deliberate: payment still resolves through its full
-        // list, and the second seam is what refuses the offers this player never received.
-        OptionalInt containerId = player.openMenu(new SimpleMenuProvider(
-                (id, inventory, viewer) -> new MerchantMenu(id, inventory, merchant), displayName));
-        if (containerId.isPresent() && !shown.isEmpty()) {
-            player.sendMerchantOffers(containerId.getAsInt(), shown, level,
-                    merchant.getVillagerXp(), merchant.showProgressBar(), merchant.canRestock());
-        }
+        original.call(player, containerId, shown, level, xp, showProgress, canRestock);
 
         DebugLogger.runtimeThrottled("Trade Lock",
                 "trade_" + serverPlayer.getUUID() + "_" + filtered.gatingStages(),
@@ -80,16 +81,14 @@ public interface MerchantOffersMixin {
                         + " of " + filtered.offeredCount() + " offers shown — held back by: "
                         + filtered.gatingStages());
 
-        // Only when nothing at all survived, and only after the window is confirmed open — there
-        // is no point explaining an empty list to somebody who has no list in front of them.
-        if (filtered.removedEverything() && containerId.isPresent()) {
+        // Only when nothing at all survived. An empty list is sent rather than no list: the client
+        // then knows it has none, instead of sitting on the menu's own empty one waiting.
+        if (filtered.removedEverything()) {
             PacketHandler.sendTradeLockedToPlayer(
-                    new TradeLockedPacket(containerId.getAsInt(),
+                    new TradeLockedPacket(containerId,
                             TradeLockHelper.displayNamesOf(filtered.gatingStages()),
                             TradeLockHelper.kindOf(filtered.gatingStages())),
                     serverPlayer);
         }
-
-        ci.cancel();
     }
 }
