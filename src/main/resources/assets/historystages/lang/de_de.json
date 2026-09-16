@@ -1069,6 +1069,8 @@
   "editor.historystages.config.mobShowChat.desc": "Die Nachricht zur Mob-Sperre im Chat anzeigen?",
   "editor.historystages.config.mobShowStagesInChat.desc": "Wenn mobShowChat aktiv ist: sollen die benötigten Stages ebenfalls aufgelistet werden?",
   "editor.historystages.config.showWelcomeMessage.desc": "Eine Willkommensnachricht im Chat anzeigen, wenn ein Spieler die Welt betritt?",
+  "editor.historystages.config.showEditorButton": "Editor-Button anzeigen",
+  "editor.historystages.config.showEditorButton.desc": "Den Stage-Editor-Button im Pausenmenü anzeigen? Operatoren öffnen ihn weiterhin mit /history debug editor.",
   "editor.historystages.config.showDebugErrors.desc": "Debug-Nachrichten im Chat anzeigen, wenn eine JSON-Stage Fehler oder fehlende Items enthält?",
   "editor.historystages.config.enableRuntimeLogging.desc": "Laufzeit-Ereignisse (Freischalten/Sperren, blockierte Aktionen, Loot-Ersetzungen) nach config/historystages/logs/ schreiben?",
   "editor.historystages.config.lockMobLoot.desc": "Gesperrte Items in Mob-Loot-Tabellen behandeln?",

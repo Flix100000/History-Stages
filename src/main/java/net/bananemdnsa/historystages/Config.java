@@ -26,6 +26,7 @@ public class Config {
         public final ForgeConfigSpec.BooleanValue showScrollTierTooltip;
         public final ForgeConfigSpec.IntValue openScrollBackdrop;
         public final ForgeConfigSpec.BooleanValue showWelcomeMessage;
+        public final ForgeConfigSpec.BooleanValue showEditorButton;
         public final ForgeConfigSpec.BooleanValue structureBorderEnabled;
         public final ForgeConfigSpec.DoubleValue structureBorderDistance;
         public final ForgeConfigSpec.BooleanValue structureLockOverlayEnabled;
@@ -130,6 +131,12 @@ public class Config {
             showWelcomeMessage = builder
                     .comment("Show a welcome message in chat when a player joins the world? [Default: true]")
                     .define("showWelcomeMessage", true);
+
+            showEditorButton = builder
+                    .comment("Show the Stage Editor button in the pause menu (operators only)?",
+                            "Turning it off does not lock the editor away: '/history debug editor'",
+                            "still opens it for anyone who could see the button. [Default: true]")
+                    .define("showEditorButton", true);
 
             builder.pop();
 
