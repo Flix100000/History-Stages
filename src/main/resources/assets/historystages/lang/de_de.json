@@ -305,7 +305,7 @@
   "editor.historystages.entitypopup.attack_tooltip": "Verhindert das Angreifen dieser Entität",
   "editor.historystages.entitypopup.interact_tooltip": "Verhindert das Interagieren mit dieser Entität (kein Rechtsklick, Züchten, Aufsteigen usw.)",
   "editor.historystages.config.lockContainerInteraction": "Container-Interaktion sperren",
-  "editor.historystages.config.lockContainerInteraction.desc": "Verhindert, dass Spieler gesperrte Items in Kisten und anderen Behältern verschieben.",
+  "editor.historystages.config.lockContainerInteraction.desc": "Verhindert, dass Spieler gesperrte Items aus Kisten, Maschinen und anderen Behältern nehmen. Das eigene Inventar bleibt frei sortierbar.",
   "editor.historystages.config.lockEnchanting": "Verzaubern sperren",
   "editor.historystages.config.lockEnchanting.desc": "Verhindert das Anwenden gesperrter Verzauberungen am Amboss und am Zaubertisch.",
   "editor.historystages.config.individualLockEnchanting": "Verzaubern sperren (individuell)",

@@ -22,6 +22,12 @@ import java.util.Map;
  * <p>Split across two specs on purpose. The graph spec covers the scalar paths and the rejection
  * rules; the common spec covers lists, because graph.toml has none and the list handling could
  * therefore break without a single test noticing.
+ *
+ * <p>The two snapshot tests each sit in a batch of their own. Tests inside one batch run side by
+ * side, and these two write the live config and the one snapshot everybody shares — beside each
+ * other, or beside anything else that reads a setting, they read each other's values and fail for
+ * reasons that have nothing to do with what they check. A batch to itself is what makes a test
+ * that owns global state honest.
  */
 @GameTestHolder(HistoryStages.MOD_ID)
 @PrefixGameTestTemplate(false)
@@ -165,7 +171,7 @@ public final class ConfigCodecTests {
         helper.succeed();
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = "empty", batch = "config_snapshot_leave")
     public static void leavingAServerBringsBackTheOwnValues(GameTestHelper helper) {
         boolean originalIcons = Config.VISUAL.showLockIcons.get();
         int originalInterval = Config.GAMEPLAY.structureCheckInterval.get();
@@ -218,7 +224,7 @@ public final class ConfigCodecTests {
         }
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = "empty", batch = "config_snapshot_rebuild")
     public static void restoringAlsoRebuildsWhatTheValuesFeed(GameTestHelper helper) {
         // Three settings are lists that get parsed into an in-memory structure. Writing the values
         // back is not enough on its own — without a rebuild the player carries the server's parsed

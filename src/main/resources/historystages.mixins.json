@@ -17,7 +17,9 @@
     "EnchantmentMenuMixin",
     "MerchantOffersMixin",
     "MerchantMenuAccessor",
-    "MerchantContainerMixin"
+    "MerchantContainerMixin",
+    "lootr.ChestDataMixin",
+    "fastsuite.AuxRecipeManagerMixin"
   ],
   "client": [
     "bettercombat.AttackStartLockMixin",

@@ -3,6 +3,7 @@ package net.bananemdnsa.historystages.mixin;
 import net.bananemdnsa.historystages.data.lock.UngatedRecipes;
 import net.bananemdnsa.historystages.data.lock.VisibleRecipes;
 import net.bananemdnsa.historystages.events.RecipeHandler;
+import net.bananemdnsa.historystages.util.lock.RecipeResolutionFilter;
 import net.bananemdnsa.historystages.util.AllRecipesCache;
 import net.bananemdnsa.historystages.data.saveddata.StageData;
 import net.minecraft.resources.ResourceLocation;
@@ -57,7 +58,7 @@ import java.util.*;
  * way back to the full list, and {@code PlayerListMixin} is where the packet uses it.
  */
 @Mixin(RecipeManager.class)
-public class RecipeManagerMixin implements UngatedRecipes {
+public class RecipeManagerMixin implements UngatedRecipes, RecipeResolutionFilter {
     @Shadow private Map<ResourceLocation, Recipe<?>> byName;
     @Shadow private Map<RecipeType<?>, Map<ResourceLocation, Recipe<?>>> recipes;
 
@@ -79,13 +80,14 @@ public class RecipeManagerMixin implements UngatedRecipes {
         }
 
         AllRecipesCache.set(new ArrayList<>(this.byName.values()));
-        VisibleRecipes.invalidate();
-        // Take note of what is gated right now, so the next stage change is compared against a
-        // real answer rather than against nothing. Without this the first stage change on a fresh
-        // server would look like a change to the gated set whatever it did, and pay for a datapack
-        // reload it did not need.
-        VisibleRecipes.gatedSetChanged(this.byName.values());
         net.bananemdnsa.historystages.data.lock.FluidRecipeIndex.markDirty();
+        net.bananemdnsa.historystages.data.lock.VisibleRecipes.invalidate();
+        // The baseline the next stage change is compared against is taken on the first server
+        // tick, not here — working it out asks every recipe result which fluid it is carrying,
+        // and on a world being opened this call runs before there is a server at all: stale
+        // unlocked set, scripts not run yet, and per-world configs not loaded, which is enough to
+        // kill a mod that reads its own config to answer a capability query (#130).
+        net.bananemdnsa.historystages.data.lock.VisibleRecipes.forgetGatedSet();
         auditRecipeLocks();
     }
 
@@ -187,7 +189,7 @@ public class RecipeManagerMixin implements UngatedRecipes {
             CallbackInfoReturnable<Optional<T>> cir) {
         Optional<T> result = cir.getReturnValue();
         if (result.isPresent() && isRecipeLocked(result.get(), level.isClientSide())) {
-            cir.setReturnValue(nextUnlocked(type, container, level));
+            cir.setReturnValue(historystages$firstUnlocked(type, container, level));
         }
     }
 
@@ -202,8 +204,9 @@ public class RecipeManagerMixin implements UngatedRecipes {
      * <p>Same iteration order vanilla uses, so with nothing locked the answer is the one it would
      * have given anyway. Only reached once something is actually locked.
      */
+    @Override
     @SuppressWarnings("unchecked")
-    private <C extends Container, T extends Recipe<C>> Optional<T> nextUnlocked(
+    public <C extends Container, T extends Recipe<C>> Optional<T> historystages$firstUnlocked(
             RecipeType<T> type, C container, Level level) {
         boolean isClient = level.isClientSide();
         for (Recipe<?> recipe : this.recipes.getOrDefault(type, Collections.emptyMap()).values()) {
@@ -224,7 +227,7 @@ public class RecipeManagerMixin implements UngatedRecipes {
             CallbackInfoReturnable<Optional<Pair<ResourceLocation, T>>> cir) {
         Optional<Pair<ResourceLocation, T>> result = cir.getReturnValue();
         if (result.isPresent() && isRecipeLocked(result.get().getSecond(), level.isClientSide())) {
-            cir.setReturnValue(nextUnlocked(type, container, level)
+            cir.setReturnValue(historystages$firstUnlocked(type, container, level)
                     .map(recipe -> Pair.of(recipe.getId(), recipe)));
         }
     }
@@ -237,28 +240,31 @@ public class RecipeManagerMixin implements UngatedRecipes {
     private <C extends Container, T extends Recipe<C>> void filterGetRecipesFor(
             RecipeType<T> type, C container, Level level,
             CallbackInfoReturnable<List<T>> cir) {
-        boolean isClient = level.isClientSide();
-        List<T> recipes = cir.getReturnValue();
+        cir.setReturnValue(historystages$withoutLocked(cir.getReturnValue(), level.isClientSide()));
+    }
 
+    @Override
+    public <T extends Recipe<?>> List<T> historystages$withoutLocked(
+            List<T> resolved, boolean isClientSide) {
         // Nothing is filtered in the overwhelming majority of calls, and this one is on the
         // crafting path. Find the first locked recipe before allocating anything; with none,
         // the original list goes back untouched.
         int firstLocked = -1;
-        for (int i = 0; i < recipes.size(); i++) {
-            if (isRecipeLocked(recipes.get(i), isClient)) {
+        for (int i = 0; i < resolved.size(); i++) {
+            if (isRecipeLocked(resolved.get(i), isClientSide)) {
                 firstLocked = i;
                 break;
             }
         }
-        if (firstLocked < 0) return;
+        if (firstLocked < 0) return resolved;
 
-        List<T> filtered = new ArrayList<>(recipes.size() - 1);
-        filtered.addAll(recipes.subList(0, firstLocked));
-        for (int i = firstLocked + 1; i < recipes.size(); i++) {
-            T recipe = recipes.get(i);
-            if (!isRecipeLocked(recipe, isClient)) filtered.add(recipe);
+        List<T> filtered = new ArrayList<>(resolved.size() - 1);
+        filtered.addAll(resolved.subList(0, firstLocked));
+        for (int i = firstLocked + 1; i < resolved.size(); i++) {
+            T recipe = resolved.get(i);
+            if (!isRecipeLocked(recipe, isClientSide)) filtered.add(recipe);
         }
-        cir.setReturnValue(filtered);
+        return filtered;
     }
 
     /** Filter the whole recipe list — see the note on this class for which routes are gated. */
@@ -298,6 +304,6 @@ public class RecipeManagerMixin implements UngatedRecipes {
     }
 
     private static boolean isRecipeLocked(Recipe<?> recipe, boolean isClientSide) {
-        return RecipeHandler.isOutputLocked(recipe, isClientSide) || RecipeHandler.isRecipeIdLocked(recipe.getId(), isClientSide);
+        return RecipeHandler.isLockedForResolution(recipe, isClientSide);
     }
 }

@@ -8,9 +8,9 @@ import net.bananemdnsa.historystages.data.lock.FluidRecipeIndex;
 import net.bananemdnsa.historystages.data.lock.FluidRecipeScanner;
 
 import net.bananemdnsa.historystages.Config;
+import net.bananemdnsa.historystages.util.CurrentRegistries;
 import net.bananemdnsa.historystages.util.lock.RecipeCraftContext;
 import net.bananemdnsa.historystages.util.lock.StageLockHelper;
-import net.minecraft.core.RegistryAccess;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
@@ -39,7 +39,7 @@ public class RecipeHandler {
 
         ItemStack result;
         try {
-            result = recipe.getResultItem(RegistryAccess.EMPTY);
+            result = recipe.getResultItem(CurrentRegistries.orEmpty());
         } catch (Exception e) {
             return false;
         }
@@ -124,6 +124,25 @@ public class RecipeHandler {
     }
 
     /**
+     * Whether this recipe is gated for whoever is resolving it right now.
+     *
+     * <p>The answer a station gets when it asks which recipe fits what is inside it, and the two
+     * routes that question can be gated by: the recipe's own id on a stage, or an item it produces
+     * whose lock covers {@code recipe}. Unlike {@link #isLockedForEveryone} it reads the
+     * {@link RecipeCraftContext}, so an individual stage counts wherever a station named a player.
+     *
+     * <p>One method rather than two calls at every hook, because there is now more than one place
+     * the resolution gate has to be applied from — {@code RecipeManagerMixin} for the vanilla
+     * manager, {@code mixin/fastsuite/AuxRecipeManagerMixin} for the one FastSuite puts in its
+     * place — and two hooks disagreeing about what counts as gated is exactly what produced the
+     * duplication bug the FastSuite hook exists to fix.
+     */
+    public static boolean isLockedForResolution(Recipe<?> recipe, boolean isClientSide) {
+        if (recipe == null) return false;
+        return isOutputLocked(recipe, isClientSide) || isRecipeIdLocked(recipe.getId(), isClientSide);
+    }
+
+    /**
      * Whether this recipe is gated for everyone on the server, by either route: its own id on a
      * stage, or an item it produces whose lock covers {@code recipe}.
      *
@@ -137,7 +156,7 @@ public class RecipeHandler {
 
         ItemStack result;
         try {
-            result = recipe.getResultItem(RegistryAccess.EMPTY);
+            result = recipe.getResultItem(CurrentRegistries.orEmpty());
         } catch (Exception e) {
             result = ItemStack.EMPTY;
         }

@@ -51,6 +51,12 @@ public class LockedEmiRecipeDecorator implements EmiRecipeDecorator {
     }
 
     public static boolean isRecipeLocked(EmiRecipe recipe) {
+        // JER pages come through EMI's JEI bridge under JER's own category ids; see JerCategories
+        if (recipe.getCategory() != null
+                && "jeresources".equals(recipe.getCategory().getId().getNamespace())) {
+            return false;
+        }
+
         // 1. Check by recipe ID
         ResourceLocation recipeId = recipe.getId();
         if (recipeId != null

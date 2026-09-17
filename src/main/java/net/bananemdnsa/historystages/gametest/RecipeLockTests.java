@@ -10,10 +10,18 @@ import net.bananemdnsa.historystages.data.saveddata.IndividualStageData;
 import net.bananemdnsa.historystages.data.saveddata.StageData;
 import net.bananemdnsa.historystages.events.RecipeHandler;
 import net.bananemdnsa.historystages.util.lock.RecipeCraftContext;
+import net.minecraft.core.RegistryAccess;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.Container;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.Recipe;
+import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.item.crafting.RecipeType;
+import net.minecraft.world.level.Level;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.gametest.GameTestHolder;
@@ -483,5 +491,73 @@ public final class RecipeLockTests {
         } finally {
             GameTestStages.removeAll();
         }
+    }
+
+    @GameTest(template = "empty")
+    public static void aRecipeIsAskedForItsResultAgainstTheRealRegistries(GameTestHelper helper) {
+        // A recipe that builds its result out of the registries it is handed. Vanilla recipes know
+        // their result by heart and take anything; a modded one does this, and handing it an empty
+        // set is telling it the world is empty. It then answers with nothing, the gate finds no
+        // result to judge, and the lock silently does not apply.
+        try {
+            GameTestStages.global("registry_backed_result", stage ->
+                    stage.setItemEntries(new ArrayList<>(List.of(new ItemEntry(PROBE_RESULT_ID)))));
+
+            RegistryBackedResult probe = new RegistryBackedResult();
+            if (!probe.getResultItem(RegistryAccess.EMPTY).isEmpty()) {
+                helper.fail("the probe recipe answers even with no registries, so it cannot tell "
+                        + "the two cases apart and this test proves nothing");
+                return;
+            }
+
+            if (!RecipeHandler.isOutputLocked(probe, false)) {
+                helper.fail("a locked stage names " + PROBE_RESULT_ID + " and this recipe makes "
+                        + "it, but the recipe was judged free — it was asked what it makes "
+                        + "against an empty registry set and said nothing");
+                return;
+            }
+            if (!RecipeHandler.isLockedForEveryone(probe)) {
+                helper.fail("the same recipe, asked the question a machine reading the whole list "
+                        + "asks, came back free");
+                return;
+            }
+            helper.succeed();
+        } finally {
+            GameTestStages.removeAll();
+        }
+    }
+
+    /** The item the probe recipe below makes. Obscure on purpose: no other test gates it. */
+    private static final String PROBE_RESULT_ID = "minecraft:heart_of_the_sea";
+
+    /**
+     * Stands in for a modded recipe that looks its result up rather than storing it.
+     *
+     * <p>Nothing registers it and nothing loads it — it is handed straight to the judge, which is
+     * the only part under test.
+     */
+    private static final class RegistryBackedResult implements Recipe<Container> {
+        @Override
+        public ItemStack getResultItem(RegistryAccess registries) {
+            return registries.registry(Registries.ITEM)
+                    .flatMap(items -> items.getOptional(ResourceKey.create(
+                            Registries.ITEM, new ResourceLocation(PROBE_RESULT_ID))))
+                    .map(ItemStack::new)
+                    .orElse(ItemStack.EMPTY);
+        }
+
+        @Override public boolean matches(Container input, Level level) { return false; }
+
+        @Override
+        public ItemStack assemble(Container input, RegistryAccess registries) {
+            return getResultItem(registries);
+        }
+
+        @Override public boolean canCraftInDimensions(int width, int height) { return true; }
+        @Override public ResourceLocation getId() {
+            return new ResourceLocation("gametest", "registry_backed_result");
+        }
+        @Override public RecipeSerializer<?> getSerializer() { return RecipeSerializer.SHAPELESS_RECIPE; }
+        @Override public RecipeType<?> getType() { return RecipeType.CRAFTING; }
     }
 }

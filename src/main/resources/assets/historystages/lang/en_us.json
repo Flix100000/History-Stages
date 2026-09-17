@@ -306,7 +306,7 @@
   "editor.historystages.entitypopup.attack_tooltip": "Prevents attacking this entity",
   "editor.historystages.entitypopup.interact_tooltip": "Prevents interacting with this entity (no right-click, breeding, mounting, etc.)",
   "editor.historystages.config.lockContainerInteraction": "Lock Container Interaction",
-  "editor.historystages.config.lockContainerInteraction.desc": "Prevent players from moving locked items around inside containers.",
+  "editor.historystages.config.lockContainerInteraction.desc": "Prevent players from taking locked items out of chests, machines and other containers. Sorting their own inventory stays allowed.",
   "editor.historystages.config.lockEnchanting": "Lock Enchanting",
   "editor.historystages.config.lockEnchanting.desc": "Prevent applying locked enchantments at an anvil or enchanting table.",
   "editor.historystages.config.individualLockEnchanting": "Lock Enchanting (Individual)",

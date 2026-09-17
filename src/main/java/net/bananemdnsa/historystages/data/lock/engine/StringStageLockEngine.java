@@ -94,7 +94,7 @@ public class StringStageLockEngine implements StageLockEngine {
         Item item = stack != null ? stack.getItem() : BuiltInRegistries.ITEM.get(new ResourceLocation(itemId));
         // Resolved once and threaded through both uses: the capability lookup is not free, and
         // the four-argument ItemSubject constructor would repeat it.
-        String fluidId = FluidContent.of(stack);
+        String fluidId = fluidOf(stack);
         Collection<String> candidates = scope == StageScope.GLOBAL
                 ? CategoryLockIndexes.globalCandidates(itemId, modId, item, fluidId)
                 : CategoryLockIndexes.individualCandidates(itemId, modId, item, fluidId);
@@ -147,6 +147,21 @@ public class StringStageLockEngine implements StageLockEngine {
         return false;
     }
 
+    /**
+     * The fluid this stack is carrying, asked only when some stage would do something with the
+     * answer.
+     *
+     * <p>Finding it out means calling into whichever mod owns the item, through the fluid
+     * capability. That is foreign code on the crafting path — once per station per tick, for every
+     * item — in a pack that may not gate a single fluid, and the recipe walk reaches it early
+     * enough in a world load that the mod being asked may not have its own config yet (#130).
+     */
+    @Nullable
+    private static String fluidOf(@Nullable ItemStack stack) {
+        return CategoryLockIndexes.anyStageUses("historystages:fluids")
+                ? FluidContent.of(stack) : null;
+    }
+
     private static List<LockCategory<?>> itemCategories() {
         List<LockCategory<?>> categories = new ArrayList<>(ITEM_CATEGORY_IDS.size());
         for (String id : ITEM_CATEGORY_IDS) categories.add(category(id));
@@ -182,7 +197,7 @@ public class StringStageLockEngine implements StageLockEngine {
 
         Map<String, StageEntry> stages = stagesOf(scope);
         LockSubjects.ItemSubject subject = new LockSubjects.ItemSubject(
-                itemId, modId, stack, stack != null ? stack.getItem() : null, FluidContent.of(stack));
+                itemId, modId, stack, stack != null ? stack.getItem() : null, fluidOf(stack));
 
         List<String> narrowed = new ArrayList<>(gating.size());
         for (String stageId : gating) {
@@ -200,7 +215,7 @@ public class StringStageLockEngine implements StageLockEngine {
         if (res == null) return false;
         String itemId = res.toString();
         String modId = res.getNamespace();
-        String fluidId = FluidContent.of(stack);
+        String fluidId = fluidOf(stack);
 
         boolean global = scope == StageScope.GLOBAL;
         Collection<String> candidates = global

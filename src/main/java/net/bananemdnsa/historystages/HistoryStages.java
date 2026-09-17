@@ -423,6 +423,14 @@ public class HistoryStages {
             return;
         tickCounter++;
 
+        // Before anything below can unlock a stage, or the change would already be part of the
+        // baseline it is about to be compared against.
+        if (event.getServer() != null
+                && net.bananemdnsa.historystages.data.lock.VisibleRecipes.gatedSetNeedsSeeding()) {
+            net.bananemdnsa.historystages.data.lock.VisibleRecipes.seedGatedSet(
+                    event.getServer().getRecipeManager().getRecipes());
+        }
+
         net.bananemdnsa.historystages.events.AutoTriggerEventBridge.pollPlayers(event.getServer(), tickCounter);
 
         // Advance temporary-mode re-lock timers / cooldowns.
