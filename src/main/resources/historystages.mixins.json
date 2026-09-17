@@ -14,7 +14,10 @@
     "RecipeBookPlacementMixin",
     "StructureGenerationMixin",
     "ContainerClickMixin",
-    "EnchantmentMenuMixin"
+    "EnchantmentMenuMixin",
+    "MerchantOffersMixin",
+    "MerchantMenuAccessor",
+    "MerchantContainerMixin"
   ],
   "client": [
     "bettercombat.AttackStartLockMixin",

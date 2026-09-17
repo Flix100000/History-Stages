@@ -3,6 +3,8 @@ package net.bananemdnsa.historystages.data;
 import net.bananemdnsa.historystages.data.lock.BiomeLocks;
 import net.bananemdnsa.historystages.data.lock.BiomeLocksAdapter;
 import net.bananemdnsa.historystages.data.lock.EntityLocks;
+import net.bananemdnsa.historystages.data.lock.TradeLocks;
+import net.bananemdnsa.historystages.data.display.HiddenDisplayConfig;
 import net.bananemdnsa.historystages.data.lock.NamedLockEntry;
 import net.bananemdnsa.historystages.data.lock.NamedLockEntryListAdapter;
 import net.bananemdnsa.historystages.data.lock.StructureGenerationRule;
@@ -17,7 +19,6 @@ import com.google.gson.annotations.JsonAdapter;
 import com.google.gson.annotations.SerializedName;
 import net.bananemdnsa.historystages.data.auto.AutoTrigger;
 import net.bananemdnsa.historystages.data.temporary.TemporaryConfig;
-import net.bananemdnsa.historystages.data.display.HiddenDisplayConfig;
 import net.bananemdnsa.historystages.research.TierMode;
 import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
@@ -89,6 +90,13 @@ public class StageEntry {
     private BiomeLocks biomes;
 
     private EntityLocks entities;
+
+    /**
+     * Gated merchant offers: items, professions and merchant levels. Three lists that are asked
+     * separately and share only the editor tab — the same shape {@link EntityLocks} has.
+     */
+    private TradeLocks trades;
+
     private List<DependencyGroup> dependencies;
 
     @SerializedName("hidden_display")
@@ -138,6 +146,7 @@ public class StageEntry {
         this.structures = new StructureLocks();
         this.biomes = new BiomeLocks();
         this.entities = new EntityLocks();
+        this.trades = new TradeLocks();
     }
 
     public String getDisplayName() {
@@ -330,6 +339,41 @@ public class StageEntry {
 
     public EntityLocks getEntities() {
         return entities != null ? entities : new EntityLocks();
+    }
+
+    /** The whole trades block. Never null; an absent one reads as three empty lists. */
+    public TradeLocks getTrades() {
+        return trades != null ? trades : new TradeLocks();
+    }
+
+    /** Gated single offers, with whatever criterion each carries. */
+    public List<TradeOfferEntry> getTradeOffers() {
+        return getTrades().getOffers();
+    }
+
+    /** What the gated offers hand over — for the overview counters and the debug log. */
+    public List<String> getAllTradeItemIds() {
+        return getTrades().getOfferedItemIds();
+    }
+
+    /** Gated professions, with whatever level narrowing each carries. */
+    public List<TradeProfessionEntry> getTradeProfessionEntries() {
+        return getTrades().getProfessions();
+    }
+
+    /**
+     * Profession ids only — for the overview counters, the dual-phase check and the debug log.
+     *
+     * <p>Kept under the name it had when a profession was nothing but an id, because every caller
+     * that wants the plain list still wants exactly this.
+     */
+    public List<String> getTradeProfessions() {
+        return getTrades().getProfessionIds();
+    }
+
+    /** Merchant levels that show this player nothing, as numbers in string form. */
+    public List<String> getTradeLevels() {
+        return getTrades().getLevels();
     }
 
     public List<DependencyGroup> getDependencies() {
@@ -538,6 +582,43 @@ public class StageEntry {
         this.biomes.setModLinked(modLinked);
     }
 
+    public void setTrades(TradeLocks trades) {
+        this.trades = trades != null ? trades : new TradeLocks();
+    }
+
+    public void setTradeOffers(List<TradeOfferEntry> offers) {
+        ensureTrades().setOffers(offers);
+    }
+
+    public void setTradeProfessionEntries(List<TradeProfessionEntry> professions) {
+        ensureTrades().setProfessions(professions);
+    }
+
+    /** Sets professions from bare ids, each gating every level. */
+    public void setTradeProfessions(List<String> professionIds) {
+        List<TradeProfessionEntry> entries = new ArrayList<>();
+        if (professionIds != null) {
+            for (String id : professionIds) entries.add(new TradeProfessionEntry(id));
+        }
+        ensureTrades().setProfessions(entries);
+    }
+
+    public void setTradeLevels(List<String> levels) {
+        ensureTrades().setLevels(levels);
+    }
+
+    /**
+     * The block itself, created on demand.
+     *
+     * <p>{@link #getTrades()} deliberately hands back a throwaway when the field is absent, so
+     * that reading never writes. A setter has to reach the real one, or the value goes into the
+     * throwaway and vanishes — which looks exactly like the editor not saving.
+     */
+    private TradeLocks ensureTrades() {
+        if (trades == null) trades = new TradeLocks();
+        return trades;
+    }
+
     public void setEntities(EntityLocks entities) {
         this.entities = entities != null ? entities : new EntityLocks();
     }
@@ -572,6 +653,11 @@ public class StageEntry {
         locksCopy.setSpawnlock(getEntities().getSpawnlock());
         locksCopy.setModLinked(getEntities().getModLinked());
         copy.setEntities(locksCopy);
+        TradeLocks tradesCopy = new TradeLocks();
+        tradesCopy.setOffers(getTradeOffers());
+        tradesCopy.setProfessions(getTradeProfessionEntries());
+        tradesCopy.setLevels(getTradeLevels());
+        copy.setTrades(tradesCopy);
         copy.setDependencies(getDependencies().stream().map(DependencyGroup::copy).collect(Collectors.toList()));
         copy.mode = this.mode;
         copy.autoTrigger = (this.autoTrigger != null) ? this.autoTrigger.copy() : null;

@@ -1,5 +1,8 @@
 package net.bananemdnsa.historystages.network;
 
+import net.bananemdnsa.historystages.network.serverbound.RequestTradeGoodsPacket;
+import net.bananemdnsa.historystages.network.clientbound.SyncTradeGoodsPacket;
+import net.bananemdnsa.historystages.network.clientbound.TradeLockedPacket;
 import net.bananemdnsa.historystages.network.clientbound.SyncVisualConfigPacket;
 import net.bananemdnsa.historystages.network.serverbound.TakeLecternScrollPacket;
 import net.bananemdnsa.historystages.network.serverbound.SaveStageGraphStylePacket;
@@ -22,6 +25,9 @@ import net.bananemdnsa.historystages.network.serverbound.RequestStructureDebugPa
 import net.bananemdnsa.historystages.network.serverbound.RequestStageDependencyPacket;
 import net.bananemdnsa.historystages.network.serverbound.RequestIndividualStatesPacket;
 import net.bananemdnsa.historystages.network.serverbound.RequestEditorDataPacket;
+import net.bananemdnsa.historystages.network.clientbound.SyncLockBordersPacket;
+import net.bananemdnsa.historystages.network.clientbound.EditorFeedbackPacket;
+import net.bananemdnsa.historystages.network.clientbound.LockFeedbackPacket;
 import net.bananemdnsa.historystages.network.serverbound.RequestClusterShapesPacket;
 import net.bananemdnsa.historystages.network.serverbound.RenameFolderPacket;
 import net.bananemdnsa.historystages.network.serverbound.MoveStagesPacket;
@@ -35,13 +41,10 @@ import net.bananemdnsa.historystages.network.serverbound.CheckDependencyPacket;
 import net.bananemdnsa.historystages.network.clientbound.SyncStructureRegistryPacket;
 import net.bananemdnsa.historystages.network.clientbound.SyncStagesPacket;
 import net.bananemdnsa.historystages.network.clientbound.SyncStageDefinitionsPacket;
-import net.bananemdnsa.historystages.network.clientbound.SyncLockBordersPacket;
 import net.bananemdnsa.historystages.network.clientbound.SyncIndividualStagesPacket;
 import net.bananemdnsa.historystages.network.clientbound.SyncGraphConfigPacket;
 import net.bananemdnsa.historystages.network.clientbound.SyncConfigPacket;
 import net.bananemdnsa.historystages.network.clientbound.StageUnlockedToastPacket;
-import net.bananemdnsa.historystages.network.clientbound.LockFeedbackPacket;
-import net.bananemdnsa.historystages.network.clientbound.EditorFeedbackPacket;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.data.lock.UngatedRecipes;
 import net.bananemdnsa.historystages.data.lock.VisibleRecipes;
@@ -152,6 +155,12 @@ public class PacketHandler {
                                 SyncGraphConfigPacket::decode, SyncGraphConfigPacket::handle);
                 INSTANCE.registerMessage(id++, SyncVisualConfigPacket.class, SyncVisualConfigPacket::encode,
                                 SyncVisualConfigPacket::decode, SyncVisualConfigPacket::handle);
+                INSTANCE.registerMessage(id++, RequestTradeGoodsPacket.class, RequestTradeGoodsPacket::encode,
+                                RequestTradeGoodsPacket::decode, RequestTradeGoodsPacket::handle);
+                INSTANCE.registerMessage(id++, TradeLockedPacket.class, TradeLockedPacket::encode,
+                                TradeLockedPacket::decode, TradeLockedPacket::handle);
+                INSTANCE.registerMessage(id++, SyncTradeGoodsPacket.class, SyncTradeGoodsPacket::encode,
+                                SyncTradeGoodsPacket::decode, SyncTradeGoodsPacket::handle);
                 INSTANCE.registerMessage(id++, RequestStageDependencyPacket.class,
                                 RequestStageDependencyPacket::encode,
                                 RequestStageDependencyPacket::decode, RequestStageDependencyPacket::handle);
@@ -263,6 +272,16 @@ public class PacketHandler {
 
         public static void sendVisualConfigToAll(SyncVisualConfigPacket packet) {
                 INSTANCE.send(PacketDistributor.ALL.noArg(), packet);
+        }
+
+        /** The trade goods the editor picker offers. Answer to a request, so never broadcast. */
+        public static void sendTradeGoodsToPlayer(SyncTradeGoodsPacket packet, ServerPlayer player) {
+                INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), packet);
+        }
+
+        /** Why the trade window that just opened is empty. Sent right after the window itself. */
+        public static void sendTradeLockedToPlayer(TradeLockedPacket packet, ServerPlayer player) {
+                INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), packet);
         }
 
         // Send a packet from client to server

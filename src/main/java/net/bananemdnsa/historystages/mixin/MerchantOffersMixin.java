@@ -1,0 +1,86 @@
+package net.bananemdnsa.historystages.mixin;
+
+import net.bananemdnsa.historystages.network.PacketHandler;
+import net.bananemdnsa.historystages.network.clientbound.TradeLockedPacket;
+import net.bananemdnsa.historystages.util.DebugLogger;
+import net.bananemdnsa.historystages.util.lock.TradeLockHelper;
+import net.minecraft.network.protocol.game.ClientboundMerchantOffersPacket;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.inventory.MerchantMenu;
+import net.minecraft.world.item.trading.Merchant;
+import net.minecraft.world.item.trading.MerchantOffers;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+/**
+ * The first trade seam: the player is shown only the offers they may see.
+ *
+ * <p>On the send rather than on {@code Merchant.openTradingScreen}, and that is the whole point.
+ * Every merchant — villager, wandering trader, or one another mod wrote — ends up here, because
+ * this is the single place the offer list leaves the server. A trader that opens its screen its
+ * own way is covered without naming its class, and Mixin cannot inject into an interface anyway.
+ *
+ * <p><strong>The merchant keeps its real list.</strong> Only the copy sent to this player is
+ * short. {@code overrideOffers} would change the merchant permanently, and a stage that is later
+ * unlocked could not give the offer back — the one-way behaviour this whole category was designed
+ * to avoid.
+ *
+ * <p>Nothing is drawn as locked, because there is no locked trade to draw: it is simply absent.
+ * A merchant with one offer instead of two is unremarkable. A merchant with <em>none</em> is not,
+ * so that case — and only that case — says why, and it says it inside the window the player is
+ * looking at rather than in the actionbar under it. The player is staring at an empty list; the
+ * explanation belongs where they are looking.
+ *
+ * <p>This seam is about what the player sees. It is not the security boundary: a modified client
+ * could ask to pay for an offer it was never sent, which is what {@link MerchantContainerMixin}
+ * is for.
+ */
+@Mixin(ServerPlayer.class)
+public abstract class MerchantOffersMixin {
+
+    @Inject(method = "sendMerchantOffers", at = @At("HEAD"), cancellable = true)
+    private void historystages$filterOffers(int containerId, MerchantOffers offers, int level,
+                                            int xp, boolean showProgress, boolean canRestock,
+                                            CallbackInfo ci) {
+        ServerPlayer player = (ServerPlayer) (Object) this;
+        if (offers.isEmpty()) return;
+
+        // The only handle on who is trading. Vanilla opens the menu before it sends the offers,
+        // so it is already in place; a merchant that sends offers without one is left unfiltered
+        // rather than guessed at, and the payment seam still refuses what it must.
+        if (!(player.containerMenu instanceof MerchantMenu menu)) return;
+        Merchant merchant = ((MerchantMenuAccessor) menu).historystages$getTrader();
+        if (merchant == null) return;
+
+        TradeLockHelper.Filtered filtered =
+                TradeLockHelper.filterForPlayer(offers, merchant, level, player);
+        if (!filtered.removedAnything()) return;
+
+        MerchantOffers shown = new MerchantOffers();
+        for (int index : filtered.keptIndices()) {
+            shown.add(offers.get(index));
+        }
+
+        ci.cancel();
+        if (!shown.isEmpty()) {
+            player.connection.send(new ClientboundMerchantOffersPacket(
+                    containerId, shown, level, xp, showProgress, canRestock));
+        }
+
+        DebugLogger.runtimeThrottled("Trade Lock",
+                "trade_" + player.getUUID() + "_" + filtered.gatingStages(),
+                "<" + player.getName().getString() + "> " + filtered.keptIndices().size()
+                        + " of " + filtered.offeredCount() + " offers shown — held back by: "
+                        + filtered.gatingStages());
+
+        if (filtered.removedEverything()) {
+            PacketHandler.sendTradeLockedToPlayer(
+                    new TradeLockedPacket(containerId,
+                            TradeLockHelper.displayNamesOf(filtered.gatingStages()),
+                            TradeLockHelper.kindOf(filtered.gatingStages())),
+                    player);
+        }
+    }
+}
