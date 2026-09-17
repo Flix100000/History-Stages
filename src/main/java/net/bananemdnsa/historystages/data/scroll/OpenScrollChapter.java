@@ -14,7 +14,7 @@ public enum OpenScrollChapter {
     ITEMS("items"),
     /** Spawn, attack and interaction locks together. */
     CREATURES("creatures"),
-    /** Dimensions, structures and biomes. Text only — none of them has an icon. */
+    /** Places, fluids and trades. Text only — most of them have no icon to draw. */
     WORLD("world");
 
     private final String id;

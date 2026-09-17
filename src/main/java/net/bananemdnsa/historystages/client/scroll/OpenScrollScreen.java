@@ -9,6 +9,8 @@ import net.bananemdnsa.historystages.client.cache.ClientStageCache;
 import net.bananemdnsa.historystages.client.editor.widget.EntityPreviewRenderer;
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.StageManager;
+import net.bananemdnsa.historystages.data.TradeOfferEntry;
+import net.bananemdnsa.historystages.data.lock.TradePreview;
 import net.bananemdnsa.historystages.data.display.DisplayMode;
 import net.bananemdnsa.historystages.data.graph.GraphColors;
 import net.bananemdnsa.historystages.data.graph.GraphStageData;
@@ -201,7 +203,7 @@ public class OpenScrollScreen extends Screen {
                             List<Component> tooltip, String sortKey) {}
 
     /** One line of a text chapter: either a group heading or an entry. */
-    private record TextRow(Component text, boolean heading, Component tooltip, String sortKey) {}
+    private record TextRow(Component text, boolean heading, List<Component> tooltip, String sortKey) {}
 
     public OpenScrollScreen(String stageId) {
         this(stageId, null);
@@ -472,27 +474,87 @@ public class OpenScrollScreen extends Screen {
         for (OpenScrollWorldGroup group : document.world()) {
             List<TextRow> entries = new ArrayList<>();
             for (String id : group.ids()) {
-                String shown = worldName(group, id);
+                String shown = worldName(group.labelKey(), id);
                 if (!matchesFilter(shown, id, stageHidden)) continue;
                 entries.add(new TextRow(name(shown, stageHidden), false,
-                        idTooltip(id, stageHidden), shown));
+                        worldTooltip(group.labelKey(), id), shown));
             }
             // A heading whose entries were all filtered away would stand over nothing.
             if (entries.isEmpty()) continue;
             // Sorting stays inside a group: across groups it would mix biomes into structures.
             sortRows(entries);
-            out.add(new TextRow(Component.translatable(group.labelKey()), true, null, ""));
+            out.add(new TextRow(Component.translatable(group.labelKey()), true, List.of(), ""));
             out.addAll(entries);
         }
         return out;
     }
 
     /** The label key tells the groups apart; the record carries no kind field. */
-    private String worldName(OpenScrollWorldGroup group, String id) {
-        String key = group.labelKey();
-        if (key.endsWith("dimensions")) return OpenScrollNames.dimension(id);
-        if (key.endsWith("structures")) return OpenScrollNames.structure(id);
-        return OpenScrollNames.biome(id);
+    private String worldName(String key, String id) {
+        return switch (key) {
+            case OpenScrollContent.DIMENSIONS_KEY -> OpenScrollNames.dimension(id);
+            case OpenScrollContent.STRUCTURES_KEY -> OpenScrollNames.structure(id);
+            case OpenScrollContent.FLUIDS_KEY -> OpenScrollNames.fluid(id);
+            // Pack-authored, so shown as written.
+            case OpenScrollContent.ZONES_KEY -> id;
+            case OpenScrollContent.TRADE_PROFESSIONS_KEY ->
+                    OpenScrollNames.merchant(OpenScrollContent.professionId(id));
+            case OpenScrollContent.TRADE_OFFERS_KEY -> {
+                TradeOfferEntry offer = TradeOfferEntry.decode(id);
+                yield offer == null ? id : OpenScrollNames.item(offer.givesId());
+            }
+            case OpenScrollContent.TRADE_LEVELS_KEY -> OpenScrollNames.merchantLevel(id);
+            default -> OpenScrollNames.biome(id);
+        };
+    }
+
+    /**
+     * Trade rows are kept to one short name so they fit the parchment; who offers the trade, what
+     * it costs and which levels a profession is held back at go here instead. Unlike the id line
+     * this is part of the content, so it does not wait for showEntryIds.
+     */
+    private List<Component> worldTooltip(String key, String id) {
+        if (stageHidden) return List.of();
+        List<Component> lines = new ArrayList<>();
+        String rawId = id;
+        switch (key) {
+            case OpenScrollContent.TRADE_PROFESSIONS_KEY -> {
+                rawId = OpenScrollContent.professionId(id);
+                List<String> levels = OpenScrollContent.professionLevels(id);
+                if (!levels.isEmpty()) {
+                    lines.add(detailLine("gui.historystages.open_scroll.trade.levels",
+                            String.join(", ", levels.stream().map(OpenScrollNames::merchantLevel).toList())));
+                }
+            }
+            case OpenScrollContent.TRADE_OFFERS_KEY -> {
+                TradeOfferEntry offer = TradeOfferEntry.decode(id);
+                if (offer == null) break;
+                rawId = offer.givesId();
+                String merchant = OpenScrollNames.merchant(offer.merchantKey());
+                // The wandering trader has no levels, so printing "Novice" beside it would invent one.
+                lines.add(TradePreview.WANDERING_TRADER.equals(offer.merchantKey())
+                        ? Component.literal(merchant).withStyle(ChatFormatting.GRAY)
+                        : detailLine("gui.historystages.open_scroll.trade.merchant_level",
+                                merchant, OpenScrollNames.merchantLevel(String.valueOf(offer.level()))));
+                String price = OpenScrollNames.item(offer.takesAId());
+                if (offer.takesBId() != null) price += " + " + OpenScrollNames.item(offer.takesBId());
+                lines.add(detailLine("gui.historystages.open_scroll.trade.price", price));
+            }
+            case OpenScrollContent.TRADE_LEVELS_KEY -> {
+                lines.add(Component.translatable("gui.historystages.open_scroll.trade.every_merchant")
+                        .withStyle(ChatFormatting.GRAY));
+                rawId = null;
+            }
+            // Neither a zone name nor a level number is an id worth repeating under the row.
+            case OpenScrollContent.ZONES_KEY -> rawId = null;
+            default -> { }
+        }
+        if (showEntryIds && rawId != null) lines.add(idLine(rawId));
+        return lines;
+    }
+
+    private static Component detailLine(String key, Object... args) {
+        return Component.translatable(key, args).withStyle(ChatFormatting.GRAY);
     }
 
     private void sortCells(List<IconCell> list) {
@@ -510,8 +572,8 @@ public class OpenScrollScreen extends Screen {
         return Component.literal(id).withStyle(ChatFormatting.DARK_GRAY);
     }
 
-    private Component idTooltip(String id, boolean hidden) {
-        return showEntryIds && !hidden ? idLine(id) : null;
+    private List<Component> idTooltip(String id, boolean hidden) {
+        return showEntryIds && !hidden ? List.of(idLine(id)) : List.of();
     }
 
     /**
@@ -885,7 +947,7 @@ public class OpenScrollScreen extends Screen {
             }
             g.drawString(this.font, row.text(), row.heading() ? x : x + 2, y,
                     row.heading() ? inkFaint : inkBody, false);
-            if (!row.heading() && row.tooltip() != null
+            if (!row.heading() && !row.tooltip().isEmpty()
                     && mouseX >= x && mouseX < x + OpenScrollGeometry.CONTENT_WIDTH
                     && mouseY >= y && mouseY < y + height) {
                 hovered = row;
@@ -893,7 +955,7 @@ public class OpenScrollScreen extends Screen {
             y += height;
         }
         if (hovered != null) {
-            hoverTooltip = List.of(hovered.tooltip());
+            hoverTooltip = hovered.tooltip();
         }
     }
 
