@@ -9,6 +9,7 @@ import net.bananemdnsa.historystages.data.lock.EntitySpawnLockEntry;
 import net.bananemdnsa.historystages.data.lock.engine.LockSubjects;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -86,33 +87,26 @@ class CategoryIndexContractTest {
     }
 
     @Test
-    void anAttackLockImpliedByASpawnLockIsIndexed() {
-        // The case the contract on indexKeys is written for. This stage has an empty attacklock
-        // list; it gates attacking the zombie only because a source-less spawn lock implies it.
-        // An index built from the attacklock list alone would never name this stage, and the
-        // zombie would become attackable with nothing reporting a fault.
-        StageEntry stage = new StageEntry();
-        stage.getEntities().setSpawnlock(List.of(new EntitySpawnLockEntry("minecraft:zombie")));
-        assertIndexed("historystages:attacklock", stage, "minecraft:zombie");
-    }
-
-    @Test
-    void bothSourcesOfAnAttackLockAreIndexedTogether() {
+    void aSpawnLockIsNotFiledUnderAttacking() {
+        // Since 6.0.0 the two lists are independent. Filing the zombie under attacking as well
+        // would cost a wasted exact check on every hit and quietly re-state the old rule.
         StageEntry stage = new StageEntry();
         stage.getEntities().setAttacklock(List.of("minecraft:creeper"));
         stage.getEntities().setSpawnlock(List.of(new EntitySpawnLockEntry("minecraft:zombie")));
         assertIndexed("historystages:attacklock", stage, "minecraft:creeper");
-        assertIndexed("historystages:attacklock", stage, "minecraft:zombie");
+        assertFalse(category("historystages:attacklock").indexKeys(stage).contains("minecraft:zombie"));
     }
 
     @Test
     void anIndexMayNameAStageThatTurnsOutNotToGate() {
-        // Over-approximation is allowed and expected: a source-restricted spawn lock does not
-        // imply an attack lock, but the entity is still filed. The exact check settles it.
+        // Over-approximation is allowed and expected: the spawn index files the bare entity id,
+        // although this entry only covers spawners. The exact check settles it.
         StageEntry stage = new StageEntry();
         stage.getEntities().setSpawnlock(
                 List.of(new EntitySpawnLockEntry("minecraft:zombie", List.of("spawner"))));
-        assertTrue(category("historystages:attacklock").indexKeys(stage).contains("minecraft:zombie"));
+        assertTrue(category("historystages:spawnlock").indexKeys(stage).contains("minecraft:zombie"));
+        assertFalse(category("historystages:spawnlock").gates(stage,
+                new LockSubjects.SpawnSubject("minecraft:zombie", "natural", "minecraft:overworld")));
     }
 
     // ---- spawn locks ---------------------------------------------------------------

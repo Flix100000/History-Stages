@@ -5,10 +5,14 @@ import net.bananemdnsa.historystages.api.lock.LockCategory;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.lock.EntitySpawnLockEntry;
+import net.bananemdnsa.historystages.data.lock.GenerationPhase;
 import net.bananemdnsa.historystages.data.lock.engine.LockSubjects;
+import net.bananemdnsa.historystages.data.lock.spawn.SpawnConditions;
+import net.bananemdnsa.historystages.data.lock.spawn.TimeOfDay;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -145,33 +149,26 @@ class BuiltInCategoryMatchingTest {
     }
 
     @Test
-    void aSourcelessSpawnLockAlsoGatesAttacking() {
-        // The rule the old getAllStagesForAttackLockedEntity applied: a spawn lock that blocks
-        // every source implies an attack lock. It reaches into a neighbouring category on the
-        // same stage, which is the whole reason gates() exists.
+    void noSpawnLockGatesAttackingHoweverBroadItIs() {
+        // Up to 6.0.0 a spawn lock that blocked every source implied an attack lock. It no longer
+        // does: whether a creature may be hit is its own question, and answering it from the spawn
+        // list handed out invulnerable mobs that had come from a spawner or an egg.
         StageEntry stage = new StageEntry();
         stage.getEntities().setSpawnlock(List.of(new EntitySpawnLockEntry("minecraft:zombie")));
-        assertTrue(category("historystages:attacklock").gates(stage, "minecraft:zombie"));
-    }
-
-    @Test
-    void aSpawnLockRestrictedToSourcesDoesNotGateAttacking() {
-        StageEntry stage = new StageEntry();
-        stage.getEntities().setSpawnlock(
-                List.of(new EntitySpawnLockEntry("minecraft:zombie", List.of("natural"))));
         assertFalse(category("historystages:attacklock").gates(stage, "minecraft:zombie"));
+        assertFalse(category("historystages:attacklock").globalDualPhaseIds(stage).contains("minecraft:zombie"));
     }
 
     @Test
     void everyStageGatingAnAttackIsReportedInMapOrder() {
-        StageEntry byList = new StageEntry();
-        byList.getEntities().setAttacklock(List.of("minecraft:zombie"));
-        StageEntry bySpawn = new StageEntry();
-        bySpawn.getEntities().setSpawnlock(List.of(new EntitySpawnLockEntry("minecraft:zombie")));
+        StageEntry bronze = new StageEntry();
+        bronze.getEntities().setAttacklock(List.of("minecraft:zombie"));
+        StageEntry iron = new StageEntry();
+        iron.getEntities().setAttacklock(List.of("minecraft:zombie"));
 
         assertEquals(List.of("bronze", "iron"),
                 CategoryLockResolver.gatingStages(category("historystages:attacklock"),
-                        "minecraft:zombie", stages("bronze", byList, "iron", bySpawn)));
+                        "minecraft:zombie", stages("bronze", bronze, "iron", iron)));
     }
 
     // ---- spawn locks ---------------------------------------------------------------
@@ -221,6 +218,15 @@ class BuiltInCategoryMatchingTest {
                 "minecraft:zombie", List.of(), List.of("minecraft:the_nether"))));
         assertFalse(category("historystages:spawnlock").gates(stage,
                 new LockSubjects.SpawnSubject("minecraft:zombie", "natural", "minecraft:the_nether")));
+    }
+
+    @Test
+    void anAfterUnlockSpawnRuleLocksNothingWhileTheStageIsLocked() {
+        StageEntry stage = new StageEntry();
+        stage.getEntities().setSpawnlock(List.of(new EntitySpawnLockEntry("minecraft:zombie", null,
+                GenerationPhase.AFTER_UNLOCK, null, null)));
+        assertFalse(category("historystages:spawnlock").gates(stage,
+                new LockSubjects.SpawnSubject("minecraft:zombie", "natural", "minecraft:overworld")));
     }
 
     @Test

@@ -24,8 +24,8 @@ public final class EntityTabsState {
     private final List<String> attacklock = new ArrayList<>();
 
     private final List<String> spawnlock = new ArrayList<>();
-    private final Map<String, List<String>> spawnSources = new HashMap<>();
-    private final Map<String, List<String>> spawnDimensions = new HashMap<>();
+    /** Only entries that differ from a plain lock; a missing id means "block every spawn". */
+    private final Map<String, EntitySpawnLockEntry> spawnRules = new HashMap<>();
 
     private final List<String> interactionlock = new ArrayList<>();
     private final Map<String, List<String>> interactionActions = new HashMap<>();
@@ -41,12 +41,8 @@ public final class EntityTabsState {
         return spawnlock;
     }
 
-    public Map<String, List<String>> spawnSources() {
-        return spawnSources;
-    }
-
-    public Map<String, List<String>> spawnDimensions() {
-        return spawnDimensions;
+    public Map<String, EntitySpawnLockEntry> spawnRules() {
+        return spawnRules;
     }
 
     public List<String> interactionlock() {
@@ -73,16 +69,10 @@ public final class EntityTabsState {
         attacklock.addAll(locks.getAttacklock());
 
         spawnlock.clear();
-        spawnSources.clear();
-        spawnDimensions.clear();
+        spawnRules.clear();
         for (EntitySpawnLockEntry entry : locks.getSpawnlock()) {
             spawnlock.add(entry.getId());
-            if (entry.hasLockSources()) {
-                spawnSources.put(entry.getId(), new ArrayList<>(entry.getLockSources()));
-            }
-            if (entry.hasUnlockDimensions()) {
-                spawnDimensions.put(entry.getId(), new ArrayList<>(entry.getUnlockDimensions()));
-            }
+            if (!entry.equals(new EntitySpawnLockEntry(entry.getId()))) spawnRules.put(entry.getId(), entry);
         }
 
         interactionlock.clear();
@@ -123,8 +113,7 @@ public final class EntityTabsState {
 
         List<EntitySpawnLockEntry> spawnEntries = new ArrayList<>();
         for (String entityId : spawnlock) {
-            spawnEntries.add(new EntitySpawnLockEntry(
-                    entityId, spawnSources.get(entityId), spawnDimensions.get(entityId)));
+            spawnEntries.add(spawnRules.getOrDefault(entityId, new EntitySpawnLockEntry(entityId)));
         }
         locks.setSpawnlock(spawnEntries);
 
@@ -137,8 +126,7 @@ public final class EntityTabsState {
         if (index < 0 || index >= rows.size()) return;
         String entityId = rows.remove(index);
         if (rows == spawnlock) {
-            spawnSources.remove(entityId);
-            spawnDimensions.remove(entityId);
+            spawnRules.remove(entityId);
         } else if (rows == interactionlock) {
             interactionActions.remove(entityId);
             interactionItems.remove(entityId);

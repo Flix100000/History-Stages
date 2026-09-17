@@ -13,6 +13,7 @@ import net.bananemdnsa.historystages.api.stage.StageScope;
 import net.bananemdnsa.historystages.data.lock.EntityInteractionLockEntry;
 import net.bananemdnsa.historystages.data.lock.NamedLockEntry;
 import net.bananemdnsa.historystages.data.lock.EntitySpawnLockEntry;
+import net.bananemdnsa.historystages.data.lock.GenerationPhase;
 import net.bananemdnsa.historystages.data.lock.ZoneEntry;
 import net.bananemdnsa.historystages.data.lock.engine.LockSubjects;
 
@@ -394,50 +395,21 @@ final class BuiltInLockCategories {
         }
 
         /**
-         * Also gates when a spawn lock on the same stage blocks every source, because such an
-         * entry implies an attack lock. Reading a neighbouring category is exactly what the
-         * entry loop cannot do, and the reason this override exists.
-         *
-         * <p>No scope parameter, deliberately. Globally the old code absorbed spawn locks and
-         * individually it did not — but that asymmetry is a property of the data, not of the
-         * question: {@code StageManager.stripUnsupportedIndividualCategories} clears spawn locks
-         * out of individual stages at load time, so the second loop finds nothing there anyway.
+         * The attack list and nothing else. Until 6.0.0 a spawn lock covering every source was
+         * read as an attack lock too; that is gone. Whether a creature may be hit is a separate
+         * question from whether it may appear, and a zombie from a spawner or an egg is a perfectly
+         * ordinary zombie.
          */
-        @Override public boolean gates(StageEntry stage, Object subject) {
-            if (!(subject instanceof String entityId)) return false;
-            if (stage.getEntities().getAttacklock().contains(entityId)) return true;
-            for (EntitySpawnLockEntry spawn : stage.getEntities().getSpawnlock()) {
-                if (spawn.getId().equals(entityId) && !spawn.hasLockSources()) return true;
-            }
-            return false;
-        }
-
-        /** A spawn lock that blocks every source implies an attack lock — but only globally. */
         @Override public List<String> globalDualPhaseIds(StageEntry stage) {
-            List<String> ids = new ArrayList<>(stage.getEntities().getAttacklock());
-            for (EntitySpawnLockEntry spawn : stage.getEntities().getSpawnlock()) {
-                if (!spawn.hasLockSources()) ids.add(spawn.getId());
-            }
-            return ids;
+            return stage.getEntities().getAttacklock();
         }
 
-        /** The individual side has never absorbed spawn locks. Preserved deliberately. */
         @Override public List<String> individualDualPhaseIds(StageEntry stage) {
             return stage.getEntities().getAttacklock();
         }
 
-        /**
-         * Both lists, because {@link #gates} reads both. Filing this stage under its attack locks
-         * alone would hide it from every entity gated only by a source-less spawn lock, and that
-         * entity would become attackable — the exact shape of failure the contract on
-         * {@link LockCategory#indexKeys} warns about.
-         */
         @Override public List<String> indexKeys(StageEntry stage) {
-            List<String> keys = new ArrayList<>(stage.getEntities().getAttacklock());
-            for (EntitySpawnLockEntry spawn : stage.getEntities().getSpawnlock()) {
-                keys.add(spawn.getId());
-            }
-            return keys;
+            return stage.getEntities().getAttacklock();
         }
 
         @Override public String lookupKey(Object subject) {
@@ -502,6 +474,9 @@ final class BuiltInLockCategories {
         @Override public boolean matches(EntitySpawnLockEntry entry, Object subject) {
             if (!(subject instanceof LockSubjects.SpawnSubject spawn)) return false;
             if (!entry.getId().equals(spawn.entityId())) return false;
+            // An after-unlock rule locks nothing while the stage is locked, and this path only
+            // ever asks about locked stages.
+            if (entry.getPhase() == GenerationPhase.AFTER_UNLOCK) return false;
             if (!entry.blocksDimension(spawn.dimension())) return false;
             return spawn.source() == null || entry.blocksSource(spawn.source());
         }

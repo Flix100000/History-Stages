@@ -50,6 +50,7 @@ public class DeleteFolderPacket {
                 StructureLockHandler.invalidateAll();
                 BiomeLockHandler.invalidateAll();
                 StructureGenerationGate.rebuild();
+                net.bananemdnsa.historystages.util.lock.SpawnControlGate.rebuild();
                 PacketHandler.sendDefinitionsToAll(new SyncStageDefinitionsPacket(StageManager.getStages()));
                 PacketHandler.sendEditorFeedback(
                         EditorFeedbackPacket.success(
@@ -67,6 +68,7 @@ public class DeleteFolderPacket {
                 StructureLockHandler.invalidateAll();
                 BiomeLockHandler.invalidateAll();
                 StructureGenerationGate.rebuild();
+                net.bananemdnsa.historystages.util.lock.SpawnControlGate.rebuild();
                 PacketHandler.sendDefinitionsToAll(new SyncStageDefinitionsPacket(StageManager.getStages()));
                 PacketHandler.sendEditorFeedback(
                         EditorFeedbackPacket.error(

@@ -85,15 +85,15 @@ class CategoryRoundTripTest {
     }
 
     @Test
-    void attackLockCountsASpawnEntryThatBlocksEverySource() {
+    void attackLockReadsItsOwnListOnly() {
         StageEntry stage = new StageEntry();
         stage.getEntities().setSpawnlock(List.of(new EntitySpawnLockEntry("minecraft:zombie")));
+        stage.getEntities().setAttacklock(List.of("minecraft:creeper"));
 
         LockCategory<?> attack = LockCategories.byId("historystages:attacklock");
-        assertTrue(attack.globalDualPhaseIds(stage).contains("minecraft:zombie"),
-                "a spawn entry with no source filter implies an attack lock globally");
-        assertTrue(attack.individualDualPhaseIds(stage).isEmpty(),
-                "the individual side has never absorbed spawn locks");
+        assertEquals(List.of("minecraft:creeper"), attack.globalDualPhaseIds(stage),
+                "a spawn lock no longer implies an attack lock");
+        assertEquals(List.of("minecraft:creeper"), attack.individualDualPhaseIds(stage));
     }
 
     /** Writes one plausible entry into the category. Returns how many were written. */

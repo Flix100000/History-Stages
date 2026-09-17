@@ -4,6 +4,8 @@ import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.TradeOfferEntry;
 import net.bananemdnsa.historystages.data.TradeProfessionEntry;
 import net.bananemdnsa.historystages.data.lock.EntityLocks;
+import net.bananemdnsa.historystages.data.lock.EntitySpawnLockEntry;
+import net.bananemdnsa.historystages.data.lock.GenerationPhase;
 import net.bananemdnsa.historystages.data.lock.ZoneEntry;
 
 import java.util.ArrayList;
@@ -78,8 +80,9 @@ public final class OpenScrollContent {
     /** All three lock kinds in one list; an entity in several of them keeps every marker. */
     private static List<OpenScrollEntry> creatures(EntityLocks locks) {
         Map<String, EnumSet<OpenScrollMarker>> byId = new LinkedHashMap<>();
-        for (String id : locks.getSpawnlockIds()) {
-            byId.computeIfAbsent(id, k -> EnumSet.noneOf(OpenScrollMarker.class)).add(OpenScrollMarker.SPAWN);
+        for (EntitySpawnLockEntry spawn : locks.getSpawnlock()) {
+            if (spawn.getPhase() == GenerationPhase.AFTER_UNLOCK) continue;
+            byId.computeIfAbsent(spawn.getId(), k -> EnumSet.noneOf(OpenScrollMarker.class)).add(OpenScrollMarker.SPAWN);
         }
         for (String id : locks.getAttacklock()) {
             byId.computeIfAbsent(id, k -> EnumSet.noneOf(OpenScrollMarker.class)).add(OpenScrollMarker.ATTACK);

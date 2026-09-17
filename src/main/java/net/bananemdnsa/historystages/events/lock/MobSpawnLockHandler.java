@@ -1,114 +1,110 @@
 package net.bananemdnsa.historystages.events.lock;
 
 import net.bananemdnsa.historystages.HistoryStages;
-import net.bananemdnsa.historystages.data.lock.engine.LockResolution;
-import net.bananemdnsa.historystages.data.lock.engine.StageLocks;
-import net.bananemdnsa.historystages.api.stage.StageScope;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.bananemdnsa.historystages.util.lock.SpawnControlGate;
+import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.MobSpawnType;
-import net.minecraft.world.level.Level;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
 import net.minecraftforge.event.entity.living.BabyEntitySpawnEvent;
 import net.minecraftforge.event.entity.living.MobSpawnEvent;
-import net.bananemdnsa.historystages.data.StageManager;
-import net.bananemdnsa.historystages.data.saveddata.StageData;
+import net.minecraftforge.event.level.LevelEvent;
+import net.minecraftforge.eventbus.api.Event;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.registries.ForgeRegistries;
 
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
+/**
+ * Spawn rules. Maps the vanilla {@link MobSpawnType} to one of our six source buckets and asks
+ * {@link SpawnControlGate} whether the spawn may happen; the gate also adds extra-biome spawns and
+ * lifts a mob's own placement rules where an entry asks for it.
+ */
 @Mod.EventBusSubscriber(modid = HistoryStages.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class MobSpawnLockHandler {
 
-    /**
-     * Source-aware spawn locking for mobs. Maps the vanilla {@link MobSpawnType}
-     * to one of our 6 buckets and cancels the spawn if any required stage is missing.
-     */
-    /**
-     * Dimension ids as strings, kept per level key.
-     *
-     * <p>{@code dimension().location().toString()} builds a new string every call, and the three
-     * handlers below ask for it per spawn - which on EntityJoinLevel means per arrow, per dropped
-     * item, per XP orb. There are only ever a handful of dimensions.
-     */
-    private static final Map<ResourceKey<Level>, String> DIMENSION_IDS = new ConcurrentHashMap<>();
-
-    private static String dimensionId(Level level) {
-        return DIMENSION_IDS.computeIfAbsent(level.dimension(), key -> key.location().toString());
-    }
-
     @SubscribeEvent
     public static void onFinalizeSpawn(MobSpawnEvent.FinalizeSpawn event) {
-        if (!StageLocks.engine().anyEntitySpawnLocks()) return;
-
-        ResourceLocation entityType = ForgeRegistries.ENTITY_TYPES.getKey(event.getEntity().getType());
-        if (entityType == null) return;
-
-        String source = mapSpawnSource(event.getSpawnType());
-        String dimension = dimensionId(event.getLevel().getLevel());
-        List<String> requiredStageIds = StageLocks.engine()
-                .gatingStagesForEntitySpawn(entityType.toString(), source, dimension, StageScope.GLOBAL);
-        if (requiredStageIds.isEmpty()) return;
-
-        if (LockResolution.isLocked(requiredStageIds, StageLocks.serverGlobal())) {
+        if (!SpawnControlGate.isActive()) return;
+        String entityId = entityId(event.getEntity().getType());
+        BlockPos pos = BlockPos.containing(event.getX(), event.getY(), event.getZ());
+        if (!SpawnControlGate.isAllowed(entityId, mapSpawnSource(event.getSpawnType()), event.getLevel(), pos)) {
             event.setSpawnCancelled(true);
             event.setCanceled(true);
         }
     }
 
     /**
-     * Vanilla breeding does not fire {@link MobSpawnEvent.FinalizeSpawn} — babies are added directly
-     * via {@code Level.addFreshEntity}. Forge fires {@link BabyEntitySpawnEvent} instead, which is
-     * the right hook for the "breeding" source bucket.
+     * Vanilla breeding does not fire {@link MobSpawnEvent.FinalizeSpawn} — babies are added
+     * directly via {@code Level.addFreshEntity}. Forge fires {@link BabyEntitySpawnEvent} instead.
      */
     @SubscribeEvent
     public static void onBabySpawn(BabyEntitySpawnEvent event) {
-        if (!StageLocks.engine().anyEntitySpawnLocks()) return;
+        if (!SpawnControlGate.isActive()) return;
         if (event.getChild() == null) return;
-        ResourceLocation entityType = ForgeRegistries.ENTITY_TYPES.getKey(event.getChild().getType());
-        if (entityType == null) return;
-
-        String dimension = dimensionId(event.getParentA().level());
-        List<String> requiredStageIds = StageLocks.engine()
-                .gatingStagesForEntitySpawn(entityType.toString(), "breeding", dimension, StageScope.GLOBAL);
-        if (requiredStageIds.isEmpty()) return;
-
-        if (LockResolution.isLocked(requiredStageIds, StageLocks.serverGlobal())) {
+        if (!(event.getParentA().level() instanceof ServerLevel level)) return;
+        String entityId = entityId(event.getChild().getType());
+        if (!SpawnControlGate.isAllowed(entityId, "breeding", level, event.getParentA().blockPosition())) {
             event.setCanceled(true);
         }
     }
 
     /**
-     * Fallback for non-Mob entities (items, projectiles, boats, paintings, …) which never
-     * go through {@link MobSpawnEvent.FinalizeSpawn}. Only "block all sources" entries apply here,
-     * since selective entries are conceptually about mob spawn reasons.
+     * Fallback for non-Mob entities (items, projectiles, boats, paintings, …) which never go
+     * through {@link MobSpawnEvent.FinalizeSpawn}. No spawn reason exists here, so every entry
+     * applies.
      */
     @SubscribeEvent
     public static void onEntityJoinLevel(EntityJoinLevelEvent event) {
         if (event.getLevel().isClientSide()) return;
-        // Before anything else, including the two toString calls below: this fires for every
-        // arrow, dropped item, XP orb and falling block in the world.
-        if (!StageLocks.engine().anyEntitySpawnLocks()) return;
-        if (event.getEntity() instanceof net.minecraft.world.entity.Mob) return;
+        // Before anything else: this fires for every arrow, dropped item, XP orb and falling block.
+        if (!SpawnControlGate.isActive()) return;
+        if (event.getEntity() instanceof Mob) return;
+        if (!(event.getLevel() instanceof ServerLevel level)) return;
 
-        ResourceLocation entityType = ForgeRegistries.ENTITY_TYPES.getKey(event.getEntity().getType());
-        if (entityType == null) return;
-
-        // For non-mob entities we treat any matching entry as a full block (subject to dimension filter).
-        String dimension = dimensionId(event.getLevel());
-        List<String> requiredStageIds = StageLocks.engine()
-                .gatingStagesWithSpawnEntry(entityType.toString(), dimension, StageScope.GLOBAL);
-        if (requiredStageIds.isEmpty()) return;
-
-        if (LockResolution.isLocked(requiredStageIds, StageLocks.serverGlobal())) {
+        String entityId = entityId(event.getEntity().getType());
+        if (!SpawnControlGate.isAllowed(entityId, null, level, event.getEntity().blockPosition())) {
             event.setCanceled(true);
         }
+    }
+
+    @SubscribeEvent
+    public static void onPotentialSpawns(LevelEvent.PotentialSpawns event) {
+        if (event.getLevel().isClientSide() || !SpawnControlGate.isActive()) return;
+        SpawnControlGate.addExtras(event);
+    }
+
+    /** Light, grass, slime chunks and the like. Lifted only inside an extra biome that asks for it. */
+    @SubscribeEvent
+    public static void onSpawnPlacementCheck(MobSpawnEvent.SpawnPlacementCheck event) {
+        if (!SpawnControlGate.isActive() || !isNatural(event.getSpawnType())) return;
+        if (SpawnControlGate.forcesPlacement(entityId(event.getEntityType()), event.getLevel(), event.getPos())) {
+            event.setResult(Event.Result.ALLOW);
+        }
+    }
+
+    /**
+     * The mob's own {@code checkSpawnRules}. Forcing the spawn skips the obstruction check too, so
+     * that one is done by hand — "ignore own rules" must never put a mob inside a wall or lava.
+     */
+    @SubscribeEvent
+    public static void onPositionCheck(MobSpawnEvent.PositionCheck event) {
+        if (!SpawnControlGate.isActive() || !isNatural(event.getSpawnType())) return;
+        Mob mob = event.getEntity();
+        if (SpawnControlGate.forcesPlacement(entityId(mob.getType()), event.getLevel(), mob.blockPosition())) {
+            event.setResult(mob.checkSpawnObstruction(event.getLevel())
+                    ? Event.Result.ALLOW
+                    : Event.Result.DENY);
+        }
+    }
+
+    private static boolean isNatural(MobSpawnType type) {
+        return type == MobSpawnType.NATURAL || type == MobSpawnType.CHUNK_GENERATION;
+    }
+
+    private static String entityId(EntityType<?> type) {
+        return ForgeRegistries.ENTITY_TYPES.getKey(type).toString();
     }
 
     private static String mapSpawnSource(MobSpawnType type) {
