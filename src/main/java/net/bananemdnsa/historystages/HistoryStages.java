@@ -162,6 +162,15 @@ public class HistoryStages {
             }
         }
 
+        if (ModList.get().isLoaded("accessories")) {
+            try {
+                net.bananemdnsa.historystages.events.lock.AccessoriesEquipLockHandler.register();
+                LOGGER.info("[HistoryStages] Accessories integration loaded.");
+            } catch (Exception e) {
+                LOGGER.error("[HistoryStages] Failed to load Accessories integration.", e);
+            }
+        }
+
         // Script bridges. Both mods find their own entry point — KubeJS through
         // kubejs.plugins.txt, CraftTweaker by scanning for @ZenRegister — so all that is needed
         // here is the Forge-side wiring that turns StageEvent into something scripts hear.

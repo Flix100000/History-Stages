@@ -88,6 +88,12 @@ repositories {
         name = "Curios"
         url = "https://maven.theillusivec4.top/"
     }
+    // Accessories hands its equip callback a fabric-api TriState. The shim lives inside its own
+    // jar as a nested one, which never reaches the compile classpath, so it is named here.
+    maven {
+        name = "Sinytra"
+        url = "https://maven.su5ed.dev/releases"
+    }
     maven {
         name = "Jared's Maven"
         url = "https://maven.blamejared.com"
@@ -152,6 +158,10 @@ dependencies {
 
     compileOnly fg.deobf("curse.maven:better-combat-by-daedelus-639842:7287334")
     compileOnly fg.deobf("top.theillusivec4.curios:curios-forge:5.14.1+1.20.1:api")
+    // The other accessory-slot mod. Its equip callback is the same shape on 1.20.1 as on 1.21,
+    // so AccessoriesEquipLockHandler is the neoforge file unchanged.
+    compileOnly fg.deobf("maven.modrinth:accessories:ALKwAjwA")
+    compileOnly "dev.su5ed.sinytra.fabric-api:fabric-api-base:0.4.31+ef105b4977"
 
     // Script bridges. KubeJS finds its plugin through kubejs.plugins.txt and CraftTweaker scans for
     // @ZenRegister, so nothing here is a hard dependency.

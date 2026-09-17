@@ -63,6 +63,8 @@
   "editor.historystages.toast.copied.message": "%s",
   "editor.historystages.toast.stage_locked_editor.title": "Stufe gesperrt",
   "editor.historystages.toast.stage_unlocked_editor.title": "Stufe freigegeben",
+  "editor.historystages.toast.individual_locked_editor.title": "Individuelle Stufe gesperrt",
+  "editor.historystages.toast.individual_unlocked_editor.title": "Individuelle Stufe freigegeben",
   "editor.historystages.toast.stage_lock_changed.message": "%s",
   "editor.historystages.toast.stage_duplicated.title": "Stufe dupliziert",
   "editor.historystages.toast.stage_duplicated.message": "'%s' erstellt.",

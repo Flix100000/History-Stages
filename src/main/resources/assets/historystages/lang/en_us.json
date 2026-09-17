@@ -63,6 +63,8 @@
   "editor.historystages.toast.copied.message": "%s",
   "editor.historystages.toast.stage_locked_editor.title": "Stage Locked",
   "editor.historystages.toast.stage_unlocked_editor.title": "Stage Unlocked",
+  "editor.historystages.toast.individual_locked_editor.title": "Individual Stage Locked",
+  "editor.historystages.toast.individual_unlocked_editor.title": "Individual Stage Unlocked",
   "editor.historystages.toast.stage_lock_changed.message": "%s",
   "editor.historystages.toast.stage_duplicated.title": "Stage Duplicated",
   "editor.historystages.toast.stage_duplicated.message": "'%s' created.",
