@@ -20,7 +20,7 @@
  * moving it in here would mislabel it. They are as stable as anything in this package.
  *
  * <p><strong>How to use any of this is documented in the wiki:</strong>
- * <a href="https://github.com/Flix100000/History-Stages/wiki/Addon-Development">Addon
+ * <a href="https://historystages.github.io/api/addon-development">Addon
  * Development</a>.
  */
 package net.bananemdnsa.historystages.api;
