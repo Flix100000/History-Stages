@@ -1,26 +1,30 @@
 package net.bananemdnsa.historystages.mixin;
 
+import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import net.bananemdnsa.historystages.network.PacketHandler;
 import net.bananemdnsa.historystages.network.clientbound.TradeLockedPacket;
 import net.bananemdnsa.historystages.util.DebugLogger;
 import net.bananemdnsa.historystages.util.lock.TradeLockHelper;
-import net.minecraft.network.protocol.game.ClientboundMerchantOffersPacket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.inventory.MerchantMenu;
 import net.minecraft.world.item.trading.Merchant;
 import net.minecraft.world.item.trading.MerchantOffers;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
  * The first trade seam: the player is shown only the offers they may see.
  *
  * <p>On the send rather than on {@code Merchant.openTradingScreen}, and that is the whole point.
  * Every merchant — villager, wandering trader, or one another mod wrote — ends up here, because
- * this is the single place the offer list leaves the server. A trader that opens its screen its
- * own way is covered without naming its class, and Mixin cannot inject into an interface anyway.
+ * this is the one place an offer list leaves the server for a player. It also happens to be the
+ * only option: Mixin cannot inject into an interface, which is where {@code openTradingScreen}
+ * lives.
+ *
+ * <p><strong>The method is wrapped, not taken over.</strong> Cancelling it and sending the packet
+ * ourselves would take it away from everyone else who injected into it, every time a stage
+ * happens to gate an offer — the same shape as the Polymorph report (#127) — and would leave a
+ * copy of one Minecraft version's code sitting in the mod for the next port to get wrong.
  *
  * <p><strong>The merchant keeps its real list.</strong> Only the copy sent to this player is
  * short. {@code overrideOffers} would change the merchant permanently, and a stage that is later
@@ -40,34 +44,29 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(ServerPlayer.class)
 public abstract class MerchantOffersMixin {
 
-    @Inject(method = "sendMerchantOffers", at = @At("HEAD"), cancellable = true)
-    private void historystages$filterOffers(int containerId, MerchantOffers offers, int level,
-                                            int xp, boolean showProgress, boolean canRestock,
-                                            CallbackInfo ci) {
+    @WrapMethod(method = "sendMerchantOffers")
+    private void historystages$sendOnlyWhatIsUnlocked(int containerId, MerchantOffers offers,
+                                                      int level, int xp, boolean showProgress,
+                                                      boolean canRestock, Operation<Void> original) {
+        Merchant merchant = historystages$tradingWith();
+        if (merchant == null || offers.isEmpty()) {
+            original.call(containerId, offers, level, xp, showProgress, canRestock);
+            return;
+        }
+
         ServerPlayer player = (ServerPlayer) (Object) this;
-        if (offers.isEmpty()) return;
-
-        // The only handle on who is trading. Vanilla opens the menu before it sends the offers,
-        // so it is already in place; a merchant that sends offers without one is left unfiltered
-        // rather than guessed at, and the payment seam still refuses what it must.
-        if (!(player.containerMenu instanceof MerchantMenu menu)) return;
-        Merchant merchant = ((MerchantMenuAccessor) menu).historystages$getTrader();
-        if (merchant == null) return;
-
         TradeLockHelper.Filtered filtered =
                 TradeLockHelper.filterForPlayer(offers, merchant, level, player);
-        if (!filtered.removedAnything()) return;
+        if (!filtered.removedAnything()) {
+            original.call(containerId, offers, level, xp, showProgress, canRestock);
+            return;
+        }
 
         MerchantOffers shown = new MerchantOffers();
         for (int index : filtered.keptIndices()) {
             shown.add(offers.get(index));
         }
-
-        ci.cancel();
-        if (!shown.isEmpty()) {
-            player.connection.send(new ClientboundMerchantOffersPacket(
-                    containerId, shown, level, xp, showProgress, canRestock));
-        }
+        original.call(containerId, shown, level, xp, showProgress, canRestock);
 
         DebugLogger.runtimeThrottled("Trade Lock",
                 "trade_" + player.getUUID() + "_" + filtered.gatingStages(),
@@ -75,6 +74,8 @@ public abstract class MerchantOffersMixin {
                         + " of " + filtered.offeredCount() + " offers shown — held back by: "
                         + filtered.gatingStages());
 
+        // Only when nothing at all survived. An empty list is sent rather than no list: the client
+        // then knows it has none, instead of sitting on the menu's own empty one waiting.
         if (filtered.removedEverything()) {
             PacketHandler.sendTradeLockedToPlayer(
                     new TradeLockedPacket(containerId,
@@ -82,5 +83,19 @@ public abstract class MerchantOffersMixin {
                             TradeLockHelper.kindOf(filtered.gatingStages())),
                     player);
         }
+    }
+
+    /**
+     * Who this player is trading with, read off the menu that was opened a moment earlier.
+     *
+     * <p>Vanilla opens the menu before it sends the offers, so it is already in place. Anything
+     * that sends an offer list without one is left alone rather than guessed at — the payment
+     * seam still refuses what it must.
+     */
+    private Merchant historystages$tradingWith() {
+        ServerPlayer player = (ServerPlayer) (Object) this;
+        return player.containerMenu instanceof MerchantMenu menu
+                ? ((MerchantMenuAccessor) menu).historystages$getTrader()
+                : null;
     }
 }
