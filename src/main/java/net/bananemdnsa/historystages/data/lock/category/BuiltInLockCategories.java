@@ -13,10 +13,11 @@ import net.bananemdnsa.historystages.api.stage.StageScope;
 import net.bananemdnsa.historystages.data.lock.EntityInteractionLockEntry;
 import net.bananemdnsa.historystages.data.lock.NamedLockEntry;
 import net.bananemdnsa.historystages.data.lock.EntitySpawnLockEntry;
+import net.bananemdnsa.historystages.data.lock.ZoneEntry;
 import net.bananemdnsa.historystages.data.lock.engine.LockSubjects;
 
 /**
- * The fifteen categories the mod ships with, in editor tab order.
+ * The sixteen categories the mod ships with, in editor tab order.
  *
  * <p>Each one is a thin adapter onto the typed accessors {@link StageEntry} already has. The
  * point is not to move data — it is to stop every consumer from naming all twelve fields.
@@ -117,6 +118,8 @@ final class BuiltInLockCategories {
         categories.add(new Simple<>("biomes", "biomes", "biome",
                 StageEntry::getBiomes, StageEntry::setBiomes,
                 StageEntry::getBiomes, ID_EQUALS, StageEntry::getBiomes));
+
+        categories.add(new ZoneLock());
 
         return categories;
     }
@@ -439,6 +442,34 @@ final class BuiltInLockCategories {
 
         @Override public String lookupKey(Object subject) {
             return subject instanceof String entityId ? entityId : null;
+        }
+    }
+
+    /**
+     * Zones. The odd one out among the built-ins: every other category gates a <em>thing</em> that
+     * can be named by an id, so it can answer "is this item locked". A zone gates a <em>place</em>,
+     * and that question is only ever asked with a position in hand — which the zone handler puts
+     * to its own index directly.
+     *
+     * <p>So {@link #matches} and {@link #indexKeys} keep their defaults of "no" and "nothing".
+     * The category still earns its place: it gives the editor its tab, it lets the entry counters
+     * see zones, and it is what makes {@code anyStageUses("historystages:zones")} answer at all —
+     * the per-tick fast-out the handler leans on.
+     */
+    private static final class ZoneLock implements LockCategory<ZoneEntry> {
+
+        @Override public String id() { return "historystages:zones"; }
+        @Override public String tabLangKey() { return "editor.historystages.tab.zones"; }
+        @Override public String tooltipLangKey() { return "editor.historystages.tooltip.zones"; }
+        @Override public String dualPhaseLabel() { return "zone"; }
+
+        /** A place is never worn, swung or mined, so there is no vocabulary to narrow to. */
+        @Override public List<String> lockActions() { return List.of(); }
+
+        @Override public List<ZoneEntry> read(StageEntry stage) { return stage.getZones(); }
+
+        @Override public void write(StageEntry stage, List<ZoneEntry> entries) {
+            stage.setZones(entries);
         }
     }
 

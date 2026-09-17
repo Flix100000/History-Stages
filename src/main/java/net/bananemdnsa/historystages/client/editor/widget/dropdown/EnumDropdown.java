@@ -37,6 +37,7 @@ public class EnumDropdown {
     private final Function<String, Component> labelFn;
     private final Consumer<String> onChange;
     private String current;
+    private boolean alwaysFires;
     private int buttonX, buttonY, buttonW;
     private boolean expanded = false;
 
@@ -71,6 +72,19 @@ public class EnumDropdown {
     }
 
     public String getValue() { return current; }
+
+    /**
+     * Makes a pick fire even when it is the option already shown.
+     *
+     * <p>Off by default, because a dropdown that <em>holds a value</em> should treat picking the
+     * current one as a no-op — the same reasoning the on/off switch follows. It has to be on for a
+     * dropdown used as a <em>menu</em>, where nothing is selected yet and the first entry only
+     * happens to be showing: without it, that first entry is the one option that cannot be chosen.
+     */
+    public EnumDropdown alwaysFires() {
+        this.alwaysFires = true;
+        return this;
+    }
 
     /**
      * Sets the selection without notifying {@code onChange} — for a screen that reuses one instance
@@ -194,7 +208,7 @@ public class EnumDropdown {
         int idx = (int) ((my - py - POPUP_PAD) / ROW_HEIGHT);
         if (idx >= 0 && idx < options.size()) {
             String picked = options.get(idx);
-            if (!picked.equals(current)) {
+            if (alwaysFires || !picked.equals(current)) {
                 current = picked;
                 if (onChange != null) onChange.accept(current);
             }

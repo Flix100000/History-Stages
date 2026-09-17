@@ -137,6 +137,11 @@ public interface StageLockEngine {
         return false;
     }
 
+    /** Fast-out for the per-tick zone handler: is any area gated at all? */
+    default boolean anyZoneLocks() {
+        return false;
+    }
+
     /**
      * The stages changed, so anything derived from them is stale.
      *

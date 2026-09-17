@@ -110,7 +110,7 @@ class AddonBlockSurvivesEditingTest {
         // three sections. Until that tab exists the field is carried by the copy-based snapshot
         // base instead, which is exactly what that base is for - it is why adding a field can
         // never silently erase it, only leave it uneditable.
-        List<String> storedByACategoryTab = List.of("items", "fluids", "tags", "mods", "modExceptions", "recipes", "dimensions", "structures", "biomes", "entities", "trades");
+        List<String> storedByACategoryTab = List.of("items", "fluids", "tags", "mods", "modExceptions", "recipes", "dimensions", "structures", "biomes", "zones", "entities", "trades");
         assertTrue(body.contains("tab.store(newEntry)"),
                 "the snapshot must still run the category tabs store loop");
         unset.removeAll(storedByACategoryTab);

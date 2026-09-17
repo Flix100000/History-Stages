@@ -7,6 +7,7 @@ import java.util.Map;
 
 import net.bananemdnsa.historystages.client.editor.anim.Anim;
 import net.bananemdnsa.historystages.client.editor.anim.Ease;
+import net.bananemdnsa.historystages.client.editor.anim.Fade;
 import net.bananemdnsa.historystages.client.editor.anim.Timing;
 import net.bananemdnsa.historystages.client.editor.widget.dropdown.DropdownChrome;
 import net.bananemdnsa.historystages.api.editor.TabInputContext;
@@ -37,6 +38,9 @@ public final class EditorRowList {
 
     /** Clearance between the rightmost badge or button and the row's right edge. */
     private static final int SLOT_MARGIN = 2;
+
+    /** Below this a row has no room for a second line, and a subtitle set on it is ignored. */
+    private static final int TWO_LINE_MIN_HEIGHT = 30;
 
     /** Width a dropdown slot adds for its caret. */
     private static final int CARET_SLOT_W = DropdownChrome.CARET_WIDTH;
@@ -71,15 +75,32 @@ public final class EditorRowList {
     }
 
     /**
+     * A toggle slot's click, told which half was hit.
+     *
+     * <p>Not a {@code Runnable}: the segmented switch is picked, not flipped. Clicking the side
+     * that is already showing has to be a no-op, or a double click undoes itself.
+     */
+    @FunctionalInterface
+    public interface ToggleClick {
+        void fire(boolean value);
+    }
+
+    /**
      * One row's declaration: what to put in it, not how to draw it.
      *
-     * <p>Four slots and no more, read off the seven built-in dependency tabs rather than invented.
+     * <p>Four of the five slots were read off the seven built-in dependency tabs rather than
+     * invented. The toggle joined them for the zone rules, where a row's whole content is one
+     * yes-or-no and a button labelled with its own state would have been a third way to draw
+     * something the editor already draws one way.
      */
     public static final class Row {
         private int leadingWidth;
         @Nullable
         private RowPainter leadingPainter;
         private String text = "";
+        private int indent;
+        private String subtitle = "";
+        private int subtitleColour = 0x888888;
         private boolean hovered;
         private boolean caretUp;
         private final List<Slot> slots = new ArrayList<>();
@@ -105,13 +126,43 @@ public final class EditorRowList {
             return this;
         }
 
+        /**
+         * Shifts this row's text to the right, for one that depends on the row above it.
+         *
+         * <p>What a frame around a group would otherwise say. A switch's dependent rows are only
+         * shown while it is on, so the indent is all that is left to make the relationship
+         * visible — and it does that without drawing a box around anything.
+         */
+        public Row indent(int pixels) {
+            this.indent = Math.max(0, pixels);
+            return this;
+        }
+
+        /**
+         * A second, dimmer line under the text.
+         *
+         * <p>Drawn only when the list was built with room for it. At the default row height it is
+         * ignored, so a row that sets one on a normal list looks exactly as it did before rather
+         * than growing a clipped half-line.
+         */
+        public Row subtitle(String subtitle) {
+            this.subtitle = subtitle == null ? "" : subtitle;
+            return this;
+        }
+
+        /** The same, in a colour of its own — for a subtitle that reports something wrong. */
+        public Row subtitle(String subtitle, int colour) {
+            this.subtitleColour = colour;
+            return subtitle(subtitle);
+        }
+
         /** Short text at the right. Several stack right to left, in declaration order. */
         public Row badge(String text) {
             return badge(text, 0xFFCC00);
         }
 
         public Row badge(String text, int colour) {
-            slots.add(new Slot(text, colour, null, null, false));
+            slots.add(new Slot(text, colour, null, null, false, null, false));
             return this;
         }
 
@@ -121,7 +172,7 @@ public final class EditorRowList {
         }
 
         public Row button(String label, @Nullable String tooltip, Runnable onClick) {
-            slots.add(new Slot(label, 0xCCCCCC, tooltip, (x, y, w, h) -> onClick.run(), false));
+            slots.add(new Slot(label, 0xCCCCCC, tooltip, (x, y, w, h) -> onClick.run(), false, null, false));
             return this;
         }
 
@@ -132,23 +183,52 @@ public final class EditorRowList {
          * @param expanded whether the popup is up, which turns the caret over
          */
         public Row dropdown(String label, @Nullable String tooltip, boolean expanded, SlotClick onClick) {
-            slots.add(new Slot(label, 0xCCCCCC, tooltip, onClick, true));
+            slots.add(new Slot(label, 0xCCCCCC, tooltip, onClick, true, null, false));
             this.caretUp = expanded;
+            return this;
+        }
+
+        /**
+         * The on/off switch the rest of the editor uses, as a slot.
+         *
+         * <p>Here rather than as a button labelled "on"/"off", because that would be a third way
+         * of drawing the same question — which is precisely what {@link ToggleControl} was
+         * introduced to stop.
+         */
+        public Row toggle(boolean value, @Nullable String tooltip, ToggleClick onPick) {
+            slots.add(new Slot("", 0xCCCCCC, tooltip, null, false, onPick, value));
             return this;
         }
     }
 
     private record Slot(String text, int colour, @Nullable String tooltip,
-                        @Nullable SlotClick onClick, boolean caret) {}
+                        @Nullable SlotClick onClick, boolean caret,
+                        @Nullable ToggleClick onToggle, boolean toggleValue) {
 
-    /** A button's rectangle from the last frame, so a click can find it. */
-    private record ButtonZone(int x, int y, int width, int height, SlotClick onClick) {}
+        boolean isToggle() {
+            return onToggle != null;
+        }
+    }
+
+    /**
+     * A button's rectangle from the last frame, so a click can find it.
+     *
+     * <p>{@code valueAt} is set for a toggle only. It closes over the font and the slot's origin
+     * from the frame that drew it, which keeps the answer to "which half is this" with
+     * {@link ToggleControl} rather than duplicating its geometry here.
+     */
+    private record ButtonZone(int x, int y, int width, int height, @Nullable SlotClick onClick,
+                              @Nullable ToggleClick onToggle,
+                              @Nullable java.util.function.DoubleFunction<Boolean> valueAt) {}
 
     private final int rowHeight;
+    private boolean flat;
     private final Map<Integer, Anim> hoverAnim = new HashMap<>();
     /** Caret rotation per row, so a dropdown slot turns over instead of jumping. */
     private final Map<Integer, Anim> caretAnim = new HashMap<>();
     private final List<ButtonZone> buttonZones = new ArrayList<>();
+    /** Hover state per toggle slot, keyed by row and slot, so neighbours animate separately. */
+    private final Map<Integer, ToggleControl.State> toggleStates = new HashMap<>();
     private int hoveredRow = -1;
     private long hoverStart = 0;
     private long slideStart = 0;
@@ -163,6 +243,24 @@ public final class EditorRowList {
 
     public int rowHeight() {
         return rowHeight;
+    }
+
+    /**
+     * Drops the card: no frame, no lift, only the hover wash and the gold edge the config editor
+     * uses.
+     *
+     * <p>For a form — a label and its control — as opposed to a list of things. The two are
+     * genuinely different questions and the editor has always drawn them differently; a settings
+     * row wearing a card reads as an entry in a list, which is exactly what a name field must not
+     * look like.
+     *
+     * <p>A mode rather than a widget of its own, so there stays one place where an editor row is
+     * drawn. Two widgets with a set of slots each drift apart, which is what this class was
+     * introduced to stop in the first place.
+     */
+    public EditorRowList flat() {
+        this.flat = true;
+        return this;
     }
 
     /** Content height for this list's row height. */
@@ -234,12 +332,21 @@ public final class EditorRowList {
      */
     public boolean mouseClicked(TabInputContext ctx) {
         for (ButtonZone zone : buttonZones) {
-            if (ctx.mouseX() >= zone.x() && ctx.mouseX() < zone.x() + zone.width()
-                    && ctx.mouseY() >= zone.y() && ctx.mouseY() < zone.y() + zone.height()) {
-                // The accessor hands back the handler; fire() is what runs it.
-                zone.onClick().fire(zone.x(), zone.y(), zone.width(), zone.height());
+            if (ctx.mouseX() < zone.x() || ctx.mouseX() >= zone.x() + zone.width()
+                    || ctx.mouseY() < zone.y() || ctx.mouseY() >= zone.y() + zone.height()) {
+                continue;
+            }
+            if (zone.onToggle() != null) {
+                Boolean picked = zone.valueAt().apply(ctx.mouseX());
+                // Null is the gap between the two halves. Swallowing the click there would look
+                // like the switch ignored it; letting it through changes nothing either way.
+                if (picked == null) return true;
+                zone.onToggle().fire(picked);
                 return true;
             }
+            // The accessor hands back the handler; fire() is what runs it.
+            zone.onClick().fire(zone.x(), zone.y(), zone.width(), zone.height());
+            return true;
         }
         return false;
     }
@@ -258,18 +365,28 @@ public final class EditorRowList {
         float hoverProgress = Ease.outCubic(hoverAnim.computeIfAbsent(index, k -> new Anim())
                 .ramp(hovered, Timing.HOVER_IN_MS, Timing.HOVER_OUT_MS));
 
-        int cardY = y + (int) (hoverProgress * -1.5f);
+        int cardY = y + (flat ? 0 : (int) (hoverProgress * -1.5f));
         int left = ctx.x() + (int) ((1.0f - slide) * 15);
         int right = ctx.x() + ctx.width();
-        int textY = cardY + (rowHeight - 8) / 2;
+        boolean twoLine = !row.subtitle.isEmpty() && rowHeight >= TWO_LINE_MIN_HEIGHT;
+        int textY = twoLine ? cardY + 5 : cardY + (rowHeight - 8) / 2;
 
-        int borderAlpha = (int) ((0x30 + hoverProgress * 0x20) * slide);
-        int bgAlpha = (int) ((0x20 + hoverProgress * 0x18) * slide);
-        g.fill(left, cardY, right, cardY + rowHeight, (borderAlpha << 24) | 0xFFFFFF);
-        g.fill(left + 1, cardY + 1, right - 1, cardY + rowHeight - 1, (bgAlpha << 24) | 0xFFFFFF);
-        if (hoverProgress > 0.01f) {
-            g.fill(left, cardY, left + 2, cardY + rowHeight,
-                    ((int) (hoverProgress * 0xCC) << 24) | 0xFFCC00);
+        if (flat) {
+            if (hoverProgress > 0.01f) {
+                g.fill(left, cardY, right, cardY + rowHeight,
+                        Fade.rgba(0xFFFFFF, 0.082f * hoverProgress * slide));
+                g.fill(left, cardY, left + 1, cardY + rowHeight,
+                        Fade.rgba(0xFFCC00, hoverProgress * 0.8f * slide));
+            }
+        } else {
+            int borderAlpha = (int) ((0x30 + hoverProgress * 0x20) * slide);
+            int bgAlpha = (int) ((0x20 + hoverProgress * 0x18) * slide);
+            g.fill(left, cardY, right, cardY + rowHeight, (borderAlpha << 24) | 0xFFFFFF);
+            g.fill(left + 1, cardY + 1, right - 1, cardY + rowHeight - 1, (bgAlpha << 24) | 0xFFFFFF);
+            if (hoverProgress > 0.01f) {
+                g.fill(left, cardY, left + 2, cardY + rowHeight,
+                        ((int) (hoverProgress * 0xCC) << 24) | 0xFFCC00);
+            }
         }
 
         if (row.leadingPainter != null) {
@@ -281,9 +398,27 @@ public final class EditorRowList {
         int used = SLOT_MARGIN;
         for (int i = row.slots.size() - 1; i >= 0; i--) {
             Slot slot = row.slots.get(i);
-            int slotW = font.width(slot.text()) + 6 + (slot.caret() ? CARET_SLOT_W : 0);
+            int slotW = slot.isToggle()
+                    ? ToggleControl.width(font)
+                    : font.width(slot.text()) + 6 + (slot.caret() ? CARET_SLOT_W : 0);
             int slotX = right - used - slotW;
-            if (slot.onClick() == null) {
+            if (slot.isToggle()) {
+                int toggleY = cardY + (rowHeight - ToggleControl.height()) / 2;
+                ToggleControl.State state = toggleStates.computeIfAbsent(
+                        index * 16 + i, k -> new ToggleControl.State());
+                state.update(slot.toggleValue(), ctx.inputBlocked() ? null
+                        : ToggleControl.segmentAt(font, slotX, toggleY, ctx.mouseX(), ctx.mouseY()));
+                ToggleControl.draw(g, font, slotX, toggleY, slot.toggleValue(), state, false);
+
+                final int originX = slotX;
+                buttonZones.add(new ButtonZone(slotX, toggleY, slotW, ToggleControl.height(),
+                        null, slot.onToggle(), mx -> ToggleControl.valueAt(font, originX, mx)));
+                if (slot.tooltip() != null
+                        && ctx.mouseX() >= slotX && ctx.mouseX() < slotX + slotW
+                        && ctx.mouseY() >= toggleY && ctx.mouseY() < toggleY + ToggleControl.height()) {
+                    ctx.tooltip("row." + index + ".slot." + i, slot.tooltip());
+                }
+            } else if (slot.onClick() == null) {
                 g.drawString(font, slot.text(), slotX, textY, slot.colour(), false);
             } else {
                 boolean slotHovered = !ctx.inputBlocked()
@@ -299,7 +434,8 @@ public final class EditorRowList {
                     DropdownChrome.drawCaret(g, slotX + slotW - 8, cardY + rowHeight / 2 - 2,
                             slotHovered ? 0xFFDDDDDD : 0xFF999999, flip);
                 }
-                buttonZones.add(new ButtonZone(slotX, cardY + 3, slotW, rowHeight - 6, slot.onClick()));
+                buttonZones.add(new ButtonZone(slotX, cardY + 3, slotW, rowHeight - 6,
+                        slot.onClick(), null, null));
                 if (slotHovered && slot.tooltip() != null) {
                     ctx.tooltip("row." + index + ".slot." + i, slot.tooltip());
                 }
@@ -307,8 +443,16 @@ public final class EditorRowList {
             used += slotW + 2;
         }
 
-        int textX = left + (row.leadingPainter != null ? row.leadingWidth + 6 : 6);
-        drawText(g, font, row.text, textX, cardY, textY, right - textX - 4 - used, index, hovered);
+        int textX = left + row.indent + (row.leadingPainter != null ? row.leadingWidth + 6 : 6);
+        int available = right - textX - 4 - used;
+        drawText(g, font, row.text, textX, cardY, textY, available, index, hovered);
+
+        // Cut rather than marqueed: two lines chasing each other under one cursor is noise, and
+        // the subtitle is a summary — losing its tail costs less than the movement.
+        if (twoLine && available > 0) {
+            g.drawString(font, font.plainSubstrByWidth(row.subtitle, available),
+                    textX, cardY + 16, row.subtitleColour, false);
+        }
     }
 
     private void drawText(GuiGraphics g, Font font, String text, int x, int cardY, int textY,

@@ -2,6 +2,9 @@ package net.bananemdnsa.historystages.network;
 
 import net.bananemdnsa.historystages.network.serverbound.RequestTradeGoodsPacket;
 import net.bananemdnsa.historystages.network.clientbound.SyncTradeGoodsPacket;
+import net.bananemdnsa.historystages.network.clientbound.SyncZoneSelectionPacket;
+import net.bananemdnsa.historystages.network.clientbound.SyncZoneShapesPacket;
+import net.bananemdnsa.historystages.network.serverbound.RequestZoneSelectionPacket;
 import net.bananemdnsa.historystages.network.clientbound.TradeLockedPacket;
 import net.bananemdnsa.historystages.network.clientbound.SyncVisualConfigPacket;
 import net.bananemdnsa.historystages.network.serverbound.TakeLecternScrollPacket;
@@ -161,6 +164,12 @@ public class PacketHandler {
                                 TradeLockedPacket::decode, TradeLockedPacket::handle);
                 INSTANCE.registerMessage(id++, SyncTradeGoodsPacket.class, SyncTradeGoodsPacket::encode,
                                 SyncTradeGoodsPacket::decode, SyncTradeGoodsPacket::handle);
+                INSTANCE.registerMessage(id++, SyncZoneSelectionPacket.class, SyncZoneSelectionPacket::encode,
+                                SyncZoneSelectionPacket::decode, SyncZoneSelectionPacket::handle);
+                INSTANCE.registerMessage(id++, SyncZoneShapesPacket.class, SyncZoneShapesPacket::encode,
+                                SyncZoneShapesPacket::decode, SyncZoneShapesPacket::handle);
+                INSTANCE.registerMessage(id++, RequestZoneSelectionPacket.class, RequestZoneSelectionPacket::encode,
+                                RequestZoneSelectionPacket::decode, RequestZoneSelectionPacket::handle);
                 INSTANCE.registerMessage(id++, RequestStageDependencyPacket.class,
                                 RequestStageDependencyPacket::encode,
                                 RequestStageDependencyPacket::decode, RequestStageDependencyPacket::handle);
@@ -272,6 +281,16 @@ public class PacketHandler {
 
         public static void sendVisualConfigToAll(SyncVisualConfigPacket packet) {
                 INSTANCE.send(PacketDistributor.ALL.noArg(), packet);
+        }
+
+        /** Never broadcast: a zone selection is the marking player's own business. */
+        public static void sendZoneSelection(SyncZoneSelectionPacket packet, ServerPlayer player) {
+                INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), packet);
+        }
+
+        /** Also per player: which zones are locked differs between them, and so does what they see. */
+        public static void sendZoneShapes(SyncZoneShapesPacket packet, ServerPlayer player) {
+                INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), packet);
         }
 
         /** The trade goods the editor picker offers. Answer to a request, so never broadcast. */

@@ -325,12 +325,22 @@ public class StringStageLockEngine implements StageLockEngine {
     }
 
     @Override
+    public boolean anyZoneLocks() {
+        return CategoryLockIndexes.anyStageUses("historystages:zones");
+    }
+
+    @Override
     public void stagesChanged() {
         CategoryLockIndexes.markRelevanceDirty();
         // Stages do not change what a recipe contains, only whether the fluid recipe index is
         // worth having — so this is a relevance signal, not a re-scan. A pack adding its first
         // fluid entry still gets one built; the editor no longer re-encodes the pack per save.
         net.bananemdnsa.historystages.data.lock.FluidRecipeIndex.markRelevanceDirty();
+        // Where a zone lies is stage data, so editing a stage is the only thing that can move one.
+        // Hanging the zone index here is what saves the handler an invalidation path of its own,
+        // the way the biome handler needs one: every write to the stage store already comes
+        // through here.
+        net.bananemdnsa.historystages.data.lock.ZoneIndex.markDirty();
     }
 
 

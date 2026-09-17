@@ -2,6 +2,8 @@ package net.bananemdnsa.historystages.data;
 
 import net.bananemdnsa.historystages.data.lock.BiomeLocks;
 import net.bananemdnsa.historystages.data.lock.BiomeLocksAdapter;
+import net.bananemdnsa.historystages.data.lock.ZoneEntry;
+import net.bananemdnsa.historystages.data.lock.ZoneEntryListAdapter;
 import net.bananemdnsa.historystages.data.lock.EntityLocks;
 import net.bananemdnsa.historystages.data.lock.TradeLocks;
 import net.bananemdnsa.historystages.data.display.HiddenDisplayConfig;
@@ -89,6 +91,13 @@ public class StageEntry {
     @JsonAdapter(BiomeLocksAdapter.class)
     private BiomeLocks biomes;
 
+    /**
+     * Gated areas in the world. Unlike every other category these carry their own rules rather
+     * than reading them from the common config — one zone can burn, the next only block
+     * interaction.
+     */
+    @JsonAdapter(ZoneEntryListAdapter.class)
+    private List<ZoneEntry> zones;
     private EntityLocks entities;
 
     /**
@@ -337,6 +346,10 @@ public class StageEntry {
         return biomes != null ? biomes.getModLinked() : new ArrayList<>();
     }
 
+    public List<ZoneEntry> getZones() {
+        return zones != null ? zones : new ArrayList<>();
+    }
+
     public EntityLocks getEntities() {
         return entities != null ? entities : new EntityLocks();
     }
@@ -582,6 +595,10 @@ public class StageEntry {
         this.biomes.setModLinked(modLinked);
     }
 
+    public void setZones(List<ZoneEntry> zones) {
+        this.zones = zones != null ? new ArrayList<>(zones) : new ArrayList<>();
+    }
+
     public void setTrades(TradeLocks trades) {
         this.trades = trades != null ? trades : new TradeLocks();
     }
@@ -647,6 +664,7 @@ public class StageEntry {
         copy.setStructureGenerationRules(getStructureGenerationRules());
         copy.setBiomes(getBiomes());
         copy.setBiomeModLinked(getBiomeModLinked());
+        copy.setZones(getZones().stream().map(ZoneEntry::copy).collect(Collectors.toList()));
         EntityLocks locksCopy = new EntityLocks();
         locksCopy.setAttacklock(getEntities().getAttacklock());
         locksCopy.setInteractionlock(getEntities().getInteractionlock());

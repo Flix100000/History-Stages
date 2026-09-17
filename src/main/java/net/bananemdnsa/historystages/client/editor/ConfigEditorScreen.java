@@ -36,6 +36,7 @@ import net.bananemdnsa.historystages.client.editor.anim.Fade;
 import net.bananemdnsa.historystages.client.editor.anim.Timing;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.bananemdnsa.historystages.client.editor.dialog.EffectValuesDialog;
 import net.bananemdnsa.historystages.client.editor.widget.StyledButton;
 import net.bananemdnsa.historystages.api.editor.widget.FormattedTextScreen;
 import net.minecraft.client.gui.components.EditBox;
@@ -342,6 +343,24 @@ public class ConfigEditorScreen extends Screen {
                 Config.VISUAL.structureLockOverlayOpacity.get().toString(), true, "0.3", 0.0, 1.0));
         visualSections.add(structureVisuals);
 
+        ConfigSection zoneVisuals = new ConfigSection("editor.historystages.config.zone_visuals");
+        zoneVisuals.add(new ConfigEntry("zone_overlay.zoneBorderDistance",
+                "zoneBorderDistance", ConfigType.DOUBLE,
+                Config.VISUAL.zoneBorderDistance.get().toString(), true, "8.0", 0.0, 32.0));
+        zoneVisuals.add(new ConfigEntry("zone_overlay.zoneLockOverlayOpacity",
+                "zoneLockOverlayOpacity", ConfigType.DOUBLE,
+                Config.VISUAL.zoneLockOverlayOpacity.get().toString(), true, "0.3", 0.0, 1.0));
+        zoneVisuals.add(new ConfigEntry("zone_overlay.zoneBorderFullView",
+                "zoneBorderFullView", ConfigType.BOOLEAN,
+                Config.VISUAL.zoneBorderFullView.get().toString(), true, "false"));
+        zoneVisuals.add(new ConfigEntry("zone_overlay.zoneBorderOutline",
+                "zoneBorderOutline", ConfigType.BOOLEAN,
+                Config.VISUAL.zoneBorderOutline.get().toString(), true, "false"));
+        zoneVisuals.add(new ConfigEntry("zone_overlay.zoneBorderColor",
+                "zoneBorderColor", ConfigType.COLOR,
+                Config.VISUAL.zoneBorderColor.get(), true, "#E61414"));
+        visualSections.add(zoneVisuals);
+
         // JEI hiding (Issue #64)
         ConfigSection recipeBook = new ConfigSection("editor.historystages.config.recipe_book");
         recipeBook.add(new ConfigEntry("recipe_book.hideLockedRecipesInBook", "hideLockedRecipesInBook", ConfigType.BOOLEAN,
@@ -622,6 +641,14 @@ public class ConfigEditorScreen extends Screen {
         biomeLock.add(new ConfigEntry("biome_lock.blockProjectiles", "biomeBlockProjectiles", ConfigType.BOOLEAN,
                 Config.GAMEPLAY.biomeBlockProjectiles.get().toString(), false, "true"));
         gameplaySections.add(biomeLock);
+
+        // One row, because a zone keeps every other switch in its own entry rather than here.
+        // That is the whole point of the category and the reason this section looks so thin
+        // beside its neighbours.
+        ConfigSection zoneLock = new ConfigSection("editor.historystages.config.zone_lock");
+        zoneLock.add(new ConfigEntry("zone_lock.markerItem", "zoneMarkerItem", ConfigType.ITEM,
+                Config.GAMEPLAY.zoneMarkerItem.get(), false, "minecraft:stick"));
+        gameplaySections.add(zoneLock);
     }
 
     /**
@@ -2488,7 +2515,7 @@ public class ConfigEditorScreen extends Screen {
      */
     /**
      * List editor for the {@code biomeEffects} config value. Rows are "effect_id, seconds,
-     * amplifier"; duration and amplifier are edited through {@link EffectEditDialog} rather than
+     * amplifier"; duration and amplifier are edited through {@link EffectValuesDialog} rather than
      * inline EditBoxes, matching the project's dialog convention.
      */
     static class EffectListEditorScreen extends Screen {
@@ -2596,7 +2623,12 @@ public class ConfigEditorScreen extends Screen {
                 final EffectRow rRef = r;
                 r.editButton = StyledButton.of(
                         Component.translatable("editor.historystages.edit"),
-                        btn -> this.minecraft.setScreen(new EffectEditDialog(this, rRef)),
+                        btn -> this.minecraft.setScreen(new EffectValuesDialog(
+                                this, rRef.effectId, rRef.seconds, rRef.amplifier,
+                                (seconds, amplifier) -> {
+                                    rRef.seconds = seconds;
+                                    rRef.amplifier = amplifier;
+                                })),
                         0, 0, 50, 18);
                 this.addRenderableWidget(r.editButton);
             }
@@ -2818,40 +2850,6 @@ public class ConfigEditorScreen extends Screen {
                 this.seconds = seconds;
                 this.amplifier = amplifier;
             }
-        }
-    }
-
-    /** Duration + amplifier dialog for a single {@code EffectListEditorScreen} row. */
-    static class EffectEditDialog extends AbstractInputScreen {
-        private final EffectListEditorScreen.EffectRow row;
-
-        EffectEditDialog(EffectListEditorScreen parent, EffectListEditorScreen.EffectRow row) {
-            super(parent, Component.translatable("editor.historystages.effect.edit_title",
-                    net.bananemdnsa.historystages.client.editor.widget.list
-                            .SearchableEffectList.displayName(row.effectId)));
-            this.row = row;
-        }
-
-        @Override
-        protected List<InputField> fields() {
-            return List.of(
-                    InputField.number("seconds")
-                            .label(Component.translatable("editor.historystages.effect.seconds"))
-                            .hint(Component.translatable("editor.historystages.effect.seconds_hint"))
-                            .range(1, 3600)
-                            .initial(String.valueOf(row.seconds)),
-                    InputField.number("amplifier")
-                            .label(Component.translatable("editor.historystages.effect.amplifier"))
-                            .hint(Component.translatable("editor.historystages.effect.amplifier_hint"))
-                            .range(0, 255)
-                            .initial(String.valueOf(row.amplifier)));
-        }
-
-        @Override
-        protected void onConfirm(InputValues values) {
-            row.seconds = values.getInt("seconds");
-            row.amplifier = values.getInt("amplifier");
-            this.minecraft.setScreen(parent);
         }
     }
 
