@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Predicate;
 
 /**
  * The research scroll's tooltip layout: which lines exist, in which order, with which text and
@@ -28,7 +29,8 @@ public final class ScrollTooltipLayout {
 
     /** Templates inside the dependency block. Fixed order, only text and colour are editable. */
     public static final List<String> DEP_TEMPLATE_IDS = List.of(
-            "dep.header", "dep.item", "dep.stage", "dep.individual", "dep.xp", "dep.separator");
+            "dep.header", "dep.group_header", "dep.item", "dep.stage", "dep.individual", "dep.xp",
+            "dep.separator");
 
     /**
      * Block-level values of the dependency block. They ride in the same list so the whole layout
@@ -47,6 +49,7 @@ public final class ScrollTooltipLayout {
             new ScrollTooltipLine("tier", true, false, "gray", ""),
             new ScrollTooltipLine("dependencies", true, true, "", ""),
             new ScrollTooltipLine("dep.header", true, false, "gold", ""),
+            new ScrollTooltipLine("dep.group_header", true, false, "yellow", ""),
             new ScrollTooltipLine("dep.item", true, false, "", ""),
             new ScrollTooltipLine("dep.stage", true, false, "", ""),
             new ScrollTooltipLine("dep.individual", true, false, "", ""),
@@ -212,6 +215,22 @@ public final class ScrollTooltipLayout {
     public static String option(String id, String fallback) {
         ScrollTooltipLine found = line(id);
         return found == null || found.text().isEmpty() ? fallback : found.text();
+    }
+
+    // --- dependency groups ---
+
+    /**
+     * The entries of one dependency group that the tooltip should still list.
+     *
+     * <p>With fulfilled entries hidden, an OR group that already has one met entry disappears
+     * entirely. Hiding only the met entry would leave the others standing as if one of them were
+     * still needed.
+     */
+    public static <T> List<T> visibleGroupEntries(boolean or, List<T> entries, Predicate<T> fulfilled,
+                                                  boolean hideFulfilled) {
+        if (!hideFulfilled) return entries;
+        if (or && entries.stream().anyMatch(fulfilled)) return List.of();
+        return entries.stream().filter(fulfilled.negate()).toList();
     }
 
     // --- placeholders ---

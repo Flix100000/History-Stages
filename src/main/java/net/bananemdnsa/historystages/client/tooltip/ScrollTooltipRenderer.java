@@ -33,6 +33,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 /**
  * Builds the research scroll's item name and hover tooltip from a {@link ScrollTooltipLayout}.
@@ -214,6 +215,7 @@ public final class ScrollTooltipRenderer {
         boolean hideFulfilled = Config.VISUAL.hideFulfilledDependencies.get();
 
         ScrollTooltipLine headerLine = byId.get("dep.header");
+        ScrollTooltipLine groupHeaderLine = byId.get("dep.group_header");
         ScrollTooltipLine itemLine = byId.get("dep.item");
         ScrollTooltipLine stageLine = byId.get("dep.stage");
         ScrollTooltipLine individualLine = byId.get("dep.individual");
@@ -229,14 +231,17 @@ public final class ScrollTooltipRenderer {
                 option(byId, "dep.color_open", "gray"));
 
         List<List<Component>> renderedGroups = new ArrayList<>();
-        List<String> renderedLogics = new ArrayList<>();
         for (DependencyGroup group : ctx.groups()) {
             if (group.isEmpty()) continue;
-            List<Component> lines = renderGroup(group, result, hideFulfilled,
-                    itemLine, stageLine, individualLine, xpLine, icons, colors);
-            if (lines.isEmpty()) continue;
-            renderedGroups.add(lines);
-            renderedLogics.add(group.getLogic());
+            List<Entry> entries = renderGroup(group, result, itemLine, stageLine, individualLine, xpLine,
+                    icons, colors);
+            // Visibility is decided before disabled lines drop out: a met entry whose line is
+            // switched off still settles an OR group.
+            List<Entry> shown = ScrollTooltipLayout.visibleGroupEntries(group.isOr(), entries,
+                            Entry::fulfilled, hideFulfilled)
+                    .stream().filter(e -> !e.lines().isEmpty()).toList();
+            if (shown.isEmpty()) continue;
+            renderedGroups.add(groupLines(group, shown, groupHeaderLine));
         }
         // Nothing survived (all groups empty or fully hidden) — no header either.
         if (renderedGroups.isEmpty()) return List.of();
@@ -249,57 +254,69 @@ public final class ScrollTooltipRenderer {
             out.addAll(renderedGroups.get(i));
             // Only between groups that actually rendered — never a trailing separator.
             if (i < renderedGroups.size() - 1 && separatorLine != null && separatorLine.enabled()) {
-                out.addAll(separatorComponent(separatorLine, renderedLogics.get(i)));
+                out.addAll(separatorComponent(separatorLine));
             }
         }
         return out;
     }
 
-    private static List<Component> renderGroup(DependencyGroup group, RequirementResult result, boolean hideFulfilled,
-                                                 ScrollTooltipLine itemLine, ScrollTooltipLine stageLine,
-                                                 ScrollTooltipLine individualLine, ScrollTooltipLine xpLine,
-                                                 Icons icons, Colors colors) {
-        List<Component> lines = new ArrayList<>();
+    /**
+     * One entry's tooltip lines, plus whether it is met. Lines are empty when the entry's
+     * template is switched off.
+     */
+    private record Entry(boolean fulfilled, List<Component> lines) {}
 
-        if (itemLine != null && itemLine.enabled()) {
-            for (DependencyItem item : group.getItems()) {
-                RequirementResult.EntryResult er = findResult(result, "item", item.getId());
-                if (hideFulfilled && er != null && er.isFulfilled()) continue;
-                lines.addAll(itemComponent(itemLine, item, er, icons, colors));
-            }
-            // Tags share the item line rather than getting one of their own. The template is
-            // "%icon% %name% (%current%/%required%)" either way, and a second configurable line
-            // would only be a second place to keep the same wording in step.
-            for (DependencyItem tag : group.getItemTags()) {
-                RequirementResult.EntryResult er = findResult(result, "item_tag", tag.getId());
-                if (hideFulfilled && er != null && er.isFulfilled()) continue;
-                lines.addAll(itemComponent(itemLine, tag, er, icons, colors));
+    private static List<Component> groupLines(DependencyGroup group, List<Entry> shown,
+                                              @Nullable ScrollTooltipLine groupHeaderLine) {
+        List<Component> out = new ArrayList<>();
+        // A lone entry reads the same under AND and OR, so it gets no heading to explain.
+        boolean heading = shown.size() > 1 && groupHeaderLine != null && groupHeaderLine.enabled();
+        if (heading) out.addAll(groupHeaderComponent(groupHeaderLine, group.isOr()));
+        for (Entry entry : shown) {
+            for (Component line : entry.lines()) {
+                out.add(heading ? Component.literal("  ").append(line) : line);
             }
         }
-        if (stageLine != null && stageLine.enabled()) {
-            for (String sid : group.getStages()) {
-                RequirementResult.EntryResult er = findResult(result, "stage", sid);
-                if (hideFulfilled && er != null && er.isFulfilled()) continue;
-                lines.addAll(stageComponent(stageLine, sid, er, icons, colors));
-            }
+        return out;
+    }
+
+    private static List<Entry> renderGroup(DependencyGroup group, RequirementResult result,
+                                           ScrollTooltipLine itemLine, ScrollTooltipLine stageLine,
+                                           ScrollTooltipLine individualLine, ScrollTooltipLine xpLine,
+                                           Icons icons, Colors colors) {
+        List<Entry> entries = new ArrayList<>();
+
+        for (DependencyItem item : group.getItems()) {
+            RequirementResult.EntryResult er = findResult(result, "item", item.getId());
+            entries.add(entry(er, itemLine, () -> itemComponent(itemLine, item, er, icons, colors)));
         }
-        if (individualLine != null && individualLine.enabled()) {
-            for (IndividualStageDep dep : group.getIndividualStages()) {
-                RequirementResult.EntryResult er = findResult(result, "individual_stage", dep.getStageId());
-                if (hideFulfilled && er != null && er.isFulfilled()) continue;
-                lines.addAll(individualComponent(individualLine, dep, er, icons, colors));
-            }
+        // Tags share the item line rather than getting one of their own. The template is
+        // "%icon% %name% (%current%/%required%)" either way, and a second configurable line
+        // would only be a second place to keep the same wording in step.
+        for (DependencyItem tag : group.getItemTags()) {
+            RequirementResult.EntryResult er = findResult(result, "item_tag", tag.getId());
+            entries.add(entry(er, itemLine, () -> itemComponent(itemLine, tag, er, icons, colors)));
         }
-        if (xpLine != null && xpLine.enabled()) {
-            XpLevelDep xp = group.getXpLevel();
-            if (xp != null && xp.getLevel() > 0) {
-                RequirementResult.EntryResult er = findResult(result, "xp_level", "xp");
-                if (!(hideFulfilled && er != null && er.isFulfilled())) {
-                    lines.addAll(xpComponent(xpLine, xp, er, icons, colors));
-                }
-            }
+        for (String sid : group.getStages()) {
+            RequirementResult.EntryResult er = findResult(result, "stage", sid);
+            entries.add(entry(er, stageLine, () -> stageComponent(stageLine, sid, er, icons, colors)));
         }
-        return lines;
+        for (IndividualStageDep dep : group.getIndividualStages()) {
+            RequirementResult.EntryResult er = findResult(result, "individual_stage", dep.getStageId());
+            entries.add(entry(er, individualLine, () -> individualComponent(individualLine, dep, er, icons, colors)));
+        }
+        XpLevelDep xp = group.getXpLevel();
+        if (xp != null && xp.getLevel() > 0) {
+            RequirementResult.EntryResult er = findResult(result, "xp_level", "xp");
+            entries.add(entry(er, xpLine, () -> xpComponent(xpLine, xp, er, icons, colors)));
+        }
+        return entries;
+    }
+
+    private static Entry entry(@Nullable RequirementResult.EntryResult er, @Nullable ScrollTooltipLine line,
+                               Supplier<List<Component>> render) {
+        boolean fulfilled = er != null && er.isFulfilled();
+        return new Entry(fulfilled, line != null && line.enabled() ? render.get() : List.of());
     }
 
     // --- dependency entry components ---
@@ -401,8 +418,21 @@ public final class ScrollTooltipRenderer {
         return simple(line, "tooltip.historystages.scroll.dependencies", Map.of(), ChatFormatting.GOLD);
     }
 
-    private static List<Component> separatorComponent(ScrollTooltipLine line, String logic) {
+    /**
+     * Groups are always joined by AND, whatever each group's own logic says. Printing a group's
+     * logic here would make an OR group read as an OR between the groups; that belongs in the
+     * group heading instead.
+     */
+    private static List<Component> separatorComponent(ScrollTooltipLine line) {
+        String logic = Component.translatable("tooltip.historystages.dep.logic.and").getString();
         return withArg(line, "tooltip.historystages.dep.separator", Map.of("logic", logic), logic, ChatFormatting.DARK_GRAY);
+    }
+
+    private static List<Component> groupHeaderComponent(ScrollTooltipLine line, boolean or) {
+        String logic = Component.translatable(or
+                ? "tooltip.historystages.dep.logic.any"
+                : "tooltip.historystages.dep.logic.all").getString();
+        return withArg(line, "tooltip.historystages.dep.group", Map.of("logic", logic), logic, ChatFormatting.YELLOW);
     }
 
     // --- helpers ---

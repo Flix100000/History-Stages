@@ -9,6 +9,7 @@ import net.bananemdnsa.historystages.api.editor.widget.SearchBar;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.mojang.serialization.JsonOps;
+import net.bananemdnsa.historystages.compat.reliableremover.ReliableRemoverCompat;
 import net.bananemdnsa.historystages.client.editor.anim.Anim;
 import net.bananemdnsa.historystages.client.editor.anim.Fade;
 import net.bananemdnsa.historystages.client.editor.anim.Ease;
@@ -36,6 +37,7 @@ import net.minecraftforge.registries.ForgeRegistries;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -74,6 +76,15 @@ public class SearchableItemList implements PickerOverlay {
 
     private final List<ItemEntry> allItems = new ArrayList<>();
     private final List<ItemEntry> filteredItems = new ArrayList<>();
+    /**
+     * Ids Reliable Remover reports as deleted. Empty when the mod is absent, which is also the
+     * signal that the matching filter option was never registered.
+     *
+     * <p>Taken once, when the picker is built: the pack's rules are not going to change between
+     * two clicks in the editor, and asking per item on every keystroke would put a rule sweep
+     * behind every character typed into the search bar.
+     */
+    private final Set<String> removedItems = new HashSet<>();
     /**
      * The stacks of {@link #filteredItems}, seen as a list without copying one.
      *
@@ -168,15 +179,22 @@ public class SearchableItemList implements PickerOverlay {
         this.alreadyAddedSupplier = alreadyAddedSupplier;
         this.searchBar = SearchPanelChrome.createSearchBar(Component.translatable("editor.historystages.search_items").getString(), this::applyFilter, alreadyAddedSupplier);
 
+        boolean askReliableRemover = ReliableRemoverCompat.isPresent();
         for (Item item : ForgeRegistries.ITEMS) {
             ResourceLocation key = ForgeRegistries.ITEMS.getKey(item);
             if (key != null) {
                 ItemStack stack = new ItemStack(item);
                 String searchName = stack.getHoverName().getString().toLowerCase();
                 allItems.add(new ItemEntry(key.toString(), stack, searchName));
+                if (askReliableRemover && ReliableRemoverCompat.isRemoved(stack)) {
+                    removedItems.add(key.toString());
+                }
             }
         }
-        filteredItems.addAll(allItems);
+        if (!removedItems.isEmpty()) {
+            SearchPanelChrome.addRemovedFilter(searchBar);
+        }
+        applyFilter("");
     }
 
     public void setMultiSelect(boolean multi) {
@@ -408,6 +426,7 @@ public class SearchableItemList implements PickerOverlay {
     private boolean matchesDropdownFilters(String id) {
         if (!SearchPanelChrome.passesDefaultFilters(searchBar, id, alreadyAddedSupplier)) return false;
         if (id == null) return true;
+        if (!SearchPanelChrome.passesRemovedFilter(searchBar, removedItems, id)) return false;
         for (java.util.Map.Entry<String, java.util.function.Predicate<String>> exclusion
                 : exclusions.entrySet()) {
             if (searchBar.filters().isActive(exclusion.getKey())

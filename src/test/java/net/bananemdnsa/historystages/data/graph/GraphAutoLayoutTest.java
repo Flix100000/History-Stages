@@ -98,4 +98,17 @@ class GraphAutoLayoutTest {
     void emptyInputYieldsEmptyOutput() {
         assertTrue(GraphAutoLayout.compute(Map.of()).isEmpty());
     }
+
+    @Test
+    void layersAreTheLongestPathDepth() {
+        Map<String, Set<String>> g = graph("b", "a", "c", "a", "c", "b");
+        g.put("island", new java.util.LinkedHashSet<>(Set.of("does_not_exist")));
+
+        Map<String, Integer> layers = GraphAutoLayout.layers(g);
+
+        assertEquals(0, layers.get("a"));
+        assertEquals(1, layers.get("b"));
+        assertEquals(2, layers.get("c"), "c sits behind its deepest prerequisite, not its nearest");
+        assertEquals(0, layers.get("island"));
+    }
 }

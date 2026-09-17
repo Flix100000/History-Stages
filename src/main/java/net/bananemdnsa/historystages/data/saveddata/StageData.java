@@ -9,15 +9,25 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.saveddata.SavedData;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class StageData extends SavedData {
     private final List<String> unlockedStages = new ArrayList<>();
+    /** Game time each stage was unlocked at. Stages unlocked before times were recorded have none. */
+    private final Map<String, Long> unlockTimes = new HashMap<>();
     private static final String DATA_NAME = "historystages_global";
 
     public static final Set<String> SERVER_CACHE = ConcurrentHashMap.newKeySet();
+
+    /**
+     * Mirror of the unlock times for the sync packet, which is built in many places that only
+     * have {@link #SERVER_CACHE} to hand.
+     */
+    public static final Map<String, Long> SERVER_UNLOCK_TIMES = new ConcurrentHashMap<>();
 
     /**
      * Bumped on every change to {@link #SERVER_CACHE}, so anything derived from it can tell that
@@ -47,6 +57,7 @@ public class StageData extends SavedData {
 
     public StageData() {
         SERVER_CACHE.clear();
+        SERVER_UNLOCK_TIMES.clear();
         VERSION.incrementAndGet();
     }
 
@@ -59,6 +70,12 @@ public class StageData extends SavedData {
             data.unlockedStages.add(stage);
             SERVER_CACHE.add(stage);
         }
+        // Older saves have no such tag; getCompound hands back an empty one.
+        CompoundTag times = nbt.getCompound("unlockTimes");
+        for (String stage : data.unlockedStages) {
+            if (times.contains(stage, Tag.TAG_LONG)) data.unlockTimes.put(stage, times.getLong(stage));
+        }
+        SERVER_UNLOCK_TIMES.putAll(data.unlockTimes);
         VERSION.incrementAndGet();
         net.bananemdnsa.historystages.util.lock.StructureGenerationGate.rebuild();
         return data;
@@ -71,6 +88,9 @@ public class StageData extends SavedData {
             list.add(StringTag.valueOf(s));
         }
         nbt.put("stages", list);
+        CompoundTag times = new CompoundTag();
+        unlockTimes.forEach(times::putLong);
+        nbt.put("unlockTimes", times);
         return nbt;
     }
 
@@ -98,6 +118,10 @@ public class StageData extends SavedData {
                     .computeIfAbsent(StageData::load, StageData::new, DATA_NAME);
 
             refreshCache(data.unlockedStages);
+            // load() of a second instance (a save/load round trip) replaces the mirror, so it is
+            // put back to the instance that is actually live.
+            SERVER_UNLOCK_TIMES.keySet().retainAll(data.unlockTimes.keySet());
+            SERVER_UNLOCK_TIMES.putAll(data.unlockTimes);
             // The generation counters have no level of their own and worldgen threads must not
             // reach into data storage, so they are primed from here.
             StructureGenerationCountData.get(serverLevel);
@@ -111,6 +135,11 @@ public class StageData extends SavedData {
         if (!unlockedStages.contains(stage)) {
             unlockedStages.add(stage);
             SERVER_CACHE.add(stage);
+            Long now = UnlockClock.now();
+            if (now != null) {
+                unlockTimes.put(stage, now);
+                SERVER_UNLOCK_TIMES.put(stage, now);
+            }
             VERSION.incrementAndGet();
             // Before the rebuild: the reset lookup needs the snapshot that still describes the
             // phase being left behind.
@@ -123,6 +152,8 @@ public class StageData extends SavedData {
     public void removeStage(String stage) {
         if (unlockedStages.remove(stage)) {
             SERVER_CACHE.remove(stage);
+            unlockTimes.remove(stage);
+            SERVER_UNLOCK_TIMES.remove(stage);
             VERSION.incrementAndGet();
             // Before the rebuild, for the same reason as in addStage.
             net.bananemdnsa.historystages.util.lock.StructureGenerationGate.onStageLockChanged(stage, false);
@@ -137,5 +168,10 @@ public class StageData extends SavedData {
 
     public List<String> getUnlockedStages() {
         return new ArrayList<>(unlockedStages);
+    }
+
+    /** A copy. Stages unlocked before times were recorded are absent. */
+    public Map<String, Long> getUnlockTimes() {
+        return new HashMap<>(unlockTimes);
     }
 }

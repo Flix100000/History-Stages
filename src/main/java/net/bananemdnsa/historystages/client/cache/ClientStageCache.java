@@ -2,10 +2,12 @@ package net.bananemdnsa.historystages.client.cache;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class ClientStageCache {
     private static volatile List<String> unlockedStages = new CopyOnWriteArrayList<>();
+    private static volatile Map<String, Long> unlockTimes = Map.of();
 
     /**
      * Bumped on every replacement. Screens that derive state from this cache — the stage graph
@@ -14,8 +16,9 @@ public class ClientStageCache {
      */
     private static volatile int version;
 
-    public static void setUnlockedStages(List<String> stages) {
+    public static void setUnlockedStages(List<String> stages, Map<String, Long> times) {
         unlockedStages = new CopyOnWriteArrayList<>(stages);
+        unlockTimes = times == null ? Map.of() : Map.copyOf(times);
         version++;
     }
 
@@ -26,5 +29,10 @@ public class ClientStageCache {
     /** Changes whenever the unlocked set is replaced; compare against a previously read value. */
     public static int version() {
         return version;
+    }
+
+    /** Game time of the unlock, or null when the stage is locked or predates recorded times. */
+    public static Long unlockTime(String stage) {
+        return unlockTimes.get(stage);
     }
 }

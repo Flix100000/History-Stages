@@ -4,6 +4,7 @@ import net.bananemdnsa.historystages.GraphConfig;
 import net.bananemdnsa.historystages.client.cache.ClientIndividualStageCache;
 import net.bananemdnsa.historystages.client.cache.ClientStageCache;
 import net.bananemdnsa.historystages.client.editor.dialog.StageInfoTextScreen;
+import net.bananemdnsa.historystages.client.editor.graph.CanvasBackgrounds;
 import net.bananemdnsa.historystages.client.editor.graph.GraphCanvas;
 import net.bananemdnsa.historystages.client.editor.graph.GraphDetailScreen;
 import net.bananemdnsa.historystages.client.editor.graph.GraphLegend;
@@ -72,6 +73,8 @@ public class StageGraphScreen extends Screen {
 
     /** Combined unlock-cache version last folded into {@link #model}; see refreshOnUnlockChange. */
     private int lastUnlockVersion = Integer.MIN_VALUE;
+    /** The graph_stages.json snapshot the current background was resolved from. */
+    private GraphStageData.Snapshot backgroundSource;
 
     private static final int BACK_BUTTON_X = 6;
     private static final int BACK_BUTTON_Y = 2;
@@ -148,6 +151,7 @@ public class StageGraphScreen extends Screen {
         } else {
             canvas.setModel(model);
         }
+        refreshBackground();
 
         if (showSidebar) {
             if (sidebar == null) {
@@ -222,6 +226,17 @@ public class StageGraphScreen extends Screen {
         if (sidebar != null) sidebar.setModel(model);
         // Styles are resolved per lock state, so every cached one is now suspect.
         StageGraphConfig.invalidateCache();
+        refreshBackground();
+    }
+
+    /**
+     * The player's map takes the background of their latest unlock that sets one. The editor
+     * always shows graph.toml's, so what an author sees while building does not depend on which
+     * stages their own character happens to hold.
+     */
+    private void refreshBackground() {
+        backgroundSource = GraphStageData.get();
+        canvas.setBackground(mode == Mode.PLAYER ? CanvasBackgrounds.forPlayer() : null);
     }
 
     @Override
@@ -236,6 +251,8 @@ public class StageGraphScreen extends Screen {
         g.fill(0, 0, this.width, this.height, BACKGROUND_COLOR);
 
         refreshOnUnlockChange();
+        // An author saving a background while this map is open replaces the snapshot.
+        if (GraphStageData.get() != backgroundSource) refreshBackground();
 
         // The sidebar can be collapsed to a rail, and animates between the two widths. Its edge
         // is where the canvas viewport starts, so both it and the legend are re-bounded every

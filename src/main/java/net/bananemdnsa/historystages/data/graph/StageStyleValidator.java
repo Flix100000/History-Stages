@@ -4,6 +4,7 @@ import net.bananemdnsa.historystages.util.DebugLogger;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.regex.Pattern;
 
 /**
  * Checks a per-stage style override against the spec of the block it will be layered onto,
@@ -47,6 +48,49 @@ public final class StageStyleValidator {
             StageStyleFields.set(out, leaf, checked);
         }
         return out;
+    }
+
+    private static final Pattern TEXTURE_PATH = Pattern.compile("([a-z0-9_.-]+:)?[a-z0-9_./-]+");
+
+    /**
+     * Same treatment for a stage's canvas background block.
+     *
+     * @param modes the names of {@code GraphConfig.CanvasBackground}, passed in because that enum
+     *              is out of JUnit's reach
+     */
+    public static CanvasBackgroundStyle sanitizeBackground(CanvasBackgroundStyle style, List<String> modes) {
+        CanvasBackgroundStyle out = new CanvasBackgroundStyle();
+        if (style == null) return out;
+
+        if (style.mode != null) {
+            String upper = style.mode.trim().toUpperCase(Locale.ROOT);
+            if (modes.contains(upper)) out.mode = upper;
+            else dropped("background.mode", style.mode);
+        }
+        if (style.texture != null) {
+            if (isTexturePath(style.texture)) out.texture = style.texture.trim();
+            else dropped("background.texture", style.texture);
+        }
+        if (style.color != null) {
+            if (GraphColors.isValid(style.color)) out.color = style.color.trim().toUpperCase(Locale.ROOT);
+            else dropped("background.color", style.color);
+        }
+        return out;
+    }
+
+    /**
+     * ResourceLocation's character rules, checked without loading ResourceLocation. A path that
+     * fails them would throw the moment the canvas tried to bind it, for everyone on the server.
+     */
+    public static boolean isTexturePath(String text) {
+        if (text == null) return false;
+        String t = text.trim();
+        return !t.isEmpty() && t.length() <= 256 && !t.contains("..")
+                && TEXTURE_PATH.matcher(t).matches();
+    }
+
+    private static void dropped(String field, String value) {
+        DebugLogger.error("Stage Graph", "Dropped invalid style override " + field + " = " + value);
     }
 
     /** The value to store, or null when it may not be stored at all. */

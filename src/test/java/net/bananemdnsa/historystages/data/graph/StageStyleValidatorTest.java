@@ -120,4 +120,55 @@ class StageStyleValidatorTest {
     void nullInputGivesAnEmptyStyle() {
         assertTrue(StageStyleValidator.sanitize(null, keys()).isEmpty());
     }
+
+    private static final List<String> MODES = List.of("GRID", "SOLID", "TEXTURE");
+
+    @Test
+    void aValidBackgroundIsKeptAndNormalised() {
+        CanvasBackgroundStyle in = new CanvasBackgroundStyle();
+        in.mode = "texture";
+        in.texture = " minecraft:textures/block/stone.png ";
+        in.color = "#a0b0c0";
+
+        CanvasBackgroundStyle out = StageStyleValidator.sanitizeBackground(in, MODES);
+
+        assertEquals("TEXTURE", out.mode);
+        assertEquals("minecraft:textures/block/stone.png", out.texture);
+        assertEquals("#A0B0C0", out.color);
+    }
+
+    @Test
+    void anUnknownBackgroundModeIsDropped() {
+        CanvasBackgroundStyle in = new CanvasBackgroundStyle();
+        in.mode = "WAVES";
+        in.color = "#000000";
+
+        CanvasBackgroundStyle out = StageStyleValidator.sanitizeBackground(in, MODES);
+
+        assertNull(out.mode);
+        assertEquals("#000000", out.color, "one bad field must not take the others with it");
+    }
+
+    @Test
+    void anUnreadableBackgroundColourIsDropped() {
+        CanvasBackgroundStyle in = new CanvasBackgroundStyle();
+        in.color = "rgb(1,2,3)";
+
+        assertNull(StageStyleValidator.sanitizeBackground(in, MODES).color);
+    }
+
+    @Test
+    void texturePathsFollowResourceLocationRules() {
+        assertTrue(StageStyleValidator.isTexturePath("minecraft:textures/block/stone.png"));
+        assertTrue(StageStyleValidator.isTexturePath("textures/block/stone.png"));
+        assertFalse(StageStyleValidator.isTexturePath("Minecraft:Tex.png"));
+        assertFalse(StageStyleValidator.isTexturePath("minecraft:../../secret.png"));
+        assertFalse(StageStyleValidator.isTexturePath(""));
+        assertFalse(StageStyleValidator.isTexturePath("a:" + "b".repeat(300)));
+    }
+
+    @Test
+    void aNullBackgroundGivesAnEmptyBlock() {
+        assertTrue(StageStyleValidator.sanitizeBackground(null, MODES).isEmpty());
+    }
 }

@@ -5,7 +5,9 @@ import net.bananemdnsa.historystages.network.clientbound.SyncStageDefinitionsPac
 import net.bananemdnsa.historystages.network.clientbound.EditorFeedbackPacket;
 import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.data.StagePaths;
+import net.bananemdnsa.historystages.data.graph.CanvasBackgroundStyle;
 import net.bananemdnsa.historystages.data.graph.GraphConfigEntries;
+import net.bananemdnsa.historystages.data.graph.ResolvedCanvasBackground;
 import net.bananemdnsa.historystages.data.graph.GraphKey;
 import net.bananemdnsa.historystages.data.graph.GraphStageData;
 import net.bananemdnsa.historystages.data.graph.NodeState;
@@ -24,9 +26,9 @@ import java.util.Set;
 import java.util.function.Supplier;
 
 /**
- * Sets (or clears) one stage's node-style override in {@code graph_stages.json}.
+ * Sets (or clears) one stage's node-style override and map background in {@code graph_stages.json}.
  *
- * <p>The payload is the stage's own JSON fragment — the {@code style} and {@code styles} halves
+ * <p>The payload is the stage's own JSON fragment — {@code style}, {@code styles} and {@code background}
  * of a {@link GraphStageData.Entry} — rather than a field list, so the wire form and the file
  * form cannot drift apart. Shaped like {@link SaveStageGraphInfoPacket}, which writes the other
  * half of the same file.
@@ -111,6 +113,10 @@ public class SaveStageGraphStylePacket {
             }
             out.styles = states;
         }
+
+        CanvasBackgroundStyle background = StageStyleValidator.sanitizeBackground(
+                incoming.background, ResolvedCanvasBackground.MODES);
+        out.background = background.isEmpty() ? null : background;
         return out;
     }
 

@@ -61,7 +61,13 @@ import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.network.simple.SimpleChannel;
 
 public class PacketHandler {
-        private static final String PROTOCOL_VERSION = "10";
+        /**
+         * Bumped to "11" when the stage definitions sync went gzipped. A client on the old
+         * protocol reading the new format gets a decoder exception and a dropped connection; a
+         * version mismatch gets it the "incompatible mod" screen instead, which is the same
+         * information a player can act on.
+         */
+        private static final String PROTOCOL_VERSION = "11";
         public static final SimpleChannel INSTANCE = NetworkRegistry.newSimpleChannel(
                         new ResourceLocation(HistoryStages.MOD_ID, "main"),
                         () -> PROTOCOL_VERSION,

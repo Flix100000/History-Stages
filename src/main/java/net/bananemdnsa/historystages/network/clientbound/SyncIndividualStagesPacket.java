@@ -1,18 +1,39 @@
 package net.bananemdnsa.historystages.network.clientbound;
 
 import net.bananemdnsa.historystages.client.cache.ClientIndividualStageCache;
+import net.bananemdnsa.historystages.data.saveddata.IndividualStageData;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
 
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Supplier;
 
 public class SyncIndividualStagesPacket {
     private final Set<String> unlockedStages;
+    private final Map<String, Long> unlockTimes;
+
+    public static SyncIndividualStagesPacket of(IndividualStageData data, UUID player) {
+        return new SyncIndividualStagesPacket(data.getUnlockedStages(player), data.getUnlockTimes(player));
+    }
 
     public SyncIndividualStagesPacket(Set<String> unlockedStages) {
+        this(unlockedStages, Map.of());
+    }
+
+    public SyncIndividualStagesPacket(Set<String> unlockedStages, Map<String, Long> unlockTimes) {
         this.unlockedStages = unlockedStages;
+        this.unlockTimes = unlockTimes;
+    }
+
+    public Set<String> unlockedStages() {
+        return unlockedStages;
+    }
+
+    public Map<String, Long> unlockTimes() {
+        return unlockTimes;
     }
 
     public static void encode(SyncIndividualStagesPacket msg, FriendlyByteBuf buffer) {
@@ -20,6 +41,7 @@ public class SyncIndividualStagesPacket {
         for (String stage : msg.unlockedStages) {
             buffer.writeUtf(stage);
         }
+        SyncStagesPacket.writeTimes(buffer, msg.unlockTimes);
     }
 
     public static SyncIndividualStagesPacket decode(FriendlyByteBuf buffer) {
@@ -28,12 +50,12 @@ public class SyncIndividualStagesPacket {
         for (int i = 0; i < size; i++) {
             stages.add(buffer.readUtf());
         }
-        return new SyncIndividualStagesPacket(stages);
+        return new SyncIndividualStagesPacket(stages, SyncStagesPacket.readTimes(buffer));
     }
 
     public static void handle(SyncIndividualStagesPacket msg, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
-            ClientIndividualStageCache.setUnlockedStages(msg.unlockedStages);
+            ClientIndividualStageCache.setUnlockedStages(msg.unlockedStages, msg.unlockTimes);
 
             // No recipe reload needed — individual stages don't affect recipes.
             // Trigger visual refresh for lock icons.

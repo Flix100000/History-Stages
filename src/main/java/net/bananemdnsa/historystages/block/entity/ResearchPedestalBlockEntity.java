@@ -859,7 +859,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
                         level.getServer().getPlayerList().getPlayer(ownerUUID);
                 if (ownerPlayer != null) {
                     PacketHandler.sendIndividualStagesToPlayer(
-                            new SyncIndividualStagesPacket(data.getUnlockedStages(ownerUUID)),
+                            SyncIndividualStagesPacket.of(data, ownerUUID),
                             ownerPlayer);
 
                     String stagename = (stageEntry != null) ? stageEntry.getDisplayName() : stageId;
@@ -919,7 +919,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
                 }
             }
             PacketHandler.sendIndividualStagesToPlayer(
-                    new SyncIndividualStagesPacket(individualData.getUnlockedStages(player.getUUID())),
+                    SyncIndividualStagesPacket.of(individualData, player.getUUID()),
                     player);
         }
         individualData.setDirty();

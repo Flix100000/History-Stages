@@ -1,12 +1,21 @@
 package net.bananemdnsa.historystages.gametest;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
+import com.google.gson.Gson;
 import io.netty.buffer.Unpooled;
 
 import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.HistoryStages;
+import net.bananemdnsa.historystages.data.ItemEntry;
+import net.bananemdnsa.historystages.data.StageEntry;
+import net.bananemdnsa.historystages.network.clientbound.EditorSyncPacket;
+import net.bananemdnsa.historystages.network.clientbound.SyncStageDefinitionsPacket;
+import net.bananemdnsa.historystages.network.clientbound.SyncIndividualStagesPacket;
 import net.bananemdnsa.historystages.network.clientbound.SyncStagesPacket;
 import net.bananemdnsa.historystages.network.clientbound.SyncVisualConfigPacket;
 import net.minecraft.gametest.framework.GameTest;
@@ -71,6 +80,40 @@ public final class PacketTests {
     }
 
     @GameTest(template = "empty")
+    public static void unlockTimesSurviveBothStageCodecs(GameTestHelper helper) {
+        SyncStagesPacket global = new SyncStagesPacket(
+                List.of("gametest:a", "gametest:b"), Map.of("gametest:a", 42L, "gametest:b", 7L));
+        FriendlyByteBuf buffer = new FriendlyByteBuf(Unpooled.buffer());
+        SyncStagesPacket.encode(global, buffer);
+        SyncStagesPacket globalBack = SyncStagesPacket.decode(buffer);
+
+        if (!global.unlockTimes().equals(globalBack.unlockTimes()) || buffer.readableBytes() != 0) {
+            helper.fail("global unlock times did not survive the codec"
+                    + "\n  sent:     " + global.unlockTimes()
+                    + "\n  received: " + globalBack.unlockTimes()
+                    + "\n  unread bytes: " + buffer.readableBytes());
+            return;
+        }
+
+        SyncIndividualStagesPacket individual = new SyncIndividualStagesPacket(
+                Set.of("gametest:c"), Map.of("gametest:c", 123456789L));
+        FriendlyByteBuf buffer2 = new FriendlyByteBuf(Unpooled.buffer());
+        SyncIndividualStagesPacket.encode(individual, buffer2);
+        SyncIndividualStagesPacket individualBack = SyncIndividualStagesPacket.decode(buffer2);
+
+        if (!individual.unlockTimes().equals(individualBack.unlockTimes())
+                || !individual.unlockedStages().equals(individualBack.unlockedStages())
+                || buffer2.readableBytes() != 0) {
+            helper.fail("the individual packet did not survive its codec"
+                    + "\n  sent:     " + individual
+                    + "\n  received: " + individualBack
+                    + "\n  unread bytes: " + buffer2.readableBytes());
+            return;
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty")
     public static void syncVisualConfigCarriesTheEditedValue(GameTestHelper helper) {
         // The visual settings were local-only until they got a packet, so the thing worth proving
         // is that one actually leaves the server: a changed value, under its dotted toml path, in
@@ -96,6 +139,120 @@ public final class PacketTests {
         } finally {
             Config.VISUAL.showLockIcons.set(original);
         }
+    }
+
+    /** A stage set of {@code stages} stages holding {@code itemsEach} items apiece. */
+    private static Map<String, StageEntry> stageSet(int stages, int itemsEach) {
+        Map<String, StageEntry> map = new LinkedHashMap<>();
+        for (int s = 0; s < stages; s++) {
+            StageEntry stage = new StageEntry();
+            stage.setDisplayName("Gametest Stage " + s);
+            List<ItemEntry> items = new ArrayList<>();
+            for (int i = 0; i < itemsEach; i++) {
+                items.add(new ItemEntry("gametest:item_" + s + "_" + i));
+            }
+            stage.setItemEntries(items);
+            map.put("gametest:stage_" + s, stage);
+        }
+        return map;
+    }
+
+    private static SyncStageDefinitionsPacket definitionsOf(Map<String, StageEntry> stages) {
+        return new SyncStageDefinitionsPacket(stages, Map.of(),
+                Map.of("gametest:stage_0", "early/ores"), Map.of(),
+                Set.of("early", "early/ores"), Set.of(),
+                "{\"global\":{}}", "{\"descriptions\":{}}", true, false);
+    }
+
+    @GameTest(template = "empty")
+    public static void stageDefinitionsSurviveTheirCodec(GameTestHelper helper) {
+        SyncStageDefinitionsPacket original = definitionsOf(stageSet(3, 4));
+
+        FriendlyByteBuf buffer = new FriendlyByteBuf(Unpooled.buffer());
+        SyncStageDefinitionsPacket.encode(original, buffer);
+        SyncStageDefinitionsPacket restored = SyncStageDefinitionsPacket.decode(buffer);
+
+        if (!original.stages().keySet().equals(restored.stages().keySet())) {
+            helper.fail("the stage set did not survive its codec"
+                    + "\n  sent:     " + original.stages().keySet()
+                    + "\n  received: " + restored.stages().keySet());
+            return;
+        }
+        // The fields after the stage maps are the ones a misread length prefix eats first, so they
+        // are worth naming individually rather than trusting the keys above.
+        if (!original.stagePaths().equals(restored.stagePaths())
+                || !original.folders().equals(restored.folders())) {
+            helper.fail("the folder tree did not survive: paths " + restored.stagePaths()
+                    + ", folders " + restored.folders());
+            return;
+        }
+        if (!original.graphLayout().equals(restored.graphLayout())
+                || !original.graphStages().equals(restored.graphStages())
+                || restored.graphGlobalFrozen() != original.graphGlobalFrozen()
+                || restored.graphIndividualFrozen() != original.graphIndividualFrozen()) {
+            helper.fail("the graph settings did not survive: layout " + restored.graphLayout()
+                    + ", stages " + restored.graphStages()
+                    + ", frozen " + restored.graphGlobalFrozen() + "/" + restored.graphIndividualFrozen());
+            return;
+        }
+        if (buffer.readableBytes() != 0) {
+            helper.fail("the decoder left " + buffer.readableBytes()
+                    + " bytes unread, so it reads less than the encoder writes");
+            return;
+        }
+        helper.succeed();
+    }
+
+    /**
+     * The bug this whole compression round exists for: a pack whose stage JSON went past the old
+     * quarter-million character cap could not log its players in at all.
+     */
+    @GameTest(template = "empty")
+    public static void aStageSetPastTheOldStringCapStillEncodes(GameTestHelper helper) {
+        Map<String, StageEntry> stages = stageSet(60, 250);
+
+        int rawChars = new Gson().toJson(stages).length();
+        if (rawChars <= 262144) {
+            helper.fail("the fixture is only " + rawChars + " characters, which the old cap "
+                    + "would have accepted - it proves nothing");
+            return;
+        }
+
+        FriendlyByteBuf buffer = new FriendlyByteBuf(Unpooled.buffer());
+        SyncStageDefinitionsPacket.encode(definitionsOf(stages), buffer);
+        SyncStageDefinitionsPacket restored = SyncStageDefinitionsPacket.decode(buffer);
+
+        if (restored.stages().size() != stages.size()) {
+            helper.fail("sent " + stages.size() + " stages, got back " + restored.stages().size());
+            return;
+        }
+        StageEntry first = restored.stages().get("gametest:stage_0");
+        if (first == null || first.getItemEntries().size() != 250) {
+            helper.fail("the first stage came back with "
+                    + (first == null ? "nothing" : first.getItemEntries().size() + " items"));
+            return;
+        }
+        helper.succeed();
+    }
+
+    /** Same map, second door: opening the editor on that pack has to work too. */
+    @GameTest(template = "empty")
+    public static void aStageSetPastTheOldStringCapReachesTheEditor(GameTestHelper helper) {
+        Map<String, StageEntry> stages = stageSet(60, 250);
+
+        FriendlyByteBuf buffer = new FriendlyByteBuf(Unpooled.buffer());
+        EditorSyncPacket.encode(new EditorSyncPacket(stages), buffer);
+        EditorSyncPacket restored = EditorSyncPacket.decode(buffer);
+
+        if (restored.stages().size() != stages.size()) {
+            helper.fail("sent " + stages.size() + " stages, got back " + restored.stages().size());
+            return;
+        }
+        if (buffer.readableBytes() != 0) {
+            helper.fail("the decoder left " + buffer.readableBytes() + " bytes unread");
+            return;
+        }
+        helper.succeed();
     }
 
     @GameTest(template = "empty")

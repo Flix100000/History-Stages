@@ -212,6 +212,38 @@ class ScrollTooltipLayoutTest {
     }
 
     @Test
+    void orGroupWithAMetEntryVanishesWhenFulfilledAreHidden() {
+        assertEquals(List.of(), ScrollTooltipLayout.visibleGroupEntries(
+                true, List.of(true, false, false), b -> b, true));
+    }
+
+    @Test
+    void andGroupOnlyDropsItsMetEntries() {
+        assertEquals(List.of(false, false), ScrollTooltipLayout.visibleGroupEntries(
+                false, List.of(true, false, false), b -> b, true));
+    }
+
+    @Test
+    void openOrGroupKeepsEveryEntry() {
+        assertEquals(List.of(false, false), ScrollTooltipLayout.visibleGroupEntries(
+                true, List.of(false, false), b -> b, true));
+    }
+
+    @Test
+    void nothingIsHiddenWhenTheSettingIsOff() {
+        assertEquals(List.of(true, false), ScrollTooltipLayout.visibleGroupEntries(
+                true, List.of(true, false), b -> b, false));
+    }
+
+    @Test
+    void existingConfigWithoutGroupHeadingGetsItFromDefaults() {
+        List<ScrollTooltipLine> parsed = ScrollTooltipLayout.parse(List.of(
+                "dep.separator|true|false|red|~ %logic% ~"));
+        assertTrue(find(parsed, "dep.group_header").enabled());
+        assertEquals("~ %logic% ~", find(parsed, "dep.separator").text());
+    }
+
+    @Test
     void fillHandlesNullAndEmpty() {
         assertEquals("", ScrollTooltipLayout.fill(null, Map.of()));
         assertEquals("plain", ScrollTooltipLayout.fill("plain", Map.of()));

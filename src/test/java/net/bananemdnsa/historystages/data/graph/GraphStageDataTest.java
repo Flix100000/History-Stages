@@ -179,4 +179,57 @@ class GraphStageDataTest {
 
         assertFalse(entry.isEmpty());
     }
+
+    @Test
+    void aBackgroundBlockSurvivesTheFileAndTheWire() {
+        GraphStageData.Snapshot snap = GraphStageData.fromJson("""
+                { "global": { "eisen": { "background": {
+                    "mode": "TEXTURE", "texture": "minecraft:textures/block/iron_block.png", "color": "#1A1410"
+                } } }, "individual": {} }
+                """);
+
+        GraphStageData.Entry reread = GraphStageData.fromJson(GraphStageData.toJson(snap)).global().get("eisen");
+        assertEquals("TEXTURE", reread.background.mode);
+        assertEquals("minecraft:textures/block/iron_block.png", reread.background.texture);
+        assertEquals("#1A1410", reread.background.color);
+
+        GraphStageData.Entry wired = GraphStageData.entryFromJson(GraphStageData.entryToJson(reread));
+        assertEquals("#1A1410", wired.background.color);
+    }
+
+    @Test
+    void anEntryWithOnlyABackgroundIsKept() {
+        GraphStageData.Entry source = new GraphStageData.Entry();
+        source.background = new CanvasBackgroundStyle();
+        source.background.mode = "SOLID";
+
+        GraphStageData.Snapshot after = GraphStageData.Snapshot.empty().withStyle("a", true, source);
+
+        assertTrue(after.individual().containsKey("a"));
+        assertEquals("SOLID", after.individual().get("a").background.mode);
+        assertTrue(after.individual().get("a").hasStyles());
+    }
+
+    @Test
+    void anEmptyBackgroundIsNotWrittenBack() {
+        GraphStageData.Snapshot start = GraphStageData.fromJson(
+                "{ \"global\": { \"a\": { \"description\": \"x\", \"background\": { \"mode\": \"GRID\" } } } }");
+        GraphStageData.Entry cleared = new GraphStageData.Entry();
+        cleared.background = new CanvasBackgroundStyle();
+
+        GraphStageData.Snapshot after = start.withStyle("a", false, cleared);
+
+        assertNull(after.global().get("a").background);
+        assertEquals("x", after.description("a", false));
+    }
+
+    @Test
+    void changingTheDescriptionKeepsTheBackground() {
+        GraphStageData.Snapshot start = GraphStageData.fromJson(
+                "{ \"global\": { \"a\": { \"background\": { \"mode\": \"GRID\" } } } }");
+
+        GraphStageData.Snapshot after = start.withDescription("a", false, "text");
+
+        assertEquals("GRID", after.global().get("a").background.mode);
+    }
 }

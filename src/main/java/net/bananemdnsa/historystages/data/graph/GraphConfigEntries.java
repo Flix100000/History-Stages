@@ -23,7 +23,7 @@ public final class GraphConfigEntries {
     public static final String STYLE = "style";
 
     /** Colour keys. String-typed, so nothing in the spec distinguishes them from text. */
-    private static final Set<String> COLOR_PATHS = Set.of("edges.colorMet", "edges.colorOpen");
+    private static final Set<String> COLOR_PATHS = Set.of("edges.colorMet", "edges.colorOpen", "canvas.backgroundColor");
     private static final Set<String> COLOR_LEAVES = Set.of("border", "fill", "labelColor");
 
     /** Keys holding a texture path, likewise indistinguishable from plain text in the spec. */

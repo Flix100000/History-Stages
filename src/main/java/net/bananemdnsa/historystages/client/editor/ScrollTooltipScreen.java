@@ -107,6 +107,7 @@ public class ScrollTooltipScreen extends Screen {
             Map.entry("info2", "tooltip.historystages.research_scroll.info2"),
             Map.entry("tier", "tooltip.historystages.research_scroll.tier.min"),
             Map.entry("dep.header", "tooltip.historystages.scroll.dependencies"),
+            Map.entry("dep.group_header", "tooltip.historystages.dep.group"),
             Map.entry("dep.item", "tooltip.historystages.dep.item"),
             Map.entry("dep.stage", "tooltip.historystages.dep.stage"),
             Map.entry("dep.individual", "tooltip.historystages.dep.individual"),
@@ -121,6 +122,7 @@ public class ScrollTooltipScreen extends Screen {
             Map.entry("info2", "%stage%"),
             Map.entry("owner", "%owner%, %stage%"),
             Map.entry("tier", "%tier%, %tier_num%, %stage%"),
+            Map.entry("dep.group_header", "%logic%"),
             Map.entry("dep.item", "%icon%, %name%, %current%, %required%"),
             Map.entry("dep.stage", "%icon%, %name%"),
             Map.entry("dep.individual", "%icon%, %name%, %mode%"),
@@ -195,7 +197,7 @@ public class ScrollTooltipScreen extends Screen {
         this.parent = parent;
         this.entry = entry;
         // parse() both fills in any id missing from the saved value and drops anything unknown,
-        // so this is already the complete, canonically-ordered 18-line layout the row list
+        // so this is already the complete, canonically-ordered layout the row list
         // assumes below — a plain split-and-decode would need the same fallback rebuilt by hand.
         this.lines = new ArrayList<>(ScrollTooltipLayout.parse(List.of(entry.value.split(";", -1))));
     }
@@ -300,7 +302,8 @@ public class ScrollTooltipScreen extends Screen {
             // The four dependency entry templates deliberately have no colour swatch: their
             // colour comes from dep.color_fulfilled / dep.color_open, and a second colour
             // source for the same line would be a bug (two competing answers), not a feature.
-            boolean styleAllowed = "dep.header".equals(id) || "dep.separator".equals(id);
+            boolean styleAllowed = "dep.header".equals(id) || "dep.group_header".equals(id)
+                    || "dep.separator".equals(id);
             return new RowSpec(false, true, false, true, styleAllowed);
         }
         if (isColorOnlyOption(id)) return new RowSpec(false, false, false, false, true);

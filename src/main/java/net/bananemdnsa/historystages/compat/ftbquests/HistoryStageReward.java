@@ -206,7 +206,7 @@ public class HistoryStageReward extends Reward {
 
         // Sync individual stages to this player only
         PacketHandler.sendIndividualStagesToPlayer(
-                new SyncIndividualStagesPacket(data.getUnlockedStages(player.getUUID())),
+                SyncIndividualStagesPacket.of(data, player.getUUID()),
                 player
         );
         // No recipe reload needed for individual stages
