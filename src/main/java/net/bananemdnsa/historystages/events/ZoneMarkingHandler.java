@@ -15,6 +15,7 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.eventbus.api.Event;
+import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 import net.minecraftforge.event.entity.player.PlayerEvent;
@@ -30,6 +31,12 @@ import org.slf4j.Logger;
  *
  * <p>Three conditions, all of them: permission level 2 (the same bar the editor sits behind), the
  * configured item in hand, and sneaking.
+ *
+ * <p>Ahead of every lock, and deaf to what they decided. A zone refuses clicks by default, a
+ * locked block refuses its own use, and either one used to turn the marking click away before it
+ * got here — so marking failed exactly where an author is most likely to stand: inside the zone
+ * they drew last, on stone somebody gated. Marking only writes down a coordinate, and it takes the
+ * click for itself, so the block is neither used nor broken and the lock gives nothing away.
  */
 @EventBusSubscriber(modid = HistoryStages.MOD_ID)
 public final class ZoneMarkingHandler {
@@ -42,7 +49,7 @@ public final class ZoneMarkingHandler {
 
     private ZoneMarkingHandler() {}
 
-    @SubscribeEvent
+    @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onLeftClickBlock(PlayerInteractEvent.LeftClickBlock event) {
         if (!isMarking(event.getEntity(), event.getItemStack())) return;
 
@@ -52,10 +59,8 @@ public final class ZoneMarkingHandler {
         event.setCanceled(true);
     }
 
-    @SubscribeEvent
+    @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
-        // Another handler already refused this interaction; nothing to add.
-        if (event.getUseBlock() == Event.Result.DENY) return;
         if (!isMarking(event.getEntity(), event.getItemStack())) return;
 
         mark((ServerPlayer) event.getEntity(), 2, event.getPos());
@@ -86,7 +91,7 @@ public final class ZoneMarkingHandler {
      * client-only, so it would need a packet of its own to reach the store, for a second way to do
      * something there is already a way to do.
      */
-    @SubscribeEvent
+    @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onRightClickItem(PlayerInteractEvent.RightClickItem event) {
         if (!holdsMarker(event.getEntity(), event.getItemStack())) return;
         // Sneaking is the marking gesture and never the discarding one. Sharing it made the

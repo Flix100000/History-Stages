@@ -30,11 +30,18 @@ public final class ZoneMapRenderer {
     private static final int HOT_LINE = 0xFFFFCC00;
     private static final int HOT_FILL = 0x38FFCC00;
 
-    /** Vanilla's own map markers, so the arrow on this map is the arrow players already know. */
-    private static final ResourceLocation MARKER_ICON =
-            new ResourceLocation("textures/map/decorations/player.png");
-    private static final ResourceLocation MARKER_OFF_MAP =
-            new ResourceLocation("textures/map/decorations/player_off_map.png");
+    /**
+     * Vanilla's own map markers, so the arrow on this map is the arrow players already know.
+     *
+     * <p>One sheet here, sixteen eight-pixel icons to a row, picked by the marker type's position in
+     * its enum — the loose per-icon files arrived in 1.20.5, and asking for one of those draws the
+     * missing-texture square instead.
+     */
+    private static final ResourceLocation MARKER_SHEET =
+            new ResourceLocation("textures/map/map_icons.png");
+    private static final int MARKER_SHEET_SIZE = 128;
+    private static final int MARKER_ICON_U = 0;
+    private static final int MARKER_OFF_MAP_U = 6 * 8;
 
     /** The icon is eight pixels; a little larger reads better against terrain. */
     private static final float MARKER_SCALE = 1.5f;
@@ -209,7 +216,8 @@ public final class ZoneMapRenderer {
         g.pose().translate(cx, cz, 0);
         g.pose().mulPose(Axis.ZP.rotationDegrees(yawDegrees + 180));
         g.pose().scale(MARKER_SCALE, MARKER_SCALE, 1);
-        g.blit(clamped ? MARKER_OFF_MAP : MARKER_ICON, -4, -4, 8, 8, 0, 0, 8, 8, 8, 8);
+        g.blit(MARKER_SHEET, -4, -4, 8, 8, clamped ? MARKER_OFF_MAP_U : MARKER_ICON_U, 0, 8, 8,
+                MARKER_SHEET_SIZE, MARKER_SHEET_SIZE);
         g.pose().popPose();
 
         return clamped;
