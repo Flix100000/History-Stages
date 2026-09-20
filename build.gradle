@@ -63,8 +63,12 @@ dependencies {
 	modCompileOnly "curse.maven:ftb-quests-fabric-438496:7878288"
 	//Lootr
 	modImplementation "curse.maven:lootr-fabric-615106:8041235"
-	// Replaced by the mod's own TOML config layer in R3, see the port plan.
-	modImplementation "curse.maven:cloth-config-348521:5729125"
+
+	// NightConfig is what NeoForge builds its config specs on, and five files in this tree already
+	// read it directly. Using the same library is what keeps the TOML files byte-compatible
+	// between the two loaders. Fabric ships nothing like it, so it travels inside the jar.
+	implementation include("com.electronwill.night-config:core:3.6.7")
+	implementation include("com.electronwill.night-config:toml:3.6.7")
 
 	// ---- Unit tests ----
 	// Loader-neutral tests, shared with neoforge-1.21.X. They must never import net.minecraft:
@@ -74,6 +78,9 @@ dependencies {
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	// The tests work with Gson directly and do not get it from the Minecraft runtime classpath.
 	testImplementation 'com.google.code.gson:gson:2.10.1'
+	// The config layer hands back a commons-lang3 Pair, which reaches the main source set through
+	// Minecraft but not the test one.
+	testImplementation 'org.apache.commons:commons-lang3:3.14.0'
 }
 
 tasks.named('test', Test) {

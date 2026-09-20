@@ -3,7 +3,7 @@ package net.bananemdnsa.historystages.util.lock;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.common.ModConfigSpec;
+import net.bananemdnsa.historystages.platform.ModConfigSpec;
 
 /**
  * Wraps the recurring "check global stage lock, then individual stage lock" pattern that

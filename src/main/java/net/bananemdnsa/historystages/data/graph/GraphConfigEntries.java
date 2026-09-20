@@ -2,7 +2,7 @@ package net.bananemdnsa.historystages.data.graph;
 
 import com.electronwill.nightconfig.core.UnmodifiableConfig;
 import net.bananemdnsa.historystages.GraphConfig;
-import net.neoforged.neoforge.common.ModConfigSpec;
+import net.bananemdnsa.historystages.platform.ModConfigSpec;
 
 import java.util.ArrayList;
 import java.util.Arrays;

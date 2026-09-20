@@ -1,7 +1,7 @@
 package net.bananemdnsa.historystages;
 
 
-import net.neoforged.neoforge.common.ModConfigSpec;
+import net.bananemdnsa.historystages.platform.ModConfigSpec;
 import org.apache.commons.lang3.tuple.Pair;
 
 /**

@@ -1,7 +1,7 @@
 package net.bananemdnsa.historystages.data.config;
 
 import com.electronwill.nightconfig.core.UnmodifiableConfig;
-import net.neoforged.neoforge.common.ModConfigSpec;
+import net.bananemdnsa.historystages.platform.ModConfigSpec;
 
 import java.util.ArrayList;
 import java.util.Arrays;

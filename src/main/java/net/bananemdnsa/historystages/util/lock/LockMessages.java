@@ -3,7 +3,7 @@ package net.bananemdnsa.historystages.util.lock;
 import net.bananemdnsa.historystages.Config;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.neoforged.neoforge.common.ModConfigSpec;
+import net.bananemdnsa.historystages.platform.ModConfigSpec;
 
 /**
  * Resolves a lock-message Component from a config string override with translation-key fallback.
