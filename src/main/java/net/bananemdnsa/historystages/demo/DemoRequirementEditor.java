@@ -1,13 +1,10 @@
 package net.bananemdnsa.historystages.demo;
 
-import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.api.editor.RegisterRequirementEditorsEvent;
 import net.bananemdnsa.historystages.api.editor.RequirementEditor;
 import net.bananemdnsa.historystages.api.editor.RegisterCustomFieldScreensEvent;
 import net.bananemdnsa.historystages.api.editor.widget.FormattedTextScreen;
 import net.minecraft.network.chat.Component;
-import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
-import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 
@@ -19,14 +16,11 @@ import net.fabricmc.api.Environment;
  * duplicate and remove, and saving into the stage file all come from having said which ids exist
  * and that entries carry an amount.
  */
-@EventBusSubscriber(modid = HistoryStages.MOD_ID,
-        bus = EventBusSubscriber.Bus.MOD)
 @Environment(EnvType.CLIENT)
 public final class DemoRequirementEditor {
 
     private DemoRequirementEditor() {}
 
-    @SubscribeEvent
     public static void onRegisterRequirementEditors(RegisterRequirementEditorsEvent event) {
         if (!DemoAddonCategory.enabled()) return;
 
@@ -44,7 +38,6 @@ public final class DemoRequirementEditor {
      * because what is being demonstrated is the wiring — a field the host cannot render, edited by
      * a screen the addon chose, with the value coming back as a string.
      */
-    @SubscribeEvent
     public static void onRegisterCustomFieldScreens(RegisterCustomFieldScreensEvent event) {
         if (!DemoAddonCategory.enabled()) return;
 

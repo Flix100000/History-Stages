@@ -3,7 +3,6 @@ package net.bananemdnsa.historystages.gametest;
 import java.util.ArrayList;
 import java.util.List;
 
-import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.block.entity.ResearchPedestalBlockEntity;
 import net.bananemdnsa.historystages.data.DependencyGroup;
 import net.bananemdnsa.historystages.data.dependency.DependencyItem;
@@ -12,6 +11,7 @@ import net.bananemdnsa.historystages.init.ModBlocks;
 import net.bananemdnsa.historystages.init.ModItems;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
+import net.fabricmc.fabric.api.gametest.v1.FabricGameTest;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
@@ -19,8 +19,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.neoforged.neoforge.gametest.GameTestHolder;
-import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
 /**
  * What an item-tag requirement does with the things thrown into a pedestal.
@@ -34,15 +32,13 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
  * <p>{@code minecraft:planks} rather than one of the common ingot tags, because it is vanilla and
  * has many members without anything having to load a datapack for it.
  */
-@GameTestHolder(HistoryStages.MOD_ID)
-@PrefixGameTestTemplate(false)
-public final class ItemTagDepositTests {
+public class ItemTagDepositTests {
 
     private static final String PLANKS = "#minecraft:planks";
 
-    private ItemTagDepositTests() {}
+    public ItemTagDepositTests() {}
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void anOpenTagSettlesOnTheFirstItemHandedIn(GameTestHelper helper) {
         try {
             GameTestStages.global("tagsettle", tagGroup(3));
@@ -67,7 +63,7 @@ public final class ItemTagDepositTests {
         }
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void aSettledTagRefusesAnotherMemberOfTheSameTag(GameTestHelper helper) {
         try {
             GameTestStages.global("tagrefuse", tagGroup(3));
@@ -95,7 +91,7 @@ public final class ItemTagDepositTests {
         }
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void aSettledTagKeepsTakingTheItemItChose(GameTestHelper helper) {
         try {
             GameTestStages.global("tagcontinue", tagGroup(3));
@@ -124,7 +120,7 @@ public final class ItemTagDepositTests {
      * spruce, birch or anything else. Handing the tag the oak would cost the player a choice for
      * nothing.
      */
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void aNamedItemIsServedBeforeAnOpenTag(GameTestHelper helper) {
         try {
             DependencyGroup group = tagGroup(1);
@@ -158,7 +154,7 @@ public final class ItemTagDepositTests {
      * all. Blind to tags, it never lets {@code tryProcessDeposit} run, and a group asking for
      * nothing but a tag can never be completed however long the player waits.
      */
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void theSlotWantsAnItemForATagOnlyGroup(GameTestHelper helper) {
         try {
             GameTestStages.global("taggate", tagGroup(2));

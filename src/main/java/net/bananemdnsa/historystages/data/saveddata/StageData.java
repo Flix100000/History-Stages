@@ -108,7 +108,7 @@ public class StageData extends SavedData {
         if (level instanceof ServerLevel serverLevel) {
             StageData data = serverLevel.getServer().overworld().getDataStorage()
                     .computeIfAbsent(
-                            new SavedData.Factory<>(StageData::new, StageData::load),
+                            new SavedData.Factory<>(StageData::new, StageData::load, null),
                             DATA_NAME
                     );
 

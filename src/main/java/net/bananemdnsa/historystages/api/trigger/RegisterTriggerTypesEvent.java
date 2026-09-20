@@ -5,7 +5,6 @@ import net.bananemdnsa.historystages.data.auto.TriggerTypes;
 import net.bananemdnsa.historystages.api.trigger.TriggerCondition;
 import net.bananemdnsa.historystages.api.stage.StageScope;
 import net.bananemdnsa.historystages.platform.bus.Event;
-import net.bananemdnsa.historystages.platform.bus.IModBusEvent;
 
 /**
  * Fired once so another mod can add its own auto-trigger type.
@@ -22,7 +21,7 @@ import net.bananemdnsa.historystages.platform.bus.IModBusEvent;
  * }
  * }</pre>
  */
-public class RegisterTriggerTypesEvent extends Event implements IModBusEvent {
+public class RegisterTriggerTypesEvent extends Event {
 
     public void register(String type, Class<? extends TriggerCondition> conditionClass) {
         TriggerTypes.register(type, conditionClass);

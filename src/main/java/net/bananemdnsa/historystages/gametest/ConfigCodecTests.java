@@ -2,15 +2,13 @@ package net.bananemdnsa.historystages.gametest;
 
 import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.GraphConfig;
-import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.data.config.ConfigSpecCodec;
 import net.bananemdnsa.historystages.data.config.LocalConfigSnapshot;
 import net.bananemdnsa.historystages.data.tooltip.ScrollTooltipLayout;
 import net.bananemdnsa.historystages.data.tooltip.ScrollTooltipLine;
+import net.fabricmc.fabric.api.gametest.v1.FabricGameTest;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.neoforged.neoforge.gametest.GameTestHolder;
-import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
 import java.util.HashMap;
 import java.util.List;
@@ -23,13 +21,11 @@ import java.util.Map;
  * rules; the common spec covers lists, because graph.toml has none and the list handling could
  * therefore break without a single test noticing.
  */
-@GameTestHolder(HistoryStages.MOD_ID)
-@PrefixGameTestTemplate(false)
-public final class ConfigCodecTests {
+public class ConfigCodecTests {
 
-    private ConfigCodecTests() {}
+    public ConfigCodecTests() {}
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void collectThenApplyIsIdentity(GameTestHelper helper) {
         Map<String, String> before = ConfigSpecCodec.collect(GraphConfig.GRAPH_SPEC);
         ConfigSpecCodec.apply(GraphConfig.GRAPH_SPEC, before, true, ConfigSpecCodec.NO_EXTRA_CHECK);
@@ -46,7 +42,7 @@ public final class ConfigCodecTests {
         helper.succeed();
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void unknownPathsAndJunkAreSkipped(GameTestHelper helper) {
         // A boolean key cannot stand in for "malformed value" here: Boolean.parseBoolean never
         // throws, so any junk text for a boolean path just becomes false and sails through both
@@ -85,7 +81,7 @@ public final class ConfigCodecTests {
 
     private static final String BOOSTERS = "research.researchBoosters";
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void listsRoundTripThroughTheWireString(GameTestHelper helper) {
         List<? extends String> original = Config.GAMEPLAY.researchBoosters.get();
         try {
@@ -120,7 +116,7 @@ public final class ConfigCodecTests {
         }
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void emptyStringIsAnEmptyList(GameTestHelper helper) {
         List<? extends String> original = Config.GAMEPLAY.researchBoosters.get();
         try {
@@ -150,7 +146,7 @@ public final class ConfigCodecTests {
         }
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void everyCommonListCollectsWithoutBrackets(GameTestHelper helper) {
         // String.valueOf on a List yields "[a, b]". That parses back as a single entry named
         // "[a" and would have gone out to every client on login.
@@ -165,7 +161,7 @@ public final class ConfigCodecTests {
         helper.succeed();
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void leavingAServerBringsBackTheOwnValues(GameTestHelper helper) {
         boolean originalIcons = Config.VISUAL.showLockIcons.get();
         int originalInterval = Config.GAMEPLAY.structureCheckInterval.get();
@@ -218,7 +214,7 @@ public final class ConfigCodecTests {
         }
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void restoringAlsoRebuildsWhatTheValuesFeed(GameTestHelper helper) {
         // Three settings are lists that get parsed into an in-memory structure. Writing the values
         // back is not enough on its own — without a rebuild the player carries the server's parsed

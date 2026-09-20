@@ -376,6 +376,24 @@ public final class ModConfigSpec {
                     declaring::isInstance, declaring), EnumValue::new);
         }
 
+        /**
+         * A value with a check of its own, for keys where being the right type is not enough —
+         * a scroll completion mode has to be one of three words, not any string at all.
+         */
+        public <T> ConfigValue<T> define(String key, T defaultValue, Predicate<Object> validator) {
+            return add(key, new ValueSpec(defaultValue, takeComment(), null, validator, null),
+                    ConfigValue::new);
+        }
+
+        /**
+         * Same as {@link #defineList}, but an empty list is a legitimate value rather than a
+         * missing one. Most of these default to empty on purpose: no boosters, no extra spawns.
+         */
+        public <T> ConfigValue<List<? extends T>> defineListAllowEmpty(
+                String key, List<? extends T> defaultValue, Predicate<Object> elementValidator) {
+            return defineList(key, defaultValue, elementValidator);
+        }
+
         public <T> ConfigValue<List<? extends T>> defineList(String key, List<? extends T> defaultValue,
                                                              Predicate<Object> elementValidator) {
             Predicate<Object> listCheck = o -> {

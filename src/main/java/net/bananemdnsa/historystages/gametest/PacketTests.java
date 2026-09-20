@@ -10,7 +10,6 @@ import com.google.gson.Gson;
 import io.netty.buffer.Unpooled;
 
 import net.bananemdnsa.historystages.Config;
-import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.data.ItemEntry;
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.network.clientbound.EditorSyncPacket;
@@ -18,11 +17,10 @@ import net.bananemdnsa.historystages.network.clientbound.SyncStageDefinitionsPac
 import net.bananemdnsa.historystages.network.clientbound.SyncIndividualStagesPacket;
 import net.bananemdnsa.historystages.network.clientbound.SyncStagesPacket;
 import net.bananemdnsa.historystages.network.clientbound.SyncVisualConfigPacket;
+import net.fabricmc.fabric.api.gametest.v1.FabricGameTest;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.FriendlyByteBuf;
-import net.neoforged.neoforge.gametest.GameTestHolder;
-import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
 /**
  * Packets survive the wire.
@@ -31,13 +29,11 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
  * cannot be tested here — on a gametest server there is no client — but a codec that drops a field
  * hands the client a perfectly valid packet with the wrong contents, and nothing anywhere throws.
  */
-@GameTestHolder(HistoryStages.MOD_ID)
-@PrefixGameTestTemplate(false)
-public final class PacketTests {
+public class PacketTests {
 
-    private PacketTests() {}
+    public PacketTests() {}
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void syncStagesSurvivesItsCodec(GameTestHelper helper) {
         SyncStagesPacket original = new SyncStagesPacket(
                 List.of("gametest:one", "gametest:two", "gametest:three"));
@@ -62,7 +58,7 @@ public final class PacketTests {
         helper.succeed();
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void anEmptySyncStagesSurvivesItsCodec(GameTestHelper helper) {
         // The empty case on its own: a codec that forgets a length prefix passes the case above and
         // fails here, and "nothing unlocked yet" is what every fresh world starts as.
@@ -79,7 +75,7 @@ public final class PacketTests {
         helper.succeed();
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void unlockTimesSurviveBothStageCodecs(GameTestHelper helper) {
         SyncStagesPacket global = new SyncStagesPacket(
                 List.of("gametest:a", "gametest:b"), Map.of("gametest:a", 42L, "gametest:b", 7L));
@@ -113,7 +109,7 @@ public final class PacketTests {
         helper.succeed();
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void syncVisualConfigCarriesTheEditedValue(GameTestHelper helper) {
         // The visual settings were local-only until they got a packet, so the thing worth proving
         // is that one actually leaves the server: a changed value, under its dotted toml path, in
@@ -164,7 +160,7 @@ public final class PacketTests {
                 "{\"global\":{}}", "{\"descriptions\":{}}", true, false);
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void stageDefinitionsSurviveTheirCodec(GameTestHelper helper) {
         SyncStageDefinitionsPacket original = definitionsOf(stageSet(3, 4));
 
@@ -207,7 +203,7 @@ public final class PacketTests {
      * The bug this whole compression round exists for: a pack whose stage JSON went past the old
      * quarter-million character cap could not log its players in at all.
      */
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void aStageSetPastTheOldStringCapStillEncodes(GameTestHelper helper) {
         Map<String, StageEntry> stages = stageSet(60, 250);
 
@@ -236,7 +232,7 @@ public final class PacketTests {
     }
 
     /** Same map, second door: opening the editor on that pack has to work too. */
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void aStageSetPastTheOldStringCapReachesTheEditor(GameTestHelper helper) {
         Map<String, StageEntry> stages = stageSet(60, 250);
 
@@ -255,7 +251,7 @@ public final class PacketTests {
         helper.succeed();
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void syncStagesKeepsItsOrder(GameTestHelper helper) {
         // Order matters to nothing in the mod today, and that is exactly why a codec could quietly
         // start reversing it. Cheaper to notice here than to wonder about a shuffled stage list.

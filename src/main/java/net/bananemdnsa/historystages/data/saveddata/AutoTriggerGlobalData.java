@@ -27,7 +27,7 @@ public class AutoTriggerGlobalData extends SavedData {
         if (level instanceof ServerLevel sl) {
             return sl.getServer().overworld().getDataStorage()
                     .computeIfAbsent(
-                            new SavedData.Factory<>(AutoTriggerGlobalData::new, AutoTriggerGlobalData::load),
+                            new SavedData.Factory<>(AutoTriggerGlobalData::new, AutoTriggerGlobalData::load, null),
                             DATA_NAME
                     );
         }

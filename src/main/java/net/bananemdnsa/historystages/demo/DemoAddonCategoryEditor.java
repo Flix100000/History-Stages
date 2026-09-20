@@ -1,6 +1,5 @@
 package net.bananemdnsa.historystages.demo;
 
-import net.bananemdnsa.historystages.HistoryStages;
 import java.util.Collection;
 import java.util.List;
 import java.util.function.Consumer;
@@ -18,8 +17,6 @@ import net.bananemdnsa.historystages.api.editor.TriggerEditor;
 import net.bananemdnsa.historystages.api.trigger.TriggerCondition;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
-import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
-import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 
@@ -33,14 +30,11 @@ import net.fabricmc.api.Environment;
  * and is what an addon that only wants a list should use — the trigger below is registered that
  * way, so both tiers stay visible in one file.
  */
-@EventBusSubscriber(modid = HistoryStages.MOD_ID,
-        bus = EventBusSubscriber.Bus.MOD)
 @Environment(EnvType.CLIENT)
 public final class DemoAddonCategoryEditor {
 
     private DemoAddonCategoryEditor() {}
 
-    @SubscribeEvent
     public static void onRegisterEditors(RegisterCategoryEditorsEvent event) {
         if (!DemoAddonCategory.enabled()) return;
 
@@ -65,7 +59,6 @@ public final class DemoAddonCategoryEditor {
         });
     }
 
-    @SubscribeEvent
     public static void onRegisterTriggerEditors(RegisterTriggerEditorsEvent event) {
         if (!DemoAddonCategory.enabled()) return;
 

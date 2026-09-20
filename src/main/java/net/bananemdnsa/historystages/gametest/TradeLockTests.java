@@ -9,7 +9,6 @@ import com.google.gson.JsonObject;
 import com.mojang.authlib.GameProfile;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 
-import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.data.ItemEntry;
 import net.bananemdnsa.historystages.data.TradeOfferEntry;
 import net.bananemdnsa.historystages.data.TradeProfessionEntry;
@@ -18,6 +17,7 @@ import net.bananemdnsa.historystages.data.saveddata.IndividualStageData;
 import net.bananemdnsa.historystages.data.saveddata.StageData;
 import net.bananemdnsa.historystages.util.lock.TradeLockHelper;
 import net.minecraft.core.component.DataComponents;
+import net.fabricmc.fabric.api.gametest.v1.FabricGameTest;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
@@ -37,8 +37,6 @@ import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.item.trading.ItemCost;
 import net.minecraft.world.item.trading.MerchantOffer;
 import net.minecraft.world.item.trading.MerchantOffers;
-import net.neoforged.neoforge.gametest.GameTestHolder;
-import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -58,11 +56,9 @@ import org.jetbrains.annotations.Nullable;
  * behind it. They matter because a mistyped target in {@code MerchantOffersMixin} would leave
  * every trade lock silently off with every other test in this file still green.
  */
-@GameTestHolder(HistoryStages.MOD_ID)
-@PrefixGameTestTemplate(false)
-public final class TradeLockTests {
+public class TradeLockTests {
 
-    private TradeLockTests() {}
+    public TradeLockTests() {}
 
     // ---------------------------------------------------------------------------------------
     // Helpers. Deliberately above the tests: GameTestCleanupGuardTest slices the file from one
@@ -202,7 +198,7 @@ public final class TradeLockTests {
     // ---------------------------------------------------------------------------------------
 
     /** The claim: a stage names one trade, and that trade is gone. */
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void aGatedOfferIsNotShown(GameTestHelper helper) {
         try {
             GameTestStages.global("trade_result", stage -> stage.setTradeOffers(
@@ -226,7 +222,7 @@ public final class TradeLockTests {
      * The control, and the whole reason for naming offers instead of items: the same goods from
      * another merchant are a different trade and must survive.
      */
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void theSameGoodsFromAnotherMerchantAreLeftAlone(GameTestHelper helper) {
         try {
             GameTestStages.global("trade_unrelated", stage -> stage.setTradeOffers(
@@ -248,7 +244,7 @@ public final class TradeLockTests {
     }
 
     /** A level is part of what names a trade, so the same recipe at another level survives. */
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void theSameTradeAtAnotherLevelIsLeftAlone(GameTestHelper helper) {
         try {
             GameTestStages.global("trade_level_scoped", stage -> stage.setTradeOffers(
@@ -285,7 +281,7 @@ public final class TradeLockTests {
      * villager trade — the table is pure vanilla, so nothing else in these tests would notice if
      * added trades were being skipped.
      */
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void aTradeAddedTheWayAModAddsItIsFoundAndGateable(GameTestHelper helper) {
         Int2ObjectMap<VillagerTrades.ItemListing[]> byLevel =
                 VillagerTrades.TRADES.get(VillagerProfession.LIBRARIAN);
@@ -342,7 +338,7 @@ public final class TradeLockTests {
     }
 
     /** A profession entry has to resolve the villager's profession to an id. */
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void aGatedProfessionHidesEverythingTheVillagerHas(GameTestHelper helper) {
         try {
             GameTestStages.global("trade_profession", stage -> stage.setTradeProfessions(
@@ -368,7 +364,7 @@ public final class TradeLockTests {
      * <p>The whole reason the narrowing exists: gating level 4 outright would take every other
      * profession's experts with it, and this is the only way to say "librarians, from expert up".
      */
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void aProfessionNarrowedToLevelsSparesTheOthers(GameTestHelper helper) {
         try {
             GameTestStages.global("trade_profession_levels", stage ->
@@ -395,7 +391,7 @@ public final class TradeLockTests {
     }
 
     /** And must not catch a villager of another trade. */
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void anotherProfessionIsLeftAlone(GameTestHelper helper) {
         try {
             GameTestStages.global("trade_other_profession", stage -> stage.setTradeProfessions(
@@ -415,7 +411,7 @@ public final class TradeLockTests {
     }
 
     /** The level is the merchant's own, read off the villager rather than off the offer. */
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void aGatedLevelHidesEverythingTheVillagerHas(GameTestHelper helper) {
         try {
             GameTestStages.global("trade_level", stage ->
@@ -442,7 +438,7 @@ public final class TradeLockTests {
      * The eleventh item action, reaching an offer through an ordinary item entry — the half the
      * unit tests can only fake, because deciding it needs the item registry.
      */
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void theItemActionTradeReachesAnOffer(GameTestHelper helper) {
         try {
             GameTestStages.global("trade_item_action", stage -> stage.setItemEntries(
@@ -464,7 +460,7 @@ public final class TradeLockTests {
     }
 
     /** An item entry narrowed to something else must leave trading alone. */
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void anItemNarrowedToAnotherActionDoesNotBlockTrading(GameTestHelper helper) {
         try {
             GameTestStages.global("trade_item_action_other", stage -> stage.setItemEntries(
@@ -485,7 +481,7 @@ public final class TradeLockTests {
     }
 
     /** The criterion, which is the one part of an entry that needs a real stack to settle. */
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void aCriterionOnlyCatchesTheStackThatSatisfiesIt(GameTestHelper helper) {
         try {
             GameTestStages.global("trade_criterion", stage -> stage.setTradeOffers(
@@ -521,7 +517,7 @@ public final class TradeLockTests {
      * The reason the seam sits where the window opens rather than where the merchant draws its
      * offers: a player is standing there, so an individual stage has someone to answer for.
      */
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void anIndividualStageAnswersPerPlayer(GameTestHelper helper) {
         IndividualStageData data = IndividualStageData.get(helper.getLevel());
         String stageId = GameTestStages.PREFIX + "trade_individual";
@@ -555,7 +551,7 @@ public final class TradeLockTests {
      * The half that filtering at draw time could never do: unlocking gives the offer back to a
      * merchant that has long since chosen what it sells.
      */
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void unlockingGivesTheOfferBack(GameTestHelper helper) {
         StageData data = StageData.get(helper.getLevel());
         String stageId = GameTestStages.PREFIX + "trade_unlock";
@@ -590,7 +586,7 @@ public final class TradeLockTests {
      * The seam itself rather than the filter behind it: a real merchant opening a real screen
      * hands the player the short list.
      */
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void theSeamShortensTheListTheMerchantHandsOver(GameTestHelper helper) {
         try {
             GameTestStages.global("trade_seam_short", stage -> stage.setTradeOffers(
@@ -639,7 +635,7 @@ public final class TradeLockTests {
      * <p>It used to send nothing at all, which left the client sitting on the menu's own empty
      * list with no way to tell "none for you" from "not arrived yet".
      */
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void aMerchantWithNothingLeftStillSendsAList(GameTestHelper helper) {
         try {
             GameTestStages.global("trade_seam_empty", stage -> stage.setTradeOffers(

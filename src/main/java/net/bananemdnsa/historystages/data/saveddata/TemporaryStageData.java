@@ -57,7 +57,7 @@ public class TemporaryStageData extends SavedData {
         if (level instanceof ServerLevel sl) {
             return sl.getServer().overworld().getDataStorage()
                     .computeIfAbsent(
-                            new SavedData.Factory<>(TemporaryStageData::new, TemporaryStageData::load),
+                            new SavedData.Factory<>(TemporaryStageData::new, TemporaryStageData::load, null),
                             DATA_NAME
                     );
         }

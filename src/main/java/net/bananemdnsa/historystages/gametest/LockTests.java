@@ -3,7 +3,6 @@ package net.bananemdnsa.historystages.gametest;
 import java.util.ArrayList;
 import java.util.List;
 
-import net.bananemdnsa.historystages.HistoryStages;
 import com.google.gson.JsonObject;
 import net.bananemdnsa.historystages.data.ItemEntry;
 import net.bananemdnsa.historystages.data.lock.NamedLockEntry;
@@ -12,6 +11,7 @@ import net.bananemdnsa.historystages.api.stage.StageScope;
 import net.bananemdnsa.historystages.data.saveddata.IndividualStageData;
 import net.bananemdnsa.historystages.data.saveddata.StageData;
 import net.bananemdnsa.historystages.util.lock.StageLockHelper;
+import net.fabricmc.fabric.api.gametest.v1.FabricGameTest;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerPlayer;
@@ -20,8 +20,6 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.item.Items;
-import net.neoforged.neoforge.gametest.GameTestHolder;
-import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
 /**
  * The lock engine answering about a real item, for a real player.
@@ -37,15 +35,13 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
  * this test believed it. The built-ins now answer for themselves and both routes agree;
  * {@code CategoryLocksBuiltInTest} holds that.
  */
-@GameTestHolder(HistoryStages.MOD_ID)
-@PrefixGameTestTemplate(false)
-public final class LockTests {
+public class LockTests {
 
     private static final String LOCKED_ITEM = "minecraft:diamond_sword";
 
-    private LockTests() {}
+    public LockTests() {}
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void anItemInALockedStageIsLocked(GameTestHelper helper) {
         try {
             lockingStage("locked_item");
@@ -63,7 +59,7 @@ public final class LockTests {
         }
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void theSameItemIsFreeOnceTheStageIsUnlocked(GameTestHelper helper) {
         StageData data = StageData.get(helper.getLevel());
         String stageId = GameTestStages.PREFIX + "locked_item";
@@ -87,7 +83,7 @@ public final class LockTests {
         }
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void anItemNobodyLockedIsFree(GameTestHelper helper) {
         try {
             lockingStage("locked_item");
@@ -107,7 +103,7 @@ public final class LockTests {
         }
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void anItemIsLockedByItsModAndFreedByAnException(GameTestHelper helper) {
         try {
             GameTestStages.global("mod_lock", stage -> {
@@ -133,7 +129,7 @@ public final class LockTests {
         }
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void aStageGatingAnItemByBothIdAndModIsReportedOnce(GameTestHelper helper) {
         // Items, mods and tags are three categories but one question. Asking them separately
         // would name this stage twice and in a different order, and that order is what the
@@ -157,7 +153,7 @@ public final class LockTests {
         }
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void everyGatingStageIsNamedInCandidateOrder(GameTestHelper helper) {
         try {
             GameTestStages.global("by_id", stage ->
@@ -180,7 +176,7 @@ public final class LockTests {
         }
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void anIndividualStageLocksTheItemForThatPlayerOnly(GameTestHelper helper) {
         // Individual stages are the half that features keep forgetting; the item path has its
         // own copy of every rule, so it gets its own test.
@@ -202,7 +198,7 @@ public final class LockTests {
         }
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void anNbtCriterionIsNotAnsweredFromAnotherStack(GameTestHelper helper) {
         // The memo behind the item check remembers what gates an item, keyed by its id. That is
         // only legal while the answer cannot differ between two stacks of the same item — and an
@@ -241,7 +237,7 @@ public final class LockTests {
         }
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void unlockingAStageIsSeenImmediatelyByTheMaskPath(GameTestHelper helper) {
         // The item answer is remembered; the player's unlocked set is a mask rebuilt from a
         // version counter. This is the pair working together: what gates the item does not
@@ -272,7 +268,7 @@ public final class LockTests {
         }
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void unlockingAnIndividualStageIsSeenImmediately(GameTestHelper helper) {
         // The individual counterpart, and it needed writing: breaking the global mask's version
         // check failed two tests, breaking the individual one failed none. The per-player mask
@@ -315,7 +311,7 @@ public final class LockTests {
     // because an implementation that always says "blocked" passes the first case alone and one
     // that always says "free" passes the second.
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void anActionListedOnTheEntryIsBlocked(GameTestHelper helper) {
         try {
             stageLockingActions("action_blocked", List.of("recipe"));
@@ -331,7 +327,7 @@ public final class LockTests {
         }
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void anActionTheEntryDoesNotListIsFree(GameTestHelper helper) {
         try {
             stageLockingActions("action_allowed", List.of("recipe"));
@@ -347,7 +343,7 @@ public final class LockTests {
         }
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void anItemNoStageMentionsHasNoBlockedAction(GameTestHelper helper) {
         try {
             stageLockingActions("action_other_item", List.of("recipe"));
@@ -374,7 +370,7 @@ public final class LockTests {
     // owned. Both the narrowed list and the empty one are asked about, because they used to be
     // written to disk as the same file.
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void aModEntryNarrowedToOneActionLeavesTheRestFree(GameTestHelper helper) {
         try {
             individualStageLockingMod("mod_narrowed", List.of("recipe"));
@@ -398,7 +394,7 @@ public final class LockTests {
         }
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void aModEntryWithEveryActionClearedBlocksNothing(GameTestHelper helper) {
         try {
             individualStageLockingMod("mod_cleared", List.of());

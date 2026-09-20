@@ -13,6 +13,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import net.fabricmc.loader.api.FabricLoader;
 
 public record SyncIndividualStagesPacket(Set<String> unlockedStages, Map<String, Long> unlockTimes) implements CustomPacketPayload {
 

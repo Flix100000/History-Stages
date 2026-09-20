@@ -5,7 +5,6 @@ import net.bananemdnsa.historystages.data.dependency.RequirementTypes;
 import net.bananemdnsa.historystages.api.dependency.Requirement;
 
 import net.bananemdnsa.historystages.platform.bus.Event;
-import net.bananemdnsa.historystages.platform.bus.IModBusEvent;
 
 /**
  * Fired once so other mods can add their own kinds of dependency requirement.
@@ -34,7 +33,7 @@ import net.bananemdnsa.historystages.platform.bus.IModBusEvent;
  * }
  * }</pre>
  */
-public class RegisterRequirementTypesEvent extends Event implements IModBusEvent {
+public class RegisterRequirementTypesEvent extends Event {
 
     public void register(Requirement requirement) {
         RequirementTypes.register(requirement);

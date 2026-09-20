@@ -4,16 +4,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.data.DependencyGroup;
 import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.data.dependency.IndividualStageDep;
 import net.bananemdnsa.historystages.data.graph.GraphReachability;
 import net.bananemdnsa.historystages.data.graph.NodeState;
+import net.fabricmc.fabric.api.gametest.v1.FabricGameTest;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.neoforged.neoforge.gametest.GameTestHolder;
-import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
 /**
  * What the stage graph is allowed to conclude from an individual-stage prerequisite.
@@ -27,16 +25,14 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
  * canvas: the drawing is client-only and a dedicated test server cannot load it, while the
  * decision is common code and is where the mistake actually lived.
  */
-@GameTestHolder(HistoryStages.MOD_ID)
-@PrefixGameTestTemplate(false)
-public final class GraphReachabilityTests {
+public class GraphReachabilityTests {
 
-    private GraphReachabilityTests() {}
+    public GraphReachabilityTests() {}
 
     private static final String PREREQUISITE = GameTestStages.PREFIX + "prerequisite";
     private static final String DEPENDENT = GameTestStages.PREFIX + "dependent";
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void aPlayerPrerequisiteLocksTheStageUntilTheViewerHasIt(GameTestHelper helper) {
         try {
             GameTestStages.individual("prerequisite");
@@ -55,7 +51,7 @@ public final class GraphReachabilityTests {
         }
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void aPlayerPrerequisiteOpensTheStageOnceTheViewerHasIt(GameTestHelper helper) {
         try {
             GameTestStages.individual("prerequisite");
@@ -81,7 +77,7 @@ public final class GraphReachabilityTests {
      * LOCKED would be a verdict on a question this side never put, so the stage stays open the
      * way one waiting on undeposited items does.
      */
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void aPrerequisiteDemandedOfEveryoneIsNotDecidedFromHere(GameTestHelper helper) {
         try {
             GameTestStages.individual("prerequisite");
@@ -107,7 +103,7 @@ public final class GraphReachabilityTests {
      * graph deciding on it, and it would have taken the edge with it — the dependency is real and
      * has to stay visible whatever the viewer can work out about it.
      */
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void aPrerequisiteDemandedOfEveryoneStillDrawsItsEdge(GameTestHelper helper) {
         try {
             GameTestStages.individual("prerequisite");

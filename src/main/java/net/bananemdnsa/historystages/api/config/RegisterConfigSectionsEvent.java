@@ -5,7 +5,6 @@ import net.bananemdnsa.historystages.data.config.AddonConfigSections;
 import net.bananemdnsa.historystages.api.config.AddonConfigSection;
 
 import net.bananemdnsa.historystages.platform.bus.Event;
-import net.bananemdnsa.historystages.platform.bus.IModBusEvent;
 
 /**
  * Fired once so other mods can add their own config sections to the HistoryStages config screen.
@@ -28,7 +27,7 @@ import net.bananemdnsa.historystages.platform.bus.IModBusEvent;
  * }
  * }</pre>
  */
-public class RegisterConfigSectionsEvent extends Event implements IModBusEvent {
+public class RegisterConfigSectionsEvent extends Event {
 
     public void register(AddonConfigSection section) {
         AddonConfigSections.register(section);

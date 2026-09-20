@@ -3,18 +3,16 @@ package net.bananemdnsa.historystages.gametest;
 import java.util.ArrayList;
 import java.util.List;
 
-import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.data.FluidEntry;
 import net.bananemdnsa.historystages.data.lock.FluidRecipeIndex;
 import net.bananemdnsa.historystages.data.lock.engine.FluidContent;
 import net.bananemdnsa.historystages.events.RecipeHandler;
 import net.bananemdnsa.historystages.util.lock.StageLockHelper;
+import net.fabricmc.fabric.api.gametest.v1.FabricGameTest;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.neoforged.neoforge.gametest.GameTestHolder;
-import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
 /**
  * The fluid seam, answered against a live registry.
@@ -26,13 +24,11 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
  *
  * <p>Asked through {@code StageLockHelper}, the same path the mod's own handlers take.
  */
-@GameTestHolder(HistoryStages.MOD_ID)
-@PrefixGameTestTemplate(false)
-public final class FluidLockTests {
+public class FluidLockTests {
 
     private static final String LOCKED_FLUID = "minecraft:lava";
 
-    private FluidLockTests() {}
+    public FluidLockTests() {}
 
     /**
      * A stage that gates one fluid and names no item at all — the narrowing's hardest case.
@@ -47,7 +43,7 @@ public final class FluidLockTests {
     }
 
     /** The claim itself: the stage names lava, and a bucket it never mentions is locked. */
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void aBucketOfAGatedFluidIsLockedWithoutBeingListed(GameTestHelper helper) {
         try {
             stageGating("fluid_bucket", LOCKED_FLUID);
@@ -65,7 +61,7 @@ public final class FluidLockTests {
     }
 
     /** The other half: gating one fluid must not gate every container. */
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void aBucketOfAnUngatedFluidStaysFree(GameTestHelper helper) {
         try {
             stageGating("fluid_other", LOCKED_FLUID);
@@ -85,7 +81,7 @@ public final class FluidLockTests {
      * An empty bucket carries nothing, so the container path cannot see it — which is precisely
      * why taking a fluid out of the world needed a handler of its own.
      */
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void anEmptyBucketCarriesNoFluid(GameTestHelper helper) {
         try {
             stageGating("fluid_empty", LOCKED_FLUID);
@@ -105,7 +101,7 @@ public final class FluidLockTests {
     }
 
     /** The capability really names the fluid, rather than the lock happening to agree. */
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void aFilledBucketNamesItsFluid(GameTestHelper helper) {
         try {
             String found = FluidContent.of(new ItemStack(Items.LAVA_BUCKET));
@@ -120,7 +116,7 @@ public final class FluidLockTests {
     }
 
     /** A narrowed entry gates what it names and nothing else. */
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void anActionTheFluidEntryDoesNotListIsFree(GameTestHelper helper) {
         try {
             GameTestStages.global("fluid_actions", stage -> stage.setFluidEntries(new ArrayList<>(
@@ -147,7 +143,7 @@ public final class FluidLockTests {
      * The bare-id form the pickup handler uses has to agree with the container form. It reaches
      * the same stages by a different route — no stack, no item id, only the fluid.
      */
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void theBareFluidIdFormAgreesWithTheContainerForm(GameTestHelper helper) {
         try {
             stageGating("fluid_bare", LOCKED_FLUID);
@@ -168,7 +164,7 @@ public final class FluidLockTests {
     }
 
     /** No fluid entry anywhere means the fluid gate answers no, whatever is being held. */
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void withNoFluidEntryNothingIsGated(GameTestHelper helper) {
         try {
             if (StageLockHelper.isActionLockedForServer(new ItemStack(Items.LAVA_BUCKET), "use")) {
@@ -188,7 +184,7 @@ public final class FluidLockTests {
      * already gated, because the result is an item and the capability seam sees the fluid in it.
      * Asked at the level RecipeHandler.isOutputLocked asks it.
      */
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void aFilledBucketAsARecipeResultIsGated(GameTestHelper helper) {
         try {
             stageGating("fluid_recipe_result", LOCKED_FLUID);
@@ -220,7 +216,7 @@ public final class FluidLockTests {
      * reporting a handful is worth a look even though it passes, and one reporting hundreds means
      * the codec route has stopped working.
      */
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void everyLoadedRecipeCanBeTurnedBackIntoJson(GameTestHelper helper) {
         try {
             stageGating("fluid_recipe_scan", LOCKED_FLUID);
@@ -252,7 +248,7 @@ public final class FluidLockTests {
     }
 
     /** No fluid gated anywhere means no index at all — a pack not using fluids pays nothing. */
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void withNoFluidGatedTheIndexIsNotEvenBuilt(GameTestHelper helper) {
         try {
             FluidRecipeIndex.clear();
@@ -277,7 +273,7 @@ public final class FluidLockTests {
     }
 
     /** With nothing indexed, the viewer question is a cheap no rather than a guess. */
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void anUnindexedRecipeIsNotGated(GameTestHelper helper) {
         try {
             FluidRecipeIndex.clear();

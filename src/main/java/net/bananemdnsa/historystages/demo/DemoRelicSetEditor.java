@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.api.editor.AbstractDependencyTab;
 import net.bananemdnsa.historystages.api.editor.DependencyTab;
 import net.bananemdnsa.historystages.api.editor.RegisterRequirementEditorsEvent;
@@ -17,8 +16,6 @@ import net.bananemdnsa.historystages.api.editor.widget.NumberStepper;
 import net.bananemdnsa.historystages.data.DependencyGroup;
 import net.bananemdnsa.historystages.api.dependency.Requirement;
 import net.bananemdnsa.historystages.api.dependency.RequirementStorage;
-import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
-import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
 import org.jetbrains.annotations.Nullable;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
@@ -35,14 +32,11 @@ import net.fabricmc.api.Environment;
  * a pick means, and how they are read and written. Everything else — drawing, hovering, scrolling,
  * the tab strip, copy and remove — comes from the host.
  */
-@EventBusSubscriber(modid = HistoryStages.MOD_ID,
-        bus = EventBusSubscriber.Bus.MOD)
 @Environment(EnvType.CLIENT)
 public final class DemoRelicSetEditor {
 
     private DemoRelicSetEditor() {}
 
-    @SubscribeEvent
     public static void onRegisterRequirementEditors(RegisterRequirementEditorsEvent event) {
         if (!DemoAddonCategory.enabled()) return;
         event.register(new RelicSetEditor());

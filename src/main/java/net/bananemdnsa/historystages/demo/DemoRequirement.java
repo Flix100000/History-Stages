@@ -1,6 +1,5 @@
 package net.bananemdnsa.historystages.demo;
 
-import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.api.dependency.AddonRequirement;
 import net.bananemdnsa.historystages.api.dependency.IdCountEntry;
 import net.bananemdnsa.historystages.api.dependency.RegisterRequirementTypesEvent;
@@ -8,8 +7,6 @@ import net.bananemdnsa.historystages.api.dependency.RequirementContext;
 import net.bananemdnsa.historystages.api.dependency.RequirementDisplay;
 import net.bananemdnsa.historystages.api.dependency.RequirementOutcome;
 import net.bananemdnsa.historystages.api.dependency.RequirementStorage;
-import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
-import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
 
 /**
  * The stand-in addon's own kind of dependency: "hand in N of a relic".
@@ -21,7 +18,6 @@ import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
  * <p>Stores {@link IdCountEntry} because that is what the free-tier editor understands — one
  * registration on the client and the tab looks and behaves like a built-in, with no UI code here.
  */
-@EventBusSubscriber(modid = HistoryStages.MOD_ID, bus = EventBusSubscriber.Bus.MOD)
 public final class DemoRequirement {
 
     /** Namespaced like any addon must be — {@code historystages} is reserved for the built-ins. */
@@ -47,7 +43,6 @@ public final class DemoRequirement {
 
     private DemoRequirement() {}
 
-    @SubscribeEvent
     public static void onRegisterRequirementTypes(RegisterRequirementTypesEvent event) {
         if (!DemoAddonCategory.enabled()) return;
 

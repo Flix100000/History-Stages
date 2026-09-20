@@ -34,22 +34,22 @@ public class FTBQuestsIntegration {
                 () -> ItemIcon.getItemIcon(new ItemStack(ModItems.RESEARCH_SCROLL.get()))
         ).setDisplayName(Component.translatable("ftbquests.reward.historystages.history_stage"));
 
-        NeoForge.EVENT_BUS.addListener((StageEvent.Unlocked event) ->
+        EventBus.addListener(StageEvent.Unlocked.class, event ->
                 HistoryStageTask.onGlobalStageChanged(event.getStageId(), true)
         );
 
-        NeoForge.EVENT_BUS.addListener((StageEvent.Locked event) ->
+        EventBus.addListener(StageEvent.Locked.class, event ->
                 HistoryStageTask.onGlobalStageChanged(event.getStageId(), false)
         );
 
-        NeoForge.EVENT_BUS.addListener((StageEvent.IndividualUnlocked event) -> {
+        EventBus.addListener(StageEvent.IndividualUnlocked.class, event -> {
             ServerPlayer player = resolvePlayer(event.getPlayerUUID());
             if (player != null) {
                 HistoryStageTask.onIndividualStageChanged(event.getStageId(), player, true);
             }
         });
 
-        NeoForge.EVENT_BUS.addListener((StageEvent.IndividualLocked event) -> {
+        EventBus.addListener(StageEvent.IndividualLocked.class, event -> {
             ServerPlayer player = resolvePlayer(event.getPlayerUUID());
             if (player != null) {
                 HistoryStageTask.onIndividualStageChanged(event.getStageId(), player, false);

@@ -8,6 +8,7 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.fabricmc.fabric.api.itemgroup.v1.FabricItemGroup;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
@@ -19,7 +20,7 @@ public class ModCreativeTabs {
             DeferredRegister.create(Registries.CREATIVE_MODE_TAB, HistoryStages.MOD_ID);
 
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> HISTORY_TAB = CREATIVE_MODE_TABS.register("history_tab",
-            () -> CreativeModeTab.builder()
+            () -> FabricItemGroup.builder()
                     .icon(() -> new ItemStack(ModItems.RESEARCH_SCROLL.get()))
                     .title(Component.translatable("creativetab.history_tab"))
                     .displayItems((parameters, output) -> {

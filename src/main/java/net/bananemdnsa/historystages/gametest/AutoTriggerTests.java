@@ -2,7 +2,6 @@ package net.bananemdnsa.historystages.gametest;
 
 import java.util.List;
 
-import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.api.trigger.TriggerCondition;
 import net.bananemdnsa.historystages.data.StageMode;
 import net.bananemdnsa.historystages.data.auto.AutoTrigger;
@@ -12,6 +11,7 @@ import net.bananemdnsa.historystages.data.auto.conditions.XpLevelTrigger;
 import net.bananemdnsa.historystages.data.saveddata.StageData;
 import net.bananemdnsa.historystages.events.AutoTriggerEventBridge;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.fabricmc.fabric.api.gametest.v1.FabricGameTest;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.ResourceLocation;
@@ -20,8 +20,6 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.bananemdnsa.historystages.platform.bus.EventBus;
 import net.bananemdnsa.historystages.platform.event.entity.living.MobEffectEvent;
-import net.neoforged.neoforge.gametest.GameTestHolder;
-import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
 /**
  * The two ways a trigger can reach the manager: polled from the server tick, and pushed from an
@@ -31,11 +29,9 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
  * sit in each record's {@code matches}, which the unit suite already covers without needing a
  * server. What is under examination here is that the bridge asks at all, and asks the right thing.
  */
-@GameTestHolder(HistoryStages.MOD_ID)
-@PrefixGameTestTemplate(false)
-public final class AutoTriggerTests {
+public class AutoTriggerTests {
 
-    private AutoTriggerTests() {}
+    public AutoTriggerTests() {}
 
     private static void autoStage(String name, TriggerCondition trigger) {
         GameTestStages.global(name, entry -> {
@@ -44,7 +40,7 @@ public final class AutoTriggerTests {
         });
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void aPolledTriggerOpensTheStage(GameTestHelper helper) {
         String id = GameTestStages.PREFIX + "xp_polled";
         StageData data = StageData.get(helper.getLevel());
@@ -70,7 +66,7 @@ public final class AutoTriggerTests {
         }
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void aPolledTriggerLeavesTheStageShutWhileTheValueIsTooLow(GameTestHelper helper) {
         String id = GameTestStages.PREFIX + "xp_too_low";
         StageData data = StageData.get(helper.getLevel());
@@ -95,7 +91,7 @@ public final class AutoTriggerTests {
         }
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void anEventTriggerOpensTheStage(GameTestHelper helper) {
         String id = GameTestStages.PREFIX + "effect_event";
         StageData data = StageData.get(helper.getLevel());
@@ -109,7 +105,7 @@ public final class AutoTriggerTests {
             // sends the client a sync packet, and the test player has no connection to send it
             // over. What is under examination is the listener, not vanilla's effect plumbing.
             MobEffectInstance blindnessEffect = new MobEffectInstance(MobEffects.BLINDNESS, 100);
-            EventBus.post(new MobEffectEvent.Added(player, null, blindnessEffect, null));
+            EventBus.post(new MobEffectEvent.Added(player, blindnessEffect));
 
             if (!data.hasStage(id)) {
                 helper.fail("the effect was applied and the stage did not open — the "

@@ -27,6 +27,33 @@
 		"emi": [
 			"net.bananemdnsa.historystages.compat.emi.EMIPlugin"
 		],
+		"historystages": [
+			"net.bananemdnsa.historystages.demo.DemoPlugin"
+		],
+		"historystages:client": [
+			"net.bananemdnsa.historystages.demo.DemoClientPlugin"
+		],
+		"fabric-gametest": [
+			"net.bananemdnsa.historystages.gametest.AutoTriggerTests",
+			"net.bananemdnsa.historystages.gametest.ConfigCodecTests",
+			"net.bananemdnsa.historystages.gametest.ContainerLockTests",
+			"net.bananemdnsa.historystages.gametest.DependencyCheckerTests",
+			"net.bananemdnsa.historystages.gametest.FluidLockTests",
+			"net.bananemdnsa.historystages.gametest.GameTestPlayers",
+			"net.bananemdnsa.historystages.gametest.GameTestStages",
+			"net.bananemdnsa.historystages.gametest.GraphReachabilityTests",
+			"net.bananemdnsa.historystages.gametest.HarnessTests",
+			"net.bananemdnsa.historystages.gametest.ItemTagDepositTests",
+			"net.bananemdnsa.historystages.gametest.LockTests",
+			"net.bananemdnsa.historystages.gametest.LootrLootFilterTests",
+			"net.bananemdnsa.historystages.gametest.PacketTests",
+			"net.bananemdnsa.historystages.gametest.PersistenceTests",
+			"net.bananemdnsa.historystages.gametest.ReachTests",
+			"net.bananemdnsa.historystages.gametest.RecipeLockTests",
+			"net.bananemdnsa.historystages.gametest.SpawnControlTests",
+			"net.bananemdnsa.historystages.gametest.TradeLockTests",
+			"net.bananemdnsa.historystages.gametest.ZoneLockTests"
+		],
 		"ftbquests": [
 			"net.bananemdnsa.historystages.compat.ftbquests.FTBQuestsIntegration"
 		]

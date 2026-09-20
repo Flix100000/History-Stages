@@ -154,7 +154,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
                 this::canPressStart,
                 // No tooltip: a play/pause icon needs no caption.
                 null,
-                () -> net.neoforged.neoforge.network.PacketDistributor.sendToServer(
+                () -> net.bananemdnsa.historystages.client.ClientPacketHandler.sendToServer(
                         new net.bananemdnsa.historystages.network.serverbound.PedestalControlPacket(
                                 this.menu.getBlockPos(), !this.menu.isRunning()))));
     }

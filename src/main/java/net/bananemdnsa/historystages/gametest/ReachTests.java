@@ -1,14 +1,12 @@
 package net.bananemdnsa.historystages.gametest;
 
-import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.network.PacketReach;
 import net.minecraft.core.BlockPos;
+import net.fabricmc.fabric.api.gametest.v1.FabricGameTest;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.gametest.GameTestHolder;
-import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
 /**
  * What {@link PacketReach} refuses, with a real player in a real level.
@@ -23,16 +21,14 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
  * that the chunk is <em>still</em> not loaded. Remove the guard and that assertion fails, because
  * asking is what loads it.
  */
-@GameTestHolder(HistoryStages.MOD_ID)
-@PrefixGameTestTemplate(false)
-public final class ReachTests {
+public class ReachTests {
 
-    private ReachTests() {}
+    public ReachTests() {}
 
     /** Far enough to be outside anything a test world keeps loaded, well inside the world border. */
     private static final int FAR_AWAY = 100_000;
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void theBlockUnderThePlayerIsInReach(GameTestHelper helper) {
         BlockPos origin = helper.absolutePos(BlockPos.ZERO);
         ServerPlayer player = playerAt(helper, origin);
@@ -45,7 +41,7 @@ public final class ReachTests {
         helper.succeed();
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void aBlockThirtyAwayIsRefused(GameTestHelper helper) {
         BlockPos origin = helper.absolutePos(BlockPos.ZERO);
         ServerPlayer player = playerAt(helper, origin);
@@ -67,7 +63,7 @@ public final class ReachTests {
         helper.succeed();
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void anUnloadedPositionIsRefusedWithoutLoadingIt(GameTestHelper helper) {
         BlockPos origin = helper.absolutePos(BlockPos.ZERO);
         ServerPlayer player = playerAt(helper, origin);

@@ -3,7 +3,6 @@ package net.bananemdnsa.historystages.api.lock;
 import net.bananemdnsa.historystages.data.lock.IndividualRecipeSupport;
 
 import net.bananemdnsa.historystages.platform.bus.Event;
-import net.bananemdnsa.historystages.platform.bus.IModBusEvent;
 
 /**
  * Fired once so other mods can declare that one of their recipe types can be gated per player.
@@ -27,7 +26,7 @@ import net.bananemdnsa.historystages.platform.bus.IModBusEvent;
  * }
  * }</pre>
  */
-public class RegisterIndividualRecipeSupportEvent extends Event implements IModBusEvent {
+public class RegisterIndividualRecipeSupportEvent extends Event {
 
     /** @param recipeTypeId registry id of the recipe type, e.g. {@code mymod:assembler} */
     public void register(String recipeTypeId) {

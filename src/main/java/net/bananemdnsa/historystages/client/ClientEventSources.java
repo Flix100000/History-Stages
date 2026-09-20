@@ -15,6 +15,7 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
+import net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents;
 import net.fabricmc.fabric.api.client.screen.v1.Screens;
 
 /**
@@ -68,7 +69,7 @@ public final class ClientEventSources {
             ScreenEvents.afterRender(screen).register((rendered, graphics, mouseX, mouseY, delta) ->
                     EventBus.post(new ScreenEvent.Render.Post(rendered, graphics)));
 
-            ScreenEvents.allowMouseClick(screen).register((clicked, mouseX, mouseY, button) -> {
+            ScreenMouseEvents.allowMouseClick(screen).register((clicked, mouseX, mouseY, button) -> {
                 ScreenEvent.MouseButtonPressed.Pre event = EventBus.post(
                         new ScreenEvent.MouseButtonPressed.Pre(clicked, mouseX, mouseY, button));
                 // Answering false is what stops the screen seeing the click at all.

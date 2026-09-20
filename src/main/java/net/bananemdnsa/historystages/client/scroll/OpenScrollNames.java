@@ -8,6 +8,8 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.Locale;
+import net.fabricmc.fabric.api.transfer.v1.fluid.FluidVariant;
+import net.fabricmc.fabric.api.transfer.v1.fluid.FluidVariantAttributes;
 
 /**
  * Display names for the open scroll's text rows.
@@ -46,7 +48,7 @@ public final class OpenScrollNames {
     public static String fluid(String id) {
         ResourceLocation key = ResourceLocation.tryParse(id);
         if (key == null || !BuiltInRegistries.FLUID.containsKey(key)) return prettify(id);
-        return BuiltInRegistries.FLUID.get(key).getFluidType().getDescription().getString();
+        return FluidVariantAttributes.getName(FluidVariant.of(BuiltInRegistries.FLUID.get(key))).getString();
     }
 
     public static String item(String id) {

@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
+import net.minecraft.core.registries.Registries;
 
 /**
  * The two questions every loot strip asks: is this stack locked for that player, and what goes
@@ -67,7 +68,7 @@ public final class LootLocks {
         if (tagList != null && !tagList.isEmpty()) {
             try {
                 String tagStr = tagList.get(RANDOM.nextInt(tagList.size()));
-                TagKey<Item> tagKey = ItemTags.create(ResourceLocation.parse(tagStr));
+                TagKey<Item> tagKey = TagKey.create(Registries.ITEM, ResourceLocation.parse(tagStr));
                 List<Item> tagItems = new ArrayList<>();
                 Optional<? extends Iterable<Holder<Item>>> tagOptional = BuiltInRegistries.ITEM.getTag(tagKey);
                 tagOptional.ifPresent(holders -> {

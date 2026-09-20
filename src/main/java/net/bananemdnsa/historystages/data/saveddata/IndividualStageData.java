@@ -118,7 +118,7 @@ public class IndividualStageData extends SavedData {
         if (level instanceof ServerLevel serverLevel) {
             IndividualStageData data = serverLevel.getServer().overworld().getDataStorage()
                     .computeIfAbsent(
-                            new SavedData.Factory<>(IndividualStageData::new, IndividualStageData::load),
+                            new SavedData.Factory<>(IndividualStageData::new, IndividualStageData::load, null),
                             DATA_NAME
                     );
             data.refreshCache();

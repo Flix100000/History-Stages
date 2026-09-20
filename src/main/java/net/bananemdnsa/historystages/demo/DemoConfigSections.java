@@ -2,13 +2,10 @@ package net.bananemdnsa.historystages.demo;
 
 import java.util.List;
 
-import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.api.config.AddonConfigField;
 import net.bananemdnsa.historystages.api.config.AddonConfigSection;
 import net.bananemdnsa.historystages.api.config.ConfigSide;
 import net.bananemdnsa.historystages.api.config.RegisterConfigSectionsEvent;
-import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
-import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
 
 /**
  * A stand-in addon's own config sections, so the config-screen path can be exercised before a
@@ -31,7 +28,6 @@ import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
  * this by giving it one — give a new field the missing-description slot instead if you need this
  * one filled in.
  */
-@EventBusSubscriber(modid = HistoryStages.MOD_ID, bus = EventBusSubscriber.Bus.MOD)
 public final class DemoConfigSections {
 
     /** Namespaced like any addon must be — {@code historystages} is reserved for the built-ins. */
@@ -156,7 +152,6 @@ public final class DemoConfigSections {
                 .build();
     }
 
-    @SubscribeEvent
     public static void onRegisterConfigSections(RegisterConfigSectionsEvent event) {
         if (!DemoAddonCategory.enabled()) return;
         for (AddonConfigSection section : build()) {

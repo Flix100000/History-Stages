@@ -3,7 +3,6 @@ package net.bananemdnsa.historystages.api.editor;
 import net.bananemdnsa.historystages.client.editor.recipe.RecipeTypeMetas;
 
 import net.bananemdnsa.historystages.platform.bus.Event;
-import net.bananemdnsa.historystages.platform.bus.IModBusEvent;
 
 /**
  * Fired once so other mods can say what their recipe types look like in the editor.
@@ -29,7 +28,7 @@ import net.bananemdnsa.historystages.platform.bus.IModBusEvent;
  * }
  * }</pre>
  */
-public class RegisterRecipeTypeMetaEvent extends Event implements IModBusEvent {
+public class RegisterRecipeTypeMetaEvent extends Event {
 
     public void register(RecipeTypeMeta meta) {
         RecipeTypeMetas.register(meta);

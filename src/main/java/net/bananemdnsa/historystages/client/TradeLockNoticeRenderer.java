@@ -16,6 +16,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FormattedCharSequence;
+import net.bananemdnsa.historystages.mixin.client.ContainerScreenAccessor;
 import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
 import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
 import net.bananemdnsa.historystages.platform.event.client.ScreenEvent;
@@ -102,7 +103,9 @@ public final class TradeLockNoticeRenderer {
         if (!screen.getMenu().getOffers().isEmpty()) return;
 
         int openId = mc.player.containerMenu.containerId;
-        draw(event.getGuiGraphics(), mc.font, screen.getGuiLeft(), screen.getGuiTop(),
+        ContainerScreenAccessor corner = (ContainerScreenAccessor) screen;
+        draw(event.getGuiGraphics(), mc.font, corner.historystages$getLeftPos(),
+                corner.historystages$getTopPos(),
                 TradeLockNotice.stageNamesFor(openId), TradeLockNotice.kindFor(openId));
     }
 

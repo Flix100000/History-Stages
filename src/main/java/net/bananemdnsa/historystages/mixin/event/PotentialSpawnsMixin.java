@@ -39,7 +39,8 @@ public abstract class PotentialSpawnsMixin {
             MobCategory category, BlockPos pos, Holder<Biome> biome,
             CallbackInfoReturnable<WeightedRandomList<MobSpawnSettings.SpawnerData>> cir) {
         List<MobSpawnSettings.SpawnerData> candidates = new ArrayList<>(cir.getReturnValue().unwrap());
-        LevelEvent.PotentialSpawns event = EventBus.post(new LevelEvent.PotentialSpawns(level, candidates));
+        LevelEvent.PotentialSpawns event =
+                EventBus.post(new LevelEvent.PotentialSpawns(level, category, pos, candidates));
         if (!candidates.equals(cir.getReturnValue().unwrap())) {
             cir.setReturnValue(WeightedRandomList.create(event.getSpawnerDataList()));
         }

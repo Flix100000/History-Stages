@@ -1,11 +1,8 @@
 package net.bananemdnsa.historystages.demo;
 
-import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.api.settings.RegisterStageSettingsGroupsEvent;
 import net.bananemdnsa.historystages.api.settings.Setting;
 import net.bananemdnsa.historystages.api.settings.StageSettingsGroup;
-import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
-import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
 
 /**
  * A stand-in addon's own per-stage settings, so the settings path can be exercised before a real
@@ -16,7 +13,6 @@ import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
  * per setting, group them under a namespaced id, and register the group. This covers all seven
  * field kinds, {@link net.bananemdnsa.historystages.api.settings.SettingKind#ITEM} included.
  */
-@EventBusSubscriber(modid = HistoryStages.MOD_ID, bus = EventBusSubscriber.Bus.MOD)
 public final class DemoSettingsGroup {
 
     /** Namespaced like any addon must be — {@code historystages} is reserved for the built-ins. */
@@ -83,7 +79,6 @@ public final class DemoSettingsGroup {
                 .build();
     }
 
-    @SubscribeEvent
     public static void onRegisterGroups(RegisterStageSettingsGroupsEvent event) {
         if (!DemoAddonCategory.enabled()) return;
         event.register(build());

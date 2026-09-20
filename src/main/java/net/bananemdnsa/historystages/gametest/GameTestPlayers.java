@@ -25,7 +25,7 @@ import net.minecraft.server.level.ServerPlayer;
  */
 final class GameTestPlayers {
 
-    private GameTestPlayers() {}
+    public GameTestPlayers() {}
 
     /** A fresh player in the test's own level. Empty inventory, no XP, no stats. */
     static ServerPlayer create(GameTestHelper helper) {

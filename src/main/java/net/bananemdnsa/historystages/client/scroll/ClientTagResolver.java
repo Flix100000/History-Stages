@@ -11,6 +11,7 @@ import net.minecraft.world.item.Item;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import net.minecraft.core.registries.Registries;
 
 /**
  * The real {@link OpenScrollContent.TagResolver}: asks the item registry which items carry a tag.
@@ -27,7 +28,7 @@ public final class ClientTagResolver implements OpenScrollContent.TagResolver {
     public List<String> itemsInTag(String tagId) {
         ResourceLocation id = ResourceLocation.tryParse(tagId);
         if (id == null) return List.of();
-        TagKey<Item> key = ItemTags.create(id);
+        TagKey<Item> key = TagKey.create(Registries.ITEM, id);
         // BuiltInRegistries.ITEM has no getTagOrEmpty in this NeoForge version — getTag() returns
         // an Optional instead, empty for an unknown tag. Same pattern already used by
         // LootLocks.

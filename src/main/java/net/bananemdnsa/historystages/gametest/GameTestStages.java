@@ -24,7 +24,7 @@ final class GameTestStages {
 
     static final String PREFIX = "gametest:";
 
-    private GameTestStages() {}
+    public GameTestStages() {}
 
     /** A global stage with the given dependency groups, registered under {@code gametest:<name>}. */
     static StageEntry global(String name, DependencyGroup... groups) {

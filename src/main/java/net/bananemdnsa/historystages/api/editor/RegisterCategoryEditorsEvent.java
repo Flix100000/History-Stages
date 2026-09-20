@@ -5,7 +5,6 @@ import net.bananemdnsa.historystages.client.editor.tab.CategoryEditors;
 import net.bananemdnsa.historystages.api.editor.CategoryEditor;
 
 import net.bananemdnsa.historystages.platform.bus.Event;
-import net.bananemdnsa.historystages.platform.bus.IModBusEvent;
 
 /**
  * Fired once on the client so an addon can give its lock category a tab in the stage editor.
@@ -26,7 +25,7 @@ import net.bananemdnsa.historystages.platform.bus.IModBusEvent;
  * }
  * }</pre>
  */
-public class RegisterCategoryEditorsEvent extends Event implements IModBusEvent {
+public class RegisterCategoryEditorsEvent extends Event {
 
     public void register(CategoryEditor editor) {
         CategoryEditors.register(editor);

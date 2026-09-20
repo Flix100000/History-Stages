@@ -64,9 +64,20 @@ public class SimpleItemHandler implements Container {
         return result;
     }
 
+    /**
+     * Whether this slot accepts that stack at all. Open by default; the pedestal narrows slot 0
+     * to scrolls.
+     *
+     * <p>Both ways in go through it — the menu's own slot and anything inserting from outside —
+     * so a hopper cannot put into a slot what a player could not.
+     */
+    public boolean isItemValid(int slot, ItemStack stack) {
+        return true;
+    }
+
     public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
-        if (stack.isEmpty()) {
-            return ItemStack.EMPTY;
+        if (stack.isEmpty() || !isItemValid(slot, stack)) {
+            return stack.isEmpty() ? ItemStack.EMPTY : stack;
         }
         ItemStack present = stacks.get(slot);
         if (!present.isEmpty() && !ItemStack.isSameItemSameComponents(present, stack)) {
@@ -156,6 +167,11 @@ public class SimpleItemHandler implements Container {
     @Override
     public void setItem(int slot, ItemStack stack) {
         setStackInSlot(slot, stack);
+    }
+
+    @Override
+    public boolean canPlaceItem(int slot, ItemStack stack) {
+        return isItemValid(slot, stack);
     }
 
     @Override

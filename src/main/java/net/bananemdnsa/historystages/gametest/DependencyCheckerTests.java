@@ -3,7 +3,6 @@ package net.bananemdnsa.historystages.gametest;
 import java.util.ArrayList;
 import java.util.List;
 
-import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.data.DependencyGroup;
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.dependency.DependencyChecker;
@@ -16,13 +15,12 @@ import net.bananemdnsa.historystages.data.dependency.XpLevelDep;
 import net.bananemdnsa.historystages.api.stage.StageScope;
 import net.bananemdnsa.historystages.data.saveddata.IndividualStageData;
 import net.bananemdnsa.historystages.data.saveddata.StageData;
+import net.fabricmc.fabric.api.gametest.v1.FabricGameTest;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.stats.Stats;
-import net.neoforged.neoforge.gametest.GameTestHolder;
-import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
 /**
  * What {@code DependencyChecker} answers, with a real player and a real level.
@@ -36,15 +34,13 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
  * checker that always says yes passes every met case, and one that always says no passes every
  * unmet case.
  */
-@GameTestHolder(HistoryStages.MOD_ID)
-@PrefixGameTestTemplate(false)
-public final class DependencyCheckerTests {
+public class DependencyCheckerTests {
 
-    private DependencyCheckerTests() {}
+    public DependencyCheckerTests() {}
 
     // --- Items ---
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void itemRequirementIsUnmetWithNothingDeposited(GameTestHelper helper) {
         try {
             StageEntry stage = GameTestStages.global("items", itemGroup());
@@ -61,7 +57,7 @@ public final class DependencyCheckerTests {
         }
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void itemRequirementIsMetOnceEnoughIsDeposited(GameTestHelper helper) {
         try {
             StageEntry stage = GameTestStages.global("items", itemGroup());
@@ -84,7 +80,7 @@ public final class DependencyCheckerTests {
         }
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void itemRequirementIsUnmetWhenTooLittleIsDeposited(GameTestHelper helper) {
         try {
             StageEntry stage = GameTestStages.global("items", itemGroup());
@@ -106,7 +102,7 @@ public final class DependencyCheckerTests {
         }
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void depositedItemsStayWithTheirGroupWhenAnEarlierGroupIsDeleted(GameTestHelper helper) {
         try {
             DependencyGroup first = new DependencyGroup();
@@ -145,7 +141,7 @@ public final class DependencyCheckerTests {
 
     // --- XP ---
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void xpRequirementIsUnmetAtLevelZero(GameTestHelper helper) {
         try {
             StageEntry stage = GameTestStages.global("xp", xpGroup());
@@ -162,7 +158,7 @@ public final class DependencyCheckerTests {
         }
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void xpRequirementIsMetAtTheRequiredLevel(GameTestHelper helper) {
         try {
             StageEntry stage = GameTestStages.global("xp", xpGroup());
@@ -189,7 +185,7 @@ public final class DependencyCheckerTests {
 
     // --- Stats ---
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void statRequirementIsUnmetAtZero(GameTestHelper helper) {
         try {
             StageEntry stage = GameTestStages.global("stat", statGroup());
@@ -206,7 +202,7 @@ public final class DependencyCheckerTests {
         }
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void statRequirementIsMetOnceTheStatIsHighEnough(GameTestHelper helper) {
         try {
             StageEntry stage = GameTestStages.global("stat", statGroup());
@@ -234,7 +230,7 @@ public final class DependencyCheckerTests {
 
     // --- Another stage as a prerequisite ---
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void stageRequirementIsUnmetWhileThePrerequisiteIsLocked(GameTestHelper helper) {
         try {
             GameTestStages.global("prerequisite");
@@ -252,7 +248,7 @@ public final class DependencyCheckerTests {
         }
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void stageRequirementIsMetOnceThePrerequisiteIsUnlocked(GameTestHelper helper) {
         StageData data = StageData.get(helper.getLevel());
         String prerequisite = GameTestStages.PREFIX + "prerequisite";
@@ -284,7 +280,7 @@ public final class DependencyCheckerTests {
 
     // --- An individual stage as a prerequisite, demanded of the researcher alone ---
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void playerModeIsUnmetWhileTheResearcherLacksTheStage(GameTestHelper helper) {
         try {
             GameTestStages.individual("prerequisite");
@@ -310,7 +306,7 @@ public final class DependencyCheckerTests {
      * {@code player} mode that fell through to either of them would leave this test failing, which
      * is what makes it worth writing.
      */
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void playerModeIsMetOnceTheResearcherHasTheStage(GameTestHelper helper) {
         IndividualStageData data = IndividualStageData.get(helper.getLevel());
         ServerPlayer player = GameTestPlayers.create(helper);

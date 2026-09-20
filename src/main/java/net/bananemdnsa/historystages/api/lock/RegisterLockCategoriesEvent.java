@@ -5,7 +5,6 @@ import net.bananemdnsa.historystages.data.lock.category.LockCategories;
 import net.bananemdnsa.historystages.api.lock.LockCategory;
 
 import net.bananemdnsa.historystages.platform.bus.Event;
-import net.bananemdnsa.historystages.platform.bus.IModBusEvent;
 
 /**
  * Fired once so other mods can add their own lock categories.
@@ -28,7 +27,7 @@ import net.bananemdnsa.historystages.platform.bus.IModBusEvent;
  * }
  * }</pre>
  */
-public class RegisterLockCategoriesEvent extends Event implements IModBusEvent {
+public class RegisterLockCategoriesEvent extends Event {
 
     public void register(LockCategory<?> category) {
         LockCategories.register(category);

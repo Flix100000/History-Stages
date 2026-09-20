@@ -3,7 +3,6 @@ package net.bananemdnsa.historystages.gametest;
 import java.util.ArrayList;
 import java.util.List;
 
-import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.data.ItemEntry;
 import net.bananemdnsa.historystages.data.saveddata.IndividualStageData;
 import net.bananemdnsa.historystages.data.saveddata.StageData;
@@ -12,6 +11,7 @@ import net.bananemdnsa.historystages.util.lock.RecipeCraftContext;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.Registries;
+import net.fabricmc.fabric.api.gametest.v1.FabricGameTest;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.ResourceLocation;
@@ -25,8 +25,6 @@ import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.gametest.GameTestHolder;
-import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
 /**
  * A recipe lock answering for one player rather than for the world.
@@ -39,9 +37,7 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
  * guard the edges around it: no crafter must still mean global-only, and a crafter must never
  * outlive its resolution.
  */
-@GameTestHolder(HistoryStages.MOD_ID)
-@PrefixGameTestTemplate(false)
-public final class RecipeLockTests {
+public class RecipeLockTests {
 
     private static final String LOCKED_RECIPE = "minecraft:torch";
     private static final ResourceLocation LOCKED_RECIPE_ID = ResourceLocation.parse(LOCKED_RECIPE);
@@ -68,7 +64,7 @@ public final class RecipeLockTests {
             "net.minecraft.world.inventory.SmithingMenu",
             "net.minecraft.server.network.ServerGamePacketListenerImpl");
 
-    private RecipeLockTests() {}
+    public RecipeLockTests() {}
 
     private static void individualStageGating(String name) {
         GameTestStages.individual(name, stage ->
@@ -91,7 +87,7 @@ public final class RecipeLockTests {
         return RecipeHandler.isRecipeIdLocked(LOCKED_RECIPE_ID, false);
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void theRecipeHooksApplyToTheirTargets(GameTestHelper helper) {
         for (String target : HOOKED_CLASSES) {
             try {
@@ -105,7 +101,7 @@ public final class RecipeLockTests {
         helper.succeed();
     }
 
-    @GameTest(template = "empty", timeoutTicks = 400)
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 400)
     public static void aReloadStillSendsClientsEveryRecipe(GameTestHelper helper) {
         // A datapack reload pushes the whole recipe list back to every client. That list becomes
         // the client's recipe manager and therefore the vanilla recipe book, so anything the
@@ -144,7 +140,7 @@ public final class RecipeLockTests {
         });
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void gatingARecipeIsSeenAsAChangeToTheGatedSet(GameTestHelper helper) {
         // What decides whether a stage change costs a datapack reload. This half says it notices
         // when it has to.
@@ -167,7 +163,7 @@ public final class RecipeLockTests {
         }
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void aStageGatingOnlyABiomeIsNotWorthAReload(GameTestHelper helper) {
         // The other half, and the one that keeps large modpacks playable. Reloading every datapack
         // freezes the server for as long as it takes, and this can be reached from an auto-trigger
@@ -205,7 +201,7 @@ public final class RecipeLockTests {
                 server.getRecipeManager().getOrderedRecipes());
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void aGlobalUnlockTakesEffectWithoutAnyRecipeReload(GameTestHelper helper) {
         // Global lock and unlock fire PacketHandler.reloadForLockChange, on the grounds that the
         // recipes would otherwise reach nobody until something else reloaded them. For the gate
@@ -241,7 +237,7 @@ public final class RecipeLockTests {
         }
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void aGlobalLockAlsoTakesTheRecipeOutOfTheWholeList(GameTestHelper helper) {
         // The bug this was written for: a Create basin does not ask which recipe fits its
         // contents, it takes the entire recipe list and searches it itself. Mixing and compacting
@@ -288,7 +284,7 @@ public final class RecipeLockTests {
         }
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void theListEveryClientIsSentKeepsTheLockedRecipes(GameTestHelper helper) {
         // getOrderedRecipes fills the packet sent on join and after every reload. It has to keep
         // carrying the locked recipes: the client draws them with a lock on them, the editor's
@@ -318,7 +314,7 @@ public final class RecipeLockTests {
         return false;
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void aLockedItemStillBlocksItsRecipesWithoutAnyReload(GameTestHelper helper) {
         // The other half of recipe gating, and a different code path: not a recipe id on the
         // stage, but an item whose lock_actions include "recipe", which takes down every recipe
@@ -357,7 +353,7 @@ public final class RecipeLockTests {
         }
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void aRecipeOnALockedIndividualStageIsLockedForThatPlayer(GameTestHelper helper) {
         try {
             individualStageGating("individual_recipe");
@@ -374,7 +370,7 @@ public final class RecipeLockTests {
         }
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void theSameRecipeIsFreeOnceThePlayerHasTheStage(GameTestHelper helper) {
         IndividualStageData data = IndividualStageData.get(helper.getLevel());
         String stageId = GameTestStages.PREFIX + "individual_recipe_unlocked";
@@ -395,7 +391,7 @@ public final class RecipeLockTests {
         }
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void twoPlayersAtTheSameRecipeGetDifferentAnswers(GameTestHelper helper) {
         // The whole feature in one test. If this passes, the context carries; if it does not,
         // every station hook in this change is decoration.
@@ -424,7 +420,7 @@ public final class RecipeLockTests {
         }
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void withoutACrafterTheAnswerStaysGlobalOnly(GameTestHelper helper) {
         // The assurance behind the documented limits: a furnace, a hopper and an autocrafter
         // resolve with nobody there and must not start seeing individual stages.
@@ -442,7 +438,7 @@ public final class RecipeLockTests {
         }
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void aGlobalRecipeLockStaysLockedWithAndWithoutACrafter(GameTestHelper helper) {
         try {
             globalStageGating("global_recipe");
@@ -464,7 +460,7 @@ public final class RecipeLockTests {
         }
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void aThrownResolutionDoesNotGateTheNextOne(GameTestHelper helper) {
         // A leaked crafter would gate the next, unrelated resolution — one that may well belong
         // to a hopper standing next to the crafting table.
@@ -493,7 +489,7 @@ public final class RecipeLockTests {
         }
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void aRecipeIsAskedForItsResultAgainstTheRealRegistries(GameTestHelper helper) {
         // A recipe that builds its result out of the registries it is handed. Vanilla recipes know
         // their result by heart and take anything; a modded one does this, and handing it an empty

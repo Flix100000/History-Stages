@@ -33,7 +33,7 @@ public class AutoTriggerProgressData extends SavedData {
         if (level instanceof ServerLevel sl) {
             return sl.getServer().overworld().getDataStorage()
                     .computeIfAbsent(
-                            new SavedData.Factory<>(AutoTriggerProgressData::new, AutoTriggerProgressData::load),
+                            new SavedData.Factory<>(AutoTriggerProgressData::new, AutoTriggerProgressData::load, null),
                             DATA_NAME
                     );
         }

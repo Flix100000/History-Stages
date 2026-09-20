@@ -9,6 +9,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 
 /**
  * The bus the handlers hang on.
@@ -92,15 +93,37 @@ public final class EventBus {
                 break;
             }
             try {
-                listener.method().invoke(listener.instance(), event);
+                if (listener.method() == null) {
+                    @SuppressWarnings("unchecked")
+                    Consumer<Event> consumer = (Consumer<Event>) listener.instance();
+                    consumer.accept(event);
+                } else {
+                    listener.method().invoke(listener.instance(), event);
+                }
             } catch (Exception e) {
                 Throwable cause = e.getCause() != null ? e.getCause() : e;
-                DebugLogger.warn("Events", listener.method().getDeclaringClass().getSimpleName()
-                        + "." + listener.method().getName() + " failed on "
+                String who = listener.method() == null
+                        ? listener.instance().getClass().getName()
+                        : listener.method().getDeclaringClass().getSimpleName() + "." + listener.method().getName();
+                DebugLogger.warn("Events", who + " failed on "
                         + event.getClass().getSimpleName() + ": " + cause);
             }
         }
         return event;
+    }
+
+    /**
+     * Adds a single listener without a class to scan.
+     *
+     * <p>For the places that hand over a lambda rather than a marked method — an integration that
+     * only wants to hear about one thing and has no handler class of its own.
+     */
+    public static <T extends Event> void addListener(Class<T> eventType, Consumer<T> listener) {
+        List<Listener> list = LISTENERS.computeIfAbsent(eventType, key -> new ArrayList<>());
+        synchronized (list) {
+            list.add(new Listener(null, listener, EventPriority.NORMAL));
+            list.sort(Comparator.comparingInt(entry -> entry.priority().ordinal()));
+        }
     }
 
     /** Whether anything at all listens for this event, so a caller can skip building one. */

@@ -1,11 +1,9 @@
 package net.bananemdnsa.historystages.gametest;
 
-import net.bananemdnsa.historystages.HistoryStages;
+import net.fabricmc.fabric.api.gametest.v1.FabricGameTest;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.gametest.GameTestHolder;
-import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
 /**
  * Proves the GameTest harness works, before any test that could fail for a real reason.
@@ -18,18 +16,16 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
  * looks for {@code harnesstests.empty} — the class's simple name in front — and every test class
  * would need its own copy of the same empty structure.
  */
-@GameTestHolder(HistoryStages.MOD_ID)
-@PrefixGameTestTemplate(false)
-public final class HarnessTests {
+public class HarnessTests {
 
-    private HarnessTests() {}
+    public HarnessTests() {}
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void theHarnessRuns(GameTestHelper helper) {
         helper.succeed();
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void aMockServerPlayerCanBeMade(GameTestHelper helper) {
         // The one capability every other test in this package rests on: a real ServerPlayer in a
         // real ServerLevel. It is what the dependency checker needs and what no unit test can

@@ -3,7 +3,6 @@ package net.bananemdnsa.historystages.api.editor;
 import net.bananemdnsa.historystages.api.editor.CustomFieldScreens;
 
 import net.bananemdnsa.historystages.platform.bus.Event;
-import net.bananemdnsa.historystages.platform.bus.IModBusEvent;
 
 /**
  * Fired once on the client so an addon can supply the screens for its {@code CUSTOM_SCREEN}
@@ -22,7 +21,7 @@ import net.bananemdnsa.historystages.platform.bus.IModBusEvent;
  * }
  * }</pre>
  */
-public class RegisterCustomFieldScreensEvent extends Event implements IModBusEvent {
+public class RegisterCustomFieldScreensEvent extends Event {
 
     public void register(Object field, CustomFieldScreens.Factory factory) {
         CustomFieldScreens.register(field, factory);

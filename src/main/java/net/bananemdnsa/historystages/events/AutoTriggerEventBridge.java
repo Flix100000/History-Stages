@@ -53,7 +53,7 @@ import net.bananemdnsa.historystages.platform.event.level.BlockEvent;
  * Single Forge-bus listener that forwards relevant world events into
  * {@link AutoTriggerManager#process} so AUTO-mode stages can auto-unlock.
  *
- * <p>Registered on {@code NeoForge.EVENT_BUS} from {@code HistoryStages}'s
+ * <p>Registered on the mod's own event bus from {@code HistoryStagesFabric}'s
  * constructor. Polled triggers (biome/structure/playtime) piggyback the server
  * tick via {@link #pollPlayers(net.minecraft.server.MinecraftServer, int)}.
  */

@@ -5,9 +5,9 @@ import java.util.List;
 import java.util.function.BiConsumer;
 
 import net.bananemdnsa.historystages.Config;
-import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.data.ItemEntry;
 import net.bananemdnsa.historystages.util.lock.LockFeedback;
+import net.fabricmc.fabric.api.gametest.v1.FabricGameTest;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerPlayer;
@@ -16,8 +16,6 @@ import net.minecraft.world.inventory.ChestMenu;
 import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.neoforged.neoforge.gametest.GameTestHolder;
-import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
 /**
  * Clicks in a chest window, sent through the menu the way the server handles a real click, for an
@@ -29,9 +27,7 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
  * <p>The player has no connection, and a refused click tells the player so on the actionbar. The
  * feedback cooldown is used up before clicking, which keeps that packet from being sent at all.
  */
-@GameTestHolder(HistoryStages.MOD_ID)
-@PrefixGameTestTemplate(false)
-public final class ContainerLockTests {
+public class ContainerLockTests {
 
     private static final String LOCKED_ITEM = "minecraft:diamond";
 
@@ -40,9 +36,9 @@ public final class ContainerLockTests {
     private static final int INVENTORY_SLOT = 27;
     private static final int OTHER_INVENTORY_SLOT = 28;
 
-    private ContainerLockTests() {}
+    public ContainerLockTests() {}
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void takingALockedItemOutOfAChestIsRefused(GameTestHelper helper) {
         inChest(helper, (menu, player) -> {
             menu.getSlot(CHEST_SLOT).set(new ItemStack(Items.DIAMOND, 5));
@@ -57,7 +53,7 @@ public final class ContainerLockTests {
         });
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void takingAFreeItemOutOfAChestGoesThrough(GameTestHelper helper) {
         inChest(helper, (menu, player) -> {
             menu.getSlot(CHEST_SLOT).set(new ItemStack(Items.DIRT, 5));
@@ -72,7 +68,7 @@ public final class ContainerLockTests {
         });
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void shiftClickingALockedItemOutOfAChestIsRefused(GameTestHelper helper) {
         inChest(helper, (menu, player) -> {
             menu.getSlot(CHEST_SLOT).set(new ItemStack(Items.DIAMOND, 5));
@@ -87,7 +83,7 @@ public final class ContainerLockTests {
         });
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void shiftClickingAFreeItemOutOfAChestGoesThrough(GameTestHelper helper) {
         inChest(helper, (menu, player) -> {
             menu.getSlot(CHEST_SLOT).set(new ItemStack(Items.DIRT, 5));
@@ -102,7 +98,7 @@ public final class ContainerLockTests {
         });
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void aNumberKeyOverALockedItemInAChestIsRefused(GameTestHelper helper) {
         inChest(helper, (menu, player) -> {
             menu.getSlot(CHEST_SLOT).set(new ItemStack(Items.DIAMOND, 5));
@@ -117,7 +113,7 @@ public final class ContainerLockTests {
         });
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void aNumberKeyOverAFreeItemInAChestGoesThrough(GameTestHelper helper) {
         inChest(helper, (menu, player) -> {
             menu.getSlot(CHEST_SLOT).set(new ItemStack(Items.DIRT, 5));
@@ -132,7 +128,7 @@ public final class ContainerLockTests {
         });
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void doubleClickingDoesNotGatherLockedItemsFromAChest(GameTestHelper helper) {
         inChest(helper, (menu, player) -> {
             menu.getSlot(CHEST_SLOT).set(new ItemStack(Items.DIAMOND, 5));
@@ -150,7 +146,7 @@ public final class ContainerLockTests {
         });
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void doubleClickingStillGathersFreeItemsFromAChest(GameTestHelper helper) {
         inChest(helper, (menu, player) -> {
             menu.getSlot(CHEST_SLOT).set(new ItemStack(Items.DIRT, 5));
@@ -166,7 +162,7 @@ public final class ContainerLockTests {
         });
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void addingToAStackOfLockedItemsInAChestGoesThrough(GameTestHelper helper) {
         inChest(helper, (menu, player) -> {
             menu.getSlot(CHEST_SLOT).set(new ItemStack(Items.DIAMOND, 5));
@@ -183,7 +179,7 @@ public final class ContainerLockTests {
         });
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void sortingLockedItemsInsideTheOwnInventoryGoesThrough(GameTestHelper helper) {
         inChest(helper, (menu, player) -> {
             menu.getSlot(INVENTORY_SLOT).set(new ItemStack(Items.DIAMOND, 5));
@@ -207,18 +203,15 @@ public final class ContainerLockTests {
         });
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void throwingALockedItemAwayGoesThrough(GameTestHelper helper) {
         inChest(helper, (menu, player) -> {
             menu.getSlot(INVENTORY_SLOT).set(new ItemStack(Items.DIAMOND, 5));
 
-            // Keeps the thrown stack out of the world; nothing here needs it on the ground.
-            player.captureDrops(new ArrayList<>());
-            try {
-                menu.clicked(INVENTORY_SLOT, 1, ClickType.THROW, player);
-            } finally {
-                player.captureDrops(null);
-            }
+            // The thrown stack lands in the world here. NeoForge has a way to catch drops for
+            // the length of one call and this loader has none, but the test structure is torn
+            // down afterwards, so a diamond on the floor of it bothers nobody.
+            menu.clicked(INVENTORY_SLOT, 1, ClickType.THROW, player);
 
             if (menu.getSlot(INVENTORY_SLOT).hasItem()) {
                 helper.fail("throwing locked diamonds away from the inventory was refused");

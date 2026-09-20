@@ -63,7 +63,7 @@ public class StructureGenerationCountData extends SavedData {
         StructureGenerationCountData data = level.getServer().overworld().getDataStorage()
                 .computeIfAbsent(
                         new SavedData.Factory<>(StructureGenerationCountData::new,
-                                StructureGenerationCountData::load),
+                                StructureGenerationCountData::load, null),
                         DATA_NAME
                 );
         INSTANCE = data;

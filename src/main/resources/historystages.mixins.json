@@ -41,6 +41,7 @@
   ],
   "client": [
     "client.ItemDecorationsMixin",
+    "client.ContainerScreenAccessor",
     "client.RecipesUpdatedMixin",
     "bettercombat.AttackStartLockMixin",
     "bettercombat.WeaponRegistryMixin",

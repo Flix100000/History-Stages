@@ -5,7 +5,6 @@ import net.bananemdnsa.historystages.client.editor.dep.RequirementEditors;
 import net.bananemdnsa.historystages.api.editor.RequirementEditor;
 
 import net.bananemdnsa.historystages.platform.bus.Event;
-import net.bananemdnsa.historystages.platform.bus.IModBusEvent;
 
 /**
  * Fired once on the client so an addon can give its requirement type a tab in the dependency
@@ -28,7 +27,7 @@ import net.bananemdnsa.historystages.platform.bus.IModBusEvent;
  * }
  * }</pre>
  */
-public class RegisterRequirementEditorsEvent extends Event implements IModBusEvent {
+public class RegisterRequirementEditorsEvent extends Event {
 
     public void register(RequirementEditor editor) {
         RequirementEditors.register(editor);

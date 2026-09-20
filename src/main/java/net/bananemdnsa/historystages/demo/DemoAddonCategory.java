@@ -3,14 +3,11 @@ package net.bananemdnsa.historystages.demo;
 import java.util.ArrayList;
 import java.util.List;
 
-import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.api.trigger.RegisterTriggerTypesEvent;
 import net.bananemdnsa.historystages.api.lock.AddonLockCategory;
 import net.bananemdnsa.historystages.api.lock.CategoryStorage;
 import net.bananemdnsa.historystages.api.lock.RegisterLockCategoriesEvent;
 import net.bananemdnsa.historystages.api.stage.StageScope;
-import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
-import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
 
 /**
  * A stand-in addon, so the addon path can be exercised before a real addon exists — and so there
@@ -24,7 +21,6 @@ import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
  * <p>What it deliberately does not do is hook the game. A real addon owns the moment its thing is
  * about to happen and asks {@code CategoryLocks} then; there is nothing here to hook.
  */
-@EventBusSubscriber(modid = HistoryStages.MOD_ID, bus = EventBusSubscriber.Bus.MOD)
 public final class DemoAddonCategory {
 
     /** Namespaced like any addon must be — {@code historystages} is reserved for the built-ins. */
@@ -55,7 +51,6 @@ public final class DemoAddonCategory {
         return category;
     }
 
-    @SubscribeEvent
     public static void onRegisterCategories(RegisterLockCategoriesEvent event) {
         if (!enabled()) return;
 
@@ -68,7 +63,6 @@ public final class DemoAddonCategory {
         event.register(category);
     }
 
-    @SubscribeEvent
     public static void onRegisterTriggerTypes(RegisterTriggerTypesEvent event) {
         if (!enabled()) return;
         event.register(TRIGGER_TYPE, RelicFoundTrigger.class, StageScope.GLOBAL);

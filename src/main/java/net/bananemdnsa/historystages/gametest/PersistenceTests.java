@@ -2,15 +2,13 @@ package net.bananemdnsa.historystages.gametest;
 
 import java.util.UUID;
 
-import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.data.saveddata.IndividualStageData;
 import net.bananemdnsa.historystages.data.saveddata.StageData;
 import net.minecraft.core.HolderLookup;
+import net.fabricmc.fabric.api.gametest.v1.FabricGameTest;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
-import net.neoforged.neoforge.gametest.GameTestHolder;
-import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
 /**
  * Stage state written and read back, through the real SavedData machinery.
@@ -24,13 +22,11 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
  * is this project's most repeated mistake: feature after feature has handled the global map and
  * left the per-player one behind, and each time it was found in game rather than here.
  */
-@GameTestHolder(HistoryStages.MOD_ID)
-@PrefixGameTestTemplate(false)
-public final class PersistenceTests {
+public class PersistenceTests {
 
-    private PersistenceTests() {}
+    public PersistenceTests() {}
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void aGlobalStageIsReadBackAsUnlocked(GameTestHelper helper) {
         StageData data = StageData.get(helper.getLevel());
         String id = GameTestStages.PREFIX + "persisted";
@@ -53,7 +49,7 @@ public final class PersistenceTests {
         }
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void aRemovedGlobalStageIsReadBackAsLocked(GameTestHelper helper) {
         StageData data = StageData.get(helper.getLevel());
         String id = GameTestStages.PREFIX + "removed";
@@ -71,7 +67,7 @@ public final class PersistenceTests {
         }
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void anIndividualStageIsReadBackForThatPlayerOnly(GameTestHelper helper) {
         IndividualStageData data = IndividualStageData.get(helper.getLevel());
         String id = GameTestStages.PREFIX + "individual";
@@ -98,7 +94,7 @@ public final class PersistenceTests {
         }
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void aRemovedIndividualStageIsReadBackAsLocked(GameTestHelper helper) {
         IndividualStageData data = IndividualStageData.get(helper.getLevel());
         String id = GameTestStages.PREFIX + "individual_removed";
@@ -118,7 +114,7 @@ public final class PersistenceTests {
         }
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void aGlobalUnlockKeepsItsFirstTimeUntilRemoved(GameTestHelper helper) {
         StageData data = StageData.get(helper.getLevel());
         String id = GameTestStages.PREFIX + "timed";
@@ -156,7 +152,7 @@ public final class PersistenceTests {
         });
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void anIndividualUnlockKeepsItsFirstTimeUntilRemoved(GameTestHelper helper) {
         IndividualStageData data = IndividualStageData.get(helper.getLevel());
         String id = GameTestStages.PREFIX + "individual_timed";
@@ -190,7 +186,7 @@ public final class PersistenceTests {
 
     // Own batch: load() rebuilds the shared server caches from its copy, and tests in the same
     // batch run in the same ticks.
-    @GameTest(template = "empty", batch = "unlock_times_round_trip")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, batch = "unlock_times_round_trip")
     public static void unlockTimesSurviveAWriteAndARead(GameTestHelper helper) {
         StageData global = StageData.get(helper.getLevel());
         IndividualStageData individual = IndividualStageData.get(helper.getLevel());
@@ -226,7 +222,7 @@ public final class PersistenceTests {
         }
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void theGlobalAndIndividualStoresDoNotSeeEachOther(GameTestHelper helper) {
         StageData global = StageData.get(helper.getLevel());
         IndividualStageData individual = IndividualStageData.get(helper.getLevel());

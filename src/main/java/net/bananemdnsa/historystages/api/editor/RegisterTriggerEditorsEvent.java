@@ -5,7 +5,6 @@ import net.bananemdnsa.historystages.client.editor.trigger.TriggerEditors;
 import net.bananemdnsa.historystages.api.editor.TriggerEditor;
 
 import net.bananemdnsa.historystages.platform.bus.Event;
-import net.bananemdnsa.historystages.platform.bus.IModBusEvent;
 
 /**
  * Fired once on the client so an addon's auto-trigger type can be authored in the editor.
@@ -23,7 +22,7 @@ import net.bananemdnsa.historystages.platform.bus.IModBusEvent;
  * }
  * }</pre>
  */
-public class RegisterTriggerEditorsEvent extends Event implements IModBusEvent {
+public class RegisterTriggerEditorsEvent extends Event {
 
     public void register(TriggerEditor editor) {
         TriggerEditors.register(editor);

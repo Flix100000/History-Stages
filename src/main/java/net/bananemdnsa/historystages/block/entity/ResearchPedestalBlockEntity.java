@@ -40,6 +40,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerFactory;
 import net.minecraft.world.Container;
 import net.minecraft.server.level.ServerPlayer;
@@ -519,7 +520,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity
     /** Send a packet to a specific player (extracted to avoid inline import). */
     private static void PacketDistributor_sendToPlayer(net.minecraft.server.level.ServerPlayer player,
             net.minecraft.network.protocol.common.custom.CustomPacketPayload packet) {
-        net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player, packet);
+        ServerPlayNetworking.send(player, packet);
     }
 
     private boolean isItemNeeded(ItemStack depositStack) {

@@ -3,7 +3,6 @@ package net.bananemdnsa.historystages.gametest;
 import java.util.ArrayList;
 import java.util.List;
 
-import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.data.lock.ZoneEntry;
 import net.bananemdnsa.historystages.data.lock.ZoneIndex;
 import net.bananemdnsa.historystages.data.lock.ZoneShape;
@@ -12,11 +11,10 @@ import net.bananemdnsa.historystages.data.saveddata.IndividualStageData;
 import net.bananemdnsa.historystages.data.saveddata.StageData;
 import net.bananemdnsa.historystages.events.lock.ZoneLockHandler;
 import net.minecraft.core.BlockPos;
+import net.fabricmc.fabric.api.gametest.v1.FabricGameTest;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.gametest.GameTestHolder;
-import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
 /**
  * The zone seam, answered against a live server.
@@ -32,11 +30,9 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
  * about zones. {@link ZoneLockHandler#verdictFor} is asked instead — the same computation the tick
  * performs before it applies anything.
  */
-@GameTestHolder(HistoryStages.MOD_ID)
-@PrefixGameTestTemplate(false)
-public final class ZoneLockTests {
+public class ZoneLockTests {
 
-    private ZoneLockTests() {}
+    public ZoneLockTests() {}
 
     // ---------------------------------------------------------------------------------------
     // Helpers. Deliberately above the tests: GameTestCleanupGuardTest slices the file from one
@@ -100,7 +96,7 @@ public final class ZoneLockTests {
     // ---------------------------------------------------------------------------------------
 
     /** The index has to notice a zone as soon as its stage exists. */
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void aLockedZoneAppliesToAPlayerInsideIt(GameTestHelper helper) {
         ServerPlayer player = GameTestPlayers.create(helper);
         try {
@@ -127,7 +123,7 @@ public final class ZoneLockTests {
     }
 
     /** A zone somewhere else must leave the player alone. */
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void aZoneElsewhereDoesNotApply(GameTestHelper helper) {
         ServerPlayer player = GameTestPlayers.create(helper);
         try {
@@ -152,7 +148,7 @@ public final class ZoneLockTests {
      * <p>Without it a Nether fortress zone would also fire in the middle of an Overworld village,
      * which is the reason the field is mandatory.
      */
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void aZoneInAnotherDimensionDoesNotApply(GameTestHelper helper) {
         ServerPlayer player = GameTestPlayers.create(helper);
         try {
@@ -174,7 +170,7 @@ public final class ZoneLockTests {
     }
 
     /** Unlocking the stage stops the zone at once — no restart, no interval to wait out. */
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void unlockingTheStageEndsTheLockImmediately(GameTestHelper helper) {
         ServerPlayer player = GameTestPlayers.create(helper);
         try {
@@ -207,7 +203,7 @@ public final class ZoneLockTests {
      * <p>This is the gap that has opened repeatedly in this mod: a feature reads the global stage
      * map, forgets the individual one, and the whole per-player half quietly does nothing.
      */
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void anIndividualStageIsJudgedPerPlayer(GameTestHelper helper) {
         ServerPlayer player = GameTestPlayers.create(helper);
         try {
@@ -237,7 +233,7 @@ public final class ZoneLockTests {
     }
 
     /** Two overlapping zones: the higher damage wins rather than the two adding up. */
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void overlappingZonesTakeTheHighestDamage(GameTestHelper helper) {
         ServerPlayer player = GameTestPlayers.create(helper);
         try {
@@ -266,7 +262,7 @@ public final class ZoneLockTests {
      * <p>Without this a player standing at the border could mine their way in, which would make
      * every zone a wall with a door in it.
      */
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void breakingIntoAZoneFromOutsideIsRefused(GameTestHelper helper) {
         ServerPlayer player = GameTestPlayers.create(helper);
         try {
@@ -289,7 +285,7 @@ public final class ZoneLockTests {
     }
 
     /** An inverted zone holds everywhere it is not — so a player far from it is the one it gates. */
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void anInvertedZoneAppliesOutsideItself(GameTestHelper helper) {
         ServerPlayer player = GameTestPlayers.create(helper);
         try {
@@ -310,7 +306,7 @@ public final class ZoneLockTests {
     }
 
     /** Standing in an inverted zone is the allowed place, so nothing applies. */
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void beingInsideAnInvertedZoneIsAllowed(GameTestHelper helper) {
         ServerPlayer player = GameTestPlayers.create(helper);
         try {
@@ -335,7 +331,7 @@ public final class ZoneLockTests {
      * <p>Otherwise every inverted zone would read as "everywhere except here, in every world", and
      * stepping through a portal would put a player in the locked half at once.
      */
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void anInvertedZoneStopsAtItsDimension(GameTestHelper helper) {
         ServerPlayer player = GameTestPlayers.create(helper);
         try {
@@ -363,7 +359,7 @@ public final class ZoneLockTests {
      * <p>Asks for the target rather than letting the tick apply it: moving the test player sends
      * a position packet down a connection they do not have.
      */
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void aBarrierZoneHasSomewhereToPushThePlayer(GameTestHelper helper) {
         ServerPlayer player = GameTestPlayers.create(helper);
         try {
@@ -383,7 +379,7 @@ public final class ZoneLockTests {
     }
 
     /** A zone without the switch pushes nobody, however thoroughly it contains them. */
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void aZoneWithoutTheBarrierSwitchPushesNobody(GameTestHelper helper) {
         ServerPlayer player = GameTestPlayers.create(helper);
         try {
@@ -408,7 +404,7 @@ public final class ZoneLockTests {
      * <p>Checked through the index flag rather than by waiting for a spawn: the flag is what the
      * spawn hook reads before it does anything, so a false there is the whole behaviour.
      */
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void onlyGlobalStagesCanSuppressSpawns(GameTestHelper helper) {
         try {
             GameTestStages.individual("zone_spawn_individual", stage -> stage.setZones(
@@ -428,7 +424,7 @@ public final class ZoneLockTests {
     }
 
     /** The same switch on a global stage does arm it. */
-    @GameTest(template = "empty")
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public static void aGlobalStageArmsSpawnSuppression(GameTestHelper helper) {
         try {
             GameTestStages.global("zone_spawn_global", stage -> stage.setZones(
