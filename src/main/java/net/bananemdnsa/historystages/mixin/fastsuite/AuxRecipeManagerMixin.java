@@ -3,8 +3,11 @@ package net.bananemdnsa.historystages.mixin.fastsuite;
 import java.util.List;
 import java.util.Optional;
 
+import javax.annotation.Nullable;
+
 import net.bananemdnsa.historystages.events.RecipeHandler;
 import net.bananemdnsa.historystages.util.lock.RecipeResolutionFilter;
+import net.bananemdnsa.historystages.util.lock.ResolutionSide;
 import net.minecraft.world.Container;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeType;
@@ -61,11 +64,13 @@ public class AuxRecipeManagerMixin {
                     + ")Ljava/util/Optional;",
             at = @At("RETURN"), cancellable = true, require = 0, remap = true)
     private <C extends Container, T extends Recipe<C>> void historystages$gateRecipeFor(
-            RecipeType<T> type, C container, Level level,
+            RecipeType<T> type, C container, @Nullable Level level,
             CallbackInfoReturnable<Optional<T>> cir) {
         Optional<T> resolved = cir.getReturnValue();
         if (resolved.isEmpty()) return;
-        if (!RecipeHandler.isLockedForResolution(resolved.get(), level.isClientSide())) return;
+        if (!RecipeHandler.isLockedForResolution(resolved.get(), ResolutionSide.isClient(level))) {
+            return;
+        }
         cir.setReturnValue(historystages$filter().historystages$firstUnlocked(type, container, level));
     }
 
@@ -76,10 +81,10 @@ public class AuxRecipeManagerMixin {
                     + ")Ljava/util/List;",
             at = @At("RETURN"), cancellable = true, require = 0, remap = true)
     private <C extends Container, T extends Recipe<C>> void historystages$gateRecipesFor(
-            RecipeType<T> type, C container, Level level,
+            RecipeType<T> type, C container, @Nullable Level level,
             CallbackInfoReturnable<List<T>> cir) {
         cir.setReturnValue(historystages$filter()
-                .historystages$withoutLocked(cir.getReturnValue(), level.isClientSide()));
+                .historystages$withoutLocked(cir.getReturnValue(), ResolutionSide.isClient(level)));
     }
 
     /**

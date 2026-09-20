@@ -4,6 +4,7 @@ import net.bananemdnsa.historystages.data.lock.UngatedRecipes;
 import net.bananemdnsa.historystages.data.lock.VisibleRecipes;
 import net.bananemdnsa.historystages.events.RecipeHandler;
 import net.bananemdnsa.historystages.util.lock.RecipeResolutionFilter;
+import net.bananemdnsa.historystages.util.lock.ResolutionSide;
 import net.bananemdnsa.historystages.util.AllRecipesCache;
 import net.bananemdnsa.historystages.data.saveddata.StageData;
 import net.minecraft.resources.ResourceLocation;
@@ -185,10 +186,10 @@ public class RecipeManagerMixin implements UngatedRecipes, RecipeResolutionFilte
     @Inject(method = "getRecipeFor(Lnet/minecraft/world/item/crafting/RecipeType;Lnet/minecraft/world/Container;Lnet/minecraft/world/level/Level;)Ljava/util/Optional;",
             at = @At("RETURN"), cancellable = true, remap = true)
     private <C extends Container, T extends Recipe<C>> void filterGetRecipeFor(
-            RecipeType<T> type, C container, Level level,
+            RecipeType<T> type, C container, @Nullable Level level,
             CallbackInfoReturnable<Optional<T>> cir) {
         Optional<T> result = cir.getReturnValue();
-        if (result.isPresent() && isRecipeLocked(result.get(), level.isClientSide())) {
+        if (result.isPresent() && isRecipeLocked(result.get(), ResolutionSide.isClient(level))) {
             cir.setReturnValue(historystages$firstUnlocked(type, container, level));
         }
     }
@@ -203,12 +204,16 @@ public class RecipeManagerMixin implements UngatedRecipes, RecipeResolutionFilte
      *
      * <p>Same iteration order vanilla uses, so with nothing locked the answer is the one it would
      * have given anyway. Only reached once something is actually locked.
+     *
+     * <p>{@code level} is handed to {@code matches} exactly as it arrived, {@code null} included —
+     * that is the call vanilla would have made, and the recipes that are asked without a level are
+     * the ones that never look at it.
      */
     @Override
     @SuppressWarnings("unchecked")
     public <C extends Container, T extends Recipe<C>> Optional<T> historystages$firstUnlocked(
-            RecipeType<T> type, C container, Level level) {
-        boolean isClient = level.isClientSide();
+            RecipeType<T> type, C container, @Nullable Level level) {
+        boolean isClient = ResolutionSide.isClient(level);
         for (Recipe<?> recipe : this.recipes.getOrDefault(type, Collections.emptyMap()).values()) {
             if (isRecipeLocked(recipe, isClient)) continue;
             T candidate = (T) recipe;
@@ -223,10 +228,12 @@ public class RecipeManagerMixin implements UngatedRecipes, RecipeResolutionFilte
     @Inject(method = "getRecipeFor(Lnet/minecraft/world/item/crafting/RecipeType;Lnet/minecraft/world/Container;Lnet/minecraft/world/level/Level;Lnet/minecraft/resources/ResourceLocation;)Ljava/util/Optional;",
             at = @At("RETURN"), cancellable = true, remap = true)
     private <C extends Container, T extends Recipe<C>> void filterGetRecipeForCached(
-            RecipeType<T> type, C container, Level level, @Nullable ResourceLocation lastRecipe,
+            RecipeType<T> type, C container, @Nullable Level level,
+            @Nullable ResourceLocation lastRecipe,
             CallbackInfoReturnable<Optional<Pair<ResourceLocation, T>>> cir) {
         Optional<Pair<ResourceLocation, T>> result = cir.getReturnValue();
-        if (result.isPresent() && isRecipeLocked(result.get().getSecond(), level.isClientSide())) {
+        if (result.isPresent()
+                && isRecipeLocked(result.get().getSecond(), ResolutionSide.isClient(level))) {
             cir.setReturnValue(historystages$firstUnlocked(type, container, level)
                     .map(recipe -> Pair.of(recipe.getId(), recipe)));
         }
@@ -238,9 +245,10 @@ public class RecipeManagerMixin implements UngatedRecipes, RecipeResolutionFilte
     @Inject(method = "getRecipesFor(Lnet/minecraft/world/item/crafting/RecipeType;Lnet/minecraft/world/Container;Lnet/minecraft/world/level/Level;)Ljava/util/List;",
             at = @At("RETURN"), cancellable = true, remap = true)
     private <C extends Container, T extends Recipe<C>> void filterGetRecipesFor(
-            RecipeType<T> type, C container, Level level,
+            RecipeType<T> type, C container, @Nullable Level level,
             CallbackInfoReturnable<List<T>> cir) {
-        cir.setReturnValue(historystages$withoutLocked(cir.getReturnValue(), level.isClientSide()));
+        cir.setReturnValue(
+                historystages$withoutLocked(cir.getReturnValue(), ResolutionSide.isClient(level)));
     }
 
     @Override
