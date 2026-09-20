@@ -6,12 +6,12 @@ import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.client.editor.StageGraphScreen;
 import net.bananemdnsa.historystages.client.editor.StageOverviewScreen;
 import net.minecraft.client.Minecraft;
-import net.minecraft.commands.CommandSourceStack;
-import net.minecraft.commands.Commands;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
+import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.network.chat.Component;
 import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
 import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.RegisterClientCommandsEvent;
+import net.bananemdnsa.historystages.platform.event.client.RegisterClientCommandsEvent;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 
@@ -31,29 +31,28 @@ public final class ClientScreenCommand {
         register(event.getDispatcher());
     }
 
-    private static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
-        dispatcher.register(Commands.literal("history")
-                .then(Commands.literal("editor")
-                        .requires(source -> source.hasPermission(2))
+    private static void register(CommandDispatcher<FabricClientCommandSource> dispatcher) {
+        dispatcher.register(ClientCommandManager.literal("history")
+                .then(ClientCommandManager.literal("editor")
                         .executes(ctx -> openEditor(ctx.getSource())))
-                .then(Commands.literal("graph")
+                .then(ClientCommandManager.literal("graph")
                         .executes(ctx -> openGraph(ctx.getSource()))));
     }
 
-    private static int openEditor(CommandSourceStack source) {
+    private static int openEditor(FabricClientCommandSource source) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) {
-            source.sendFailure(Component.translatable("command.historystages.player_only"));
+            source.sendError(Component.translatable("command.historystages.player_only"));
             return 0;
         }
         mc.tell(() -> mc.setScreen(new StageOverviewScreen()));
         return 1;
     }
 
-    private static int openGraph(CommandSourceStack source) {
+    private static int openGraph(FabricClientCommandSource source) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) {
-            source.sendFailure(Component.translatable("command.historystages.player_only"));
+            source.sendError(Component.translatable("command.historystages.player_only"));
             return 0;
         }
         // The same door the pause-screen button is: with the graph switched off players have none.
@@ -62,7 +61,7 @@ public final class ClientScreenCommand {
         // requires() is evaluated once while the command tree is merged, and at that point the
         // server has not necessarily pushed graph.toml to us yet.
         if (!GraphConfig.GRAPH.enabled.get() && !source.hasPermission(2)) {
-            source.sendFailure(Component.translatable("command.historystages.graph_disabled"));
+            source.sendError(Component.translatable("command.historystages.graph_disabled"));
             return 0;
         }
         // By the time this runs the chat has closed, so the parent is null and ESC drops straight

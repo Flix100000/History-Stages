@@ -10,7 +10,7 @@ import net.minecraft.client.gui.components.toasts.Toast;
 import net.minecraft.client.gui.components.toasts.ToastComponent;
 import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
 import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.ScreenEvent;
+import net.bananemdnsa.historystages.platform.event.client.ScreenEvent;
 
 import java.util.List;
 import net.fabricmc.api.EnvType;

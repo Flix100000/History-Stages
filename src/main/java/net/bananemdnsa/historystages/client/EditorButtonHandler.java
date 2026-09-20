@@ -11,7 +11,7 @@ import net.minecraft.client.gui.screens.PauseScreen;
 import net.minecraft.network.chat.Component;
 import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
 import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.ScreenEvent;
+import net.bananemdnsa.historystages.platform.event.client.ScreenEvent;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 

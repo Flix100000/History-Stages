@@ -9,7 +9,7 @@ import net.bananemdnsa.historystages.client.cache.ClientZoneSelection;
 import net.bananemdnsa.historystages.client.cache.ClientZoneShapes;
 import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
 import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
+import net.bananemdnsa.historystages.platform.event.client.ClientPlayerNetworkEvent;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 

@@ -12,8 +12,8 @@ import net.bananemdnsa.historystages.network.serverbound.RequestStructureDebugPa
 import net.bananemdnsa.historystages.network.serverbound.ToggleStructureVizPacket;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.commands.CommandSourceStack;
-import net.minecraft.commands.Commands;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
+import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.component.TypedDataComponent;
@@ -33,7 +33,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
 import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
 import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.RegisterClientCommandsEvent;
+import net.bananemdnsa.historystages.platform.event.client.RegisterClientCommandsEvent;
 
 import java.util.Set;
 import net.fabricmc.api.EnvType;
@@ -60,48 +60,47 @@ public final class ClientDebugCommand {
         register(event.getDispatcher());
     }
 
-    private static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
-        dispatcher.register(Commands.literal("history")
-                .then(Commands.literal("debug")
-                        .requires(source -> source.hasPermission(2))
-                        .then(Commands.literal("structure")
+    private static void register(CommandDispatcher<FabricClientCommandSource> dispatcher) {
+        dispatcher.register(ClientCommandManager.literal("history")
+                .then(ClientCommandManager.literal("debug")
+                        .then(ClientCommandManager.literal("structure")
                                 .executes(ctx -> requestStructure(ctx.getSource())))
-                        .then(Commands.literal("viz")
+                        .then(ClientCommandManager.literal("viz")
                                 .executes(ctx -> toggleViz(ctx.getSource())))
-                        .then(Commands.literal("shapes")
+                        .then(ClientCommandManager.literal("shapes")
                                 .executes(ctx -> requestShapes(ctx.getSource())))
-                        .then(Commands.literal("nbt")
-                                .then(Commands.literal("preset")
+                        .then(ClientCommandManager.literal("nbt")
+                                .then(ClientCommandManager.literal("preset")
                                         .executes(ctx -> handlePreset(ctx.getSource())))
-                                .then(Commands.literal("custom")
+                                .then(ClientCommandManager.literal("custom")
                                         .executes(ctx -> handleCustom(ctx.getSource())))
-                                .then(Commands.literal("components")
+                                .then(ClientCommandManager.literal("components")
                                         .executes(ctx -> handleComponents(ctx.getSource()))))));
     }
 
     // ---------- structure (server round-trip) ----------
 
-    private static int requestStructure(CommandSourceStack source) {
+    private static int requestStructure(FabricClientCommandSource source) {
         if (Minecraft.getInstance().player == null) {
-            source.sendFailure(Component.literal("This command can only be run by a player."));
+            source.sendError(Component.literal("This command can only be run by a player."));
             return 0;
         }
         ClientPacketHandler.sendToServer(new RequestStructureDebugPacket());
         return 1;
     }
 
-    private static int toggleViz(CommandSourceStack source) {
+    private static int toggleViz(FabricClientCommandSource source) {
         if (Minecraft.getInstance().player == null) {
-            source.sendFailure(Component.literal("This command can only be run by a player."));
+            source.sendError(Component.literal("This command can only be run by a player."));
             return 0;
         }
         ClientPacketHandler.sendToServer(new ToggleStructureVizPacket());
         return 1;
     }
 
-    private static int requestShapes(CommandSourceStack source) {
+    private static int requestShapes(FabricClientCommandSource source) {
         if (Minecraft.getInstance().player == null) {
-            source.sendFailure(Component.literal("This command can only be run by a player."));
+            source.sendError(Component.literal("This command can only be run by a player."));
             return 0;
         }
         ClientPacketHandler.sendToServer(new RequestClusterShapesPacket());
@@ -110,24 +109,24 @@ public final class ClientDebugCommand {
 
     // ---------- nbt (purely client-side, held item is on client) ----------
 
-    private static int handlePreset(CommandSourceStack source) {
+    private static int handlePreset(FabricClientCommandSource source) {
         LocalPlayer player = Minecraft.getInstance().player;
         if (player == null) {
-            source.sendFailure(Component.literal("This command can only be run by a player."));
+            source.sendError(Component.literal("This command can only be run by a player."));
             return 0;
         }
 
         ItemStack held = player.getMainHandItem();
         if (held.isEmpty()) {
-            source.sendFailure(Component.literal("You are not holding an item."));
+            source.sendError(Component.literal("You are not holding an item."));
             return 0;
         }
 
         String itemId = BuiltInRegistries.ITEM.getKey(held.getItem()).toString();
         CompoundTag tag = held.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
 
-        source.sendSuccess(() -> Component.literal("§6--- NBT Preset Fields ---"), false);
-        source.sendSuccess(() -> Component.literal("§7Item: §f" + itemId), false);
+        source.sendFeedback(Component.literal("§6--- NBT Preset Fields ---"));
+        source.sendFeedback(Component.literal("§7Item: §f" + itemId));
 
         printPreset(source, "Enchantments",       formatEnchantmentList(tag, "Enchantments"));
         printPreset(source, "StoredEnchantments", formatEnchantmentList(tag, "StoredEnchantments"));
@@ -141,28 +140,28 @@ public final class ClientDebugCommand {
         return 1;
     }
 
-    private static int handleCustom(CommandSourceStack source) {
+    private static int handleCustom(FabricClientCommandSource source) {
         LocalPlayer player = Minecraft.getInstance().player;
         if (player == null) {
-            source.sendFailure(Component.literal("This command can only be run by a player."));
+            source.sendError(Component.literal("This command can only be run by a player."));
             return 0;
         }
 
         ItemStack held = player.getMainHandItem();
         if (held.isEmpty()) {
-            source.sendFailure(Component.literal("You are not holding an item."));
+            source.sendError(Component.literal("You are not holding an item."));
             return 0;
         }
 
         String itemId = BuiltInRegistries.ITEM.getKey(held.getItem()).toString();
         CompoundTag tag = held.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
 
-        source.sendSuccess(() -> Component.literal("§6--- Custom NBT Entries ---"), false);
-        source.sendSuccess(() -> Component.literal("§7Item: §f" + itemId), false);
-        source.sendSuccess(() -> Component.literal("§8(keys not recognized by the NBT editor presets — add these via '+ Custom NBT Key')"), false);
+        source.sendFeedback(Component.literal("§6--- Custom NBT Entries ---"));
+        source.sendFeedback(Component.literal("§7Item: §f" + itemId));
+        source.sendFeedback(Component.literal("§8(keys not recognized by the NBT editor presets — add these via '+ Custom NBT Key')"));
 
         if (tag.isEmpty()) {
-            source.sendSuccess(() -> Component.literal("  §8(item has no custom data)"), false);
+            source.sendFeedback(Component.literal("  §8(item has no custom data)"));
             return 1;
         }
 
@@ -172,36 +171,36 @@ public final class ClientDebugCommand {
             any = true;
             Tag value = tag.get(key);
             String valueStr = value == null ? "" : value.toString();
-            source.sendSuccess(() -> Component.literal("  §8• §bkey: §f" + key), false);
-            source.sendSuccess(() -> Component.literal("    §8  §bvalue: §f" + valueStr), false);
+            source.sendFeedback(Component.literal("  §8• §bkey: §f" + key));
+            source.sendFeedback(Component.literal("    §8  §bvalue: §f" + valueStr));
         }
 
         if (!any) {
-            source.sendSuccess(() -> Component.literal("  §a(no custom NBT — all keys are preset-recognized or item has no custom data)"), false);
+            source.sendFeedback(Component.literal("  §a(no custom NBT — all keys are preset-recognized or item has no custom data)"));
         }
         return 1;
     }
 
     // ---------- components (data components from MC 1.20.5+) ----------
 
-    private static int handleComponents(CommandSourceStack source) {
+    private static int handleComponents(FabricClientCommandSource source) {
         LocalPlayer player = Minecraft.getInstance().player;
         if (player == null) {
-            source.sendFailure(Component.literal("This command can only be run by a player."));
+            source.sendError(Component.literal("This command can only be run by a player."));
             return 0;
         }
 
         ItemStack held = player.getMainHandItem();
         if (held.isEmpty()) {
-            source.sendFailure(Component.literal("You are not holding an item."));
+            source.sendError(Component.literal("You are not holding an item."));
             return 0;
         }
 
         String itemId = BuiltInRegistries.ITEM.getKey(held.getItem()).toString();
 
-        source.sendSuccess(() -> Component.literal("§6--- Item Components ---"), false);
-        source.sendSuccess(() -> Component.literal("§7Item: §f" + itemId), false);
-        source.sendSuccess(() -> Component.literal("§8(click [Copy] to put the JSON value on your clipboard — paste it into the NBT editor's component value field)"), false);
+        source.sendFeedback(Component.literal("§6--- Item Components ---"));
+        source.sendFeedback(Component.literal("§7Item: §f" + itemId));
+        source.sendFeedback(Component.literal("§8(click [Copy] to put the JSON value on your clipboard — paste it into the NBT editor's component value field)"));
 
         boolean any = false;
         for (TypedDataComponent<?> typed : held.getComponents()) {
@@ -210,18 +209,18 @@ public final class ClientDebugCommand {
         }
 
         if (!any) {
-            source.sendSuccess(() -> Component.literal("  §8(item has no components)"), false);
+            source.sendFeedback(Component.literal("  §8(item has no components)"));
         }
         return 1;
     }
 
-    private static <T> void printComponent(CommandSourceStack source, TypedDataComponent<T> typed) {
+    private static <T> void printComponent(FabricClientCommandSource source, TypedDataComponent<T> typed) {
         DataComponentType<T> type = typed.type();
         ResourceLocation id = BuiltInRegistries.DATA_COMPONENT_TYPE.getKey(type);
         String idStr = id == null ? "<unknown>" : id.toString();
 
         if (type.codec() == null) {
-            source.sendSuccess(() -> Component.literal("  §8• §b" + idStr + " §8(transient — no codec, can't be matched)"), false);
+            source.sendFeedback(Component.literal("  §8• §b" + idStr + " §8(transient — no codec, can't be matched)"));
             return;
         }
 
@@ -237,7 +236,7 @@ public final class ClientDebugCommand {
         var maybe = result.result();
         if (maybe.isEmpty()) {
             String err = result.error().map(e -> e.message()).orElse("unknown error");
-            source.sendSuccess(() -> Component.literal("  §c• §b" + idStr + " §c(encode failed: " + err + ")"), false);
+            source.sendFeedback(Component.literal("  §c• §b" + idStr + " §c(encode failed: " + err + ")"));
             return;
         }
 
@@ -253,20 +252,20 @@ public final class ClientDebugCommand {
 
         MutableComponent copyBtn = Component.literal(" [Copy]").withStyle(copyStyle);
         MutableComponent line = Component.literal("  §8• §b" + idStr).append(copyBtn);
-        source.sendSuccess(() -> line, false);
+        source.sendFeedback(line);
 
         // Preview line (truncated)
         String preview = jsonStr.length() > 120 ? jsonStr.substring(0, 117) + "..." : jsonStr;
-        source.sendSuccess(() -> Component.literal("    §7" + preview), false);
+        source.sendFeedback(Component.literal("    §7" + preview));
     }
 
     // ---------- helpers ----------
 
-    private static void printPreset(CommandSourceStack source, String label, String value) {
+    private static void printPreset(FabricClientCommandSource source, String label, String value) {
         boolean set = value != null;
         String color = set ? "§a" : "§8";
         String val = set ? "§f" + value : "§8(not set)";
-        source.sendSuccess(() -> Component.literal("  " + color + "• §b" + label + "§7: " + val), false);
+        source.sendFeedback(Component.literal("  " + color + "• §b" + label + "§7: " + val));
     }
 
     private static String formatInt(CompoundTag tag, String key) {

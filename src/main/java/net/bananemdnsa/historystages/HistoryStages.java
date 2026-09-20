@@ -2,7 +2,6 @@ package net.bananemdnsa.historystages;
 
 import com.mojang.logging.LogUtils;
 import net.bananemdnsa.historystages.Config;
-import net.bananemdnsa.historystages.client.LockDecorator;
 import net.bananemdnsa.historystages.commands.StageCommand;
 import net.bananemdnsa.historystages.compat.ScrollVariants;
 import net.bananemdnsa.historystages.data.StageManager;

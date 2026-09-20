@@ -47,7 +47,7 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.network.PacketDistributor;
+import net.bananemdnsa.historystages.client.ClientPacketHandler;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
 
@@ -339,7 +339,7 @@ public class OpenScrollScreen extends Screen {
      */
     private void takeScroll() {
         if (lecternPos != null) {
-            PacketDistributor.sendToServer(new TakeLecternScrollPacket(lecternPos));
+            ClientPacketHandler.sendToServer(new TakeLecternScrollPacket(lecternPos));
         }
         onClose();
     }

@@ -8,7 +8,7 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
 import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.RenderGuiEvent;
+import net.bananemdnsa.historystages.platform.event.client.RenderGuiEvent;
 
 import java.util.List;
 import net.fabricmc.api.EnvType;

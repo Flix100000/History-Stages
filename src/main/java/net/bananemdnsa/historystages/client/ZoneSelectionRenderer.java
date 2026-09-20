@@ -15,7 +15,7 @@ import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.world.phys.Vec3;
 import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
 import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+import net.bananemdnsa.historystages.platform.event.client.RenderLevelStageEvent;
 import org.joml.Matrix4f;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;

@@ -41,6 +41,8 @@
     "fastsuite.AuxRecipeManagerMixin"
   ],
   "client": [
+    "client.ItemDecorationsMixin",
+    "client.RecipesUpdatedMixin",
     "bettercombat.AttackStartLockMixin",
     "bettercombat.WeaponRegistryMixin",
     "ClientAdvancementsAccessor",

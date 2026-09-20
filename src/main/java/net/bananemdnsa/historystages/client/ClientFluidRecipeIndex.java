@@ -6,7 +6,7 @@ import net.bananemdnsa.historystages.util.DebugLogger;
 import net.minecraft.client.Minecraft;
 import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
 import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.RecipesUpdatedEvent;
+import net.bananemdnsa.historystages.platform.event.client.RecipesUpdatedEvent;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 

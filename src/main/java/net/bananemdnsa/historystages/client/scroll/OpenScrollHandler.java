@@ -5,7 +5,6 @@ import net.bananemdnsa.historystages.compat.ScrollVariants;
 import net.bananemdnsa.historystages.init.ModItems;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.api.distmarker.Dist;
 import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
 import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
 import net.bananemdnsa.historystages.platform.event.entity.player.PlayerInteractEvent;
@@ -27,7 +26,7 @@ public final class OpenScrollHandler {
 
     @SubscribeEvent
     public static void onRightClick(PlayerInteractEvent.RightClickItem event) {
-        // Dist.CLIENT only decides that this class is loaded on the physical client, not which
+        // @Environment(CLIENT) only decides that this class is loaded on the physical client, not which
         // thread runs it: in single player the integrated server lives in the same JVM and fires
         // this event again from ServerGamePacketListenerImpl. Calling setScreen from there throws
         // inside BufferUploader.reset() *after* Minecraft has already stored the new screen but
