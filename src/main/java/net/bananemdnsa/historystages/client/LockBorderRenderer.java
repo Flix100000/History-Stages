@@ -22,7 +22,10 @@ import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import org.joml.Matrix4f;
 
 import java.util.List;
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 
+@Environment(EnvType.CLIENT)
 /**
  * Draws a force-field "patch" on the faces of the orange lock zone — the union of all
  * {@link BoundingBox}es pushed by the server. Each face is subdivided into 1-block cells

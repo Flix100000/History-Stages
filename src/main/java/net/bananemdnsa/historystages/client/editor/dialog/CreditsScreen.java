@@ -9,7 +9,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.ConfirmLinkScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
-import net.neoforged.fml.ModList;
+import net.fabricmc.loader.api.FabricLoader;
 
 import java.util.List;
 
@@ -49,8 +49,8 @@ public class CreditsScreen extends AbstractModalScreen {
 
     /** Reads the version off the loaded mod rather than a constant, so it cannot go stale. */
     private static String modVersion() {
-        return ModList.get().getModContainerById(HistoryStages.MOD_ID)
-                .map(c -> c.getModInfo().getVersion().toString())
+        return FabricLoader.getInstance().getModContainer(HistoryStages.MOD_ID)
+                .map(c -> c.getMetadata().getVersion().getFriendlyString())
                 .orElse("?");
     }
 

@@ -91,7 +91,7 @@ public class ResearchPedestalBlock extends BaseEntityBlock implements TieredPede
         if (!pLevel.isClientSide()) {
             BlockEntity entity = pLevel.getBlockEntity(pPos);
             if (entity instanceof ResearchPedestalBlockEntity) {
-                ((ServerPlayer) pPlayer).openMenu((MenuProvider) entity, pPos);
+                ((ServerPlayer) pPlayer).openMenu((MenuProvider) entity);
             }
         }
         return InteractionResult.sidedSuccess(pLevel.isClientSide());

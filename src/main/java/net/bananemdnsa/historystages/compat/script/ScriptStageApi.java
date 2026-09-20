@@ -11,7 +11,7 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.server.ServerLifecycleHooks;
+import net.bananemdnsa.historystages.util.ServerHolder;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -197,7 +197,7 @@ public final class ScriptStageApi {
     }
 
     private static ServerLevel overworld() {
-        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        MinecraftServer server = ServerHolder.get();
         if (server == null) {
             if (ScriptCallResolution.shouldWarn("no-server")) {
                 LOGGER.warn("HistoryStages: a script asked about stages while no server was running");

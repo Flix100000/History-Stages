@@ -8,7 +8,8 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.neoforged.api.distmarker.Dist;
-import net.neoforged.fml.loading.FMLEnvironment;
+import net.fabricmc.api.EnvType;
+import net.fabricmc.loader.api.FabricLoader;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.ArrayList;
@@ -50,7 +51,7 @@ public record SyncLockBordersPacket(List<BoundingBox> boxes) implements CustomPa
 
     public static void handle(SyncLockBordersPacket msg, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
-            if (FMLEnvironment.dist != Dist.CLIENT) return;
+            if (FabricLoader.getInstance().getEnvironmentType() != EnvType.CLIENT) return;
             LockBorderClientCache.set(msg.boxes);
         });
     }

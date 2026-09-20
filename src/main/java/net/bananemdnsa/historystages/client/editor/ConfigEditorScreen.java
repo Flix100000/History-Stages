@@ -1611,14 +1611,14 @@ public class ConfigEditorScreen extends Screen {
         }
 
         // JEI hiding (Issue #64): live-apply config changes if JEI is loaded.
-        if (net.neoforged.fml.ModList.get().isLoaded("jei")) {
+        if (FabricLoader.getInstance().isModLoaded("jei")) {
             try {
                 net.bananemdnsa.historystages.compat.jei.JEIPlugin.tryApplyDiff();
             } catch (Throwable ignored) {}
         }
 
         // EMI: rebuild its index so booster/config changes show up immediately.
-        if (net.neoforged.fml.ModList.get().isLoaded("emi")) {
+        if (FabricLoader.getInstance().isModLoaded("emi")) {
             try {
                 net.bananemdnsa.historystages.compat.emi.EmiReloadBridge.reloadIfPresent();
             } catch (Throwable ignored) {}

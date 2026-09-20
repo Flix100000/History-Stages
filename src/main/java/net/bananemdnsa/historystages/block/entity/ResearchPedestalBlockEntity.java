@@ -40,7 +40,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.MenuProvider;
+import net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerFactory;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -58,7 +59,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.UUID;
 
-public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProvider {
+public class ResearchPedestalBlockEntity extends BlockEntity implements ExtendedScreenHandlerFactory<BlockPos> {
 
     // Slot 0: Research Scroll, Slot 1: Deposit item
     private final ItemStackHandler itemHandler = new ItemStackHandler(2) {
@@ -306,6 +307,12 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
     public AbstractContainerMenu createMenu(int pContainerId, Inventory pPlayerInventory, Player pPlayer) {
         this.lastInteractingPlayer = pPlayer.getUUID();
         return new ResearchPedestalMenu(pContainerId, pPlayerInventory, this, this.data);
+    }
+
+    /** The position the client side of the menu needs to find this block entity again. */
+    @Override
+    public BlockPos getScreenOpeningData(ServerPlayer player) {
+        return this.worldPosition;
     }
 
     /**

@@ -5,8 +5,8 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.server.MinecraftServer;
 import net.neoforged.api.distmarker.Dist;
-import net.neoforged.fml.loading.FMLEnvironment;
-import net.neoforged.neoforge.server.ServerLifecycleHooks;
+import net.fabricmc.api.EnvType;
+import net.fabricmc.loader.api.FabricLoader;
 
 /**
  * Whichever registry set belongs to the world that is actually running.
@@ -31,9 +31,9 @@ public final class CurrentRegistries {
      * server exists. Callers that hand the answer to foreign code want {@link #orEmpty()}.
      */
     public static HolderLookup.Provider get() {
-        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        MinecraftServer server = ServerHolder.get();
         if (server != null) return server.registryAccess();
-        if (FMLEnvironment.dist == Dist.CLIENT) return ClientRegistryAccessHelper.get();
+        if (FabricLoader.getInstance().getEnvironmentType() == EnvType.CLIENT) return ClientRegistryAccessHelper.get();
         return null;
     }
 

@@ -18,8 +18,8 @@ import net.bananemdnsa.historystages.data.dependency.EntityKillDep;
 import net.bananemdnsa.historystages.data.dependency.IndividualStageDep;
 import net.bananemdnsa.historystages.data.dependency.ScoreboardDep;
 import net.bananemdnsa.historystages.data.dependency.StatDep;
-import net.neoforged.fml.ModList;
-import net.neoforged.fml.loading.FMLPaths;
+import net.fabricmc.loader.api.FabricLoader;
+import net.fabricmc.loader.api.FabricLoader;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -46,11 +46,11 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 public class DebugLogger {
 
     // Resolved lazily (not a static final field) so that classes calling error()/warn()/info() —
-    // which only touch the in-memory CATEGORIES map — can be loaded without FMLPaths on the
+    // which only touch the in-memory CATEGORIES map — can be loaded without FabricLoader on the
     // classpath. That keeps pure/testable code (e.g. GraphLayoutData.fromJson) safe to unit-test
     // without a running game.
     private static Path logsPath() {
-        return FMLPaths.CONFIGDIR.get().resolve("historystages").resolve("logs");
+        return FabricLoader.getInstance().getConfigDir().resolve("historystages").resolve("logs");
     }
     private static final int MAX_LOG_FILES = 10;
     private static final int MAX_RUNTIME_FILES = 7;
@@ -128,8 +128,8 @@ public class DebugLogger {
                 }
             }
 
-            String modVersion = ModList.get().getModContainerById("historystages")
-                    .map(c -> c.getModInfo().getVersion().toString())
+            String modVersion = FabricLoader.getInstance().getModContainer("historystages")
+                    .map(c -> c.getMetadata().getVersion().getFriendlyString())
                     .orElse("unknown");
 
             // Counted through the category registry rather than one accumulator per kind. The
@@ -150,7 +150,7 @@ public class DebugLogger {
                 pw.println("  History Stages - Diagnostic Report");
                 pw.println("  Generated: " + now.format(DISPLAY_FORMAT));
                 pw.println("  Mod Version: " + modVersion);
-                pw.println("  Minecraft NeoForge: " + getNeoForgeVersion());
+                pw.println("  Fabric Loader: " + getLoaderVersion());
                 pw.println("================================================================");
                 pw.println();
 
@@ -436,10 +436,10 @@ public class DebugLogger {
         }
     }
 
-    private static String getNeoForgeVersion() {
+    private static String getLoaderVersion() {
         try {
-            return ModList.get().getModContainerById("neoforge")
-                    .map(c -> c.getModInfo().getVersion().toString())
+            return FabricLoader.getInstance().getModContainer("fabricloader")
+                    .map(c -> c.getMetadata().getVersion().getFriendlyString())
                     .orElse("unknown");
         } catch (Exception e) {
             return "unknown";
@@ -501,8 +501,8 @@ public class DebugLogger {
                 if (!headerWritten) {
                     headerWritten = true;
 
-                    String modVersion = ModList.get().getModContainerById("historystages")
-                            .map(c -> c.getModInfo().getVersion().toString())
+                    String modVersion = FabricLoader.getInstance().getModContainer("historystages")
+                            .map(c -> c.getMetadata().getVersion().getFriendlyString())
                             .orElse("unknown");
 
                     bw.write("================================================================");

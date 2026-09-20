@@ -8,7 +8,7 @@ import net.bananemdnsa.historystages.init.ModBlocks;
 import net.bananemdnsa.historystages.init.ModMenuTypes;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.*;
@@ -27,11 +27,10 @@ public class ResearchPedestalMenu extends AbstractContainerMenu {
     public final ContainerData data;
 
     // Client-Konstruktor
-    public ResearchPedestalMenu(int pContainerId, Inventory inv, FriendlyByteBuf extraData) {
+    public ResearchPedestalMenu(int pContainerId, Inventory inv, BlockPos pos) {
         // Slots 0..10: progress, max, finishDelay, individualMode, depsMet, depositDelay,
         // speedPercent, tierMismatch, requiredTier, requiredTierMode, running
-        this(pContainerId, inv, inv.player.level().getBlockEntity(extraData.readBlockPos()),
-                new SimpleContainerData(11));
+        this(pContainerId, inv, inv.player.level().getBlockEntity(pos), new SimpleContainerData(11));
     }
 
     // Server-Konstruktor

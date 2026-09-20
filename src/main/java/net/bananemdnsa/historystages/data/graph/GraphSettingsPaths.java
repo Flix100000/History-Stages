@@ -1,6 +1,6 @@
 package net.bananemdnsa.historystages.data.graph;
 
-import net.neoforged.fml.loading.FMLPaths;
+import net.fabricmc.loader.api.FabricLoader;
 
 import java.io.File;
 
@@ -17,7 +17,7 @@ public final class GraphSettingsPaths {
 
     /** The settings directory; created if missing. */
     public static File dir() {
-        File dir = FMLPaths.CONFIGDIR.get().resolve("historystages").resolve("settings").toFile();
+        File dir = FabricLoader.getInstance().getConfigDir().resolve("historystages").resolve("settings").toFile();
         if (!dir.exists()) dir.mkdirs();
         return dir;
     }

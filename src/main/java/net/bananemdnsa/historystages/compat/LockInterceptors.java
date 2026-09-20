@@ -1,7 +1,7 @@
 package net.bananemdnsa.historystages.compat;
 
 import com.mojang.logging.LogUtils;
-import net.neoforged.fml.ModList;
+import net.fabricmc.loader.api.FabricLoader;
 import org.slf4j.Logger;
 
 /**
@@ -17,7 +17,7 @@ public final class LockInterceptors {
     private LockInterceptors() {}
 
     public static void init() {
-        if (ModList.get().isLoaded("spell_engine")) {
+        if (FabricLoader.getInstance().isModLoaded("spell_engine")) {
             try {
                 net.bananemdnsa.historystages.compat.spellengine.SpellEngineCompat.register();
                 LOGGER.info("[HistoryStages] Spell Engine lock adapter loaded.");

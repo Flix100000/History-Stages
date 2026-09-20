@@ -21,6 +21,8 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import org.jetbrains.annotations.Nullable;
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 
 /**
  * The stand-in addon's own editor tab — the case the free tier cannot serve.
@@ -36,6 +38,7 @@ import org.jetbrains.annotations.Nullable;
  */
 @EventBusSubscriber(modid = HistoryStages.MOD_ID, value = Dist.CLIENT,
         bus = EventBusSubscriber.Bus.MOD)
+@Environment(EnvType.CLIENT)
 public final class DemoRelicSetEditor {
 
     private DemoRelicSetEditor() {}

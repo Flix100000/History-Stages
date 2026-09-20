@@ -9,9 +9,8 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockBehaviour;
-import net.neoforged.bus.api.IEventBus;
-import net.neoforged.neoforge.registries.DeferredRegister;
-import net.neoforged.neoforge.registries.DeferredHolder;
+import net.bananemdnsa.historystages.platform.DeferredRegister;
+import net.bananemdnsa.historystages.platform.DeferredHolder;
 
 public class ModBlocks {
     public static final DeferredRegister<Block> BLOCKS =
@@ -35,7 +34,7 @@ public class ModBlocks {
     public static final DeferredHolder<Block, Block> RESEARCH_PEDESTAL_TIER_4 = BLOCKS.register("research_pedestal_tier_4",
             () -> new MultiBlockTier4Block(pedestalProps()));
 
-    public static void register(IEventBus eventBus) {
-        BLOCKS.register(eventBus);
+    public static void register() {
+        BLOCKS.register();
     }
 }

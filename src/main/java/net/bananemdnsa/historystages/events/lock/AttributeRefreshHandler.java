@@ -9,7 +9,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.server.ServerLifecycleHooks;
+import net.bananemdnsa.historystages.util.ServerHolder;
 
 /**
  * Forces an attribute re-evaluation when a stage's lock state changes, so the
@@ -42,7 +42,7 @@ public final class AttributeRefreshHandler {
     }
 
     private static void refreshAllOnline() {
-        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        MinecraftServer server = ServerHolder.get();
         if (server == null) return;
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             HeldAttributeRefresher.refresh(player);
@@ -50,7 +50,7 @@ public final class AttributeRefreshHandler {
     }
 
     private static void refreshPlayer(UUID uuid) {
-        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        MinecraftServer server = ServerHolder.get();
         if (server == null) return;
         ServerPlayer player = server.getPlayerList().getPlayer(uuid);
         if (player != null) HeldAttributeRefresher.refresh(player);

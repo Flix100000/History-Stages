@@ -78,7 +78,7 @@ public class RecipeManagerMixin implements RecipeResolutionFilter {
             remap = true
     )
     private void onApplyPost(Map<ResourceLocation, com.google.gson.JsonElement> pObject, ResourceManager pResourceManager, ProfilerFiller pProfiler, CallbackInfo ci) {
-        net.minecraft.server.MinecraftServer server = net.neoforged.neoforge.server.ServerLifecycleHooks.getCurrentServer();
+        net.minecraft.server.MinecraftServer server = net.neoforged.neoforge.server.ServerHolder.get();
         if (server != null) {
             StageData data = StageData.get(server.overworld());
             StageData.refreshCache(data.getUnlockedStages());
@@ -322,7 +322,7 @@ public class RecipeManagerMixin implements RecipeResolutionFilter {
      */
     private boolean isServerRecipeManager() {
         net.minecraft.server.MinecraftServer server =
-                net.neoforged.neoforge.server.ServerLifecycleHooks.getCurrentServer();
+                net.neoforged.neoforge.server.ServerHolder.get();
         return server != null && server.getRecipeManager() == (Object) this;
     }
 

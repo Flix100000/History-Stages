@@ -207,7 +207,7 @@ public class MultiBlockResearchPedestalBlock extends BaseEntityBlock implements 
                     : pos;
             BlockEntity be = level.getBlockEntity(footPos);
             if (be instanceof ResearchPedestalBlockEntity) {
-                ((ServerPlayer) player).openMenu((MenuProvider) be, footPos);
+                ((ServerPlayer) player).openMenu((MenuProvider) be);
             }
         }
         return InteractionResult.sidedSuccess(level.isClientSide);

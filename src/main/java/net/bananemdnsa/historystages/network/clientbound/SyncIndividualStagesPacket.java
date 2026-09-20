@@ -59,7 +59,7 @@ public record SyncIndividualStagesPacket(Set<String> unlockedStages, Map<String,
             net.bananemdnsa.historystages.client.ClientFluidRecipeIndex.refresh();
 
             // JEI hiding (Issue #64): refresh visibility after individual-stage cache updated.
-            if (net.neoforged.fml.ModList.get().isLoaded("jei")) {
+            if (FabricLoader.getInstance().isModLoaded("jei")) {
                 try {
                     net.bananemdnsa.historystages.compat.jei.JEIPlugin.tryApplyDiff();
                 } catch (Throwable ignored) {}

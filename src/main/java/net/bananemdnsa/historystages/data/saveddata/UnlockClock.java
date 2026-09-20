@@ -1,7 +1,7 @@
 package net.bananemdnsa.historystages.data.saveddata;
 
 import net.minecraft.server.MinecraftServer;
-import net.neoforged.neoforge.server.ServerLifecycleHooks;
+import net.bananemdnsa.historystages.util.ServerHolder;
 
 /**
  * Stamps an unlock with the overworld's game time. Not the day time: /time set moves that
@@ -13,7 +13,7 @@ final class UnlockClock {
 
     /** Null without a running server; such an unlock is simply treated as having no time. */
     static Long now() {
-        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        MinecraftServer server = ServerHolder.get();
         return server == null ? null : server.overworld().getGameTime();
     }
 }

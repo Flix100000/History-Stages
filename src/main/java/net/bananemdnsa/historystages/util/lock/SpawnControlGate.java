@@ -22,7 +22,7 @@ import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.MobSpawnSettings;
 import net.neoforged.neoforge.event.level.LevelEvent;
-import net.neoforged.neoforge.server.ServerLifecycleHooks;
+import net.bananemdnsa.historystages.util.ServerHolder;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -101,7 +101,7 @@ public final class SpawnControlGate {
 
     private static Map<MobCategory, List<ResolvedExtra>> resolve(SpawnRuleSet set) {
         if (set.extras().isEmpty()) return Map.of();
-        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        MinecraftServer server = ServerHolder.get();
         Registry<Biome> biomes = server != null ? server.registryAccess().registryOrThrow(Registries.BIOME) : null;
 
         Map<MobCategory, List<ResolvedExtra>> out = new EnumMap<>(MobCategory.class);

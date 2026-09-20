@@ -30,7 +30,7 @@ import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModContainer;
-import net.neoforged.fml.ModList;
+import net.fabricmc.loader.api.FabricLoader;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.neoforge.capabilities.Capabilities;
@@ -146,7 +146,7 @@ public class HistoryStages {
                 }));
 
         // Conditional FTB Quests integration
-        if (ModList.get().isLoaded("ftbquests")) {
+        if (FabricLoader.getInstance().isModLoaded("ftbquests")) {
             try {
                 net.bananemdnsa.historystages.compat.ftbquests.FTBQuestsIntegration.init();
                 LOGGER.info("[HistoryStages] FTB Quests integration loaded.");
@@ -155,7 +155,7 @@ public class HistoryStages {
             }
         }
 
-        if (ModList.get().isLoaded("curios")) {
+        if (FabricLoader.getInstance().isModLoaded("curios")) {
             try {
                 NeoForge.EVENT_BUS.register(net.bananemdnsa.historystages.events.lock.CuriosEquipLockHandler.class);
                 LOGGER.info("[HistoryStages] Curios integration loaded.");
@@ -164,7 +164,7 @@ public class HistoryStages {
             }
         }
 
-        if (ModList.get().isLoaded("accessories")) {
+        if (FabricLoader.getInstance().isModLoaded("accessories")) {
             try {
                 net.bananemdnsa.historystages.events.lock.AccessoriesEquipLockHandler.register();
                 LOGGER.info("[HistoryStages] Accessories integration loaded.");
@@ -176,7 +176,7 @@ public class HistoryStages {
         // Script bridges. Both mods find their own entry point — KubeJS through
         // kubejs.plugins.txt, CraftTweaker by scanning for @ZenRegister — so all that is needed
         // here is the NeoForge-side wiring that turns StageEvent into something scripts hear.
-        if (ModList.get().isLoaded("kubejs")) {
+        if (FabricLoader.getInstance().isModLoaded("kubejs")) {
             try {
                 net.bananemdnsa.historystages.compat.kubejs.StageEventForwarder.register(NeoForge.EVENT_BUS);
                 LOGGER.info("[HistoryStages] KubeJS integration loaded.");
@@ -185,7 +185,7 @@ public class HistoryStages {
             }
         }
 
-        if (ModList.get().isLoaded("crafttweaker")) {
+        if (FabricLoader.getInstance().isModLoaded("crafttweaker")) {
             try {
                 net.bananemdnsa.historystages.compat.crafttweaker.CTScriptReloadHook.register(NeoForge.EVENT_BUS);
                 LOGGER.info("[HistoryStages] CraftTweaker integration loaded.");

@@ -12,7 +12,10 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.RenderGuiEvent;
 
 import java.util.List;
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 
+@Environment(EnvType.CLIENT)
 /**
  * Full-screen red tint drawn over the HUD when the local player's position lies inside any of
  * the lock shapes cached by {@link LockBorderClientCache}. Looks like the player is wearing

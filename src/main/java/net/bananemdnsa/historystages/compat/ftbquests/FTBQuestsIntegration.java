@@ -14,7 +14,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.neoforge.server.ServerLifecycleHooks;
+import net.bananemdnsa.historystages.util.ServerHolder;
 
 public class FTBQuestsIntegration {
 
@@ -58,7 +58,7 @@ public class FTBQuestsIntegration {
     }
 
     private static ServerPlayer resolvePlayer(java.util.UUID uuid) {
-        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        MinecraftServer server = ServerHolder.get();
         if (server == null) return null;
         return server.getPlayerList().getPlayer(uuid);
     }

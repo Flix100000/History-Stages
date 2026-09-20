@@ -14,7 +14,10 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ScreenEvent;
 
 import java.util.List;
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 
+@Environment(EnvType.CLIENT)
 /**
  * Dismisses one of this mod's toasts when the player clicks it. Toasts are only clickable while a
  * screen is open (the cursor is grabbed during normal play), which is exactly when the editor's

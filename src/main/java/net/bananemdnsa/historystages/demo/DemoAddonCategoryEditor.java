@@ -21,6 +21,8 @@ import net.minecraft.network.chat.Component;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 
 /**
  * The client half of the stand-in addon: one call, and the category has a tab that looks and
@@ -34,6 +36,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
  */
 @EventBusSubscriber(modid = HistoryStages.MOD_ID, value = Dist.CLIENT,
         bus = EventBusSubscriber.Bus.MOD)
+@Environment(EnvType.CLIENT)
 public final class DemoAddonCategoryEditor {
 
     private DemoAddonCategoryEditor() {}

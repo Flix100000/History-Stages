@@ -16,6 +16,8 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModLoader;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 
 /**
  * Opens and closes the windows in which an addon may give its category an editor tab and its
@@ -30,6 +32,7 @@ import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
  */
 @EventBusSubscriber(modid = HistoryStages.MOD_ID, value = Dist.CLIENT,
         bus = EventBusSubscriber.Bus.MOD)
+@Environment(EnvType.CLIENT)
 public final class ClientCategoryEditorSetup {
 
     private ClientCategoryEditorSetup() {}

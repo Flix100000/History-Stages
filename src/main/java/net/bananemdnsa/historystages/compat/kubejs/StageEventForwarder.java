@@ -4,13 +4,13 @@ import net.bananemdnsa.historystages.api.stage.StageEvent;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.IEventBus;
-import net.neoforged.neoforge.server.ServerLifecycleHooks;
+import net.bananemdnsa.historystages.util.ServerHolder;
 
 import java.util.UUID;
 
 /**
  * Turns the mod's own {@link StageEvent} into posts on the KubeJS event group. Registered from
- * the mod class behind a {@code ModList.isLoaded} check, so it exists only alongside KubeJS.
+ * the mod class behind a {@code FabricLoader.isModLoaded} check, so it exists only alongside KubeJS.
  *
  * <p>Listening to {@link StageEvent} rather than hooking the unlock paths is what makes this
  * complete: the event fires from the editor, the research pedestal, the command, an auto-trigger
@@ -55,7 +55,7 @@ public final class StageEventForwarder {
      * a timer can perfectly well be.
      */
     private static ServerPlayer playerOf(UUID uuid) {
-        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        MinecraftServer server = ServerHolder.get();
         return server == null ? null : server.getPlayerList().getPlayer(uuid);
     }
 }

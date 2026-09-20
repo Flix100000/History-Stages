@@ -16,9 +16,9 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
-import net.neoforged.fml.ModList;
-import net.neoforged.fml.loading.FMLPaths;
-import net.neoforged.neoforge.server.ServerLifecycleHooks;
+import net.fabricmc.loader.api.FabricLoader;
+import net.fabricmc.loader.api.FabricLoader;
+import net.bananemdnsa.historystages.util.ServerHolder;
 import net.minecraft.server.MinecraftServer;
 
 import net.bananemdnsa.historystages.data.dependency.*;
@@ -567,7 +567,7 @@ public class StageManager {
                 DebugLogger.warn("Invalid Mods", "Mod ID '" + modId + "' has invalid format (Stage: " + stageId + "). Removed.");
                 return true;
             }
-            if (!ModList.get().isLoaded(modId)) {
+            if (!FabricLoader.getInstance().isModLoaded(modId)) {
                 addMessage(MessageLevel.INFO, "Mod '" + modId + "' not installed (Stage: " + stageId + "). Entry kept.");
                 DebugLogger.info("Missing Mods", "Mod '" + modId + "' is not installed (Stage: " + stageId + "). Entry kept — will apply if mod is added later.");
             }
@@ -1132,7 +1132,7 @@ public class StageManager {
         // After re-indexing AUTO stages, drop progress entries that no longer
         // correspond to indexed AUTO stages (e.g. mode flipped AUTO → DEFAULT
         // via the editor, or auto_trigger was removed).
-        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        MinecraftServer server = ServerHolder.get();
         if (server != null && server.overworld() != null) {
             AutoTriggerManager.pruneOrphans(server.overworld());
             // Drop temporary-timer state for stages that no longer exist or are no
@@ -1302,7 +1302,7 @@ public class StageManager {
 
     /** Root directory of a tree; created if missing. */
     public static File treeRoot(boolean individual) {
-        File dir = FMLPaths.CONFIGDIR.get().resolve("historystages")
+        File dir = FabricLoader.getInstance().getConfigDir().resolve("historystages")
                 .resolve(individual ? "individual" : "global").toFile();
         if (!dir.exists()) dir.mkdirs();
         return dir;

@@ -83,13 +83,13 @@ public record SyncStagesPacket(List<String> unlockedStages, Map<String, Long> un
                     net.bananemdnsa.historystages.client.ClientRecipeBookRefresh.rebuild();
                     net.bananemdnsa.historystages.client.ClientFluidRecipeIndex.refresh();
 
-                    if (net.neoforged.fml.ModList.get().isLoaded("emi")) {
+                    if (FabricLoader.getInstance().isModLoaded("emi")) {
                         ExternalMods.refreshEMI();
                     }
 
                     // JEI hiding (Issue #64): refresh visibility after stage cache updated.
                     // Null-safe — no-op if JEI is not installed.
-                    if (net.neoforged.fml.ModList.get().isLoaded("jei")) {
+                    if (FabricLoader.getInstance().isModLoaded("jei")) {
                         try {
                             net.bananemdnsa.historystages.compat.jei.JEIPlugin.tryApplyDiff();
                         } catch (Throwable ignored) {}
