@@ -3,8 +3,11 @@ package net.bananemdnsa.historystages.mixin.fastsuite;
 import java.util.List;
 import java.util.Optional;
 
+import javax.annotation.Nullable;
+
 import net.bananemdnsa.historystages.events.RecipeHandler;
 import net.bananemdnsa.historystages.util.lock.RecipeResolutionFilter;
+import net.bananemdnsa.historystages.util.lock.ResolutionSide;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeInput;
@@ -60,11 +63,13 @@ public class AuxRecipeManagerMixin {
                     + ")Ljava/util/Optional;",
             at = @At("RETURN"), cancellable = true, require = 0, remap = false)
     private <I extends RecipeInput, T extends Recipe<I>> void historystages$gateRecipeFor(
-            RecipeType<T> type, I input, Level level, RecipeHolder<T> lastRecipe,
+            RecipeType<T> type, I input, @Nullable Level level, RecipeHolder<T> lastRecipe,
             CallbackInfoReturnable<Optional<RecipeHolder<T>>> cir) {
         Optional<RecipeHolder<T>> resolved = cir.getReturnValue();
         if (resolved.isEmpty()) return;
-        if (!RecipeHandler.isLockedForResolution(resolved.get(), level.isClientSide())) return;
+        if (!RecipeHandler.isLockedForResolution(resolved.get(), ResolutionSide.isClient(level))) {
+            return;
+        }
         cir.setReturnValue(historystages$filter().historystages$firstUnlocked(type, input, level));
     }
 
@@ -75,10 +80,10 @@ public class AuxRecipeManagerMixin {
                     + ")Ljava/util/List;",
             at = @At("RETURN"), cancellable = true, require = 0, remap = false)
     private <I extends RecipeInput, T extends Recipe<I>> void historystages$gateRecipesFor(
-            RecipeType<T> type, I input, Level level,
+            RecipeType<T> type, I input, @Nullable Level level,
             CallbackInfoReturnable<List<RecipeHolder<T>>> cir) {
         cir.setReturnValue(historystages$filter()
-                .historystages$withoutLocked(cir.getReturnValue(), level.isClientSide()));
+                .historystages$withoutLocked(cir.getReturnValue(), ResolutionSide.isClient(level)));
     }
 
     /**

@@ -3,6 +3,8 @@ package net.bananemdnsa.historystages.util.lock;
 import java.util.List;
 import java.util.Optional;
 
+import javax.annotation.Nullable;
+
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeInput;
@@ -25,9 +27,12 @@ public interface RecipeResolutionFilter {
     /**
      * The first recipe of this type that matches {@code input} and is not gated, in the order the
      * vanilla manager walks.
+     *
+     * @param level the level the lookup came in with, {@code null} if the caller had none; see
+     *              {@link ResolutionSide}
      */
     <I extends RecipeInput, T extends Recipe<I>> Optional<RecipeHolder<T>> historystages$firstUnlocked(
-            RecipeType<T> type, I input, Level level);
+            RecipeType<T> type, I input, @Nullable Level level);
 
     /** {@code resolved} with every gated recipe taken out, or {@code resolved} itself if none is. */
     <T extends Recipe<?>> List<RecipeHolder<T>> historystages$withoutLocked(
