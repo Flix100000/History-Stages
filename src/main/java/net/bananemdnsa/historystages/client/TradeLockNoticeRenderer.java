@@ -16,9 +16,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FormattedCharSequence;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ScreenEvent;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
@@ -44,7 +43,7 @@ import net.fabricmc.api.Environment;
  * that this draws after tooltips, so a tooltip from the player's own inventory reaching up past
  * the offer area would be covered for as long as it is up. Worth revisiting if it ever shows.
  */
-@EventBusSubscriber(modid = HistoryStages.MOD_ID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = HistoryStages.MOD_ID)
 public final class TradeLockNoticeRenderer {
 
     /**

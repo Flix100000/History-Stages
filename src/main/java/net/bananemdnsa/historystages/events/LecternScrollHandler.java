@@ -12,11 +12,11 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.LecternBlock;
 import net.minecraft.world.level.block.entity.LecternBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.neoforged.bus.api.EventPriority;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
-import net.neoforged.neoforge.network.PacketDistributor;
+import net.bananemdnsa.historystages.platform.bus.EventPriority;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
+import net.bananemdnsa.historystages.platform.event.entity.player.PlayerInteractEvent;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 
 /**
  * Opens the open scroll document when a lectern holding one is right-clicked.
@@ -78,7 +78,7 @@ public final class LecternScrollHandler {
         String stageId = ScrollVariants.readStageResearch(book);
         // An untagged scroll still opens: the screen says the stage is unknown, which beats a
         // lectern that silently does nothing when you click it.
-        PacketDistributor.sendToPlayer(player,
+        ServerPlayNetworking.send(player,
                 new OpenLecternScrollPacket(stageId == null ? "" : stageId, pos));
     }
 }

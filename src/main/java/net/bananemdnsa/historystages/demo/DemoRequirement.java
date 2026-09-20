@@ -8,8 +8,8 @@ import net.bananemdnsa.historystages.api.dependency.RequirementContext;
 import net.bananemdnsa.historystages.api.dependency.RequirementDisplay;
 import net.bananemdnsa.historystages.api.dependency.RequirementOutcome;
 import net.bananemdnsa.historystages.api.dependency.RequirementStorage;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
 
 /**
  * The stand-in addon's own kind of dependency: "hand in N of a relic".

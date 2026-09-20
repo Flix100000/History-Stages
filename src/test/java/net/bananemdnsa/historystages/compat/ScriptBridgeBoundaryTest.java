@@ -12,17 +12,19 @@ import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Keeps the two script bridges thin.
+ * Keeps the script bridge thin.
  *
- * <p>The point of the shared facade is that a fix reaches KubeJS and CraftTweaker at once. That
- * only holds while the bridges translate and nothing else. A bridge that reaches past
+ * <p>The point of the shared facade is that a fix reaches every scripting language at once. On
+ * this loader that is KubeJS alone, because CraftTweaker has no Fabric build, but the facade
+ * stays and so does this guard: the next language to arrive should find a translation layer and
+ * not a second set of rules. A bridge that reaches past
  * {@code compat.script} into {@code StageManager}, {@code StageStates}, a SavedData class or a
  * packet has started deciding things on its own, and the two languages will drift the moment one
  * of them is fixed and the other is not — which is exactly how {@code ToggleStageLockPacket}
  * drifted away from {@code StageStates} once already.
  *
- * <p>A source scan, not a classpath scan: this way the test needs neither KubeJS nor
- * CraftTweaker nor Minecraft, all three of which are absent from the test source set.
+ * <p>A source scan, not a classpath scan: this way the test needs neither KubeJS nor Minecraft,
+ * both of which are absent from the test source set.
  */
 class ScriptBridgeBoundaryTest {
 
@@ -43,7 +45,6 @@ class ScriptBridgeBoundaryTest {
     private static final List<String> ALLOWED = List.of(
             "net.bananemdnsa.historystages.compat.script.",
             "net.bananemdnsa.historystages.compat.kubejs.",
-            "net.bananemdnsa.historystages.compat.crafttweaker.",
             "net.bananemdnsa.historystages.api.stage.StageEvent",
             "net.bananemdnsa.historystages.client.cache.",
             "net.bananemdnsa.historystages.util.DebugLogger");
@@ -52,7 +53,7 @@ class ScriptBridgeBoundaryTest {
     void theBridgesOnlyTalkToTheFacade() throws IOException {
         List<String> offenders = new ArrayList<>();
 
-        for (String bridge : List.of("kubejs", "crafttweaker")) {
+        for (String bridge : List.of("kubejs")) {
             Path dir = Path.of("src", "main", "java", "net", "bananemdnsa", "historystages",
                     "compat", bridge);
             assertTrue(Files.isDirectory(dir), "expected " + dir + " to exist");

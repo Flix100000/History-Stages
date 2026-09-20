@@ -6,9 +6,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.RenderGuiEvent;
 
 import java.util.List;
@@ -25,7 +24,7 @@ import net.fabricmc.api.Environment;
  * the same shape list that drives the wall force-field also drives this overlay, so the two
  * stay in sync automatically.
  */
-@EventBusSubscriber(modid = HistoryStages.MOD_ID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = HistoryStages.MOD_ID)
 public final class LockOverlayRenderer {
 
     private LockOverlayRenderer() {}

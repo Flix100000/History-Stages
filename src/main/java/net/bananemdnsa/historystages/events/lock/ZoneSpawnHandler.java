@@ -12,9 +12,9 @@ import net.bananemdnsa.historystages.data.saveddata.StageData;
 import com.mojang.logging.LogUtils;
 import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.level.Level;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.entity.living.MobSpawnEvent;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
+import net.bananemdnsa.historystages.platform.event.entity.living.MobSpawnEvent;
 import org.slf4j.Logger;
 
 /**

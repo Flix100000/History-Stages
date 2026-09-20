@@ -31,9 +31,8 @@ import net.minecraft.resources.RegistryOps;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.RegisterClientCommandsEvent;
 
 import java.util.Set;
@@ -41,7 +40,7 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 
 @Environment(EnvType.CLIENT)
-@EventBusSubscriber(modid = HistoryStages.MOD_ID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = HistoryStages.MOD_ID)
 public final class ClientDebugCommand {
 
     private static final Set<String> PRESET_KEYS = Set.of(

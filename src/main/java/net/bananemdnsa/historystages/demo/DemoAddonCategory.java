@@ -9,8 +9,8 @@ import net.bananemdnsa.historystages.api.lock.AddonLockCategory;
 import net.bananemdnsa.historystages.api.lock.CategoryStorage;
 import net.bananemdnsa.historystages.api.lock.RegisterLockCategoriesEvent;
 import net.bananemdnsa.historystages.api.stage.StageScope;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
 
 /**
  * A stand-in addon, so the addon path can be exercised before a real addon exists — and so there

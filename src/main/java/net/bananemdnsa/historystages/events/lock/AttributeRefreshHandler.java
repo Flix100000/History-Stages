@@ -7,8 +7,8 @@ import net.bananemdnsa.historystages.api.stage.StageEvent;
 import net.bananemdnsa.historystages.util.lock.HeldAttributeRefresher;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
 import net.bananemdnsa.historystages.util.ServerHolder;
 
 /**

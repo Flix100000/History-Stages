@@ -4,7 +4,6 @@ import net.bananemdnsa.historystages.client.ClientRegistryAccessHelper;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.server.MinecraftServer;
-import net.neoforged.api.distmarker.Dist;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.loader.api.FabricLoader;
 

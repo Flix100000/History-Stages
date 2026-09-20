@@ -2,7 +2,7 @@ package net.bananemdnsa.historystages.api.editor;
 
 import net.bananemdnsa.historystages.api.editor.CustomFieldScreens;
 
-import net.neoforged.bus.api.Event;
+import net.bananemdnsa.historystages.platform.bus.Event;
 import net.neoforged.fml.event.IModBusEvent;
 
 /**

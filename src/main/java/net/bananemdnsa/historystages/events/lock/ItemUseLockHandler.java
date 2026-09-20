@@ -16,13 +16,13 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
-import net.neoforged.bus.api.ICancellableEvent;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.common.util.TriState;
-import net.neoforged.neoforge.event.entity.living.LivingEquipmentChangeEvent;
-import net.neoforged.neoforge.event.entity.player.AttackEntityEvent;
-import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
+import net.bananemdnsa.historystages.platform.bus.ICancellableEvent;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
+import net.fabricmc.fabric.api.util.TriState;
+import net.bananemdnsa.historystages.platform.event.entity.living.LivingEquipmentChangeEvent;
+import net.bananemdnsa.historystages.platform.event.entity.player.AttackEntityEvent;
+import net.bananemdnsa.historystages.platform.event.entity.player.PlayerInteractEvent;
 
 @EventBusSubscriber(modid = HistoryStages.MOD_ID)
 public class ItemUseLockHandler {

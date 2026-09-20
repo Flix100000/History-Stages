@@ -13,9 +13,8 @@ import net.bananemdnsa.historystages.client.cache.ClientZoneSelection;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import org.joml.Matrix4f;
 import net.fabricmc.api.EnvType;
@@ -32,7 +31,7 @@ import net.fabricmc.api.Environment;
  * face masks from exactly those boxes. Feeding a selection through it would tangle two things that
  * are about to diverge further, since round 2 gives zones a force field of their own.
  */
-@EventBusSubscriber(modid = HistoryStages.MOD_ID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = HistoryStages.MOD_ID)
 public final class ZoneSelectionRenderer {
 
     private static final float R = 1.0f;

@@ -4,9 +4,8 @@ import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.data.lock.FluidRecipeIndex;
 import net.bananemdnsa.historystages.util.DebugLogger;
 import net.minecraft.client.Minecraft;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.RecipesUpdatedEvent;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
@@ -24,7 +23,7 @@ import net.fabricmc.api.Environment;
  * <p>The server rebuilds on a tick. The client has no equivalent, so it is driven by the two
  * moments where the inputs actually change: the recipe list arriving, and a stage sync.
  */
-@EventBusSubscriber(modid = HistoryStages.MOD_ID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = HistoryStages.MOD_ID)
 public final class ClientFluidRecipeIndex {
 
     private ClientFluidRecipeIndex() {}

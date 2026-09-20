@@ -4,8 +4,8 @@ import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.api.settings.RegisterStageSettingsGroupsEvent;
 import net.bananemdnsa.historystages.api.settings.Setting;
 import net.bananemdnsa.historystages.api.settings.StageSettingsGroup;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
 
 /**
  * A stand-in addon's own per-stage settings, so the settings path can be exercised before a real

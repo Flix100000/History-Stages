@@ -6,9 +6,8 @@ import net.bananemdnsa.historystages.api.editor.RequirementEditor;
 import net.bananemdnsa.historystages.api.editor.RegisterCustomFieldScreensEvent;
 import net.bananemdnsa.historystages.api.editor.widget.FormattedTextScreen;
 import net.minecraft.network.chat.Component;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 
@@ -20,7 +19,7 @@ import net.fabricmc.api.Environment;
  * duplicate and remove, and saving into the stage file all come from having said which ids exist
  * and that entries carry an amount.
  */
-@EventBusSubscriber(modid = HistoryStages.MOD_ID, value = Dist.CLIENT,
+@EventBusSubscriber(modid = HistoryStages.MOD_ID,
         bus = EventBusSubscriber.Bus.MOD)
 @Environment(EnvType.CLIENT)
 public final class DemoRequirementEditor {

@@ -28,7 +28,7 @@ import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.IEventBus;
-import net.neoforged.bus.api.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
 import net.neoforged.fml.ModContainer;
 import net.fabricmc.loader.api.FabricLoader;
 import net.neoforged.fml.common.Mod;
@@ -38,14 +38,14 @@ import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import net.neoforged.neoforge.client.event.RegisterItemDecorationsEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.neoforge.common.util.TriState;
-import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
-import net.neoforged.neoforge.event.RegisterCommandsEvent;
-import net.neoforged.neoforge.event.entity.player.ItemEntityPickupEvent;
-import net.neoforged.neoforge.event.entity.player.PlayerEvent;
-import net.neoforged.neoforge.event.level.LevelEvent;
-import net.neoforged.neoforge.event.server.ServerStoppingEvent;
-import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import net.fabricmc.fabric.api.util.TriState;
+import net.bananemdnsa.historystages.platform.event.BuildCreativeModeTabContentsEvent;
+import net.bananemdnsa.historystages.platform.event.RegisterCommandsEvent;
+import net.bananemdnsa.historystages.platform.event.entity.player.ItemEntityPickupEvent;
+import net.bananemdnsa.historystages.platform.event.entity.player.PlayerEvent;
+import net.bananemdnsa.historystages.platform.event.level.LevelEvent;
+import net.bananemdnsa.historystages.platform.event.server.ServerStoppingEvent;
+import net.bananemdnsa.historystages.platform.event.tick.ServerTickEvent;
 import org.slf4j.Logger;
 
 import java.util.List;
@@ -182,15 +182,6 @@ public class HistoryStages {
                 LOGGER.info("[HistoryStages] KubeJS integration loaded.");
             } catch (Exception e) {
                 LOGGER.error("[HistoryStages] Failed to load KubeJS integration.", e);
-            }
-        }
-
-        if (FabricLoader.getInstance().isModLoaded("crafttweaker")) {
-            try {
-                net.bananemdnsa.historystages.compat.crafttweaker.CTScriptReloadHook.register(NeoForge.EVENT_BUS);
-                LOGGER.info("[HistoryStages] CraftTweaker integration loaded.");
-            } catch (Exception e) {
-                LOGGER.error("[HistoryStages] Failed to load CraftTweaker integration.", e);
             }
         }
 

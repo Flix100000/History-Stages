@@ -2,7 +2,7 @@ package net.bananemdnsa.historystages.api.editor;
 
 import net.bananemdnsa.historystages.client.editor.recipe.RecipeTypeMetas;
 
-import net.neoforged.bus.api.Event;
+import net.bananemdnsa.historystages.platform.bus.Event;
 import net.neoforged.fml.event.IModBusEvent;
 
 /**

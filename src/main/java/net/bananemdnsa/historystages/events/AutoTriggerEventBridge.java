@@ -40,14 +40,14 @@ import net.minecraft.world.level.block.state.BlockState;
 import java.util.HashSet;
 import java.util.Set;
 import org.jetbrains.annotations.Nullable;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
-import net.neoforged.neoforge.event.entity.living.MobEffectEvent;
-import net.neoforged.neoforge.event.entity.player.AdvancementEvent;
-import net.neoforged.neoforge.event.entity.player.ItemEntityPickupEvent;
-import net.neoforged.neoforge.event.entity.player.PlayerEvent;
-import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
-import net.neoforged.neoforge.event.level.BlockEvent;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.event.entity.living.LivingDeathEvent;
+import net.bananemdnsa.historystages.platform.event.entity.living.MobEffectEvent;
+import net.bananemdnsa.historystages.platform.event.entity.player.AdvancementEvent;
+import net.bananemdnsa.historystages.platform.event.entity.player.ItemEntityPickupEvent;
+import net.bananemdnsa.historystages.platform.event.entity.player.PlayerEvent;
+import net.bananemdnsa.historystages.platform.event.entity.player.PlayerInteractEvent;
+import net.bananemdnsa.historystages.platform.event.level.BlockEvent;
 
 /**
  * Single Forge-bus listener that forwards relevant world events into

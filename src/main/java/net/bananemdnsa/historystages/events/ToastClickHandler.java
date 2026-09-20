@@ -8,9 +8,8 @@ import net.bananemdnsa.historystages.mixin.toast.ToastInstanceAccessor;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.toasts.Toast;
 import net.minecraft.client.gui.components.toasts.ToastComponent;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ScreenEvent;
 
 import java.util.List;
@@ -24,7 +23,7 @@ import net.fabricmc.api.Environment;
  * toasts appear. The toast under the cursor is hidden and the click is consumed so it doesn't also
  * fall through to the screen below.
  */
-@EventBusSubscriber(modid = HistoryStages.MOD_ID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = HistoryStages.MOD_ID)
 public final class ToastClickHandler {
 
     private ToastClickHandler() {}

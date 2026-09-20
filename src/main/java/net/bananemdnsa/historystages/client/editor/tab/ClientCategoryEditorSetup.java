@@ -11,10 +11,9 @@ import net.bananemdnsa.historystages.client.editor.recipe.RecipeTypeMetas;
 import net.bananemdnsa.historystages.client.editor.trigger.TriggerEditors;
 
 import net.bananemdnsa.historystages.HistoryStages;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
 import net.neoforged.fml.ModLoader;
-import net.neoforged.fml.common.EventBusSubscriber;
+import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
@@ -30,7 +29,7 @@ import net.fabricmc.api.Environment;
  * <p>Client setup runs after common setup, so the lock categories themselves are already
  * registered and frozen by the time an editor can be attached to one.
  */
-@EventBusSubscriber(modid = HistoryStages.MOD_ID, value = Dist.CLIENT,
+@EventBusSubscriber(modid = HistoryStages.MOD_ID,
         bus = EventBusSubscriber.Bus.MOD)
 @Environment(EnvType.CLIENT)
 public final class ClientCategoryEditorSetup {

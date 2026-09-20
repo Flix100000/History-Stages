@@ -4,7 +4,7 @@ import net.bananemdnsa.historystages.client.editor.trigger.TriggerEditors;
 
 import net.bananemdnsa.historystages.api.editor.TriggerEditor;
 
-import net.neoforged.bus.api.Event;
+import net.bananemdnsa.historystages.platform.bus.Event;
 import net.neoforged.fml.event.IModBusEvent;
 
 /**

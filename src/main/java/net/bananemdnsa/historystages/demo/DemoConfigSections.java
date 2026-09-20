@@ -7,8 +7,8 @@ import net.bananemdnsa.historystages.api.config.AddonConfigField;
 import net.bananemdnsa.historystages.api.config.AddonConfigSection;
 import net.bananemdnsa.historystages.api.config.ConfigSide;
 import net.bananemdnsa.historystages.api.config.RegisterConfigSectionsEvent;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
 
 /**
  * A stand-in addon's own config sections, so the config-screen path can be exercised before a

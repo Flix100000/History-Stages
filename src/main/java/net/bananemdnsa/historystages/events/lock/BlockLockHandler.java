@@ -14,11 +14,11 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.entity.player.PlayerEvent;
-import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
-import net.neoforged.neoforge.event.level.BlockEvent;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
+import net.bananemdnsa.historystages.platform.event.entity.player.PlayerEvent;
+import net.bananemdnsa.historystages.platform.event.entity.player.PlayerInteractEvent;
+import net.bananemdnsa.historystages.platform.event.level.BlockEvent;
 
 @EventBusSubscriber(modid = HistoryStages.MOD_ID)
 public class BlockLockHandler {
@@ -49,7 +49,7 @@ public class BlockLockHandler {
         if (locked) {
             // Only deny the block's own interaction (GUI opening), not the item use.
             // setCanceled(true) would also block placing items on locked block surfaces.
-            event.setUseBlock(net.neoforged.neoforge.common.util.TriState.FALSE);
+            event.setUseBlock(net.fabricmc.fabric.api.util.TriState.FALSE);
 
             // Only show the "block locked" message when the block actually has a GUI to open.
             // Blocks without a MenuProvider (plain stone, dirt, etc.) don't need a message —

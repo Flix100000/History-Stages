@@ -4,7 +4,7 @@ import net.bananemdnsa.historystages.data.config.AddonConfigSections;
 
 import net.bananemdnsa.historystages.api.config.AddonConfigSection;
 
-import net.neoforged.bus.api.Event;
+import net.bananemdnsa.historystages.platform.bus.Event;
 import net.neoforged.fml.event.IModBusEvent;
 
 /**

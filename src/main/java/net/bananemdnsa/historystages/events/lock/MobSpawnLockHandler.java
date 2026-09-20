@@ -8,13 +8,13 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.MobSpawnType;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
-import net.neoforged.neoforge.event.entity.living.BabyEntitySpawnEvent;
-import net.neoforged.neoforge.event.entity.living.FinalizeSpawnEvent;
-import net.neoforged.neoforge.event.entity.living.MobSpawnEvent;
-import net.neoforged.neoforge.event.level.LevelEvent;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
+import net.bananemdnsa.historystages.platform.event.entity.EntityJoinLevelEvent;
+import net.bananemdnsa.historystages.platform.event.entity.living.BabyEntitySpawnEvent;
+import net.bananemdnsa.historystages.platform.event.entity.living.FinalizeSpawnEvent;
+import net.bananemdnsa.historystages.platform.event.entity.living.MobSpawnEvent;
+import net.bananemdnsa.historystages.platform.event.level.LevelEvent;
 
 /**
  * Spawn rules. Maps the vanilla {@link MobSpawnType} to one of our six source buckets and asks

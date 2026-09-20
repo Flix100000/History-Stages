@@ -7,9 +7,8 @@ import net.bananemdnsa.historystages.client.cache.ClientIndividualStageCache;
 import net.bananemdnsa.historystages.client.cache.ClientPlayerStageCache;
 import net.bananemdnsa.historystages.client.cache.ClientZoneSelection;
 import net.bananemdnsa.historystages.client.cache.ClientZoneShapes;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
@@ -19,7 +18,7 @@ import net.fabricmc.api.Environment;
  * Reloads local stage definitions when the client disconnects from a server.
  * This ensures singleplayer still uses the local config files after leaving a multiplayer server.
  */
-@EventBusSubscriber(modid = HistoryStages.MOD_ID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = HistoryStages.MOD_ID)
 public class ClientDisconnectHandler {
 
     @SubscribeEvent

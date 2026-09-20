@@ -2,7 +2,7 @@ package net.bananemdnsa.historystages.api.lock;
 
 import net.bananemdnsa.historystages.data.lock.IndividualRecipeSupport;
 
-import net.neoforged.bus.api.Event;
+import net.bananemdnsa.historystages.platform.bus.Event;
 import net.neoforged.fml.event.IModBusEvent;
 
 /**

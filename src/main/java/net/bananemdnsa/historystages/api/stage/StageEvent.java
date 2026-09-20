@@ -1,6 +1,6 @@
 package net.bananemdnsa.historystages.api.stage;
 
-import net.neoforged.bus.api.Event;
+import net.bananemdnsa.historystages.platform.bus.Event;
 
 /**
  * Custom Forge events fired when stages are unlocked or locked.

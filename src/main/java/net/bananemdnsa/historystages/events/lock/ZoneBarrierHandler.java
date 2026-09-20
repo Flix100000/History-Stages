@@ -3,9 +3,9 @@ package net.bananemdnsa.historystages.events.lock;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.data.lock.engine.StageLocks;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.entity.EntityTeleportEvent;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
+import net.bananemdnsa.historystages.platform.event.entity.EntityTeleportEvent;
 
 /**
  * The ways into a barrier zone that do not involve walking.

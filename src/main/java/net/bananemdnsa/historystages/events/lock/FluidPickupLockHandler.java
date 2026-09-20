@@ -19,10 +19,10 @@ import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.common.util.TriState;
-import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
+import net.fabricmc.fabric.api.util.TriState;
+import net.bananemdnsa.historystages.platform.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.fluids.CauldronFluidContent;
 import org.jetbrains.annotations.Nullable;
 
