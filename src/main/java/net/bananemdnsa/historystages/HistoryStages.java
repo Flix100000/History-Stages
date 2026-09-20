@@ -27,17 +27,8 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.bus.api.IEventBus;
 import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
-import net.neoforged.fml.ModContainer;
 import net.fabricmc.loader.api.FabricLoader;
-import net.neoforged.fml.common.Mod;
-import net.neoforged.fml.config.ModConfig;
-import net.neoforged.neoforge.capabilities.Capabilities;
-import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
-import net.neoforged.neoforge.client.event.RegisterItemDecorationsEvent;
-import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
-import net.neoforged.neoforge.common.NeoForge;
 import net.fabricmc.fabric.api.util.TriState;
 import net.bananemdnsa.historystages.platform.event.BuildCreativeModeTabContentsEvent;
 import net.bananemdnsa.historystages.platform.event.RegisterCommandsEvent;
@@ -50,7 +41,6 @@ import org.slf4j.Logger;
 
 import java.util.List;
 
-@Mod(HistoryStages.MOD_ID)
 public class HistoryStages {
     public static final String MOD_ID = "historystages";
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -59,192 +49,20 @@ public class HistoryStages {
         return net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(MOD_ID, path);
     }
 
-    public HistoryStages(IEventBus modEventBus, ModContainer modContainer) {
-        // Must run before either config spec is registered below — see the class comment on
-        // GraphConfigMigration for why capture and apply are two separate steps.
-        net.bananemdnsa.historystages.data.graph.GraphConfigMigration.capture();
-        // Second, never first: this one renames the old files once it has written their contents
-        // into the new ones, and the graph block lives in the same common file. Reading it after
-        // the rename would cost the pack its whole stage graph.
-        net.bananemdnsa.historystages.data.config.LegacyConfigMigration.capture();
-
-        ModItems.register(modEventBus);
-        ModBlocks.register(modEventBus);
-        ModCreativeTabs.register(modEventBus);
-        ModBlockEntities.register(modEventBus);
-        ModMenuTypes.register(modEventBus);
-        net.bananemdnsa.historystages.init.ModRecipes.register(modEventBus);
-
-        modEventBus.addListener(this::addCreative);
-        // Hier fügen wir den Decorator hinzu:
-        modEventBus.addListener(this::onRegisterItemDecorators);
-        modEventBus.addListener(this::registerScreens);
-        modEventBus.addListener(this::registerCapabilities);
-        modEventBus.addListener(this::onConfigLoad);
-        modEventBus.addListener(this::onConfigReload);
-
-        // Type.COMMON, not CLIENT: a dedicated server never loads a CLIENT spec, so it could not
-        // own these values — and owning them is the whole point of sending them to every player.
-        // Not Type.SERVER either: that stores per world under saves/<world>/serverconfig/, which
-        // is exactly not the one shared place under config/historystages/settings/.
-        // Both specs must name their own file. NeoForge derives the default name from modid and
-        // type, so two COMMON registrations without explicit paths both claim
-        // historystages-common.toml and mod loading dies on the conflict.
-        modContainer.registerConfig(ModConfig.Type.COMMON, Config.VISUAL_SPEC,
-                "historystages/settings/visual.toml");
-        modContainer.registerConfig(ModConfig.Type.COMMON, Config.GAMEPLAY_SPEC,
-                "historystages/settings/gameplay.toml");
-        modContainer.registerConfig(ModConfig.Type.COMMON, GraphConfig.GRAPH_SPEC,
-                "historystages/settings/graph.toml");
-
-        ConfigHandler.setupConfig();
-        StageManager.load();
-
-        // Registration window for addon lock categories. StageManager.load() above already
-        // parsed every stage's `addons` block into raw JsonElement — that needs no registry at
-        // all — so nothing upstream of this point ever needed a category to exist. Firing here,
-        // once every mod has been constructed and FMLCommonSetupEvent's own parallel dispatch has
-        // fully returned (postEvent is called from the deferred work queue, not from inside that
-        // dispatch), lets every mod's RegisterLockCategoriesEvent listener run before the
-        // registry closes for good.
-        modEventBus.addListener((net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent event) ->
-                event.enqueueWork(() -> {
-                    net.neoforged.fml.ModLoader.postEvent(
-                            new net.bananemdnsa.historystages.api.lock.RegisterLockCategoriesEvent());
-                    net.bananemdnsa.historystages.data.lock.category.LockCategories.freeze();
-                    net.neoforged.fml.ModLoader.postEvent(
-                            new net.bananemdnsa.historystages.api.trigger.RegisterTriggerTypesEvent());
-                    net.bananemdnsa.historystages.data.auto.TriggerTypes.freeze();
-                    net.neoforged.fml.ModLoader.postEvent(
-                            new net.bananemdnsa.historystages.api.dependency.RegisterRequirementTypesEvent());
-                    net.bananemdnsa.historystages.data.dependency.RequirementTypes.freeze();
-                    net.neoforged.fml.ModLoader.postEvent(
-                            new net.bananemdnsa.historystages.api.settings.RegisterStageSettingsGroupsEvent());
-                    net.bananemdnsa.historystages.data.settings.StageSettingsGroups.freeze();
-                    net.neoforged.fml.ModLoader.postEvent(
-                            new net.bananemdnsa.historystages.api.config.RegisterConfigSectionsEvent());
-                    // The freeze is what makes the section list safe to read from the config
-                    // packets, which now go to AddonConfigSections directly rather than through a
-                    // registry the values had to be copied into first.
-                    net.bananemdnsa.historystages.data.config.AddonConfigSections.freeze();
-                    net.neoforged.fml.ModLoader.postEvent(
-                            new net.bananemdnsa.historystages.api.lock.RegisterIndividualRecipeSupportEvent());
-                    net.bananemdnsa.historystages.data.lock.IndividualRecipeSupport.freeze();
-
-                    // Logged here rather than inside freeze(): LockCategories is unit-tested, and
-                    // the test runtime classpath has no Minecraft or NeoForge on it. This line is
-                    // also how an in-game check confirms the event actually fired.
-                    var addonCategories =
-                            net.bananemdnsa.historystages.data.lock.category.LockCategories.addonIds();
-                    LOGGER.info("[HistoryStages] Lock categories closed: {} total, {} from other mods {}",
-                            net.bananemdnsa.historystages.data.lock.category.LockCategories.all().size(),
-                            addonCategories.size(), addonCategories);
-                    LOGGER.info("[HistoryStages] Stage settings groups closed: {} total",
-                            net.bananemdnsa.historystages.data.settings.StageSettingsGroups.all().size());
-                    LOGGER.info("[HistoryStages] Config sections closed: {} total",
-                            net.bananemdnsa.historystages.data.config.AddonConfigSections.all().size());
-                }));
-
-        // Conditional FTB Quests integration
-        if (FabricLoader.getInstance().isModLoaded("ftbquests")) {
-            try {
-                net.bananemdnsa.historystages.compat.ftbquests.FTBQuestsIntegration.init();
-                LOGGER.info("[HistoryStages] FTB Quests integration loaded.");
-            } catch (Exception e) {
-                LOGGER.error("[HistoryStages] Failed to load FTB Quests integration.", e);
-            }
-        }
-
-        if (FabricLoader.getInstance().isModLoaded("curios")) {
-            try {
-                NeoForge.EVENT_BUS.register(net.bananemdnsa.historystages.events.lock.CuriosEquipLockHandler.class);
-                LOGGER.info("[HistoryStages] Curios integration loaded.");
-            } catch (Exception e) {
-                LOGGER.error("[HistoryStages] Failed to load Curios integration.", e);
-            }
-        }
-
-        if (FabricLoader.getInstance().isModLoaded("accessories")) {
-            try {
-                net.bananemdnsa.historystages.events.lock.AccessoriesEquipLockHandler.register();
-                LOGGER.info("[HistoryStages] Accessories integration loaded.");
-            } catch (Exception e) {
-                LOGGER.error("[HistoryStages] Failed to load Accessories integration.", e);
-            }
-        }
-
-        // Script bridges. Both mods find their own entry point — KubeJS through
-        // kubejs.plugins.txt, CraftTweaker by scanning for @ZenRegister — so all that is needed
-        // here is the NeoForge-side wiring that turns StageEvent into something scripts hear.
-        if (FabricLoader.getInstance().isModLoaded("kubejs")) {
-            try {
-                net.bananemdnsa.historystages.compat.kubejs.StageEventForwarder.register(NeoForge.EVENT_BUS);
-                LOGGER.info("[HistoryStages] KubeJS integration loaded.");
-            } catch (Exception e) {
-                LOGGER.error("[HistoryStages] Failed to load KubeJS integration.", e);
-            }
-        }
-
-        // Optional per-mod lock adapters (custom actions that bypass vanilla interaction events).
-        net.bananemdnsa.historystages.compat.LockInterceptors.init();
-
-        NeoForge.EVENT_BUS.register(this);
-        NeoForge.EVENT_BUS.register(new net.bananemdnsa.historystages.events.AutoTriggerEventBridge());
+    /**
+     * Holds the handler methods below. Everything the NeoForge constructor did — registries,
+     * config, integrations — is in HistoryStagesFabric now, where the order is visible.
+     */
+    public HistoryStages() {
     }
 
-    private void onConfigLoad(net.neoforged.fml.event.config.ModConfigEvent.Loading event) {
-        if (event.getConfig().getSpec() == Config.GAMEPLAY_SPEC) {
-            net.bananemdnsa.historystages.data.config.ConfigDerivedCaches.rebuildGameplay();
-        }
-        // Its own branch: the scroll tooltip layout is read out of the visual spec, so hanging the
-        // rebuild off the gameplay spec would read a file that may not be loaded yet and would miss
-        // every later change to visual.toml.
-        if (event.getConfig().getSpec() == Config.VISUAL_SPEC) {
-            net.bananemdnsa.historystages.data.config.ConfigDerivedCaches.rebuildVisual();
-        }
-        // Not in the constructor: registerConfig does not load a COMMON spec, and writing into one
-        // before it is loaded throws. Hung off both specs rather than just whichever loads second,
-        // so it does not depend on the registration order — apply() waits until both are ready and
-        // then runs exactly once.
-        if (event.getConfig().getSpec() == Config.VISUAL_SPEC
-                || event.getConfig().getSpec() == Config.GAMEPLAY_SPEC) {
-            net.bananemdnsa.historystages.data.config.LegacyConfigMigration.apply();
-        }
-        if (event.getConfig().getSpec() == GraphConfig.GRAPH_SPEC) {
-            net.bananemdnsa.historystages.data.graph.GraphConfigMigration.apply();
-        }
-    }
 
-    private void onConfigReload(net.neoforged.fml.event.config.ModConfigEvent.Reloading event) {
-        if (event.getConfig().getSpec() == Config.GAMEPLAY_SPEC) {
-            net.bananemdnsa.historystages.data.config.ConfigDerivedCaches.rebuildGameplay();
-        }
-        if (event.getConfig().getSpec() == Config.VISUAL_SPEC) {
-            net.bananemdnsa.historystages.data.config.ConfigDerivedCaches.rebuildVisual();
-        }
-    }
 
-    private void registerCapabilities(RegisterCapabilitiesEvent event) {
-        event.registerBlockEntity(
-                Capabilities.ItemHandler.BLOCK,
-                ModBlockEntities.RESEARCH_PEDESTAL_BE.get(),
-                (blockEntity, side) -> blockEntity.getItemHandler()
-        );
-    }
 
-    private void registerScreens(RegisterMenuScreensEvent event) {
-        event.register(ModMenuTypes.RESEARCH_MENU.get(), ResearchPedestalScreen::new);
-    }
 
-    private void onRegisterItemDecorators(RegisterItemDecorationsEvent event) {
-        // ForgeRegistries.ITEMS.forEach ist gut, aber manche Mods registrieren Items später.
-        // Wir registrieren den Decorator für absolut jedes Item.
-        for (Item item : BuiltInRegistries.ITEM) {
-            event.register(item, new LockDecorator());
-        }
-    }
 
-    private void addCreative(BuildCreativeModeTabContentsEvent event) {
+    @SubscribeEvent
+    public void addCreative(BuildCreativeModeTabContentsEvent event) {
         // Wir fügen die Maschine bei den Funktions-Blöcken hinzu
         if (event.getTabKey() == CreativeModeTabs.FUNCTIONAL_BLOCKS) {
             event.accept(ModItems.RESEARCH_PEDESTAL_ITEM.get());

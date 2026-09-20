@@ -23,7 +23,7 @@ import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
-import net.neoforged.neoforge.common.NeoForge;
+import net.bananemdnsa.historystages.platform.bus.EventBus;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -303,7 +303,7 @@ public class StageCommand {
                     d.addStage(id);
                     var entry = StageManager.getStages().get(id);
                     String displayName = entry != null ? entry.getDisplayName() : id;
-                    NeoForge.EVENT_BUS.post(new StageEvent.Unlocked(id, displayName));
+                    EventBus.post(new StageEvent.Unlocked(id, displayName));
                     changed = true;
                 }
             }
@@ -348,7 +348,7 @@ public class StageCommand {
                 net.bananemdnsa.historystages.data.saveddata.TemporaryStageData.get(source.getLevel()).clearGlobal(stageId);
                 var entry = StageManager.getStages().get(stageId);
                 String displayName = entry != null ? entry.getDisplayName() : stageId;
-                NeoForge.EVENT_BUS.post(new StageEvent.Locked(stageId, displayName));
+                EventBus.post(new StageEvent.Locked(stageId, displayName));
             }
 
             d.getUnlockedStages().clear();
@@ -365,7 +365,7 @@ public class StageCommand {
             net.bananemdnsa.historystages.data.saveddata.TemporaryStageData.get(source.getLevel()).clearGlobal(s);
             var lockEntry = StageManager.getStages().get(s);
             String lockDisplayName = lockEntry != null ? lockEntry.getDisplayName() : s;
-            NeoForge.EVENT_BUS.post(new StageEvent.Locked(s, lockDisplayName));
+            EventBus.post(new StageEvent.Locked(s, lockDisplayName));
             DebugLogger.runtime("Stage Lock", executor, "Locked stage '" + s + "' (" + lockDisplayName + ")");
             broadcastEffect(source, s, false);
             return syncAndReload(source, d, "Locked: " + s);
@@ -457,7 +457,7 @@ public class StageCommand {
                 data.addStage(target.getUUID(), stageId);
                 var entry = StageManager.getIndividualStages().get(stageId);
                 String displayName = entry != null ? entry.getDisplayName() : stageId;
-                NeoForge.EVENT_BUS.post(new StageEvent.IndividualUnlocked(stageId, displayName, target.getUUID()));
+                EventBus.post(new StageEvent.IndividualUnlocked(stageId, displayName, target.getUUID()));
                 changed = true;
             }
         }
@@ -505,7 +505,7 @@ public class StageCommand {
                     .clearIndividual(target.getUUID(), stageId);
             var entry = StageManager.getIndividualStages().get(stageId);
             String displayName = entry != null ? entry.getDisplayName() : stageId;
-            NeoForge.EVENT_BUS.post(new StageEvent.IndividualLocked(stageId, displayName, target.getUUID()));
+            EventBus.post(new StageEvent.IndividualLocked(stageId, displayName, target.getUUID()));
             StageLockHelper.dropLockedItemsForPlayer(target, stageId);
         }
 
@@ -562,7 +562,7 @@ public class StageCommand {
 
         var entry = StageManager.getIndividualStages().get(stageId);
         String displayName = entry != null ? entry.getDisplayName() : stageId;
-        NeoForge.EVENT_BUS.post(new StageEvent.IndividualLocked(stageId, displayName, target.getUUID()));
+        EventBus.post(new StageEvent.IndividualLocked(stageId, displayName, target.getUUID()));
 
         // Drop locked items from the player's inventory
         StageLockHelper.dropLockedItemsForPlayer(target, stageId);

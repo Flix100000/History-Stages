@@ -1,9 +1,12 @@
 package net.bananemdnsa.historystages.util.lock;
 
-import javax.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import net.minecraft.world.level.Level;
-import net.neoforged.fml.util.thread.EffectiveSide;
+import net.bananemdnsa.historystages.util.ServerHolder;
+import net.fabricmc.api.EnvType;
+import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.server.MinecraftServer;
 
 /**
  * Which side a recipe lookup is running on, for lookups that arrive without a level.
@@ -30,6 +33,25 @@ public final class ResolutionSide {
      * @param level the level the lookup came in with, or {@code null} if the caller had none
      */
     public static boolean isClient(@Nullable Level level) {
-        return level != null ? level.isClientSide() : EffectiveSide.get().isClient();
+        if (level != null) {
+            return level.isClientSide();
+        }
+        return isOnAClientThread();
+    }
+
+    /**
+     * Which logical side the calling thread belongs to, when no level says so.
+     *
+     * <p>NeoForge answers this from the thread itself. Here it is worked out the same way it is
+     * defined: a dedicated server is never a client, and on a client everything except the
+     * integrated server's own thread is. Without a server running at all there is nothing else
+     * this can be but the client.
+     */
+    private static boolean isOnAClientThread() {
+        if (FabricLoader.getInstance().getEnvironmentType() == EnvType.SERVER) {
+            return false;
+        }
+        MinecraftServer server = ServerHolder.get();
+        return server == null || Thread.currentThread() != server.getRunningThread();
     }
 }
