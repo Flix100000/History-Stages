@@ -4,28 +4,21 @@ import java.util.List;
 import java.util.function.IntConsumer;
 import java.util.function.ObjIntConsumer;
 
-import net.bananemdnsa.historystages.api.editor.widget.SegmentBar;
 import net.bananemdnsa.historystages.client.editor.widget.StyledButton;
 import net.bananemdnsa.historystages.client.editor.zone.ZoneMapRenderer;
-import net.bananemdnsa.historystages.client.editor.zone.ZoneScene3d;
-import net.bananemdnsa.historystages.client.editor.zone.ZoneTerrainMesh;
 import net.bananemdnsa.historystages.client.editor.zone.ZoneTerrainSampler;
 import net.bananemdnsa.historystages.client.editor.zone.ZoneTerrainTexture;
 import net.bananemdnsa.historystages.data.lock.ZoneEntry;
 import net.bananemdnsa.historystages.data.lock.ZoneMapView;
-import net.bananemdnsa.historystages.data.lock.ZoneOrbitCamera;
 import net.bananemdnsa.historystages.data.lock.ZoneRayPick;
 import net.bananemdnsa.historystages.data.lock.ZoneRowText;
 import net.bananemdnsa.historystages.data.lock.ZoneShape;
-import com.mojang.blaze3d.systems.RenderSystem;
-
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
-import org.lwjgl.opengl.GL11;
 
 /**
  * A zone's map across the whole screen.
@@ -60,20 +53,6 @@ public final class ZoneMapScreen extends Screen {
     /** How long between two attempts at filling the holes left by chunks that had not arrived. */
     private static final int FILL_FRAMES = 40;
 
-    /** How much of a turn one pixel of drag is worth, in degrees. */
-    private static final double ORBIT_PER_PIXEL = 0.5;
-
-    /**
-     * Looked up per call, not once into a constant: a constant is filled the first time the class
-     * is touched, which can be before the language files are, and it would then keep the raw keys
-     * for the rest of the session and through every language change.
-     */
-    private static List<String> modeLabels() {
-        return List.of(
-                Component.translatable("editor.historystages.zone.map.mode_flat").getString(),
-                Component.translatable("editor.historystages.zone.map.mode_tilted").getString());
-    }
-
     /** Same wash the rest of the editor lays over the world, so the two screens match. */
     private static final int BACKDROP = 0xE0101010;
 
@@ -97,18 +76,6 @@ public final class ZoneMapScreen extends Screen {
 
     private ZoneMapView view = new ZoneMapView(0, 0, 1, 1, 1);
     private int sampleAge;
-
-    /** Flat or tipped over. They share a centre and a scale, so switching never jumps. */
-    private boolean tilted;
-
-    private ZoneOrbitCamera camera = ZoneOrbitCamera.looking(0, 64, 0, 1, 1, 1);
-    private final ZoneScene3d scene = new ZoneScene3d();
-    private final ZoneTerrainMesh mesh = new ZoneTerrainMesh();
-    @Nullable
-    private ZoneOrbitCamera sceneBuiltFor;
-    private boolean sceneStale = true;
-
-    private final SegmentBar.State modeBar = new SegmentBar.State();
 
     private int selected;
     private boolean dragging;
@@ -136,8 +103,6 @@ public final class ZoneMapScreen extends Screen {
     @Override
     protected void init() {
         view = ZoneMapView.fitting(zone.getShapes(), mapW(), mapH());
-
-        camera = ZoneOrbitCamera.from(view, shapeCentreY());
 
         int y = this.height - BAR_H + 3;
         int x = controlsLeft();
@@ -210,57 +175,14 @@ public final class ZoneMapScreen extends Screen {
         if (this.minecraft == null || this.minecraft.player == null) return;
 
         view = view.centredOn(this.minecraft.player.getX(), this.minecraft.player.getZ());
-        camera = camera.centredOn(this.minecraft.player.getX(), this.minecraft.player.getY(),
-                this.minecraft.player.getZ());
-        sceneStale = true;
     }
 
     private void frameZone() {
         view = ZoneMapView.fitting(zone.getShapes(), mapW(), mapH());
-        camera = camera.centredOn(view.centreX(), shapeCentreY(), view.centreZ())
-                .zoomed(view.blocksPerPixel() / camera.blocksPerPixel());
-        sceneStale = true;
     }
 
     private void zoom(double factor) {
-        if (tilted) {
-            camera = camera.zoomed(factor);
-            view = new ZoneMapView(view.centreX(), view.centreZ(), camera.blocksPerPixel(),
-                    view.width(), view.height());
-        } else {
-            view = view.zoomed(factor);
-            camera = camera.zoomed(view.blocksPerPixel() / camera.blocksPerPixel());
-        }
-        sceneStale = true;
-    }
-
-    /**
-     * The height the tilted view turns around. Taken from the shapes rather than from the ground:
-     * a zone hanging in the air would otherwise sit at the top edge of the picture.
-     */
-    private double shapeCentreY() {
-        List<ZoneShape> shapes = zone.getShapes();
-        if (shapes.isEmpty()) return 80;
-
-        double sum = 0;
-        for (ZoneShape shape : shapes) sum += shape.fromY();
-        return sum / shapes.size() + 8;
-    }
-
-    /** Both views are kept on the same centre and scale, so the switch itself changes nothing. */
-    private void setTilted(boolean value) {
-        if (tilted == value) return;
-
-        if (value) {
-            camera = new ZoneOrbitCamera(view.centreX(), shapeCentreY(), view.centreZ(),
-                    camera.yawDegrees(), camera.pitchDegrees(), view.blocksPerPixel(),
-                    mapW(), mapH());
-        } else {
-            view = new ZoneMapView(camera.centreX(), camera.centreZ(), camera.blocksPerPixel(),
-                    mapW(), mapH());
-        }
-        tilted = value;
-        sceneStale = true;
+        view = view.zoomed(factor);
     }
 
     // -------------------------------------------------------------------------------------
@@ -296,8 +218,6 @@ public final class ZoneMapScreen extends Screen {
         sampleAge = 0;
         if (ZoneTerrainSampler.fillUnknown(this.minecraft.level, surface) > 0) {
             terrain.upload(surface);
-            mesh.upload(surface);
-            sceneStale = true;
         }
     }
 
@@ -348,7 +268,6 @@ public final class ZoneMapScreen extends Screen {
         surface = ZoneTerrainSampler.sample(this.minecraft.level, originX, originZ,
                 step, cells, cells);
         terrain.upload(surface);
-        sceneStale = true;
     }
 
     // -------------------------------------------------------------------------------------
@@ -369,21 +288,16 @@ public final class ZoneMapScreen extends Screen {
         g.fill(0, 0, this.width, this.height, BACKDROP);
 
         view = view.resized(mapW(), mapH());
-        camera = camera.resized(mapW(), mapH());
         refreshTerrain();
         if (toMe != null) toMe.active = playerHere();
 
         ZoneMapRenderer.backdrop(g, mapX(), mapY(), mapW(), mapH());
 
         g.enableScissor(mapX() + 1, mapY() + 1, mapX() + mapW() - 1, mapY() + mapH() - 1);
-        if (tilted) {
-            renderScene(g);
-        } else {
-            renderFlat(g);
-        }
+        renderFlat(g);
         g.disableScissor();
 
-        if (!tilted) ZoneMapRenderer.scaleBar(g, this.font, mapX(), mapY(), mapW(), mapH(), view);
+        ZoneMapRenderer.scaleBar(g, this.font, mapX(), mapY(), mapW(), mapH(), view);
         renderBetaMark(g);
         renderList(g, mouseX, mouseY);
         renderBar(g, mouseX, mouseY);
@@ -402,38 +316,6 @@ public final class ZoneMapScreen extends Screen {
                     this.minecraft.player.getYRot());
             if (clamped) drawDistance(g);
         }
-    }
-
-    /**
-     * The scene is rebuilt only when the camera has moved — while dragging that is every frame, and
-     * standing still it is none.
-     */
-    private void renderScene(GuiGraphics g) {
-        if (sceneStale || !camera.equals(sceneBuiltFor)) {
-            boolean here = playerHere() && this.minecraft.player != null;
-            scene.build(camera, zone.getShapes(), selected,
-                    here, here ? this.minecraft.player.getX() : 0,
-                    here ? this.minecraft.player.getY() : 0,
-                    here ? this.minecraft.player.getZ() : 0,
-                    here ? this.minecraft.player.getYRot() : 0,
-                    minY(), maxY());
-            sceneBuiltFor = camera;
-            sceneStale = false;
-        }
-
-        // Wiped here rather than inside either drawer, because both put their pieces into the same
-        // depth and only one of them may start by throwing it away. The clear obeys the scissor, so
-        // only the map's own rectangle is touched.
-        g.flush();
-        RenderSystem.clear(GL11.GL_DEPTH_BUFFER_BIT, false);
-
-        mesh.draw(g, camera, mapX(), mapY());
-
-        // The map's own coordinates: the scene projects into the same box the flat view fills.
-        g.pose().pushPose();
-        g.pose().translate(mapX(), mapY(), 0);
-        scene.draw(g);
-        g.pose().popPose();
     }
 
     /** Written into the corner rather than beside the arrow: at the frame there is no room for it. */
@@ -483,12 +365,6 @@ public final class ZoneMapScreen extends Screen {
         g.fill(0, y, this.width, this.height, BAR_BG);
         g.fill(0, y, this.width, y + 1, BAR_EDGE);
 
-        int barY = y + (BAR_H - SegmentBar.height()) / 2;
-        int hovered = SegmentBar.segmentAt(this.font, MARGIN, barY, mouseX, mouseY, modeLabels());
-        modeBar.update(tilted ? 1 : 0, hovered, modeLabels().size());
-        SegmentBar.draw(g, this.font, MARGIN, barY, modeLabels(), tilted ? 1 : 0, modeBar,
-                new boolean[modeLabels().size()]);
-
         // Sat next to the buttons rather than pinned to the far edge. Right-aligned it drifted off
         // on its own whenever the window was wide, and a reading that belongs to the controls should
         // not look like it belongs to the window frame.
@@ -505,16 +381,11 @@ public final class ZoneMapScreen extends Screen {
     }
 
     private int controlsLeft() {
-        return MARGIN + SegmentBar.width(this.font, modeLabels()) + 8;
+        return MARGIN;
     }
 
-    /**
-     * Tipped over there is no coordinate to give: a point on the screen is a line through the
-     * world, and picking a spot on it would mean guessing which one the author meant.
-     */
     private Component readout(int mouseX, int mouseY) {
         if (!playerHere()) return Component.translatable("editor.historystages.zone.map.other_world");
-        if (tilted) return Component.translatable("editor.historystages.zone.map.orbit_hint");
         if (!overMap(mouseX, mouseY)) return Component.translatable("editor.historystages.zone.map.close");
 
         return Component.translatable("editor.historystages.zone.map.readout",
@@ -543,13 +414,6 @@ public final class ZoneMapScreen extends Screen {
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (super.mouseClicked(mouseX, mouseY, button)) return true;
 
-        int barY = this.height - BAR_H + (BAR_H - SegmentBar.height()) / 2;
-        int segment = SegmentBar.segmentAt(this.font, MARGIN, barY, mouseX, mouseY, modeLabels());
-        if (segment >= 0) {
-            setTilted(segment == 1);
-            return true;
-        }
-
         if (overList(mouseX, mouseY)) {
             int row = (int) ((mouseY - listY() - ROW_H) / ROW_H);
             if (row >= 0 && row < zone.getShapes().size()) choose(row);
@@ -571,23 +435,14 @@ public final class ZoneMapScreen extends Screen {
     }
 
     /**
-     * Which shape lies under the cursor.
-     *
-     * <p>Flat on that is a straight drop, and the topmost shape in the column is the one the author
-     * sees. Tipped over the same question needs the line the camera actually looks along, which is
-     * why the pick was written for a ray in the first place rather than for a rectangle.
+     * Which shape lies under the cursor: a straight drop down the column, so the topmost shape
+     * standing there is the one the author sees. Written as a ray rather than as a rectangle
+     * because a sphere and a cylinder are not rectangles.
      */
     private int shapeAt(double mouseX, double mouseY) {
-        if (!tilted) {
-            return ZoneRayPick.nearest(zone.getShapes(),
-                    view.worldX(mouseX - mapX()), 1e6, view.worldZ(mouseY - mapY()),
-                    0, -1, 0, minY(), maxY());
-        }
-
-        ZoneOrbitCamera.Vec origin = camera.rayOrigin(mouseX - mapX(), mouseY - mapY());
-        ZoneOrbitCamera.Vec forward = camera.forward();
-        return ZoneRayPick.nearest(zone.getShapes(), origin.x(), origin.y(), origin.z(),
-                forward.x(), forward.y(), forward.z(), minY(), maxY());
+        return ZoneRayPick.nearest(zone.getShapes(),
+                view.worldX(mouseX - mapX()), 1e6, view.worldZ(mouseY - mapY()),
+                0, -1, 0, minY(), maxY());
     }
 
     /** First click picks, a second on the same shape opens its numbers. */
@@ -597,7 +452,6 @@ public final class ZoneMapScreen extends Screen {
             return;
         }
         selected = index;
-        sceneStale = true;
         onSelected.accept(index);
     }
 
@@ -615,15 +469,7 @@ public final class ZoneMapScreen extends Screen {
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dx, double dy) {
         if (!dragging) return super.mouseDragged(mouseX, mouseY, button, dx, dy);
 
-        double movedX = mouseX - lastMouseX;
-        double movedY = mouseY - lastMouseY;
-        if (tilted) {
-            // Dragging turns rather than shoves: on a tipped picture a shove has no one meaning,
-            // because the ground plane no longer lines up with the screen.
-            camera = camera.turnedBy(-movedX * ORBIT_PER_PIXEL, movedY * ORBIT_PER_PIXEL);
-        } else {
-            view = view.movedByPixels(movedX, movedY);
-        }
+        view = view.movedByPixels(mouseX - lastMouseX, mouseY - lastMouseY);
 
         lastMouseX = mouseX;
         lastMouseY = mouseY;
@@ -656,7 +502,6 @@ public final class ZoneMapScreen extends Screen {
     @Override
     public void removed() {
         terrain.close();
-        mesh.close();
         super.removed();
     }
 
