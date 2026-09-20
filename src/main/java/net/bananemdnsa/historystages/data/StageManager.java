@@ -17,7 +17,6 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.fabricmc.loader.api.FabricLoader;
-import net.fabricmc.loader.api.FabricLoader;
 import net.bananemdnsa.historystages.util.ServerHolder;
 import net.minecraft.server.MinecraftServer;
 

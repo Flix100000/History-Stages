@@ -19,7 +19,6 @@ import net.bananemdnsa.historystages.data.dependency.IndividualStageDep;
 import net.bananemdnsa.historystages.data.dependency.ScoreboardDep;
 import net.bananemdnsa.historystages.data.dependency.StatDep;
 import net.fabricmc.loader.api.FabricLoader;
-import net.fabricmc.loader.api.FabricLoader;
 
 import java.io.BufferedWriter;
 import java.io.File;
