@@ -1,4 +1,5 @@
 package net.bananemdnsa.historystages.data;
+import net.bananemdnsa.historystages.data.lock.NamedLockEntry;
 
 import com.google.gson.*;
 import com.google.gson.stream.JsonReader;
@@ -20,7 +21,8 @@ public class ItemEntryListAdapter extends TypeAdapter<List<ItemEntry>> {
         }
         out.beginArray();
         for (ItemEntry entry : entries) {
-            if (!entry.hasNbt() && !entry.hasLockActions()) {
+            boolean hasOverride = entry.hasNameTextOverride() || entry.hasTooltipTextOverride();
+            if (!entry.hasNbt() && !entry.hasLockActions() && !hasOverride) {
                 out.value(entry.getId());
             } else {
                 out.beginObject();
@@ -30,11 +32,11 @@ public class ItemEntryListAdapter extends TypeAdapter<List<ItemEntry>> {
                     Streams.write(entry.getNbt(), out);
                 }
                 if (entry.hasLockActions()) {
+                    // Compute unlock_actions = all known actions minus the locked ones
+                    List<String> locked = entry.getLockActions();
                     List<String> unlocked = new ArrayList<>();
                     for (String action : NamedLockEntry.ALL_ACTIONS) {
-                        if (!entry.getLockActions().contains(action)) {
-                            unlocked.add(action);
-                        }
+                        if (!locked.contains(action)) unlocked.add(action);
                     }
                     if (!unlocked.isEmpty()) {
                         out.name("unlock_actions");
@@ -44,6 +46,12 @@ public class ItemEntryListAdapter extends TypeAdapter<List<ItemEntry>> {
                         }
                         out.endArray();
                     }
+                }
+                if (entry.hasNameTextOverride()) {
+                    out.name("name_text").value(entry.getNameTextOverride());
+                }
+                if (entry.hasTooltipTextOverride()) {
+                    out.name("tooltip_text").value(entry.getTooltipTextOverride());
                 }
                 out.endObject();
             }
@@ -68,23 +76,25 @@ public class ItemEntryListAdapter extends TypeAdapter<List<ItemEntry>> {
                 JsonObject nbt = obj.has("nbt") ? obj.getAsJsonObject("nbt") : null;
                 List<String> lockActions = null;
                 if (obj.has("unlock_actions") && obj.get("unlock_actions").isJsonArray()) {
+                    // Current format: unlock_actions lists the NOT-locked actions → invert to get locked
                     List<String> unlocked = new ArrayList<>();
-                    for (JsonElement element : obj.getAsJsonArray("unlock_actions")) {
-                        unlocked.add(element.getAsString());
+                    for (JsonElement el : obj.getAsJsonArray("unlock_actions")) {
+                        unlocked.add(el.getAsString());
                     }
                     lockActions = new ArrayList<>();
                     for (String action : NamedLockEntry.ALL_ACTIONS) {
-                        if (!unlocked.contains(action)) {
-                            lockActions.add(action);
-                        }
+                        if (!unlocked.contains(action)) lockActions.add(action);
                     }
                 } else if (obj.has("lock_actions") && obj.get("lock_actions").isJsonArray()) {
+                    // Legacy format: lock_actions lists the locked actions directly
                     lockActions = new ArrayList<>();
-                    for (JsonElement element : obj.getAsJsonArray("lock_actions")) {
-                        lockActions.add(element.getAsString());
+                    for (JsonElement el : obj.getAsJsonArray("lock_actions")) {
+                        lockActions.add(el.getAsString());
                     }
                 }
-                entries.add(new ItemEntry(id, nbt, lockActions));
+                String nameText = obj.has("name_text") ? obj.get("name_text").getAsString() : null;
+                String tooltipText = obj.has("tooltip_text") ? obj.get("tooltip_text").getAsString() : null;
+                entries.add(new ItemEntry(id, nbt, lockActions, nameText, tooltipText));
             }
         }
         in.endArray();

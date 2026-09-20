@@ -1,23 +1,22 @@
 package net.bananemdnsa.historystages.util;
 
-import net.minecraft.client.Minecraft;
 import net.minecraft.world.item.crafting.RecipeHolder;
 
 import java.util.Collection;
-import java.util.List;
-import net.fabricmc.api.EnvType;
-import net.fabricmc.api.Environment;
+import java.util.Collections;
 
-@Environment(EnvType.CLIENT)
-public final class AllRecipesCache {
-    private AllRecipesCache() {
+/**
+ * Holds a snapshot of all recipes before stage-based filtering is applied.
+ * Populated by RecipeManagerMixin, used by the in-game editor.
+ */
+public class AllRecipesCache {
+    private static Collection<RecipeHolder<?>> allRecipes = Collections.emptyList();
+
+    public static void set(Collection<RecipeHolder<?>> recipes) {
+        allRecipes = recipes;
     }
 
     public static Collection<RecipeHolder<?>> get() {
-        Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.level == null) {
-            return List.of();
-        }
-        return minecraft.level.getRecipeManager().getRecipes();
+        return allRecipes;
     }
 }

@@ -1,26 +1,57 @@
 package net.bananemdnsa.historystages.data;
+import net.bananemdnsa.historystages.data.lock.StructureLocksAdapter;
+import net.bananemdnsa.historystages.data.lock.StructureLocks;
+import net.bananemdnsa.historystages.data.lock.StructureGenerationRule;
+import net.bananemdnsa.historystages.data.lock.BiomeLocksAdapter;
+import net.bananemdnsa.historystages.data.lock.BiomeLocks;
+import net.bananemdnsa.historystages.data.lock.ZoneEntry;
+import net.bananemdnsa.historystages.data.lock.ZoneEntryListAdapter;
+import net.bananemdnsa.historystages.data.lock.NamedLockEntryListAdapter;
+import net.bananemdnsa.historystages.data.lock.NamedLockEntry;
+import net.bananemdnsa.historystages.data.lock.EntityLocks;
+import net.bananemdnsa.historystages.data.lock.TradeLocks;
+import net.bananemdnsa.historystages.data.display.HiddenDisplayConfig;
 
 import com.google.gson.GsonBuilder;
 import com.google.gson.Gson;
-import com.google.gson.JsonObject;
+import com.google.gson.JsonElement;
 import com.google.gson.annotations.JsonAdapter;
 import com.google.gson.annotations.SerializedName;
+import net.bananemdnsa.historystages.data.auto.AutoTrigger;
+import net.bananemdnsa.historystages.data.temporary.TemporaryConfig;
+import net.bananemdnsa.historystages.research.TierMode;
+import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class StageEntry {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    private static final Gson COMPACT_GSON = new GsonBuilder().create();
 
     @SerializedName("display_name")
     private String displayName;
 
+    @SerializedName("mode")
+    private String mode;   // "default" | "auto" | "external"; null → default
+
+    @SerializedName("auto_trigger")
+    private AutoTrigger autoTrigger;
+
+    @SerializedName("temporary")
+    private TemporaryConfig temporary; // only used when mode == "temporary"
+
     @SerializedName("research_time")
     private int researchTime; // 0 = use global config default
 
-    @SerializedName("icon")
-    private String icon; // item id, null = use default (research scroll)
+    @SerializedName("min_pedestal_tier")
+    private int minPedestalTier; // 0/missing → treated as 1 (works on every tier)
+
+    @SerializedName("pedestal_tier_mode")
+    private String pedestalTierMode; // "min" or "exact"; null → "min"
 
     @JsonAdapter(ItemEntryListAdapter.class)
     private List<ItemEntry> items;
@@ -35,23 +66,93 @@ public class StageEntry {
     @JsonAdapter(ItemEntryListAdapter.class)
     private List<ItemEntry> modExceptions;
 
+    /**
+     * Gated fluids. Matched through whatever container is carrying the fluid, so one entry here
+     * covers every bucket and tank item of that fluid, in any mod, without naming one of them.
+     */
+    @JsonAdapter(FluidEntryListAdapter.class)
+    private List<FluidEntry> fluids;
+
     private List<String> recipes;
     private List<String> dimensions;
 
     @JsonAdapter(StructureLocksAdapter.class)
     private StructureLocks structures;
+
+    @JsonAdapter(BiomeLocksAdapter.class)
+    private BiomeLocks biomes;
+
+    /**
+     * Gated areas in the world. Unlike every other category these carry their own rules rather
+     * than reading them from the common config — one zone can burn, the next only block
+     * interaction.
+     */
+    @JsonAdapter(ZoneEntryListAdapter.class)
+    private List<ZoneEntry> zones;
+
+    @SerializedName("icon")
+    private String icon;
+
+    @SerializedName("scroll_completion")
+    private String scrollCompletion;
     private EntityLocks entities;
+
+    /**
+     * Gated merchant offers: items, professions and merchant levels. Three lists that are asked
+     * separately and share only the editor tab — the same shape {@link EntityLocks} has.
+     */
+    private TradeLocks trades;
+
     private List<DependencyGroup> dependencies;
+
+    @SerializedName("hidden_display")
+    private HiddenDisplayConfig hiddenDisplay;
+
+    /** Individual stages only: revoke the stage as soon as the player dies. Absent = off. */
+    @SerializedName("lose_on_death")
+    private Boolean loseOnDeath;
+
+    /**
+     * Raw storage for lock categories registered by other mods, keyed by category id.
+     *
+     * <p>Deliberately {@link JsonElement} and not a parsed type: a stage file must survive being
+     * loaded and saved by an instance that does not have the owning addon installed. Anything
+     * typed here would be dropped on read and gone on the next save, which is exactly the bug
+     * this block exists to prevent.
+     *
+     * <p>Null rather than empty when unused, so saving a stage that has no addon data does not
+     * add an {@code "addons": {}} key to the file.
+     */
+    @SerializedName("addons")
+    private Map<String, JsonElement> addons;
+
+    /**
+     * Raw storage for settings groups registered by other mods, keyed by group id.
+     *
+     * <p>Deliberately {@link JsonElement} for the same reason as {@link #addons}: a stage file
+     * must survive being loaded and saved by an instance that does not have the owning addon
+     * installed. A separate block rather than a corner of {@code addons} because that block has
+     * one documented owner — the lock categories — and a group id that happened to match a
+     * category id would silently overwrite it.
+     *
+     * <p>Null rather than empty when unused, so a stage with no addon settings gains no key.
+     */
+    @SerializedName("addon_settings")
+    private Map<String, JsonElement> addonSettings;
 
     public StageEntry() {
         this.items = new ArrayList<>();
         this.tags = new ArrayList<>();
         this.mods = new ArrayList<>();
+        // tags/mods are List<NamedLockEntry>, initialized as empty lists above
         this.modExceptions = new ArrayList<>();
+        this.fluids = new ArrayList<>();
         this.recipes = new ArrayList<>();
         this.dimensions = new ArrayList<>();
         this.structures = new StructureLocks();
+        this.biomes = new BiomeLocks();
         this.entities = new EntityLocks();
+        this.trades = new TradeLocks();
     }
 
     public String getDisplayName() {
@@ -62,9 +163,15 @@ public class StageEntry {
         return researchTime; // 0 means "use global default from config"
     }
 
-    /** Returns the custom icon item id, or null if not set (use default). */
-    public String getIcon() {
-        return (icon != null && !icon.isEmpty()) ? icon : null;
+    public int getMinPedestalTier() {
+        int t = minPedestalTier;
+        if (t < 1) return 1;
+        if (t > 4) return 4;
+        return t;
+    }
+
+    public TierMode getPedestalTierMode() {
+        return TierMode.parse(pedestalTierMode, TierMode.MIN);
     }
 
     /** Returns item IDs of entries WITHOUT NBT criteria (simple ID-only locks). */
@@ -87,20 +194,44 @@ public class StageEntry {
         return items != null ? items : new ArrayList<>();
     }
 
+    /** Returns the full fluid entries. */
+    public List<FluidEntry> getFluidEntries() {
+        return fluids != null ? fluids : new ArrayList<>();
+    }
+
+    /** Fluid IDs only — for the reverse index, the overview counters and the debug log. */
+    public List<String> getAllFluidIds() {
+        if (fluids == null) return new ArrayList<>();
+        return fluids.stream().map(FluidEntry::getId).collect(Collectors.toCollection(ArrayList::new));
+    }
+
+    /** Returns tag IDs only (no lock_actions). For backwards-compatible iteration. */
     public List<String> getTags() {
         if (tags == null) return new ArrayList<>();
         return tags.stream().map(NamedLockEntry::getId).collect(Collectors.toCollection(ArrayList::new));
     }
 
+    /** Tag IDs WITHOUT an NBT criterion — for stackless matching paths where NBT can't be evaluated. */
+    public List<String> getNbtFreeTags() {
+        if (tags == null) return new ArrayList<>();
+        return tags.stream()
+                .filter(t -> !t.hasNbt())
+                .map(NamedLockEntry::getId)
+                .collect(Collectors.toCollection(ArrayList::new));
+    }
+
+    /** Returns the full tag entries including lock_actions. */
     public List<NamedLockEntry> getTagEntries() {
         return tags != null ? tags : new ArrayList<>();
     }
 
+    /** Returns mod IDs only (no lock_actions). For backwards-compatible iteration. */
     public List<String> getMods() {
         if (mods == null) return new ArrayList<>();
         return mods.stream().map(NamedLockEntry::getId).collect(Collectors.toCollection(ArrayList::new));
     }
 
+    /** Returns the full mod entries including lock_actions. */
     public List<NamedLockEntry> getModEntries() {
         return mods != null ? mods : new ArrayList<>();
     }
@@ -159,12 +290,87 @@ public class StageEntry {
         return structures != null ? structures.getModLinked() : new ArrayList<>();
     }
 
+    /** Generation restrictions for this stage's structure entries. */
+    public List<StructureGenerationRule> getStructureGenerationRules() {
+        return structures != null ? structures.getGenerationRules() : new ArrayList<>();
+    }
+
+    public List<String> getBiomes() {
+        return biomes != null ? biomes.getBiomes() : new ArrayList<>();
+    }
+
+    public List<String> getBiomeModLinked() {
+        return biomes != null ? biomes.getModLinked() : new ArrayList<>();
+    }
+
+    public List<ZoneEntry> getZones() {
+        return zones != null ? zones : new ArrayList<>();
+    }
+
+    public String getIcon() { return icon != null ? icon : ""; }
+
+    public String getScrollCompletion() { return scrollCompletion != null ? scrollCompletion : ""; }
+
     public EntityLocks getEntities() {
         return entities != null ? entities : new EntityLocks();
     }
 
+    /** The whole trades block. Never null; an absent one reads as three empty lists. */
+    public TradeLocks getTrades() {
+        return trades != null ? trades : new TradeLocks();
+    }
+
+    /** Gated single offers, with whatever criterion each carries. */
+    public List<TradeOfferEntry> getTradeOffers() {
+        return getTrades().getOffers();
+    }
+
+    /** What the gated offers hand over — for the overview counters and the debug log. */
+    public List<String> getAllTradeItemIds() {
+        return getTrades().getOfferedItemIds();
+    }
+
+    /** Gated professions, with whatever level narrowing each carries. */
+    public List<TradeProfessionEntry> getTradeProfessionEntries() {
+        return getTrades().getProfessions();
+    }
+
+    /**
+     * Profession ids only — for the overview counters, the dual-phase check and the debug log.
+     *
+     * <p>Kept under the name it had when a profession was nothing but an id, because every caller
+     * that wants the plain list still wants exactly this.
+     */
+    public List<String> getTradeProfessions() {
+        return getTrades().getProfessionIds();
+    }
+
+    /** Merchant levels that show this player nothing, as numbers in string form. */
+    public List<String> getTradeLevels() {
+        return getTrades().getLevels();
+    }
+
     public List<DependencyGroup> getDependencies() {
         return dependencies != null ? dependencies : new ArrayList<>();
+    }
+
+    /** Returns the hidden-display config, never null (a default all-OFF config when unset). */
+    public HiddenDisplayConfig getHiddenDisplay() {
+        return hiddenDisplay != null ? hiddenDisplay : new HiddenDisplayConfig();
+    }
+
+    public void setHiddenDisplay(HiddenDisplayConfig config) {
+        this.hiddenDisplay = (config != null && !config.isNoop()) ? config : null;
+    }
+
+    /** True if this (individual) stage is revoked when its owner dies. */
+    public boolean isLoseOnDeath() {
+        return loseOnDeath != null && loseOnDeath;
+    }
+
+    /** Stores null when off so the key stays out of stages that don't use it. */
+    public void setLoseOnDeath(boolean lose) {
+        this.loseOnDeath = lose ? Boolean.TRUE : null;
     }
 
     public boolean hasDependencies() {
@@ -172,18 +378,97 @@ public class StageEntry {
         return dependencies.stream().anyMatch(g -> !g.isEmpty());
     }
 
+    /** This category's raw entries, or null when the stage has none. */
+    @Nullable
+    public JsonElement addonEntries(String categoryId) {
+        return addons == null ? null : addons.get(categoryId);
+    }
+
+    /** Replaces one category's raw entries. A null element removes the category from the stage. */
+    public void setAddonEntries(String categoryId, @Nullable JsonElement entries) {
+        if (entries == null) {
+            if (addons != null) {
+                addons.remove(categoryId);
+                if (addons.isEmpty()) addons = null;
+            }
+            return;
+        }
+        if (addons == null) addons = new LinkedHashMap<>();
+        addons.put(categoryId, entries);
+    }
+
+    /** Every addon category id this stage carries data for, installed or not. */
+    public Set<String> addonCategoryIds() {
+        return addons == null ? Set.of() : Set.copyOf(addons.keySet());
+    }
+
+    /** This group's raw values, or null when the stage has none. */
+    @Nullable
+    public JsonElement addonSettings(String groupId) {
+        return addonSettings == null ? null : addonSettings.get(groupId);
+    }
+
+    /** Replaces one group's raw values. A null element removes the group from the stage. */
+    public void setAddonSettings(String groupId, @Nullable JsonElement values) {
+        if (values == null) {
+            if (addonSettings != null) {
+                addonSettings.remove(groupId);
+                if (addonSettings.isEmpty()) addonSettings = null;
+            }
+            return;
+        }
+        if (addonSettings == null) addonSettings = new LinkedHashMap<>();
+        addonSettings.put(groupId, values);
+    }
+
+    /** Every settings-group id this stage carries values for, installed or not. */
+    public Set<String> addonSettingsGroupIds() {
+        return addonSettings == null ? Set.of() : Set.copyOf(addonSettings.keySet());
+    }
+
     // --- Setters ---
 
-    public void setDisplayName(String displayName) {
-        this.displayName = displayName;
+    public void setDisplayName(String displayName) { this.displayName = displayName; }
+    public void setResearchTime(int researchTime) { this.researchTime = researchTime; }
+
+    /** Returns the stage's mode, defaulting to DEFAULT if unset or unknown. */
+    public StageMode getMode() {
+        return StageMode.parse(mode);
     }
 
-    public void setResearchTime(int researchTime) {
-        this.researchTime = researchTime;
+    /** Raw mode string from JSON — used by StageManager to log warnings on unknown values. */
+    public String getRawMode() { return mode; }
+
+    public void setMode(StageMode m) {
+        this.mode = (m != null ? m : StageMode.DEFAULT).serialize();
     }
 
-    public void setIcon(String icon) {
-        this.icon = (icon != null && !icon.isEmpty()) ? icon : null;
+    /** Returns the auto-trigger config, or null if none is set. */
+    public AutoTrigger getAutoTrigger() {
+        return autoTrigger;
+    }
+
+    public void setAutoTrigger(AutoTrigger autoTrigger) {
+        this.autoTrigger = autoTrigger;
+    }
+
+    /** Returns the temporary-mode config, or null if none is set. */
+    public TemporaryConfig getTemporary() {
+        return temporary;
+    }
+
+    public void setTemporary(TemporaryConfig temporary) {
+        this.temporary = temporary;
+    }
+
+    public void setMinPedestalTier(int tier) {
+        if (tier < 1) tier = 1;
+        if (tier > 4) tier = 4;
+        this.minPedestalTier = tier;
+    }
+
+    public void setPedestalTierMode(TierMode mode) {
+        this.pedestalTierMode = (mode != null ? mode : TierMode.MIN).serialize();
     }
 
     /** Sets items from simple string IDs (no NBT). */
@@ -202,26 +487,39 @@ public class StageEntry {
         this.items = items != null ? new ArrayList<>(items) : new ArrayList<>();
     }
 
+    /** Sets the gated fluids. */
+    public void setFluidEntries(List<FluidEntry> fluids) {
+        this.fluids = fluids != null ? new ArrayList<>(fluids) : new ArrayList<>();
+    }
+
+    /** Sets tags from plain IDs (no lock_actions — all actions locked). */
     public void setTags(List<String> tags) {
         if (tags == null) {
             this.tags = new ArrayList<>();
         } else {
-            this.tags = tags.stream().map(NamedLockEntry::new).collect(Collectors.toCollection(ArrayList::new));
+            this.tags = tags.stream()
+                    .map(NamedLockEntry::new)
+                    .collect(Collectors.toCollection(ArrayList::new));
         }
     }
 
+    /** Sets tags from full NamedLockEntry list (preserves lock_actions). */
     public void setTagEntries(List<NamedLockEntry> tags) {
         this.tags = tags != null ? new ArrayList<>(tags) : new ArrayList<>();
     }
 
+    /** Sets mods from plain IDs (no lock_actions — all actions locked). */
     public void setMods(List<String> mods) {
         if (mods == null) {
             this.mods = new ArrayList<>();
         } else {
-            this.mods = mods.stream().map(NamedLockEntry::new).collect(Collectors.toCollection(ArrayList::new));
+            this.mods = mods.stream()
+                    .map(NamedLockEntry::new)
+                    .collect(Collectors.toCollection(ArrayList::new));
         }
     }
 
+    /** Sets mods from full NamedLockEntry list (preserves lock_actions). */
     public void setModEntries(List<NamedLockEntry> mods) {
         this.mods = mods != null ? new ArrayList<>(mods) : new ArrayList<>();
     }
@@ -251,17 +549,75 @@ public class StageEntry {
     }
 
     public void setStructures(List<String> structures) {
-        if (this.structures == null) {
-            this.structures = new StructureLocks();
-        }
+        if (this.structures == null) this.structures = new StructureLocks();
         this.structures.setStructures(structures);
     }
 
     public void setStructureModLinked(List<String> modLinked) {
-        if (this.structures == null) {
-            this.structures = new StructureLocks();
-        }
+        if (this.structures == null) this.structures = new StructureLocks();
         this.structures.setModLinked(modLinked);
+    }
+
+    public void setStructureGenerationRules(List<StructureGenerationRule> rules) {
+        if (this.structures == null) this.structures = new StructureLocks();
+        this.structures.setGenerationRules(rules);
+    }
+
+    public void setBiomes(List<String> biomes) {
+        if (this.biomes == null) this.biomes = new BiomeLocks();
+        this.biomes.setBiomes(biomes);
+    }
+
+    public void setBiomeModLinked(List<String> modLinked) {
+        if (this.biomes == null) this.biomes = new BiomeLocks();
+        this.biomes.setModLinked(modLinked);
+    }
+
+    public void setZones(List<ZoneEntry> zones) {
+        this.zones = zones != null ? new ArrayList<>(zones) : new ArrayList<>();
+    }
+
+    public void setIcon(String icon) { this.icon = (icon != null && !icon.isEmpty()) ? icon : null; }
+
+    public void setScrollCompletion(String value) {
+        this.scrollCompletion = (value != null && !value.isEmpty()) ? value : null;
+    }
+
+    public void setTrades(TradeLocks trades) {
+        this.trades = trades != null ? trades : new TradeLocks();
+    }
+
+    public void setTradeOffers(List<TradeOfferEntry> offers) {
+        ensureTrades().setOffers(offers);
+    }
+
+    public void setTradeProfessionEntries(List<TradeProfessionEntry> professions) {
+        ensureTrades().setProfessions(professions);
+    }
+
+    /** Sets professions from bare ids, each gating every level. */
+    public void setTradeProfessions(List<String> professionIds) {
+        List<TradeProfessionEntry> entries = new ArrayList<>();
+        if (professionIds != null) {
+            for (String id : professionIds) entries.add(new TradeProfessionEntry(id));
+        }
+        ensureTrades().setProfessions(entries);
+    }
+
+    public void setTradeLevels(List<String> levels) {
+        ensureTrades().setLevels(levels);
+    }
+
+    /**
+     * The block itself, created on demand.
+     *
+     * <p>{@link #getTrades()} deliberately hands back a throwaway when the field is absent, so
+     * that reading never writes. A setter has to reach the real one, or the value goes into the
+     * throwaway and vanishes — which looks exactly like the editor not saving.
+     */
+    private TradeLocks ensureTrades() {
+        if (trades == null) trades = new TradeLocks();
+        return trades;
     }
 
     public void setEntities(EntityLocks entities) {
@@ -276,29 +632,68 @@ public class StageEntry {
         StageEntry copy = new StageEntry();
         copy.setDisplayName(getDisplayName());
         copy.setResearchTime(researchTime);
-        copy.setIcon(icon);
+        copy.setMinPedestalTier(getMinPedestalTier());
+        copy.setPedestalTierMode(getPedestalTierMode());
         copy.setItemEntries(getItemEntries().stream().map(ItemEntry::copy).collect(Collectors.toList()));
         copy.setTagEntries(getTagEntries().stream().map(NamedLockEntry::copy).collect(Collectors.toList()));
         copy.setModEntries(getModEntries().stream().map(NamedLockEntry::copy).collect(Collectors.toList()));
         copy.setModExceptionEntries(getModExceptionEntries().stream().map(ItemEntry::copy).collect(Collectors.toList()));
+        copy.setFluidEntries(getFluidEntries().stream().map(FluidEntry::copy).collect(Collectors.toList()));
         copy.setRecipes(getRecipes());
         copy.setDimensions(getDimensions());
         copy.setStructures(getStructures());
         copy.setStructureModLinked(getStructureModLinked());
+        copy.setStructureGenerationRules(getStructureGenerationRules());
+        copy.setBiomes(getBiomes());
+        copy.setBiomeModLinked(getBiomeModLinked());
+        copy.setZones(getZones().stream().map(ZoneEntry::copy).collect(Collectors.toList()));
+        copy.setIcon(getIcon());
+        copy.setScrollCompletion(getScrollCompletion());
         EntityLocks locksCopy = new EntityLocks();
         locksCopy.setAttacklock(getEntities().getAttacklock());
+        locksCopy.setInteractionlock(getEntities().getInteractionlock());
         locksCopy.setSpawnlock(getEntities().getSpawnlock());
         locksCopy.setModLinked(getEntities().getModLinked());
         copy.setEntities(locksCopy);
+        TradeLocks tradesCopy = new TradeLocks();
+        tradesCopy.setOffers(getTradeOffers());
+        tradesCopy.setProfessions(getTradeProfessionEntries());
+        tradesCopy.setLevels(getTradeLevels());
+        copy.setTrades(tradesCopy);
         copy.setDependencies(getDependencies().stream().map(DependencyGroup::copy).collect(Collectors.toList()));
+        copy.mode = this.mode;
+        copy.autoTrigger = (this.autoTrigger != null) ? this.autoTrigger.copy() : null;
+        copy.temporary = (this.temporary != null) ? this.temporary.copy() : null;
+        copy.hiddenDisplay = (this.hiddenDisplay != null) ? this.hiddenDisplay.copy() : null;
+        copy.loseOnDeath = this.loseOnDeath;
+        if (this.addons != null) {
+            Map<String, JsonElement> addonsCopy = new LinkedHashMap<>();
+            for (Map.Entry<String, JsonElement> e : this.addons.entrySet()) {
+                addonsCopy.put(e.getKey(), e.getValue().deepCopy());
+            }
+            copy.addons = addonsCopy;
+        }
+        if (this.addonSettings != null) {
+            Map<String, JsonElement> settingsCopy = new LinkedHashMap<>();
+            for (Map.Entry<String, JsonElement> e : this.addonSettings.entrySet()) {
+                settingsCopy.put(e.getKey(), e.getValue().deepCopy());
+            }
+            copy.addonSettings = settingsCopy;
+        }
         return copy;
     }
 
+    /** Pretty-printed form, used for the stage files on disk so they stay hand-editable. */
     public String toJson() {
         return GSON.toJson(this);
     }
 
-    public static StageEntry fromJson(String json) {
-        return GSON.fromJson(json, StageEntry.class);
+    /**
+     * Same data as {@link #toJson()} but without indentation or line breaks. Used when a stage
+     * travels over the network: the pretty-printed form is close to twice the size, which is
+     * what pushes big stages over the string size limit of the save packet.
+     */
+    public String toCompactJson() {
+        return COMPACT_GSON.toJson(this);
     }
 }

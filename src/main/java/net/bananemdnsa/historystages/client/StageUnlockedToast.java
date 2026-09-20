@@ -1,40 +1,54 @@
 package net.bananemdnsa.historystages.client;
 
-import net.bananemdnsa.historystages.init.ModItems;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.toasts.Toast;
 import net.minecraft.client.gui.components.toasts.ToastComponent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
-import net.fabricmc.api.EnvType;
-import net.fabricmc.api.Environment;
 
-@Environment(EnvType.CLIENT)
-public class StageUnlockedToast implements Toast {
+import net.bananemdnsa.historystages.client.toast.DismissibleToast;
+
+public class StageUnlockedToast implements Toast, DismissibleToast {
+
     private static final ResourceLocation BACKGROUND_SPRITE = ResourceLocation.withDefaultNamespace("toast/advancement");
     private static final int DISPLAY_TIME = 5000;
 
     private final Component title;
     private final Component stageName;
     private final ItemStack icon;
-
-    public StageUnlockedToast(String stageName) {
-        this(stageName, new ItemStack(ModItems.RESEARCH_SCROLL));
-    }
+    private boolean dismissed = false;
 
     public StageUnlockedToast(String stageName, ItemStack icon) {
         this.title = Component.translatable("toast.historystages.stage_unlocked");
         this.stageName = Component.literal(stageName);
-        this.icon = (icon != null && !icon.isEmpty()) ? icon : new ItemStack(ModItems.RESEARCH_SCROLL);
+        this.icon = icon != null ? icon : ItemStack.EMPTY;
+    }
+
+    @Override
+    public void dismiss() {
+        this.dismissed = true;
     }
 
     @Override
     public Visibility render(GuiGraphics guiGraphics, ToastComponent toastComponent, long timeSinceLastVisible) {
+        if (dismissed) {
+            return Visibility.HIDE;
+        }
+
+        // Draw the vanilla toast background using 1.21 sprite system
         guiGraphics.blitSprite(BACKGROUND_SPRITE, 0, 0, this.width(), this.height());
+
+        // Draw title text (line 1) - yellow like vanilla advancement toasts
         guiGraphics.drawString(toastComponent.getMinecraft().font, this.title, 30, 7, 0xFFFFFF00, false);
+
+        // Draw stage name (line 2) - white
         guiGraphics.drawString(toastComponent.getMinecraft().font, this.stageName, 30, 18, 0xFFFFFFFF, false);
-        guiGraphics.renderFakeItem(this.icon, 8, 8);
+
+        // Draw the stage icon
+        if (!icon.isEmpty()) {
+            guiGraphics.renderFakeItem(icon, 8, 8);
+        }
 
         return (double) timeSinceLastVisible >= (double) DISPLAY_TIME * toastComponent.getNotificationDisplayTimeMultiplier()
                 ? Visibility.HIDE : Visibility.SHOW;

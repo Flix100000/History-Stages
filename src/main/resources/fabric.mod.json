@@ -22,13 +22,13 @@
 			"net.bananemdnsa.historystages.client.HistoryStagesFabricClient"
 		],
 		"jei_mod_plugin": [
-			"net.bananemdnsa.historystages.jei.JEIPlugin"
+			"net.bananemdnsa.historystages.compat.jei.JEIPlugin"
 		],
 		"emi": [
-			"net.bananemdnsa.historystages.emi.EMIPlugin"
+			"net.bananemdnsa.historystages.compat.emi.EMIPlugin"
 		],
 		"ftbquests": [
-			"net.bananemdnsa.historystages.ftbquests.FTBQuestsIntegration"
+			"net.bananemdnsa.historystages.compat.ftbquests.FTBQuestsIntegration"
 		]
 	},
 	"mixins": [

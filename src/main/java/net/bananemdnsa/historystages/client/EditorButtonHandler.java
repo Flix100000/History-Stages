@@ -1,39 +1,45 @@
 package net.bananemdnsa.historystages.client;
 
+import net.bananemdnsa.historystages.Config;
+import net.bananemdnsa.historystages.GraphConfig;
+import net.bananemdnsa.historystages.HistoryStages;
+import net.bananemdnsa.historystages.client.editor.StageGraphScreen;
 import net.bananemdnsa.historystages.client.editor.StageOverviewScreen;
-import net.bananemdnsa.historystages.client.editor.EditorBlurController;
-import net.fabricmc.fabric.api.client.screen.v1.Screens;
-import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.PauseScreen;
 import net.minecraft.network.chat.Component;
-import net.fabricmc.api.EnvType;
-import net.fabricmc.api.Environment;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.ScreenEvent;
 
-@Environment(EnvType.CLIENT)
-public final class EditorButtonHandler {
-    private EditorButtonHandler() {
-    }
+@EventBusSubscriber(modid = HistoryStages.MOD_ID, value = Dist.CLIENT)
+public class EditorButtonHandler {
 
-    public static void register() {
-        ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
-            if (!(screen instanceof PauseScreen)) {
-                return;
-            }
-            if (client.options != null && client.options.menuBackgroundBlurriness().get() == 0) {
-                client.options.menuBackgroundBlurriness().set(5);
-            }
-            if (client.player == null || !client.player.hasPermissions(2)) {
-                return;
-            }
+    @SubscribeEvent
+    public static void onScreenInit(ScreenEvent.Init.Post event) {
+        if (!(event.getScreen() instanceof PauseScreen)) return;
 
-            Screens.getButtons(screen).add(Button.builder(
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null) return;
+
+        int screenWidth = event.getScreen().width;
+
+        // The button is a shortcut, not the only door: '/history editor' opens the same
+        // screen behind the same permission check, so hiding it costs an operator nothing.
+        if (mc.player.hasPermissions(2) && Config.VISUAL.showEditorButton.get()) {
+            event.addListener(Button.builder(
                     Component.translatable("editor.historystages.title"),
-                    button -> {
-                        client.setScreen(new StageOverviewScreen());
-                        EditorBlurController.enter(client);
-                    }
-            ).bounds(width - 110, 5, 100, 20).build());
-        });
+                    btn -> mc.setScreen(new StageOverviewScreen())
+            ).bounds(screenWidth - 110, 5, 100, 20).build());
+        }
+
+        if (GraphConfig.GRAPH.enabled.get()) {
+            event.addListener(Button.builder(
+                    Component.translatable("graph.historystages.button"),
+                    btn -> mc.setScreen(StageGraphScreen.forPlayer(mc.screen))
+            ).bounds(screenWidth - 110, 29, 100, 20).build());
+        }
     }
 }

@@ -1,15 +1,50 @@
 package net.bananemdnsa.historystages.client.editor;
+import net.bananemdnsa.historystages.api.editor.widget.CountInputScreen;
+import net.bananemdnsa.historystages.client.editor.dialog.ScoreboardDepScreen;
+import net.bananemdnsa.historystages.client.editor.toast.EditorToastHandler;
 
 import com.google.gson.JsonObject;
 import com.mojang.blaze3d.platform.Lighting;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
+import net.bananemdnsa.historystages.client.editor.anim.Anim;
+import net.bananemdnsa.historystages.client.editor.anim.Ease;
+import net.bananemdnsa.historystages.client.editor.anim.Fade;
+import net.bananemdnsa.historystages.client.editor.anim.Timing;
+import net.bananemdnsa.historystages.api.editor.DependencyTab;
+import net.bananemdnsa.historystages.client.editor.dep.IdCountTab;
+import net.bananemdnsa.historystages.client.editor.dep.EntityKillTab;
+import net.bananemdnsa.historystages.client.editor.dep.IndividualStageTab;
+import net.bananemdnsa.historystages.client.editor.widget.dropdown.DropdownChrome;
+import net.bananemdnsa.historystages.client.editor.widget.dropdown.DropdownOverlay;
+import net.bananemdnsa.historystages.client.editor.widget.dropdown.EnumDropdown;
+import net.bananemdnsa.historystages.client.editor.dep.ItemRequirementTab;
+import net.bananemdnsa.historystages.client.editor.widget.list.SearchableTagList;
+import net.bananemdnsa.historystages.api.editor.RequirementEditor;
+import net.bananemdnsa.historystages.client.editor.dep.RequirementEditors;
+import net.bananemdnsa.historystages.client.editor.dep.ScoreboardTab;
+import net.bananemdnsa.historystages.client.editor.dep.StatTab;
+import net.bananemdnsa.historystages.client.editor.dep.StringListTab;
+import net.bananemdnsa.historystages.client.editor.dep.XpLevelTab;
+import net.bananemdnsa.historystages.api.editor.EntryAction;
+import net.bananemdnsa.historystages.api.editor.EntryActionContext;
+import net.bananemdnsa.historystages.api.editor.TabInputContext;
+import net.bananemdnsa.historystages.api.editor.TabRenderContext;
 import net.bananemdnsa.historystages.client.editor.widget.*;
+import net.bananemdnsa.historystages.client.editor.widget.list.*;
+import net.bananemdnsa.historystages.api.editor.widget.EditorRowList;
+import net.bananemdnsa.historystages.api.editor.widget.PickerOverlay;
 import net.bananemdnsa.historystages.data.DependencyGroup;
+import net.bananemdnsa.historystages.data.dependency.ItemTagResolution;
+import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.data.dependency.*;
+import net.bananemdnsa.historystages.api.dependency.Requirement;
+import net.bananemdnsa.historystages.data.dependency.RequirementTypes;
+import net.bananemdnsa.historystages.api.stage.StageScope;
 import net.minecraft.client.Minecraft;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -21,21 +56,23 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.registries.ForgeRegistries;
+
 import org.joml.Quaternionf;
-import org.joml.Matrix4fStack;
 
 import java.util.*;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Collectors;
-import net.fabricmc.api.EnvType;
-import net.fabricmc.api.Environment;
 
-@Environment(EnvType.CLIENT)
 public class DependencyEditorScreen extends Screen {
     private final Screen parent;
     private final List<DependencyGroup> groups;
+    /** Kept so the label + enabled state can follow the group count at runtime. */
+    private StyledButton addGroupButton;
+    /** Last applied limit state, so the button is only rewritten when it flips. */
+    private boolean addGroupButtonLimited;
     private final boolean isIndividual;
     private final Consumer<List<DependencyGroup>> onSave;
     private final String currentStageId;
@@ -43,34 +80,59 @@ public class DependencyEditorScreen extends Screen {
     private int selectedGroup = 0;
     private int activeTab = 0;
     private double scrollOffset = 0;
+    /**
+     * Sub-pixel scroll position chasing {@link #scrollOffset}. Render and the click paths both
+     * read this, so what the cursor hits is always what the frame drew.
+     */
+    private final Anim smoothScroll = new Anim();
     private int maxScroll = 0;
     private boolean hasChanges = false;
 
-    // Tab definitions (translation keys)
-    private static final String[] GLOBAL_TAB_KEYS = {
-            "editor.historystages.dep.tab.items", "editor.historystages.dep.tab.global_stages",
-            "editor.historystages.dep.tab.individual_stages"
-    };
-    private static final String[] INDIVIDUAL_TAB_KEYS = {
-            "editor.historystages.dep.tab.items", "editor.historystages.dep.tab.global_stages",
-            "editor.historystages.dep.tab.individual_stages",
-            "editor.historystages.dep.tab.advancements", "editor.historystages.dep.tab.xp_level",
-            "editor.historystages.dep.tab.entity_kills", "editor.historystages.dep.tab.stats"
-    };
+    /**
+     * The requirement kinds this stage can express, in registry order.
+     *
+     * <p>Two hardcoded arrays of tab keys used to live here, one per scope. They were the only
+     * place the global/individual distinction existed, which meant the editor hid a kind while
+     * the checker went on evaluating it — a hand-written advancement on a global stage was
+     * checked against whichever player happened to trigger it. The scope now lives on the
+     * requirement, and both the tab strip and the checker read it from there.
+     */
+    private List<Requirement> visibleRequirements() {
+        return RequirementTypes.forScope(isIndividual ? StageScope.INDIVIDUAL : StageScope.GLOBAL);
+    }
 
-    private static final String[] GLOBAL_TOOLTIP_KEYS = {
-            "editor.historystages.dep.tooltip.items", "editor.historystages.dep.tooltip.global_stages",
-            "editor.historystages.dep.tooltip.individual_stages"
-    };
-    private static final String[] INDIVIDUAL_TOOLTIP_KEYS = {
-            "editor.historystages.dep.tooltip.items", "editor.historystages.dep.tooltip.global_stages",
-            "editor.historystages.dep.tooltip.individual_stages",
-            "editor.historystages.dep.tooltip.advancements", "editor.historystages.dep.tooltip.xp_level",
-            "editor.historystages.dep.tooltip.entity_kills", "editor.historystages.dep.tooltip.stats"
-    };
+    /**
+     * The requirement the active tab belongs to, or {@code ""} when the index is out of range.
+     *
+     * <p>Dispatching on this rather than on the raw index is the point of the rewrite: tab 3 used
+     * to mean advancements on an individual stage and scoreboard on a global one, and every
+     * branch had to remember which.
+     */
+    /**
+     * Whether the active tab offers an Add row.
+     *
+     * <p>The tab answers now. This used to name XP as a special case and then ask whether the
+     * requirement was built in — two questions with one answer between them, and both wrong for a
+     * tab that simply has nothing to add to.
+     */
+    private boolean activeTabHasAddButton() {
+        DependencyTab tab = activeAddonTab();
+        return tab != null && tab.hasAddButton();
+    }
+
+    private String activeRequirementId() {
+        List<Requirement> visible = visibleRequirements();
+        return activeTab >= 0 && activeTab < visible.size() ? visible.get(activeTab).id() : "";
+    }
 
     // Layout
     private static final int LEFT_PANEL_W = 130;
+
+    /** Height of the AND/OR badge in a group card. */
+    private static final int LOGIC_BADGE_H = 12;
+
+    /** What a group's logic may be, in the order the picker offers it. */
+    private static final List<String> LOGIC_OPTIONS = List.of("AND", "OR");
     private static final int CARD_HEIGHT = 22;
     private static final int CARD_GAP = 3;
     private static final int TAB_HEIGHT = 16;
@@ -80,17 +142,16 @@ public class DependencyEditorScreen extends Screen {
     private static final float SMALL_SCALE = 0.85f;
 
     // Marquee
-    private static final long CARD_MARQUEE_DELAY_MS = 800;
-    private static final float CARD_MARQUEE_SPEED = 25.0f;
-    private int hoveredCardIndex = -1;
-    private long cardHoverStartTime = 0;
 
     // Card hover animation
-    private final Map<Integer, Float> cardHoverProgress = new HashMap<>();
+    private final Map<Integer, Anim> cardHoverProgress = new HashMap<>();
 
     // Animated tab indicator
-    private float tabIndicatorX = 0;
-    private float tabIndicatorW = 0;
+    private final Anim tabIndicatorXAnim = new Anim();
+    private final Anim tabIndicatorWAnim = new Anim();
+    /** Per-tab hover progress, indexed by tab position. */
+    private final Map<Integer, Anim> tabHover = new HashMap<>();
+    private final Anim contentThumbHover = new Anim();
     private boolean tabIndicatorInit = false;
     private long tabSwitchTime = 0;
 
@@ -99,22 +160,9 @@ public class DependencyEditorScreen extends Screen {
     private int maxTabScroll = 0;
 
     // Searchable widget overlays
-    private SearchableItemList itemSearch;
-    private SearchableEntityList entitySearch;
-    private SearchableStageList globalStageSearch;
-    private SearchableStageList individualStageSearch;
-    private SearchableAdvancementList advancementSearch;
-    private SearchableStatList statSearch;
 
     // Context menu
     private ContextMenu contextMenu;
-
-    // Count/value input dialog (custom text input, no EditBox)
-    private String countDialogType = null;
-    private String pendingId = null;
-    private int editingEntryIndex = -1;
-    private String countInputText = "";
-    private boolean countCursorBlink = true;
 
     // Tab layout arrays
     private int[] tabX;
@@ -124,17 +172,15 @@ public class DependencyEditorScreen extends Screen {
     // Tooltip hover tracking
     private String hoveredTooltipKey = null;
     private long tooltipHoverStart = 0;
-    private static final long TOOLTIP_DELAY_MS = 400;
+    private static final long TOOLTIP_DELAY_MS = Timing.TOOLTIP_DELAY_MS;
 
     // NBT editing for item dependencies
-    private final Map<Integer, JsonObject> itemNbtMap = new HashMap<>();
 
     // Content scrollbar
     private boolean draggingContentScrollbar = false;
     private static final int SCROLLBAR_WIDTH = 4;
 
     // Entity 3D model cache
-    private final Map<String, LivingEntity> entityCache = new HashMap<>();
 
     public DependencyEditorScreen(Screen parent, List<DependencyGroup> dependencies, boolean isIndividual,
             String currentStageId, Consumer<List<DependencyGroup>> onSave) {
@@ -149,11 +195,11 @@ public class DependencyEditorScreen extends Screen {
     }
 
     private String[] getTabKeys() {
-        return isIndividual ? INDIVIDUAL_TAB_KEYS : GLOBAL_TAB_KEYS;
+        return visibleRequirements().stream().map(Requirement::tabLangKey).toArray(String[]::new);
     }
 
     private String[] getTabTooltipKeys() {
-        return isIndividual ? INDIVIDUAL_TOOLTIP_KEYS : GLOBAL_TOOLTIP_KEYS;
+        return visibleRequirements().stream().map(Requirement::tooltipLangKey).toArray(String[]::new);
     }
 
     private String t(String key) {
@@ -177,66 +223,38 @@ public class DependencyEditorScreen extends Screen {
                 btn -> confirmDiscard(), 10, this.height - 25, 50, 18));
 
         // Add Group button
-        this.addRenderableWidget(StyledButton.of(
+        addGroupButton = this.addRenderableWidget(StyledButton.of(
                 Component.translatable("editor.historystages.dep.add_group"),
                 btn -> {
-                    groups.add(new DependencyGroup());
+                    if (atGroupLimit()) return;
+                    // Store into the group being left before the selection moves, or its addon
+                    // entries never reach it — the tabs hold them until told otherwise.
+                    if (hasGroup()) storeAddonTabs(currentGroup());
+                    DependencyGroup fresh = new DependencyGroup();
+                    // An id of its own from the start, so what players deposit into it stays with
+                    // it when the group list is later reordered or thinned out.
+                    fresh.setId(DependencyGroup.freshId(groups));
+                    groups.add(fresh);
                     selectedGroup = groups.size() - 1;
+                    // And load from the new one, which is empty and therefore clears the tabs.
+                    loadAddonTabs(currentGroup());
                     activeTab = 0;
                     scrollOffset = 0;
+                    restartRowAnimation();
                     hasChanges = true;
                 }, 10, this.height - 50, LEFT_PANEL_W - 20, 16));
+        // The fresh button is enabled and carries the add label, so the cache starts unlimited;
+        // without this reset a re-init while capped would leave a stale enabled button.
+        addGroupButtonLimited = false;
+        updateAddGroupButton();
 
-        // Searchable widgets
-        itemSearch = new SearchableItemList(id -> {
-            if (hasGroup()) {
-                currentGroup().getItems().add(new DependencyItem(id, 1));
-                hasChanges = true;
-            }
-        }, () -> hasGroup()
-                ? currentGroup().getItems().stream().map(DependencyItem::getId).collect(Collectors.toList())
-                : List.of());
-        entitySearch = new SearchableEntityList(id -> {
-            if (hasGroup()) {
-                currentGroup().getEntityKills().add(new EntityKillDep(id, 1));
-                hasChanges = true;
-            }
-        }, () -> hasGroup()
-                ? currentGroup().getEntityKills().stream().map(EntityKillDep::getEntityId).collect(Collectors.toList())
-                : List.of());
-        globalStageSearch = new SearchableStageList(id -> {
-            if (hasGroup()) {
-                currentGroup().getStages().add(id);
-                hasChanges = true;
-            }
-        }, false, () -> hasGroup() ? currentGroup().getStages() : List.of());
-        globalStageSearch.setExcludeStageId(currentStageId);
-        individualStageSearch = new SearchableStageList(id -> {
-            if (hasGroup()) {
-                currentGroup().getIndividualStages().add(new IndividualStageDep(id, "all_online"));
-                hasChanges = true;
-            }
-        }, true, () -> hasGroup()
-                ? currentGroup().getIndividualStages().stream().map(IndividualStageDep::getStageId).collect(Collectors.toList())
-                : List.of());
-        advancementSearch = new SearchableAdvancementList(id -> {
-            if (hasGroup()) {
-                currentGroup().getAdvancements().add(id);
-                hasChanges = true;
-            }
-        }, () -> hasGroup() ? currentGroup().getAdvancements() : List.of());
-        statSearch = new SearchableStatList(id -> {
-            if (hasGroup()) {
-                currentGroup().getStats().add(new StatDep(id, 1));
-                hasChanges = true;
-            }
-        }, () -> hasGroup()
-                ? currentGroup().getStats().stream().map(StatDep::getStatId).collect(Collectors.toList())
-                : List.of());
+        // Searchable widgets. Already-added suppliers map the dependency-wrapper
+        // lists (DependencyItem/EntityKillDep/etc.) back to plain string IDs so
+        // the FilterDropdown's "Hide already added" toggle can match entries.
 
         contextMenu = new ContextMenu();
+        buildAddonTabs();
         computeTabLayout();
-        rebuildItemNbtMap();
     }
 
     private boolean hasGroup() {
@@ -284,33 +302,14 @@ public class DependencyEditorScreen extends Screen {
         }
     }
 
-    private void rebuildItemNbtMap() {
-        itemNbtMap.clear();
-        if (hasGroup()) {
-            for (int i = 0; i < currentGroup().getItems().size(); i++) {
-                DependencyItem item = currentGroup().getItems().get(i);
-                if (item.hasNbt())
-                    itemNbtMap.put(i, item.getNbt().deepCopy());
-            }
-        }
-    }
-
     private void save() {
-        syncNbtToItems();
+        // Addon tabs hold their entries and only write them on store. Without this the last edits
+        // made in the selected group never reach it, and removeIf below would then drop a group
+        // that only looks empty.
+        if (hasGroup()) storeAddonTabs(currentGroup());
         groups.removeIf(DependencyGroup::isEmpty);
         onSave.accept(groups.stream().map(DependencyGroup::copy).collect(Collectors.toList()));
         hasChanges = false;
-    }
-
-    private void syncNbtToItems() {
-        if (hasGroup()) {
-            for (var entry : itemNbtMap.entrySet()) {
-                int idx = entry.getKey();
-                if (idx < currentGroup().getItems().size()) {
-                    currentGroup().getItems().get(idx).setNbt(entry.getValue());
-                }
-            }
-        }
     }
 
     @Override
@@ -329,104 +328,96 @@ public class DependencyEditorScreen extends Screen {
         }
     }
 
+    /**
+     * True while any tab's overlay is up.
+     *
+     * <p>One question to the active tab, where this used to name six searchable lists by field.
+     * Every one of them now belongs to the tab that opens it, and a tab answers for whichever of
+     * its overlays is showing.
+     */
     private boolean isOverlayOpen() {
-        return (itemSearch != null && itemSearch.isVisible())
-                || (entitySearch != null && entitySearch.isVisible())
-                || (globalStageSearch != null && globalStageSearch.isVisible())
-                || (individualStageSearch != null && individualStageSearch.isVisible())
-                || (advancementSearch != null && advancementSearch.isVisible())
-                || (statSearch != null && statSearch.isVisible())
-                || countDialogType != null;
+        return (addonPicker() != null && addonPicker().isVisible()) || screenOverlay() != null;
+    }
+
+    /**
+     * Whichever overlay this screen itself put up, while it is still holding input.
+     *
+     * <p>Two of them: the popup a declared action opens, and the group's AND/OR picker. One
+     * accessor rather than two, because every input path already asks this one first and a second
+     * question beside it would be six more lines that must not be forgotten.
+     *
+     * <p>Drops the action overlay as soon as it hides itself. Holding on to a hidden overlay is
+     * how an editor stops responding without throwing anything: every click keeps being forwarded
+     * to something invisible. The logic picker is not held here at all once closed — it is still
+     * drawn for a moment by {@link #renderLogicPicker}, but a popup rolling up must not go on
+     * swallowing clicks.
+     */
+    private PickerOverlay screenOverlay() {
+        if (actionOverlay != null && !actionOverlay.isVisible()) actionOverlay = null;
+        if (logicPicker != null && logicPicker.isVisible()) return logicPicker;
+        return actionOverlay;
+    }
+
+    /**
+     * Draws the AND/OR picker, including the roll-up after the click that closed it.
+     *
+     * <p>Not folded into the overlay rendering above: that one draws whatever currently holds
+     * input, and this popup deliberately outlives that by the length of its own animation.
+     */
+    private void renderLogicPicker(GuiGraphics g, int mouseX, int mouseY) {
+        if (logicPicker != null) logicPicker.render(g, this.font, mouseX, mouseY);
     }
 
     // --- Count dialog ---
 
-    private void openCountDialog(String type, String id, int editIndex) {
-        this.countDialogType = type;
-        this.pendingId = id;
-        this.editingEntryIndex = editIndex;
-
-        // Pre-fill with existing value if editing
-        String defaultVal = "1";
-        if (editIndex >= 0 && hasGroup()) {
-            DependencyGroup g = currentGroup();
-            switch (type) {
-                case "item_count" -> {
-                    if (editIndex < g.getItems().size())
-                        defaultVal = String.valueOf(g.getItems().get(editIndex).getCount());
-                }
-                case "kill_count" -> {
-                    if (editIndex < g.getEntityKills().size())
-                        defaultVal = String.valueOf(g.getEntityKills().get(editIndex).getCount());
-                }
-                case "stat_value" -> {
-                    if (editIndex < g.getStats().size())
-                        defaultVal = String.valueOf(g.getStats().get(editIndex).getMinValue());
-                }
-                case "xp_level" -> {
-                    if (g.getXpLevel() != null)
-                        defaultVal = String.valueOf(g.getXpLevel().getLevel());
-                }
-            }
+    /**
+     * Opens the AND/OR picker under the badge that was clicked.
+     *
+     * <p>One instance across all five groups, so {@code logicPickerGroup} is what a pick lands on.
+     * The value is pushed in before it opens: the last group looked at is not this one.
+     */
+    private void openLogicPicker(int groupIndex, int x, int y) {
+        if (groupIndex < 0 || groupIndex >= groups.size()) return;
+        if (logicPicker == null) {
+            logicPicker = new DropdownOverlay(new EnumDropdown(LOGIC_OPTIONS,
+                    groups.get(groupIndex).getLogic(), 0, Component::literal, this::applyLogic));
         }
-        if (type.equals("xp_level") && editIndex < 0)
-            defaultVal = "30";
-        this.countInputText = defaultVal;
+        logicPickerGroup = groupIndex;
+        logicPicker.dropdown().setValue(groups.get(groupIndex).getLogic());
+        logicPicker.openAt(x, y, LOGIC_BADGE_H);
     }
 
-    private void confirmCountDialog() {
-        if (countDialogType == null)
-            return;
-        int num;
-        try {
-            num = Integer.parseInt(countInputText.trim());
-        } catch (NumberFormatException e) {
-            num = 1;
-        }
-        num = Math.max(1, num);
-
-        if (hasGroup()) {
-            DependencyGroup group = currentGroup();
-            if (editingEntryIndex >= 0) {
-                switch (countDialogType) {
-                    case "item_count" -> {
-                        if (editingEntryIndex < group.getItems().size())
-                            group.getItems().get(editingEntryIndex).setCount(num);
-                    }
-                    case "kill_count" -> {
-                        if (editingEntryIndex < group.getEntityKills().size())
-                            group.getEntityKills().get(editingEntryIndex).setCount(num);
-                    }
-                    case "stat_value" -> {
-                        if (editingEntryIndex < group.getStats().size())
-                            group.getStats().get(editingEntryIndex).setMinValue(num);
-                    }
-                    case "xp_level" -> {
-                        boolean consume = group.getXpLevel() != null && group.getXpLevel().isConsume();
-                        group.setXpLevel(new XpLevelDep(num, consume));
-                    }
-                }
-            } else {
-                switch (countDialogType) {
-                    case "item_count" -> group.getItems().add(new DependencyItem(pendingId, num));
-                    case "kill_count" -> group.getEntityKills().add(new EntityKillDep(pendingId, num));
-                    case "stat_value" -> group.getStats().add(new StatDep(pendingId, Math.max(0, num)));
-                    case "xp_level" -> {
-                        boolean consume = group.getXpLevel() != null && group.getXpLevel().isConsume();
-                        group.setXpLevel(new XpLevelDep(num, consume));
-                    }
-                }
-            }
-            hasChanges = true;
-        }
-        closeCountDialog();
+    /** Guarded on the group still being there: a picker can outlive the row it was opened from. */
+    private void applyLogic(String logic) {
+        if (logicPickerGroup < 0 || logicPickerGroup >= groups.size()) return;
+        groups.get(logicPickerGroup).setLogic(logic);
+        hasChanges = true;
     }
 
-    private void closeCountDialog() {
-        countDialogType = null;
-        pendingId = null;
-        editingEntryIndex = -1;
-        countInputText = "";
+    /** Wide enough for either label plus its caret, so the badge does not resize as it is picked. */
+    private int logicBadgeWidth() {
+        int widest = 0;
+        for (String option : LOGIC_OPTIONS) widest = Math.max(widest, this.font.width(option));
+        return widest + 6 + DropdownChrome.CARET_WIDTH;
+    }
+
+    private boolean atGroupLimit() {
+        return groups.size() >= DependencyGroup.MAX_GROUPS;
+    }
+
+    /**
+     * Swaps the Add-Group button to an inert "limit reached" state once the cap is hit.
+     * Runs every frame, so it only touches the button when the state actually flips.
+     */
+    private void updateAddGroupButton() {
+        if (addGroupButton == null) return;
+        boolean limited = atGroupLimit();
+        if (limited == addGroupButtonLimited) return;
+        addGroupButtonLimited = limited;
+        addGroupButton.active = !limited;
+        addGroupButton.setMessage(limited
+                ? Component.translatable("editor.historystages.dep.group_limit", DependencyGroup.MAX_GROUPS)
+                : Component.translatable("editor.historystages.dep.add_group"));
     }
 
     private void drawSmallText(GuiGraphics g, String text, int x, int y, int color) {
@@ -440,14 +431,19 @@ public class DependencyEditorScreen extends Screen {
     // --- Rendering ---
 
     @Override
-    public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+    public void renderBackground(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+        // No-op — we draw our own background in render() and want to avoid 1.21's menu blur shader
     }
 
     @Override
     public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
-        EditorBlurController.enter(this.minecraft);
-
         g.fill(0, 0, this.width, this.height, 0xE0101010);
+
+        smoothScroll.approach((float) scrollOffset, Timing.SCROLL_HALF_LIFE_MS);
+        smoothScroll.settle((float) scrollOffset, 0.5f);
+
+        // Groups can be added or removed between frames, so the cap is re-checked here.
+        updateAddGroupButton();
 
         String currentTooltipKey = null;
         String currentTooltipText = null;
@@ -479,14 +475,17 @@ public class DependencyEditorScreen extends Screen {
                     0x888888);
         }
 
-        // Unsaved indicator (pulsing dot like StageDetailScreen)
+        // Unsaved indicator (pulsing dot), right-aligned against the Save button like StageDetailScreen
         if (hasChanges) {
-            float pulse = (System.currentTimeMillis() % 1000) / 1000.0f;
-            pulse = 0.4f + (float) Math.sin(pulse * 3.14159f * 2) * 0.3f;
-            int dotAlpha = (int) (pulse * 255);
-            int dotX = this.width / 2 - 45;
-            g.fill(dotX, this.height - 12, dotX + 6, this.height - 6, (dotAlpha << 24) | 0xFFCC00);
-            drawSmallText(g, t("editor.historystages.unsaved"), dotX + 9, this.height - 12, 0xFFCC00);
+            float phase = (System.currentTimeMillis() % (long) Timing.BREATHE_PERIOD_MS)
+                    / Timing.BREATHE_PERIOD_MS;
+            int dotAlpha = (int) ((0.35f + 0.45f * Ease.breathe(phase)) * 255);
+            int dotX = this.width - 60 - 8 - 6;
+            String unsavedLabel = t("editor.historystages.unsaved");
+            int unsavedW = (int) (this.font.width(unsavedLabel) * SMALL_SCALE);
+            g.fill(dotX - unsavedW - 4, this.height - 18, dotX - unsavedW + 2, this.height - 12,
+                    (dotAlpha << 24) | 0xFFCC00);
+            drawSmallText(g, unsavedLabel, dotX - unsavedW + 5, this.height - 18, 0xFFCC00);
         }
 
         super.render(g, mouseX, mouseY, partialTick);
@@ -495,21 +494,11 @@ public class DependencyEditorScreen extends Screen {
         g.pose().pushPose();
         g.pose().translate(0, 0, 200);
 
-        if (countDialogType != null)
-            renderCountDialog(g, mouseX, mouseY);
-
-        if (itemSearch != null)
-            itemSearch.render(g, this.font, mouseX, mouseY);
-        if (entitySearch != null)
-            entitySearch.render(g, this.font, mouseX, mouseY);
-        if (globalStageSearch != null)
-            globalStageSearch.render(g, this.font, mouseX, mouseY);
-        if (individualStageSearch != null)
-            individualStageSearch.render(g, this.font, mouseX, mouseY);
-        if (advancementSearch != null)
-            advancementSearch.render(g, this.font, mouseX, mouseY);
-        if (statSearch != null)
-            statSearch.render(g, this.font, mouseX, mouseY);
+        if (addonPicker() != null)
+            addonPicker().render(g, this.font, mouseX, mouseY);
+        if (screenOverlay() != null)
+            screenOverlay().render(g, this.font, mouseX, mouseY);
+        renderLogicPicker(g, mouseX, mouseY);
 
         // Context menu on top of everything
         contextMenu.render(g, this.font, mouseX, mouseY);
@@ -546,15 +535,7 @@ public class DependencyEditorScreen extends Screen {
                     && mouseY >= y && mouseY < y + 28;
 
             // Card style
-            float cardProgress = cardHoverProgress.getOrDefault(-1000 - i, 0.0f);
-            if (hovered)
-                cardProgress = Math.min(1.0f, cardProgress + 0.1f);
-            else
-                cardProgress = Math.max(0.0f, cardProgress - 0.07f);
-            if (cardProgress > 0.001f)
-                cardHoverProgress.put(-1000 - i, cardProgress);
-            else
-                cardHoverProgress.remove(-1000 - i);
+            float cardProgress = updateCardHover(-1000 - i, hovered);
 
             int borderColor = selected ? 0x60FFFFFF : (int) (0x25 + cardProgress * 0x15) << 24 | 0xFFFFFF;
             int bgColor = selected ? 0xFF2A2A2A : 0xFF1E1E1E;
@@ -574,21 +555,26 @@ public class DependencyEditorScreen extends Screen {
             g.drawString(this.font, t("editor.historystages.dep.group", i + 1), 14, y + 3,
                     selected ? 0xFFFFFF : 0xCCCCCC, false);
 
-            // AND/OR toggle button
+            // AND/OR picker
             String logic = group.getLogic();
-            int badgeX = LEFT_PANEL_W - 28;
+            int badgeW = logicBadgeWidth();
+            int badgeX = LEFT_PANEL_W - 3 - badgeW;
             boolean badgeHovered = !isOverlayOpen() && !contextMenu.isVisible() && mouseX >= badgeX
-                    && mouseX <= badgeX + 25 && mouseY >= y + 2 && mouseY < y + 14;
+                    && mouseX < badgeX + badgeW && mouseY >= y + 2 && mouseY < y + LOGIC_BADGE_H + 2;
             int badgeBg = badgeHovered ? 0xFF3D3520 : 0xFF2A2A2A;
+            // Kept from the old badge: the logic is legible at a glance by colour, which is worth
+            // more in a column of five groups than the label alone.
             int badgeColor = group.isOr() ? (badgeHovered ? 0xFF77CCFF : 0xFF55AAFF)
                     : (badgeHovered ? 0xFF77FF77 : 0xFF55FF55);
-            g.fill(badgeX, y + 2, badgeX + 25, y + 14, badgeBg);
-            g.fill(badgeX, y + 12, badgeX + 25, y + 14, badgeHovered ? 0xAAFFCC00 : 0x40FFCC00);
+            g.fill(badgeX, y + 2, badgeX + badgeW, y + LOGIC_BADGE_H + 2, badgeBg);
             g.drawString(this.font, logic, badgeX + 3, y + 3, badgeColor, false);
+            DropdownChrome.drawCaret(g, badgeX + badgeW - 7, y + LOGIC_BADGE_H / 2 + 1,
+                    badgeHovered ? 0xFFDDDDDD : 0xFF999999,
+                    logicPickerGroup == i && logicPicker != null && logicPicker.isVisible()
+                            ? 1.0f : 0.0f);
 
             if (badgeHovered) {
-                tooltip = new String[] { "logic." + i,
-                        "Click to toggle.\nAND: All conditions must be met.\nOR: Any one condition is enough." };
+                tooltip = new String[] { "logic." + i, t("editor.historystages.dep.tooltip.logic") };
             }
 
             int entryCount = countGroupEntries(group);
@@ -630,19 +616,17 @@ public class DependencyEditorScreen extends Screen {
 
         // Animated indicator
         if (!tabIndicatorInit && tabX != null && tabX.length > 0) {
-            tabIndicatorX = tabX[activeTab] - tabScrollOffset;
-            tabIndicatorW = tabW[activeTab];
+            tabIndicatorXAnim.set(tabX[activeTab] - tabScrollOffset);
+            tabIndicatorWAnim.set(tabW[activeTab]);
             tabIndicatorInit = true;
         }
         if (tabX != null && activeTab < tabX.length) {
             float targetX = tabX[activeTab] - tabScrollOffset;
             float targetW = tabW[activeTab];
-            tabIndicatorX += (targetX - tabIndicatorX) * 0.18f;
-            tabIndicatorW += (targetW - tabIndicatorW) * 0.18f;
-            if (Math.abs(tabIndicatorX - targetX) < 0.5f)
-                tabIndicatorX = targetX;
-            if (Math.abs(tabIndicatorW - targetW) < 0.5f)
-                tabIndicatorW = targetW;
+            tabIndicatorXAnim.approach(targetX, Timing.SCROLL_HALF_LIFE_MS);
+            tabIndicatorWAnim.approach(targetW, Timing.SCROLL_HALF_LIFE_MS);
+            tabIndicatorXAnim.settle(targetX, 0.5f);
+            tabIndicatorWAnim.settle(targetW, 0.5f);
         }
 
         if (hasTabScroll)
@@ -654,15 +638,18 @@ public class DependencyEditorScreen extends Screen {
             boolean hovered = !isOverlayOpen() && !contextMenu.isVisible()
                     && mouseX >= Math.max(sx, tabClipLeft) && mouseX < Math.min(sx + tabW[i], tabClipRight)
                     && mouseY >= tabY && mouseY < tabY + TAB_HEIGHT;
+            float th = Ease.outCubic(tabHover.computeIfAbsent(i, k -> new Anim())
+                    .ramp(hovered && !active, Timing.HOVER_IN_MS, Timing.HOVER_OUT_MS));
             g.fill(sx, tabY, sx + tabW[i], tabY + TAB_HEIGHT,
-                    active ? 0x40FFCC00 : (hovered ? 0x25FFFFFF : 0x15FFFFFF));
+                    active ? 0x40FFCC00 : Fade.mix(0x15FFFFFF, 0x25FFFFFF, th));
             drawSmallText(g, t(tabKeys[i]), sx + TAB_PAD, tabY + 4,
-                    active ? 0xFFFFFF : (hovered ? 0xDDDDDD : 0x999999));
+                    active ? 0xFFFFFF : Fade.mix(0xFF999999, 0xFFDDDDDD, th));
             if (hovered && i < tooltipKeys.length)
                 result = new String[] { "tab." + i, t(tooltipKeys[i]) };
         }
 
-        g.fill((int) tabIndicatorX, tabY + TAB_HEIGHT - 2, (int) (tabIndicatorX + tabIndicatorW), tabY + TAB_HEIGHT,
+        g.fill(Math.round(tabIndicatorXAnim.value()), tabY + TAB_HEIGHT - 2,
+                Math.round(tabIndicatorXAnim.value() + tabIndicatorWAnim.value()), tabY + TAB_HEIGHT,
                 0xFFFFCC00);
         if (hasTabScroll)
             g.disableScissor();
@@ -673,67 +660,76 @@ public class DependencyEditorScreen extends Screen {
     // Content tooltip (set during renderTabContent, displayed after scissor)
     private String[] contentTooltip = null;
 
+    private static final int CONTENT_TOP = HEADER_HEIGHT + TAB_HEIGHT + 6;
+
+    private int contentX() {
+        return LEFT_PANEL_W + 15;
+    }
+
+    /**
+     * Width of the content area.
+     *
+     * <p>One method because the render path and the click path used to compute it separately and
+     * disagreed by five pixels, which made the rightmost column of every row unclickable.
+     */
+    private int contentWidth() {
+        return this.width - contentX() - 15;
+    }
+
+    private int contentBottom() {
+        return this.height - 30;
+    }
+
+    /**
+     * The rectangle a tab draws in, scroll already applied.
+     *
+     * <p>Built once and handed to render and to every input hook, so a hit test and the drawing it
+     * refers to cannot drift apart.
+     */
+    private TabRenderContext renderContext(GuiGraphics g, int mouseX, int mouseY) {
+        return new TabRenderContext(g, this.font, contentX(),
+                CONTENT_TOP - Math.round(smoothScroll.value()), contentWidth(),
+                CONTENT_TOP, contentBottom(), mouseX, mouseY,
+                isOverlayOpen() || contextMenu.isVisible(),
+                (key, text) -> contentTooltip = new String[] { key, text });
+    }
+
+    private TabInputContext inputContext(double mouseX, double mouseY) {
+        return new TabInputContext(contentX(), CONTENT_TOP - Math.round(smoothScroll.value()),
+                contentWidth(), CONTENT_TOP, contentBottom(), mouseX, mouseY);
+    }
+
     private void renderTabContent(GuiGraphics g, int mouseX, int mouseY) {
         DependencyGroup group = currentGroup();
-        int rightX = LEFT_PANEL_W + 15;
-        int rightW = this.width - rightX - 15;
-        int contentY = HEADER_HEIGHT + TAB_HEIGHT + 6;
-        int contentBottom = this.height - 30;
+        int rightX = contentX();
+        int rightW = contentWidth();
+        int contentY = CONTENT_TOP;
+        int contentBottom = contentBottom();
         contentTooltip = null;
 
         g.enableScissor(rightX, contentY, rightX + rightW, contentBottom);
-        int y = contentY - (int) scrollOffset;
-        int currentHoveredCard = -1;
+        int y = contentY - Math.round(smoothScroll.value());
 
-        switch (activeTab) {
-            case 0 -> {
-                int[] res = renderItemEntries(g, mouseX, mouseY, rightX, rightW, y, contentY, contentBottom, group);
-                y = res[0];
-                currentHoveredCard = res[1];
+        // A tab that draws its own content is asked first. Returning false means it drew nothing,
+        // and the host draws its rows — which is what every tab that is only a list does.
+        DependencyTab active = activeAddonTab();
+        if (active != null) {
+            TabRenderContext tabCtx = renderContext(g, mouseX, mouseY);
+            if (active.renderContent(tabCtx)) {
+                selfDrawing.add(active.requirementId());
+            } else {
+                selfDrawing.remove(active.requirementId());
+                renderHostRows(tabCtx, active);
             }
-            case 1 -> {
-                int[] res = renderStringCardEntries(g, mouseX, mouseY, rightX, rightW, y, contentY, contentBottom,
-                        group.getStages(), false);
-                y = res[0];
-                currentHoveredCard = res[1];
-            }
-            case 2 -> {
-                int[] res = renderIndividualStageEntries(g, mouseX, mouseY, rightX, rightW, y, contentY, contentBottom,
-                        group);
-                y = res[0];
-                currentHoveredCard = res[1];
-            }
-            case 3 -> {
-                if (isIndividual) {
-                    int[] res = renderStringCardEntries(g, mouseX, mouseY, rightX, rightW, y, contentY, contentBottom,
-                            group.getAdvancements(), true);
-                    y = res[0];
-                    currentHoveredCard = res[1];
-                }
-            }
-            case 4 -> {
-                if (isIndividual)
-                    y = renderXpLevelEntry(g, mouseX, mouseY, rightX, rightW, y, group);
-            }
-            case 5 -> {
-                if (isIndividual) {
-                    int[] res = renderEntityKillEntries(g, mouseX, mouseY, rightX, rightW, y, contentY, contentBottom,
-                            group);
-                    y = res[0];
-                    currentHoveredCard = res[1];
-                }
-            }
-            case 6 -> {
-                if (isIndividual) {
-                    int[] res = renderStatEntries(g, mouseX, mouseY, rightX, rightW, y, contentY, contentBottom, group);
-                    y = res[0];
-                    currentHoveredCard = res[1];
-                }
-            }
+            y += active.contentHeight(rightW);
+        } else {
+            int[] res = renderBuiltInEntries(g, mouseX, mouseY, rightX, rightW, y, contentY,
+                    contentBottom, group);
+            y = res[0];
         }
 
         // Add button (matching StageDetailScreen style)
-        if (activeTab != 4) {
+        if (activeTabHasAddButton()) {
             int addY = y + 3;
             String addText = t("editor.historystages.dep.add");
             int addTextW = this.font.width(addText);
@@ -741,15 +737,7 @@ public class DependencyEditorScreen extends Screen {
             boolean addH = !isOverlayOpen() && !contextMenu.isVisible() && mouseX >= rightX && mouseX < addBoxRight
                     && mouseY >= addY && mouseY < addY + CARD_HEIGHT && mouseY >= contentY && mouseY < contentBottom;
 
-            float addProgress = cardHoverProgress.getOrDefault(-2, 0.0f);
-            if (addH)
-                addProgress = Math.min(1.0f, addProgress + 0.1f);
-            else
-                addProgress = Math.max(0.0f, addProgress - 0.07f);
-            if (addProgress > 0.001f)
-                cardHoverProgress.put(-2, addProgress);
-            else
-                cardHoverProgress.remove(-2);
+            float addProgress = updateCardHover(-2, addH);
 
             int addBorderAlpha = (int) (0x25 + addProgress * 0x1B);
             int addBgAlpha = (int) (0x18 + addProgress * 0x18);
@@ -769,7 +757,13 @@ public class DependencyEditorScreen extends Screen {
 
         g.disableScissor();
 
-        int contentHeight = y + CARD_HEIGHT + 10 - contentY + (int) scrollOffset;
+        // One source of height, so a tab that draws itself can state its own instead of the host
+        // inferring it from where the drawing happened to stop.
+        DependencyTab heightSource = activeAddonTab();
+        int contentHeight = (heightSource != null
+                ? heightSource.contentHeight(rightW)
+                : y - (contentY - Math.round(smoothScroll.value())))
+                + CARD_HEIGHT + 10;
         maxScroll = Math.max(0, contentHeight - (contentBottom - contentY));
 
         // Scrollbar
@@ -786,430 +780,84 @@ public class DependencyEditorScreen extends Screen {
             int totalContentH = contentHeight;
             int visibleH = contentBottom - contentY;
             int thumbH = Math.max(12, (int) ((float) visibleH / totalContentH * scrollTrackH));
-            int thumbY = scrollTrackTop + (int) ((float) scrollOffset / maxScroll * (scrollTrackH - thumbH));
+            int thumbY = scrollTrackTop + Math.round(smoothScroll.value() / maxScroll * (scrollTrackH - thumbH));
 
             boolean thumbHovered = !isOverlayOpen() && !contextMenu.isVisible()
                     && mouseX >= scrollTrackX - 2 && mouseX <= scrollTrackX + SCROLLBAR_WIDTH + 2
                     && mouseY >= thumbY && mouseY <= thumbY + thumbH;
-            int thumbColor = draggingContentScrollbar ? 0xCCFFCC00 : (thumbHovered ? 0xBBCCCCCC : 0x80888888);
+            float th = Ease.outCubic(contentThumbHover.ramp(thumbHovered || draggingContentScrollbar,
+                    Timing.HOVER_IN_MS, Timing.HOVER_OUT_MS));
+            int thumbColor = draggingContentScrollbar
+                    ? 0xCCFFCC00
+                    : Fade.mix(0x80888888, 0xBBCCCCCC, th);
             g.fill(scrollTrackX, thumbY, scrollTrackX + SCROLLBAR_WIDTH, thumbY + thumbH, thumbColor);
         }
 
-        // Update marquee state
-        if (currentHoveredCard != hoveredCardIndex) {
-            hoveredCardIndex = currentHoveredCard;
-            cardHoverStartTime = System.currentTimeMillis();
-        }
     }
+
+    /**
+     * What is shown for a requirement that has no tab at all.
+     *
+     * <p>Every built-in requirement is a tab now, so this is reached only when an addon registered
+     * a requirement without an editor: it gates but cannot be edited in game, and saying so beats
+     * an empty panel.
+     */
+    private int[] renderBuiltInEntries(GuiGraphics g, int mouseX, int mouseY, int rightX, int rightW,
+            int y, int contentY, int contentBottom, DependencyGroup group) {
+        return renderAddonEntries(g, mouseX, mouseY, rightX, rightW, y, contentY, contentBottom);
+    }
+
 
     // --- Card with marquee helper ---
 
-    private void renderCardWithText(GuiGraphics g, int rx, int rw, int cardY, boolean hovered, float cardProgress,
-            String text, int textOffsetX, int badgeW, int cardIndex, int contentY, int contentBottom) {
-        // Card background (matching StageDetailScreen)
-        int borderAlpha = (int) (0x30 + cardProgress * 0x20);
-        int bgAlpha = (int) (0x20 + cardProgress * 0x18);
-        g.fill(rx, cardY, rx + rw, cardY + CARD_HEIGHT, (borderAlpha << 24) | 0xFFFFFF);
-        g.fill(rx + 1, cardY + 1, rx + rw - 1, cardY + CARD_HEIGHT - 1, (bgAlpha << 24) | 0xFFFFFF);
-
-        // Hover accent
-        if (cardProgress > 0.01f) {
-            int accentAlpha = (int) (cardProgress * 0xCC);
-            g.fill(rx, cardY, rx + 2, cardY + CARD_HEIGHT, (accentAlpha << 24) | 0xFFCC00);
-        }
-
-        // Marquee text
-        int textStartX = rx + textOffsetX;
-        int textAvailW = rw - textOffsetX - 4 - badgeW;
-        int textW = this.font.width(text);
-        int textColor = hovered ? 0xFFFFFF : 0xBBBBBB;
-
-        if (textW > textAvailW && hovered && cardIndex == hoveredCardIndex) {
-            long elapsed = System.currentTimeMillis() - cardHoverStartTime;
-            if (elapsed > CARD_MARQUEE_DELAY_MS) {
-                float scrollProg = (elapsed - CARD_MARQUEE_DELAY_MS) / 1000.0f * CARD_MARQUEE_SPEED;
-                int maxMarquee = textW - textAvailW + 10;
-                float cycle = (float) maxMarquee * 2;
-                float pos = scrollProg % cycle;
-                int scrollOff = pos <= maxMarquee ? (int) pos : (int) (cycle - pos);
-                g.enableScissor(textStartX, cardY, textStartX + textAvailW, cardY + CARD_HEIGHT);
-                g.drawString(this.font, text, textStartX - scrollOff, cardY + 7, textColor, false);
-                g.disableScissor();
-            } else {
-                String truncated = this.font.plainSubstrByWidth(text, textAvailW - 8) + "...";
-                g.drawString(this.font, truncated, textStartX, cardY + 7, textColor, false);
-            }
-        } else if (textW > textAvailW) {
-            String truncated = this.font.plainSubstrByWidth(text, textAvailW - 8) + "...";
-            g.drawString(this.font, truncated, textStartX, cardY + 7, textColor, false);
-        } else {
-            g.drawString(this.font, text, textStartX, cardY + 7, textColor, false);
-        }
-    }
-
+    /**
+     * Eased hover progress for one card, keyed so every row in the screen shares one timing.
+     * Entries are kept rather than pruned at rest: the key space is bounded by the rows the
+     * active tab can show, and dropping an entry mid-hover would restart it from zero.
+     */
     private float updateCardHover(int cardIndex, boolean hovered) {
-        float p = cardHoverProgress.getOrDefault(cardIndex, 0.0f);
-        if (hovered)
-            p = Math.min(1.0f, p + 0.1f);
-        else
-            p = Math.max(0.0f, p - 0.07f);
-        if (p > 0.001f)
-            cardHoverProgress.put(cardIndex, p);
-        else
-            cardHoverProgress.remove(cardIndex);
-        return p;
+        return Ease.outCubic(cardHoverProgress.computeIfAbsent(cardIndex, k -> new Anim())
+                .ramp(hovered, Timing.HOVER_IN_MS, Timing.HOVER_OUT_MS));
     }
 
     // --- Entry renderers ---
 
-    private int[] renderItemEntries(GuiGraphics g, int mx, int my, int rx, int rw, int y, int cTop, int cBot,
-            DependencyGroup group) {
-        int hovered = -1;
-        for (int i = 0; i < group.getItems().size(); i++) {
-            DependencyItem item = group.getItems().get(i);
-            boolean isHovered = !isOverlayOpen() && !contextMenu.isVisible() && mx >= rx && mx < rx + rw && my >= y
-                    && my < y + CARD_HEIGHT && my >= cTop && my < cBot;
-            float cp = updateCardHover(i, isHovered);
-            if (isHovered)
-                hovered = i;
 
-            // Item icon
-            int badgeW = 0;
-            if (itemNbtMap.containsKey(i)) {
-                badgeW = this.font.width("\u00A76[NBT]") + 6;
+    // --- Scoreboard dialog ---
+
+    private void openScoreboardDialog(int editIndex) {
+        String objective = "";
+        String holder = "";
+        int opIndex = 0;
+        int value = 0;
+        ScoreboardTab tab = scoreboardTab();
+        ScoreboardDep sb = tab == null ? null : tab.at(editIndex);
+        if (sb != null) {
+            objective = sb.getObjective() != null ? sb.getObjective() : "";
+            holder = sb.getScoreHolder() != null ? sb.getScoreHolder() : "";
+            value = sb.getValue();
+            for (int i = 0; i < ScoreboardDep.OPERATORS.length; i++) {
+                if (ScoreboardDep.OPERATORS[i].equals(sb.getOp())) { opIndex = i; break; }
             }
-
-            String displayName = item.getId();
-            try {
-                ResourceLocation rl = ResourceLocation.tryParse(item.getId());
-                if (rl != null) {
-                    var mcItem = ForgeRegistries.ITEMS.getValue(rl);
-                    if (mcItem != null)
-                        displayName = mcItem.getDescription().getString();
-                }
-            } catch (Exception ignored) {
-            }
-
-            renderCardWithText(g, rx, rw, y, isHovered, cp, item.getCount() + "x " + displayName, 22, badgeW, i, cTop,
-                    cBot);
-
-            // Item icon on card
-            try {
-                ResourceLocation rl = ResourceLocation.tryParse(item.getId());
-                if (rl != null) {
-                    var mcItem = ForgeRegistries.ITEMS.getValue(rl);
-                    if (mcItem != null) {
-                        g.pose().pushPose();
-                        g.pose().scale(SMALL_SCALE, SMALL_SCALE, 1);
-                        g.renderItem(new ItemStack(mcItem), (int) ((rx + 3) / SMALL_SCALE),
-                                (int) ((y + 3) / SMALL_SCALE));
-                        g.pose().popPose();
-                    }
-                }
-            } catch (Exception ignored) {
-            }
-
-            // NBT badge
-            if (itemNbtMap.containsKey(i)) {
-                g.drawString(this.font, "\u00A76[NBT]", rx + rw - badgeW, y + 7, 0xFFCC00, false);
-            }
-
-            y += CARD_HEIGHT + CARD_GAP;
         }
-        return new int[] { y, hovered };
+        Component title = Component.translatable(editIndex >= 0
+                ? "editor.historystages.dep.dialog.scoreboard_edit"
+                : "editor.historystages.dep.dialog.scoreboard_add");
+        this.minecraft.setScreen(new ScoreboardDepScreen(this, title, objective, holder, opIndex,
+                value, ScoreboardDep.OPERATORS,
+                (obj, hold, op, val) -> applyScoreboardDialog(editIndex, obj, hold, op, val)));
     }
 
-    private int[] renderStringCardEntries(GuiGraphics g, int mx, int my, int rx, int rw, int y, int cTop, int cBot,
-            List<String> entries, boolean isAdvancement) {
-        int hovered = -1;
-        var stageMap = isAdvancement ? null : StageManager.getStages();
-        for (int i = 0; i < entries.size(); i++) {
-            String id = entries.get(i);
-            boolean isHovered = !isOverlayOpen() && !contextMenu.isVisible() && mx >= rx && mx < rx + rw && my >= y
-                    && my < y + CARD_HEIGHT && my >= cTop && my < cBot;
-            float cp = updateCardHover(100 + i, isHovered);
-            if (isHovered)
-                hovered = i;
-
-            String text;
-            if (isAdvancement) {
-                text = id;
-            } else {
-                var entry = stageMap != null ? stageMap.get(id) : null;
-                String name = entry != null ? entry.getDisplayName() : id;
-                text = name + " \u00A77(" + id + ")";
-            }
-
-            renderCardWithText(g, rx, rw, y, isHovered, cp, text, 6, 0, 100 + i, cTop, cBot);
-            y += CARD_HEIGHT + CARD_GAP;
-        }
-        return new int[] { y, hovered };
+    /** Applies a confirmed scoreboard dependency. The value arrives already parsed and range-checked. */
+    private void applyScoreboardDialog(int editIndex, String obj, String hold, int opIndex, int val) {
+        ScoreboardTab tab = scoreboardTab();
+        if (tab == null) return;
+        tab.apply(editIndex, obj, hold.isEmpty() ? null : hold,
+                ScoreboardDep.OPERATORS[opIndex], val);
     }
 
-    private int[] renderIndividualStageEntries(GuiGraphics g, int mx, int my, int rx, int rw, int y, int cTop, int cBot,
-            DependencyGroup group) {
-        int hovered = -1;
-        for (int i = 0; i < group.getIndividualStages().size(); i++) {
-            IndividualStageDep dep = group.getIndividualStages().get(i);
-            boolean isHovered = !isOverlayOpen() && !contextMenu.isVisible() && mx >= rx && mx < rx + rw && my >= y
-                    && my < y + CARD_HEIGHT && my >= cTop && my < cBot;
-            float cp = updateCardHover(200 + i, isHovered);
-            if (isHovered)
-                hovered = i;
-
-            var entry = StageManager.getIndividualStages().get(dep.getStageId());
-            String name = entry != null ? entry.getDisplayName() : dep.getStageId();
-
-            // Toggle badge width
-            int toggleW = this.font.width(
-                    dep.isAllEver() ? t("editor.historystages.dep.ever") : t("editor.historystages.dep.online")) + 10;
-            String text = name + " \u00A77(" + dep.getStageId() + ")";
-
-            renderCardWithText(g, rx, rw, y, isHovered, cp, text, 6, toggleW + 4, 200 + i, cTop, cBot);
-
-            // Mode toggle button
-            int toggleX = rx + rw - toggleW - 2;
-            boolean toggleH = !isOverlayOpen() && !contextMenu.isVisible() && mx >= toggleX && mx < toggleX + toggleW
-                    && my >= y + 3 && my < y + CARD_HEIGHT - 3;
-            g.fill(toggleX, y + 3, toggleX + toggleW, y + CARD_HEIGHT - 3, toggleH ? 0xFF3D3520 : 0xFF2A2A2A);
-            drawSmallText(g,
-                    dep.isAllEver() ? t("editor.historystages.dep.ever") : t("editor.historystages.dep.online"),
-                    toggleX + 3, y + 7, toggleH ? 0xFFCC00 : 0xCCCCCC);
-
-            if (toggleH) {
-                contentTooltip = new String[] { "toggle.indiv." + i,
-                        dep.isAllEver()
-                                ? t("editor.historystages.dep.tooltip.mode_ever")
-                                : t("editor.historystages.dep.tooltip.mode_online") };
-            }
-
-            y += CARD_HEIGHT + CARD_GAP;
-        }
-        return new int[] { y, hovered };
-    }
-
-    private int renderXpLevelEntry(GuiGraphics g, int mx, int my, int rx, int rw, int y, DependencyGroup group) {
-        XpLevelDep xp = group.getXpLevel();
-        g.drawString(this.font, t("editor.historystages.dep.required_xp"), rx + 6, y + 4, 0xAAAAAA, false);
-        y += 18;
-
-        if (xp != null && xp.getLevel() > 0) {
-            boolean hovered = !isOverlayOpen() && !contextMenu.isVisible() && mx >= rx && mx < rx + rw && my >= y
-                    && my < y + CARD_HEIGHT;
-            float cp = updateCardHover(900, hovered);
-
-            int borderAlpha2 = (int) (0x30 + cp * 0x20);
-            int bgAlpha2 = (int) (0x20 + cp * 0x18);
-            g.fill(rx, y, rx + rw, y + CARD_HEIGHT, (borderAlpha2 << 24) | 0xFFFFFF);
-            g.fill(rx + 1, y + 1, rx + rw - 1, y + CARD_HEIGHT - 1, (bgAlpha2 << 24) | 0xFFFFFF);
-            if (cp > 0.01f)
-                g.fill(rx, y, rx + 2, y + CARD_HEIGHT, ((int) (cp * 0xCC) << 24) | 0xFFCC00);
-
-            String consumeStr = xp.isConsume() ? t("editor.historystages.dep.consumed")
-                    : t("editor.historystages.dep.checked_only");
-            g.drawString(this.font, t("editor.historystages.dep.level", xp.getLevel(), consumeStr), rx + 6, y + 7,
-                    0xDDDDDD, false);
-
-            String consumeLabel = xp.isConsume() ? t("editor.historystages.dep.consume")
-                    : t("editor.historystages.dep.check");
-            int toggleW = this.font.width(consumeLabel) + 8;
-            int toggleX = rx + rw - toggleW - 2;
-            boolean toggleH = !isOverlayOpen() && !contextMenu.isVisible() && mx >= toggleX && mx < toggleX + toggleW
-                    && my >= y + 3 && my < y + CARD_HEIGHT - 3;
-            g.fill(toggleX, y + 3, toggleX + toggleW, y + CARD_HEIGHT - 3, toggleH ? 0xFF3D3520 : 0xFF2A2A2A);
-            drawSmallText(g, consumeLabel, toggleX + 3, y + 7, toggleH ? 0xFFCC00 : 0xCCCCCC);
-
-            if (toggleH) {
-                contentTooltip = new String[] { "toggle.xp",
-                        xp.isConsume()
-                                ? t("editor.historystages.dep.tooltip.consume")
-                                : t("editor.historystages.dep.tooltip.check_only") };
-            }
-
-            y += CARD_HEIGHT + CARD_GAP;
-        } else {
-            boolean addH = !isOverlayOpen() && !contextMenu.isVisible() && mx >= rx && mx < rx + rw && my >= y
-                    && my < y + CARD_HEIGHT;
-            g.fill(rx, y, rx + rw, y + CARD_HEIGHT, addH ? 0x40FFCC00 : 0x20FFFFFF);
-            g.drawCenteredString(this.font, t("editor.historystages.dep.set_xp_level"), rx + rw / 2, y + 7,
-                    addH ? 0xFFCC00 : 0x888888);
-            y += CARD_HEIGHT + CARD_GAP;
-        }
-        return y;
-    }
-
-    private static final int ENTITY_CARD_HEIGHT = 32;
-
-    private int[] renderEntityKillEntries(GuiGraphics g, int mx, int my, int rx, int rw, int y, int cTop, int cBot,
-            DependencyGroup group) {
-        int hovered = -1;
-        for (int i = 0; i < group.getEntityKills().size(); i++) {
-            EntityKillDep kill = group.getEntityKills().get(i);
-            boolean isHovered = !isOverlayOpen() && !contextMenu.isVisible() && mx >= rx && mx < rx + rw && my >= y
-                    && my < y + ENTITY_CARD_HEIGHT && my >= cTop && my < cBot;
-            float cp = updateCardHover(300 + i, isHovered);
-            if (isHovered)
-                hovered = i;
-
-            String entityName = kill.getEntityId();
-            try {
-                ResourceLocation rl = ResourceLocation.tryParse(kill.getEntityId());
-                if (rl != null) {
-                    EntityType<?> type = ForgeRegistries.ENTITY_TYPES.getValue(rl);
-                    if (type != null)
-                        entityName = type.getDescription().getString();
-                }
-            } catch (Exception ignored) {
-            }
-
-            // Card background (matching StageDetailScreen)
-            int borderAlpha = (int) (0x30 + cp * 0x20);
-            int bgAlpha = (int) (0x20 + cp * 0x18);
-            g.fill(rx, y, rx + rw, y + ENTITY_CARD_HEIGHT, (borderAlpha << 24) | 0xFFFFFF);
-            g.fill(rx + 1, y + 1, rx + rw - 1, y + ENTITY_CARD_HEIGHT - 1, (bgAlpha << 24) | 0xFFFFFF);
-
-            // Hover accent
-            if (cp > 0.01f) {
-                int accentAlpha = (int) (cp * 0xCC);
-                g.fill(rx, y, rx + 2, y + ENTITY_CARD_HEIGHT, (accentAlpha << 24) | 0xFFCC00);
-            }
-
-            // 3D entity model (skip when overlay is open to prevent bleed-through)
-            if (!isOverlayOpen() && !contextMenu.isVisible()) {
-                LivingEntity entityModel = getOrCreateEntity(kill.getEntityId());
-                if (entityModel != null) {
-                    g.enableScissor(rx + 3, Math.max(y + 1, cTop), rx + 28, Math.min(y + ENTITY_CARD_HEIGHT - 1, cBot));
-                    float angle = (System.currentTimeMillis() % 4000) / 4000.0f * 360.0f;
-                    renderSpinningEntity(g, rx + 15, y + ENTITY_CARD_HEIGHT - 3, 10, angle, entityModel);
-                    g.disableScissor();
-                }
-            }
-
-            // Text
-            String text = kill.getCount() + "x " + entityName;
-            int textStartX = rx + 30;
-            int textAvailW = rw - 34;
-            int textW = this.font.width(text);
-            int textColor = isHovered ? 0xFFFFFF : 0xBBBBBB;
-
-            if (textW > textAvailW && isHovered && 300 + i == hoveredCardIndex) {
-                long elapsed = System.currentTimeMillis() - cardHoverStartTime;
-                if (elapsed > CARD_MARQUEE_DELAY_MS) {
-                    float scrollProg = (elapsed - CARD_MARQUEE_DELAY_MS) / 1000.0f * CARD_MARQUEE_SPEED;
-                    int maxMarquee = textW - textAvailW + 10;
-                    float cycle = (float) maxMarquee * 2;
-                    float pos = scrollProg % cycle;
-                    int scrollOff = pos <= maxMarquee ? (int) pos : (int) (cycle - pos);
-                    g.enableScissor(textStartX, y, textStartX + textAvailW, y + ENTITY_CARD_HEIGHT);
-                    g.drawString(this.font, text, textStartX - scrollOff, y + 12, textColor, false);
-                    g.disableScissor();
-                } else {
-                    g.drawString(this.font, this.font.plainSubstrByWidth(text, textAvailW - 8) + "...", textStartX,
-                            y + 12, textColor, false);
-                }
-            } else if (textW > textAvailW) {
-                g.drawString(this.font, this.font.plainSubstrByWidth(text, textAvailW - 8) + "...", textStartX, y + 12,
-                        textColor, false);
-            } else {
-                g.drawString(this.font, text, textStartX, y + 12, textColor, false);
-            }
-
-            y += ENTITY_CARD_HEIGHT + CARD_GAP;
-        }
-        return new int[] { y, hovered };
-    }
-
-    private int[] renderStatEntries(GuiGraphics g, int mx, int my, int rx, int rw, int y, int cTop, int cBot,
-            DependencyGroup group) {
-        int hovered = -1;
-        for (int i = 0; i < group.getStats().size(); i++) {
-            StatDep stat = group.getStats().get(i);
-            boolean isHovered = !isOverlayOpen() && !contextMenu.isVisible() && mx >= rx && mx < rx + rw && my >= y
-                    && my < y + CARD_HEIGHT && my >= cTop && my < cBot;
-            float cp = updateCardHover(400 + i, isHovered);
-            if (isHovered)
-                hovered = i;
-
-            renderCardWithText(g, rx, rw, y, isHovered, cp, stat.getStatId() + " >= " + stat.getMinValue(), 6, 0,
-                    400 + i, cTop, cBot);
-            y += CARD_HEIGHT + CARD_GAP;
-        }
-        return new int[] { y, hovered };
-    }
-
-    // --- Count dialog ---
-
-    private void renderCountDialog(GuiGraphics g, int mx, int my) {
-        g.fill(0, 0, this.width, this.height, 0xA0000000);
-        int dw = 220, dh = 100;
-        int dx = this.width / 2 - dw / 2, dy = this.height / 2 - dh / 2;
-
-        // Dialog frame
-        g.fill(dx - 1, dy - 1, dx + dw + 1, dy + dh + 1, 0xFF3D3D3D);
-        g.fill(dx, dy, dx + dw, dy + dh, 0xFF1A1A1A);
-        g.fill(dx, dy, dx + dw, dy + 2, 0xFFFFCC00);
-
-        // Title
-        String title = switch (countDialogType) {
-            case "item_count" -> t("editor.historystages.dep.dialog.item_count");
-            case "kill_count" -> t("editor.historystages.dep.dialog.kill_count");
-            case "stat_value" -> t("editor.historystages.dep.dialog.min_value");
-            case "xp_level" -> t("editor.historystages.dep.dialog.xp_level");
-            default -> t("editor.historystages.dep.dialog.value");
-        };
-        g.drawCenteredString(this.font, title, dx + dw / 2, dy + 8, 0xFFCC00);
-
-        // Subtitle (item/entity/stat ID)
-        String subtitle = pendingId != null ? pendingId : "";
-        if (this.font.width(subtitle) > dw - 10)
-            subtitle = this.font.plainSubstrByWidth(subtitle, dw - 16) + "...";
-        if (!subtitle.isEmpty())
-            drawSmallText(g, subtitle, dx + dw / 2 - (int) (this.font.width(subtitle) * SMALL_SCALE / 2), dy + 22,
-                    0x888888);
-
-        // Input field background
-        int fieldX = dx + 20, fieldY = dy + 36, fieldW = dw - 40, fieldH = 20;
-        g.fill(fieldX - 1, fieldY - 1, fieldX + fieldW + 1, fieldY + fieldH + 1, 0xFF4A4A4A);
-        g.fill(fieldX, fieldY, fieldX + fieldW, fieldY + fieldH, 0xFF0D0D0D);
-
-        // Input text + cursor
-        String displayText = countInputText;
-        int textW = this.font.width(displayText);
-        int textX = fieldX + fieldW / 2 - textW / 2;
-        g.drawString(this.font, displayText, textX, fieldY + 6, 0xFFFFFF, false);
-
-        // Blinking cursor
-        if ((System.currentTimeMillis() / 500) % 2 == 0) {
-            int cursorX = textX + textW + 1;
-            g.fill(cursorX, fieldY + 4, cursorX + 1, fieldY + fieldH - 4, 0xFFFFCC00);
-        }
-
-        // Hint
-        String hint = t("editor.historystages.dep.enter_number");
-        drawSmallText(g, hint, dx + dw / 2 - (int) (this.font.width(hint) * SMALL_SCALE / 2), fieldY + fieldH + 3,
-                0x555555);
-
-        // Buttons: Cancel + OK
-        int btnW = 60, btnH = 18, btnGap = 10;
-        int totalBtnW = btnW * 2 + btnGap;
-        int cancelX = dx + dw / 2 - totalBtnW / 2;
-        int okX = cancelX + btnW + btnGap;
-        int btnY = dy + dh - btnH - 8;
-
-        boolean cancelH = mx >= cancelX && mx < cancelX + btnW && my >= btnY && my < btnY + btnH;
-        boolean okH = mx >= okX && mx < okX + btnW && my >= btnY && my < btnY + btnH;
-
-        // Cancel button
-        g.fill(cancelX, btnY, cancelX + btnW, btnY + btnH, cancelH ? 0xFF3A2A2A : 0xFF2A2A2A);
-        g.fill(cancelX, btnY + btnH - 2, cancelX + btnW, btnY + btnH, cancelH ? 0xAAFF5555 : 0x60FF5555);
-        g.drawCenteredString(this.font, t("editor.historystages.cancel"), cancelX + btnW / 2, btnY + 5,
-                cancelH ? 0xFFFFFF : 0xAAAAAA);
-
-        // OK button
-        g.fill(okX, btnY, okX + btnW, btnY + btnH, okH ? 0xFF2A3A20 : 0xFF2A2A2A);
-        g.fill(okX, btnY + btnH - 2, okX + btnW, btnY + btnH, okH ? 0xAAFFCC00 : 0x60FFCC00);
-        g.drawCenteredString(this.font, t("editor.historystages.confirm"), okX + btnW / 2, btnY + 5,
-                okH ? 0xFFFFFF : 0xAAAAAA);
+    private ScoreboardTab scoreboardTab() {
+        return addonTabs.get("scoreboard") instanceof ScoreboardTab tab ? tab : null;
     }
 
     // --- Tooltip ---
@@ -1275,35 +923,17 @@ public class DependencyEditorScreen extends Screen {
         }
 
         // Widget overlays
-        if (itemSearch != null && itemSearch.isVisible())
-            return itemSearch.mouseClicked(mouseX, mouseY);
-        if (entitySearch != null && entitySearch.isVisible())
-            return entitySearch.mouseClicked(mouseX, mouseY);
-        if (globalStageSearch != null && globalStageSearch.isVisible())
-            return globalStageSearch.mouseClicked(mouseX, mouseY);
-        if (individualStageSearch != null && individualStageSearch.isVisible())
-            return individualStageSearch.mouseClicked(mouseX, mouseY);
-        if (advancementSearch != null && advancementSearch.isVisible())
-            return advancementSearch.mouseClicked(mouseX, mouseY);
-        if (statSearch != null && statSearch.isVisible())
-            return statSearch.mouseClicked(mouseX, mouseY);
+        if (screenOverlay() != null)
+            return screenOverlay().mouseClicked(mouseX, mouseY);
+        if (addonPicker() != null && addonPicker().isVisible())
+            return addonPicker().mouseClicked(mouseX, mouseY);
 
-        // Count dialog
-        if (countDialogType != null) {
-            int dw = 220, dh = 100, dx = this.width / 2 - dw / 2, dy = this.height / 2 - dh / 2;
-            int btnW = 60, btnH = 18, btnGap = 10;
-            int totalBtnW = btnW * 2 + btnGap;
-            int cancelX = dx + dw / 2 - totalBtnW / 2;
-            int okX = cancelX + btnW + btnGap;
-            int btnY = dy + dh - btnH - 8;
-            if (mouseX >= cancelX && mouseX < cancelX + btnW && mouseY >= btnY && mouseY < btnY + btnH) {
-                closeCountDialog();
-                return true;
-            }
-            if (mouseX >= okX && mouseX < okX + btnW && mouseY >= btnY && mouseY < btnY + btnH) {
-                confirmCountDialog();
-                return true;
-            }
+        // The active tab, after the context menu and the overlays and before this screen's own
+        // handling. Ask it earlier and a click on an open dropdown lands in the content behind it;
+        // ask it later and a focused field never sees ESC, because confirmDiscard() already ran.
+        DependencyTab inputTab = activeAddonTab();
+        if (inputTab != null && hasGroup()
+                && inputTab.mouseClicked(inputContext(mouseX, mouseY), button)) {
             return true;
         }
 
@@ -1339,38 +969,50 @@ public class DependencyEditorScreen extends Screen {
                             hasChanges = true;
                         });
                         contextMenu.addEntry(t("editor.historystages.duplicate"), () -> {
-                            groups.add(gi + 1, groups.get(gi).copy());
+                            if (atGroupLimit()) return;
+                            DependencyGroup duplicate = groups.get(gi).copy();
+                            // The one copy that must not keep the id: two groups sharing one
+                            // would share every deposit made into either of them.
+                            duplicate.setId(DependencyGroup.freshId(groups));
+                            groups.add(gi + 1, duplicate);
                             hasChanges = true;
                         });
                         contextMenu.addEntry(t("editor.historystages.remove"), () -> {
-                            syncNbtToItems();
+                            // Only worth storing when the selected group is not the one going
+                            // away; into the doomed one it would be thrown out with it.
+                            if (hasGroup() && selectedGroup != gi) storeAddonTabs(currentGroup());
                             groups.remove(gi);
                             if (selectedGroup >= groups.size())
                                 selectedGroup = Math.max(0, groups.size() - 1);
+                            // Reload whatever is selected now. Note that removing a group before
+                            // the selected one shifts the indices without moving the selection —
+                            // that jump predates this and is not fixed here, but the tabs must at
+                            // least agree with whichever group the selection ended up on.
+                            reloadAddonTabsForSelection();
                             scrollOffset = 0;
                             hasChanges = true;
-                            rebuildItemNbtMap();
                         });
                         contextMenu.show(mx, my, this.font);
                         return true;
                     }
-                    // Left-click on AND/OR badge: toggle logic
-                    int badgeX2 = LEFT_PANEL_W - 28;
-                    if (button == 0 && mx >= badgeX2 && mx <= badgeX2 + 25 && my >= y + 2 && my < y + 14) {
-                        DependencyGroup grp = groups.get(i);
-                        grp.setLogic(grp.isOr() ? "AND" : "OR");
-                        hasChanges = true;
-                        Minecraft.getInstance().getSoundManager()
-                                .play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
+                    // Left-click on the AND/OR badge: open its picker
+                    int badgeW2 = logicBadgeWidth();
+                    int badgeX2 = LEFT_PANEL_W - 3 - badgeW2;
+                    if (button == 0 && mx >= badgeX2 && mx < badgeX2 + badgeW2
+                            && my >= y + 2 && my < y + LOGIC_BADGE_H + 2) {
+                        openLogicPicker(i, badgeX2, y + 2);
                         return true;
                     }
                     // Left-click: select
                     if (selectedGroup != i) {
-                        syncNbtToItems();
+                        // Store before, load after — in that order. Reversed, the load overwrites
+                        // the tabs before they have been written back, and the edits made in the
+                        // group being left are gone with nothing to report it.
+                        if (hasGroup()) storeAddonTabs(currentGroup());
                         selectedGroup = i;
+                        loadAddonTabs(currentGroup());
                         activeTab = 0;
                         scrollOffset = 0;
-                        rebuildItemNbtMap();
                         Minecraft.getInstance().getSoundManager()
                                 .play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
                     }
@@ -1402,6 +1044,7 @@ public class DependencyEditorScreen extends Screen {
                         scrollOffset = 0;
                         tabSwitchTime = System.currentTimeMillis();
                         cardHoverProgress.clear();
+                        restartRowAnimation();
                         Minecraft.getInstance().getSoundManager()
                                 .play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
                     }
@@ -1420,304 +1063,576 @@ public class DependencyEditorScreen extends Screen {
         if (!hasGroup())
             return;
         DependencyGroup group = currentGroup();
-        int rightX = LEFT_PANEL_W + 15;
-        int rightW = this.width - rightX - 10;
-        int contentY = HEADER_HEIGHT + TAB_HEIGHT + 6;
-        int contentBottom = this.height - 30;
-        int y = contentY - (int) scrollOffset;
+        int rightX = contentX();
+        int rightW = contentWidth();
+        int contentY = CONTENT_TOP;
+        int contentBottom = contentBottom();
+        int y = contentY - Math.round(smoothScroll.value());
         int cx = this.width / 2, cy = this.height / 2;
 
-        switch (activeTab) {
-            case 0 -> { // Items
-                for (int i = 0; i < group.getItems().size(); i++) {
-                    if (mx >= rightX && mx < rightX + rightW && my >= y && my < y + CARD_HEIGHT && my >= contentY
-                            && my < contentBottom) {
-                        if (button == 1) {
-                            showItemContextMenu(mx, my, i, group);
-                            return;
-                        }
-                    }
-                    y += CARD_HEIGHT + CARD_GAP;
-                }
-                if (button == 0 && my >= y + 3 && my < y + 3 + CARD_HEIGHT && mx >= rightX && mx < rightX + rightW) {
-                    itemSearch.show(cx, cy, this.width);
-                }
+        // No dispatch on the requirement id any more: every requirement is a tab, built in or
+        // not, and one path serves them all. DependencyTabSeamGuardTest keeps it that way.
+        handleAddonClick(mx, my, button, rightX, rightW, contentY, contentBottom, y, cx, cy);
+    }
+
+    // --- Addon requirement tabs ---
+
+    /**
+     * One tab per addon requirement that has a registered editor, created once.
+     *
+     * <p>Created once and deliberately not in {@code init()}: Minecraft re-runs init on every
+     * window resize, and a tab rebuilt there would throw away whatever the maintainer had entered.
+     * Only the picker is rebuilt on init — the same rule {@code StageDetailScreen} follows.
+     */
+    private final Map<String, DependencyTab> addonTabs = new LinkedHashMap<>();
+
+    /**
+     * The overlay a declared entry action put up, or null.
+     *
+     * <p>Cleared as soon as it hides itself, so a stale reference cannot keep swallowing input
+     * after the popup is gone — which is the way an editor locks up without an exception.
+     */
+    private PickerOverlay actionOverlay;
+
+    /** The group list's AND/OR picker, built on first use — it measures labels against the font. */
+    private DropdownOverlay logicPicker;
+
+    /** Which group the open AND/OR picker belongs to, or -1. */
+    private int logicPickerGroup = -1;
+
+    /** One row list per requirement id. Created lazily, so a tab that draws itself never gets one. */
+    private final Map<String, EditorRowList> rowLists = new HashMap<>();
+
+    /**
+     * Which tabs drew their own content on the last frame.
+     *
+     * <p>Recorded rather than asked, because {@code renderContent} is what answers it and only the
+     * render pass calls that. A click needs the answer to know whose hit test to trust.
+     */
+    private final Set<String> selfDrawing = new HashSet<>();
+
+    /** The active tab, or null when the active requirement is built in or has no editor. */
+    private DependencyTab activeAddonTab() {
+        return addonTabs.get(activeRequirementId());
+    }
+
+    /** The active addon tab's picker, or null when there is none to forward input to. */
+    private PickerOverlay addonPicker() {
+        DependencyTab tab = activeAddonTab();
+        return tab == null ? null : tab.activeOverlay();
+    }
+
+    private void buildAddonTabs() {
+        // Every built-in requirement is a tab, found the same way an addon's is. That is the point
+        // of the migration: one lookup path, not a shortcut beside it.
+        buildBuiltInTab("item", requirement -> {
+            ItemRequirementTab tab = new ItemRequirementTab(requirement,
+                    (onSelect, alreadyAdded) -> {
+                        SearchableItemList picker = new SearchableItemList(onSelect, alreadyAdded);
+                        picker.setMultiSelect(false); // every pick opens the count dialog
+                        return picker;
+                    },
+                    () -> hasChanges = true);
+            tab.setOnEditNbt((index, itemId) -> openNbtEditScreen(tab, index, itemId));
+            tab.setOnCountNeeded(id -> openItemCountDialog(tab, id, -1));
+            return tab;
+        });
+
+        // The same tab class on the group other list. What differs is the picker — tags rather
+        // than items — and that a pick has to carry its "#" in and leave it behind on the way
+        // back out, because SearchableTagList deals in bare tag ids.
+        buildBuiltInTab("item_tag", requirement -> {
+            ItemRequirementTab tab = new ItemRequirementTab(requirement,
+                    (onSelect, alreadyAdded) -> {
+                        SearchableTagList picker = new SearchableTagList(
+                                tagId -> onSelect.accept("#" + tagId),
+                                () -> alreadyAdded.get().stream()
+                                        .map(id -> id.startsWith("#") ? id.substring(1) : id)
+                                        .toList());
+                        picker.setMultiSelect(false); // every pick opens the count dialog
+                        return picker;
+                    },
+                    () -> hasChanges = true,
+                    DependencyGroup::getItemTags, DependencyGroup::setItemTags);
+            tab.setOnEditNbt((index, tagId) -> openNbtEditScreen(tab, index, tagId));
+            tab.setOnCountNeeded(id -> openItemCountDialog(tab, id, -1));
+            return tab;
+        });
+
+        buildBuiltInTab("stage", requirement -> new StringListTab(requirement,
+                (onSelect, alreadyAdded) -> {
+                    SearchableStageList picker = new SearchableStageList(onSelect, false, alreadyAdded);
+                    picker.setExcludeStageId(currentStageId);
+                    picker.setMultiSelect(true);
+                    return picker;
+                },
+                () -> hasChanges = true,
+                DependencyGroup::getStages,
+                id -> {
+                    StageEntry entry = StageManager.getStages().get(id);
+                    return (entry != null ? entry.getDisplayName() : id) + " §7(" + id + ")";
+                }));
+
+        buildBuiltInTab("individual_stage", requirement -> new IndividualStageTab(requirement,
+                (onSelect, alreadyAdded) -> {
+                    SearchableStageList picker = new SearchableStageList(onSelect, true, alreadyAdded);
+                    picker.setMultiSelect(true);
+                    return picker;
+                },
+                () -> hasChanges = true,
+                isIndividual));
+
+        buildBuiltInTab("advancement", requirement -> new StringListTab(requirement,
+                (onSelect, alreadyAdded) -> {
+                    SearchableAdvancementList picker = new SearchableAdvancementList(onSelect, alreadyAdded);
+                    picker.setMultiSelect(true);
+                    return picker;
+                },
+                () -> hasChanges = true,
+                DependencyGroup::getAdvancements,
+                id -> id));
+
+        buildBuiltInTab("xp_level", requirement -> {
+            XpLevelTab tab = new XpLevelTab(requirement, () -> hasChanges = true);
+            tab.setOnLevelNeeded(() -> openXpLevelDialog(tab));
+            return tab;
+        });
+
+        buildBuiltInTab("entity_kill", requirement -> {
+            EntityKillTab tab = new EntityKillTab(requirement,
+                    (onSelect, alreadyAdded) -> {
+                        SearchableEntityList picker = new SearchableEntityList(onSelect, alreadyAdded);
+                        picker.setMultiSelect(true);
+                        return picker;
+                    },
+                    () -> hasChanges = true);
+            tab.setOnCountNeeded(id -> openKillCountDialog(tab, id, -1));
+            return tab;
+        });
+
+        buildBuiltInTab("stat", requirement -> new StatTab(requirement,
+                (onSelect, alreadyAdded) -> {
+                    SearchableStatList picker = new SearchableStatList(onSelect, alreadyAdded);
+                    picker.setMultiSelect(true);
+                    return picker;
+                },
+                () -> hasChanges = true));
+
+        buildBuiltInTab("scoreboard", requirement -> {
+            ScoreboardTab tab = new ScoreboardTab(requirement, () -> hasChanges = true);
+            tab.setOnEditRequested(this::openScoreboardDialog);
+            return tab;
+        });
+
+        for (Requirement requirement : visibleRequirements()) {
+            if (addonTabs.containsKey(requirement.id())) continue;
+            RequirementEditor editor = RequirementEditors.byRequirement(requirement.id());
+            if (editor == null) continue;
+
+            DependencyTab tab = editor.createTab(() -> hasChanges = true);
+            if (tab instanceof IdCountTab counted && counted.hasAmount()) {
+                // A tab cannot push a screen, so it says it needs an amount and this does it.
+                counted.setOnAmountNeeded(id -> openAddonCountDialog(counted, id, -1));
             }
-            case 1 -> { // Global Stages
-                for (int i = 0; i < group.getStages().size(); i++) {
-                    if (mx >= rightX && mx < rightX + rightW && my >= y && my < y + CARD_HEIGHT && my >= contentY
-                            && my < contentBottom) {
-                        if (button == 1) {
-                            showSimpleContextMenu(mx, my, i, group.getStages(), "stage");
-                            return;
-                        }
-                    }
-                    y += CARD_HEIGHT + CARD_GAP;
-                }
-                if (button == 0 && my >= y + 3 && my < y + 3 + CARD_HEIGHT && mx >= rightX && mx < rightX + rightW) {
-                    globalStageSearch.show(cx, cy, this.width);
-                }
-            }
-            case 2 -> { // Individual Stages
-                for (int i = 0; i < group.getIndividualStages().size(); i++) {
-                    if (mx >= rightX && mx < rightX + rightW && my >= y && my < y + CARD_HEIGHT && my >= contentY
-                            && my < contentBottom) {
-                        // Toggle button area
-                        IndividualStageDep dep = group.getIndividualStages().get(i);
-                        int toggleW = this.font.width(dep.isAllEver() ? t("editor.historystages.dep.ever")
-                                : t("editor.historystages.dep.online")) + 10;
-                        int toggleX = rightX + rightW - toggleW - 2;
-                        if (button == 0 && mx >= toggleX && mx < toggleX + toggleW && my >= y + 3
-                                && my < y + CARD_HEIGHT - 3) {
-                            dep.setMode(dep.isAllEver() ? "all_online" : "all_ever");
-                            hasChanges = true;
-                            return;
-                        }
-                        if (button == 1) {
-                            showIndividualStageContextMenu(mx, my, i, group);
-                            return;
-                        }
-                    }
-                    y += CARD_HEIGHT + CARD_GAP;
-                }
-                if (button == 0 && my >= y + 3 && my < y + 3 + CARD_HEIGHT && mx >= rightX && mx < rightX + rightW) {
-                    individualStageSearch.show(cx, cy, this.width);
-                }
-            }
-            case 3 -> { // Advancements
-                if (!isIndividual)
-                    return;
-                for (int i = 0; i < group.getAdvancements().size(); i++) {
-                    if (mx >= rightX && mx < rightX + rightW && my >= y && my < y + CARD_HEIGHT && my >= contentY
-                            && my < contentBottom) {
-                        if (button == 1) {
-                            showSimpleContextMenu(mx, my, i, group.getAdvancements(), "advancement");
-                            return;
-                        }
-                    }
-                    y += CARD_HEIGHT + CARD_GAP;
-                }
-                if (button == 0 && my >= y + 3 && my < y + 3 + CARD_HEIGHT && mx >= rightX && mx < rightX + rightW) {
-                    advancementSearch.show(cx, cy, this.width);
-                }
-            }
-            case 4 -> { // XP Level
-                if (!isIndividual)
-                    return;
-                XpLevelDep xp = group.getXpLevel();
-                y += 18;
-                if (xp != null && xp.getLevel() > 0) {
-                    if (mx >= rightX && mx < rightX + rightW && my >= y && my < y + CARD_HEIGHT) {
-                        int toggleW = this.font.width(xp.isConsume() ? t("editor.historystages.dep.consume")
-                                : t("editor.historystages.dep.check")) + 8;
-                        int toggleX = rightX + rightW - toggleW - 2;
-                        if (button == 0 && mx >= toggleX && mx < toggleX + toggleW && my >= y + 3
-                                && my < y + CARD_HEIGHT - 3) {
-                            xp.setConsume(!xp.isConsume());
-                            hasChanges = true;
-                            return;
-                        }
-                        if (button == 1) {
-                            showXpContextMenu(mx, my, group);
-                            return;
-                        }
-                    }
-                } else {
-                    if (button == 0 && my >= y && my < y + CARD_HEIGHT && mx >= rightX && mx < rightX + rightW) {
-                        openCountDialog("xp_level", null, -1);
-                    }
-                }
-            }
-            case 5 -> { // Entity Kills
-                if (!isIndividual)
-                    return;
-                for (int i = 0; i < group.getEntityKills().size(); i++) {
-                    if (mx >= rightX && mx < rightX + rightW && my >= y && my < y + ENTITY_CARD_HEIGHT && my >= contentY
-                            && my < contentBottom) {
-                        if (button == 1) {
-                            showEntityKillContextMenu(mx, my, i, group);
-                            return;
-                        }
-                    }
-                    y += ENTITY_CARD_HEIGHT + CARD_GAP;
-                }
-                if (button == 0 && my >= y + 3 && my < y + 3 + CARD_HEIGHT && mx >= rightX && mx < rightX + rightW) {
-                    entitySearch.show(cx, cy, this.width);
-                }
-            }
-            case 6 -> { // Stats
-                if (!isIndividual)
-                    return;
-                for (int i = 0; i < group.getStats().size(); i++) {
-                    if (mx >= rightX && mx < rightX + rightW && my >= y && my < y + CARD_HEIGHT && my >= contentY
-                            && my < contentBottom) {
-                        if (button == 1) {
-                            showStatContextMenu(mx, my, i, group);
-                            return;
-                        }
-                    }
-                    y += CARD_HEIGHT + CARD_GAP;
-                }
-                if (button == 0 && my >= y + 3 && my < y + 3 + CARD_HEIGHT && mx >= rightX && mx < rightX + rightW) {
-                    statSearch.show(cx, cy, this.width);
-                }
-            }
+            if (hasGroup()) tab.load(currentGroup());
+            addonTabs.put(requirement.id(), tab);
         }
+        for (DependencyTab tab : addonTabs.values()) tab.rebuildPicker();
+    }
+
+    /**
+     * Builds one built-in tab, unless it exists already.
+     *
+     * <p>Not in {@code init()} for the same reason the addon tabs are not: Minecraft re-runs init
+     * on every window resize, and a tab rebuilt there would throw away whatever was entered.
+     */
+    private void buildBuiltInTab(String requirementId, Function<Requirement, DependencyTab> factory) {
+        if (addonTabs.containsKey(requirementId)) return;
+        Requirement requirement = RequirementTypes.byId(requirementId);
+        if (requirement == null) return;
+        DependencyTab tab = factory.apply(requirement);
+        if (hasGroup()) tab.load(currentGroup());
+        addonTabs.put(requirementId, tab);
+    }
+
+    /** Stores every addon tab's state into the given group. */
+    private void storeAddonTabs(DependencyGroup group) {
+        for (DependencyTab tab : addonTabs.values()) tab.store(group);
+    }
+
+    /** Loads every addon tab's state from the given group. */
+    private void loadAddonTabs(DependencyGroup group) {
+        for (DependencyTab tab : addonTabs.values()) tab.load(group);
+    }
+
+    /**
+     * Points the tabs at whichever group is selected now, emptying them when none is.
+     *
+     * <p>Loading from a throwaway empty group is how they are cleared: a tab that kept the last
+     * group's entries would write them into the next group it is stored into.
+     */
+    private void reloadAddonTabsForSelection() {
+        loadAddonTabs(hasGroup() ? currentGroup() : new DependencyGroup());
+    }
+
+    /**
+     * What is shown for a requirement that has no tab at all.
+     *
+     * <p>Reached only when {@code activeAddonTab()} is null, because a tab is drawn before this
+     * path is considered. A requirement can be registered without an editor, which means it gates
+     * but cannot be edited in game — and saying so is better than an empty panel.
+     */
+    private int[] renderAddonEntries(GuiGraphics g, int mouseX, int mouseY, int rightX, int rightW, int y,
+            int contentY, int contentBottom) {
+        g.drawString(this.font, t("editor.historystages.dep.no_editor"), rightX, y + 4,
+                0xFF888888, false);
+        return new int[] { y, -1 };
+    }
+
+    /**
+     * Draws one tab's rows: the text it supplies, plus the optional icon and badge it declares.
+     *
+     * <p>The path every tab that is only a list goes down, built-in or addon. Chrome, hover, the
+     * slide-in, the marquee and hit testing belong to {@link EditorRowList}, which is the same
+     * widget the stage editor draws with — that is what makes an addon's tab look like the rest.
+     */
+    private void renderHostRows(TabRenderContext ctx, DependencyTab tab) {
+        List<String> rows = tab.entries();
+        rowList(tab).render(ctx, rows.size(), (row, i) -> {
+            String iconId = tab.iconItemId(i);
+            if (iconId != null) {
+                // A tab may name a tag here, not just an item. Resolving it centrally means any
+                // addon tab that returns one gets the cycling icon without asking for it.
+                ItemStack stack;
+                if (ItemTagResolution.isTag(iconId)) {
+                    stack = ItemTagResolution.displayStack(iconId, null, System.currentTimeMillis());
+                } else {
+                    ResourceLocation rl = ResourceLocation.tryParse(iconId);
+                    Item icon = rl == null ? null : BuiltInRegistries.ITEM.get(rl);
+                    stack = icon == null ? ItemStack.EMPTY : new ItemStack(icon);
+                }
+                if (!stack.isEmpty()) {
+                    row.leading(16, (g, x, y, w, h) -> {
+                        g.pose().pushPose();
+                        g.pose().translate(x, y, 0);
+                        g.pose().scale(SMALL_SCALE, SMALL_SCALE, 1);
+                        g.renderItem(stack, 0, 0);
+                        g.pose().popPose();
+                    });
+                }
+            }
+            row.text(rows.get(i));
+            String badge = tab.badgeText(i);
+            if (badge != null) row.badge(badge);
+        });
+    }
+
+    /**
+     * Restarts the staggered entrance on whichever tab is now showing.
+     *
+     * <p>Every row list has to be told: they are per requirement, and the one being switched to is
+     * a different object from the one being left. Without this the entrance never plays at all,
+     * because a list that is never told starts life with its clock at zero and reads as long
+     * finished.
+     */
+    private void restartRowAnimation() {
+        DependencyTab tab = activeAddonTab();
+        if (tab == null) return;
+        rowList(tab).resetSlideIn();
+        // And the tab's own list, which a tab that draws itself keeps out of the host's reach.
+        tab.onShown();
+    }
+
+    /** One row list per requirement, so two tabs cannot share a hover animation. */
+    private EditorRowList rowList(DependencyTab tab) {
+        return rowLists.computeIfAbsent(tab.requirementId(), k -> new EditorRowList());
+    }
+
+    /**
+     * The click half of {@link #renderHostRows}, and of a tab that drew itself.
+     *
+     * <p>The tab is asked first — it may have drawn a button of its own — then the row list's
+     * declared buttons, then the row under the cursor.
+     */
+    private void handleAddonClick(int mx, int my, int button, int rightX, int rightW, int contentY,
+            int contentBottom, int y, int cx, int cy) {
+        DependencyTab tab = activeAddonTab();
+        if (tab == null || !hasGroup()) return;
+
+        TabInputContext ctx = inputContext(mx, my);
+        if (tab.mouseClicked(ctx, button)) return;
+        if (button == 0 && rowList(tab).mouseClicked(ctx)) return;
+
+        // A tab that drew itself is the only one that knows where its rows ended up.
+        int row = selfDrawing.contains(tab.requirementId())
+                ? tab.rowAt(ctx)
+                : rowList(tab).rowAt(ctx, tab.entries().size());
+        if (row >= 0) {
+            if (button == 1) {
+                showAddonContextMenu(mx, my, row, tab);
+                return;
+            }
+            if (button == 0 && tab instanceof IdCountTab counted && counted.hasAmount()) {
+                openAddonCountDialog(counted, counted.idAt(row), row);
+                return;
+            }
+            if (button == 0 && tab instanceof ScoreboardTab scoreboard) {
+                scoreboard.setOnEditRequested(this::openScoreboardDialog);
+                openScoreboardDialog(row);
+                return;
+            }
+            return;
+        }
+
+        // Below the last row: the Add button lives there.
+        int addTop = contentY - Math.round(smoothScroll.value())
+                + tab.contentHeight(rightW) + 3;
+        if (button == 0 && tab.hasAddButton() && my >= addTop && my < addTop + CARD_HEIGHT
+                && mx >= rightX && mx < rightX + rightW) {
+            tab.openPicker(cx, cy, this.width);
+        }
+    }
+
+    private void showAddonContextMenu(int mx, int my, int idx, DependencyTab tab) {
+        contextMenu = new ContextMenu();
+
+        if (tab instanceof ItemRequirementTab itemTab) {
+            String itemId = itemTab.idAt(idx);
+            contextMenu.addEntry(t("editor.historystages.dep.context.edit_nbt"),
+                    () -> itemTab.requestNbtEdit(idx));
+            contextMenu.addEntry(t("editor.historystages.dep.context.count"),
+                    () -> openItemCountDialog(itemTab, itemId, idx));
+            contextMenu.addEntry(t("editor.historystages.copy_id"),
+                    () -> { Minecraft.getInstance().keyboardHandler.setClipboard(itemId);
+                            EditorToastHandler.copiedToClipboard(itemId); });
+            contextMenu.addEntry(t("editor.historystages.duplicate"), () -> itemTab.duplicateAt(idx));
+            contextMenu.addEntry(t("editor.historystages.remove"), () -> itemTab.removeAt(idx));
+            contextMenu.show(mx, my, this.font);
+            return;
+        }
+
+        if (tab instanceof StatTab statTab) {
+            String statId = statTab.idAt(idx);
+            contextMenu.addEntry(t("editor.historystages.dep.context.min_value"),
+                    () -> openStatValueDialog(statTab, statId, idx));
+            addCopyEntry(statId);
+            contextMenu.addEntry(t("editor.historystages.duplicate"), () -> statTab.duplicateAt(idx));
+            contextMenu.addEntry(t("editor.historystages.remove"), () -> statTab.removeAt(idx));
+            contextMenu.show(mx, my, this.font);
+            return;
+        }
+
+        if (tab instanceof ScoreboardTab scoreboardTab) {
+            ScoreboardDep dep = scoreboardTab.at(idx);
+            contextMenu.addEntry(t("editor.historystages.dep.context.edit"),
+                    () -> openScoreboardDialog(idx));
+            addCopyEntry(dep == null ? "" : dep.getObjective());
+            contextMenu.addEntry(t("editor.historystages.duplicate"), () -> scoreboardTab.duplicateAt(idx));
+            contextMenu.addEntry(t("editor.historystages.remove"), () -> scoreboardTab.removeAt(idx));
+            contextMenu.show(mx, my, this.font);
+            return;
+        }
+
+        if (tab instanceof XpLevelTab xpTab) {
+            contextMenu.addEntry(t("editor.historystages.dep.context.change_level"),
+                    () -> openXpLevelDialog(xpTab));
+            contextMenu.addEntry(t("editor.historystages.dep.context.toggle_consume"),
+                    xpTab::toggleConsume);
+            contextMenu.addEntry(t("editor.historystages.remove"), xpTab::clear);
+            contextMenu.show(mx, my, this.font);
+            return;
+        }
+
+        if (tab instanceof EntityKillTab killTab) {
+            String entityId = killTab.idAt(idx);
+            contextMenu.addEntry(t("editor.historystages.dep.context.count"),
+                    () -> openKillCountDialog(killTab, entityId, idx));
+            addCopyEntry(entityId);
+            contextMenu.addEntry(t("editor.historystages.duplicate"), () -> killTab.duplicateAt(idx));
+            contextMenu.addEntry(t("editor.historystages.remove"), () -> killTab.removeAt(idx));
+            contextMenu.show(mx, my, this.font);
+            return;
+        }
+
+        if (tab instanceof IndividualStageTab individualTab) {
+            String stageId = individualTab.idAt(idx);
+            contextMenu.addEntry(t("editor.historystages.dep.context.toggle_mode"),
+                    () -> individualTab.cycleMode(idx));
+            addCopyEntry(stageId);
+            contextMenu.addEntry(t("editor.historystages.duplicate"),
+                    () -> individualTab.duplicateAt(idx));
+            contextMenu.addEntry(t("editor.historystages.remove"), () -> individualTab.removeAt(idx));
+            contextMenu.show(mx, my, this.font);
+            return;
+        }
+
+        if (tab instanceof StringListTab stringTab) {
+            String entryId = stringTab.idAt(idx);
+            addCopyEntry(entryId);
+            contextMenu.addEntry(t("editor.historystages.duplicate"), () -> stringTab.duplicateAt(idx));
+            contextMenu.addEntry(t("editor.historystages.remove"), () -> stringTab.removeAt(idx));
+            contextMenu.show(mx, my, this.font);
+            return;
+        }
+
+        IdCountTab counted = tab instanceof IdCountTab c ? c : null;
+        String id = counted != null ? counted.idAt(idx) : tab.entries().get(idx);
+
+        if (counted != null && counted.hasAmount()) {
+            contextMenu.addEntry(t("editor.historystages.dep.context.count"),
+                    () -> openAddonCountDialog(counted, id, idx));
+        }
+        contextMenu.addEntry(t("editor.historystages.copy_id"),
+                () -> { Minecraft.getInstance().keyboardHandler.setClipboard(id);
+                        EditorToastHandler.copiedToClipboard(id); });
+        if (counted != null) {
+            contextMenu.addEntry(t("editor.historystages.duplicate"), () -> counted.duplicateAt(idx));
+        }
+        addDeclaredActions(tab.requirementId(), idx);
+        contextMenu.addEntry(t("editor.historystages.remove"), () -> tab.removeAt(idx));
+        contextMenu.show(mx, my, this.font);
+    }
+
+    /** Copy-to-clipboard, the one menu entry every tab offers. */
+    private void addCopyEntry(String value) {
+        contextMenu.addEntry(t("editor.historystages.copy_id"), () -> {
+            Minecraft.getInstance().keyboardHandler.setClipboard(value);
+            EditorToastHandler.copiedToClipboard(value);
+        });
+    }
+
+    /** The level dialog for the XP requirement, reading its value out of the tab. */
+    private void openXpLevelDialog(XpLevelTab tab) {
+        int initial = tab.level() > 0 ? tab.level() : 30;
+        this.minecraft.setScreen(new CountInputScreen(this,
+                Component.translatable("editor.historystages.dep.dialog.xp_level"), null,
+                initial, 0, 999999, tab::setLevel));
+    }
+
+    /** The count dialog for an entity-kill entry, reading its value out of the tab. */
+    private void openKillCountDialog(EntityKillTab tab, String entityId, int editIndex) {
+        int initial = editIndex >= 0 ? tab.countAt(editIndex) : 1;
+        this.minecraft.setScreen(new CountInputScreen(this,
+                Component.translatable("editor.historystages.dep.dialog.kill_count"), entityId,
+                initial, 1, 999999,
+                num -> {
+                    if (editIndex >= 0) tab.setCountAt(editIndex, num);
+                    else tab.addKill(entityId, num);
+                }));
+    }
+
+    /**
+     * The minimum dialog for a stat entry.
+     *
+     * <p>Apart from {@link #openCountDialog}, which reads its current value out of the group. The
+     * stat entries live in the tab now, so the lookup has to go there.
+     */
+    private void openStatValueDialog(StatTab tab, String statId, int editIndex) {
+        int initial = editIndex >= 0 ? tab.minimumAt(editIndex) : 1;
+        this.minecraft.setScreen(new CountInputScreen(this,
+                Component.translatable("editor.historystages.dep.dialog.min_value"), statId,
+                initial, 0, 999999,
+                num -> {
+                    if (editIndex >= 0) tab.setMinimumAt(editIndex, num);
+                    else tab.addStat(statId, num);
+                }));
+    }
+
+    /**
+     * Appends whatever extra menu entries the requirement's editor declared.
+     *
+     * <p>After the built-in ones, not instead of them: copy and remove stay where a maintainer
+     * expects them, and an addon adds to the menu rather than replacing it.
+     */
+    private void addDeclaredActions(String requirementId, int idx) {
+        RequirementEditor editor = RequirementEditors.byRequirement(requirementId);
+        if (editor == null) return;
+        for (EntryAction action : editor.entryActions()) {
+            contextMenu.addEntry(t(action.langKey()), () -> action.run(entryActionContext(idx)));
+        }
+    }
+
+    /**
+     * What a declared action is handed when it runs.
+     *
+     * <p>The overlay sink is what lets an action put up one of the mod's filter popups: this
+     * screen renders {@code actionOverlay} above everything and forwards input to it, exactly the
+     * way it does for a tab's picker.
+     */
+    private EntryActionContext entryActionContext(int idx) {
+        return new EntryActionContext(idx, () -> hasChanges = true,
+                screen -> this.minecraft.setScreen(screen),
+                overlay -> {
+                    // Shown here rather than by the factory: only the screen knows its own centre,
+                    // and a popup told to appear at (0, 0) lands in the top-left corner.
+                    overlay.show(this.width / 2, this.height / 2, this.width);
+                    this.actionOverlay = overlay;
+                });
+    }
+
+    /**
+     * The amount dialog for a free-tier entry.
+     *
+     * <p>Its own method rather than a fifth case in {@link #openCountDialog}: that one switches on
+     * four built-in strings to find both the current value and the title, and neither lookup has an
+     * answer here — the value lives in the tab and the title is a lang key the addon supplied.
+     */
+    /**
+     * The count dialog for an item entry.
+     *
+     * <p>Apart from {@link #openCountDialog}, which reads its current value out of the group. The
+     * item entries live in the tab now, so the lookup has to go there.
+     */
+    private void openItemCountDialog(ItemRequirementTab tab, String itemId, int editIndex) {
+        int initial = editIndex >= 0 ? tab.countAt(editIndex) : 1;
+        this.minecraft.setScreen(new CountInputScreen(this,
+                Component.translatable("editor.historystages.dep.dialog.item_count"), itemId,
+                initial, 1, 999999,
+                num -> {
+                    if (editIndex >= 0) tab.setCountAt(editIndex, num);
+                    else tab.addItem(itemId, num);
+                }));
+    }
+
+    private void openAddonCountDialog(IdCountTab tab, String entryId, int editIndex) {
+        int initial = editIndex >= 0 ? tab.amountAt(editIndex) : 1;
+        this.minecraft.setScreen(new CountInputScreen(this,
+                Component.translatable(tab.amountLangKey()), entryId, initial, 1, 999999,
+                num -> {
+                    if (editIndex >= 0) tab.setAmountAt(editIndex, num);
+                    else tab.addEntry(entryId, num);
+                }));
     }
 
     // --- Context menus ---
 
-    private void showItemContextMenu(int mx, int my, int idx, DependencyGroup group) {
-        contextMenu = new ContextMenu();
-        contextMenu.addEntry(t("editor.historystages.dep.context.edit_nbt"),
-                () -> openNbtEditScreen(idx, group.getItems().get(idx).getId()));
-        contextMenu.addEntry(t("editor.historystages.dep.context.count"),
-                () -> openCountDialog("item_count", group.getItems().get(idx).getId(), idx));
-        contextMenu.addEntry(t("editor.historystages.copy_id"),
-                () -> Minecraft.getInstance().keyboardHandler.setClipboard(group.getItems().get(idx).getId()));
-        contextMenu.addEntry(t("editor.historystages.duplicate"), () -> {
-            DependencyItem orig = group.getItems().get(idx);
-            group.getItems().add(idx + 1, orig.copy());
-            if (itemNbtMap.containsKey(idx)) {
-                // Shift indices and duplicate NBT
-                Map<Integer, JsonObject> shifted = new HashMap<>();
-                for (var e : itemNbtMap.entrySet())
-                    shifted.put(e.getKey() > idx ? e.getKey() + 1 : e.getKey(), e.getValue());
-                shifted.put(idx + 1, itemNbtMap.get(idx).deepCopy());
-                itemNbtMap.clear();
-                itemNbtMap.putAll(shifted);
-            }
-            hasChanges = true;
-        });
-        contextMenu.addEntry(t("editor.historystages.remove"), () -> {
-            group.getItems().remove(idx);
-            itemNbtMap.remove(idx);
-            Map<Integer, JsonObject> shifted = new HashMap<>();
-            for (var e : itemNbtMap.entrySet())
-                shifted.put(e.getKey() > idx ? e.getKey() - 1 : e.getKey(), e.getValue());
-            itemNbtMap.clear();
-            itemNbtMap.putAll(shifted);
-            hasChanges = true;
-        });
-        contextMenu.show(mx, my, this.font);
-    }
-
-    private void showSimpleContextMenu(int mx, int my, int idx, List<String> list, String type) {
-        contextMenu = new ContextMenu();
-        contextMenu.addEntry(t("editor.historystages.copy_id"),
-                () -> Minecraft.getInstance().keyboardHandler.setClipboard(list.get(idx)));
-        contextMenu.addEntry(t("editor.historystages.duplicate"), () -> {
-            list.add(idx + 1, list.get(idx));
-            hasChanges = true;
-        });
-        contextMenu.addEntry(t("editor.historystages.remove"), () -> {
-            list.remove(idx);
-            hasChanges = true;
-        });
-        contextMenu.show(mx, my, this.font);
-    }
-
-    private void showIndividualStageContextMenu(int mx, int my, int idx, DependencyGroup group) {
-        contextMenu = new ContextMenu();
-        IndividualStageDep dep = group.getIndividualStages().get(idx);
-        contextMenu.addEntry(t("editor.historystages.dep.context.toggle_mode"), () -> {
-            dep.setMode(dep.isAllEver() ? "all_online" : "all_ever");
-            hasChanges = true;
-        });
-        contextMenu.addEntry(t("editor.historystages.copy_id"),
-                () -> Minecraft.getInstance().keyboardHandler.setClipboard(dep.getStageId()));
-        contextMenu.addEntry(t("editor.historystages.duplicate"), () -> {
-            group.getIndividualStages().add(idx + 1, dep.copy());
-            hasChanges = true;
-        });
-        contextMenu.addEntry(t("editor.historystages.remove"), () -> {
-            group.getIndividualStages().remove(idx);
-            hasChanges = true;
-        });
-        contextMenu.show(mx, my, this.font);
-    }
-
-    private void showXpContextMenu(int mx, int my, DependencyGroup group) {
-        contextMenu = new ContextMenu();
-        contextMenu.addEntry(t("editor.historystages.dep.context.change_level"),
-                () -> openCountDialog("xp_level", null, 0));
-        contextMenu.addEntry(t("editor.historystages.dep.context.toggle_consume"), () -> {
-            group.getXpLevel().setConsume(!group.getXpLevel().isConsume());
-            hasChanges = true;
-        });
-        contextMenu.addEntry(t("editor.historystages.remove"), () -> {
-            group.setXpLevel(null);
-            hasChanges = true;
-        });
-        contextMenu.show(mx, my, this.font);
-    }
-
-    private void showEntityKillContextMenu(int mx, int my, int idx, DependencyGroup group) {
-        contextMenu = new ContextMenu();
-        EntityKillDep kill = group.getEntityKills().get(idx);
-        contextMenu.addEntry(t("editor.historystages.dep.context.count"),
-                () -> openCountDialog("kill_count", kill.getEntityId(), idx));
-        contextMenu.addEntry(t("editor.historystages.copy_id"),
-                () -> Minecraft.getInstance().keyboardHandler.setClipboard(kill.getEntityId()));
-        contextMenu.addEntry(t("editor.historystages.duplicate"), () -> {
-            group.getEntityKills().add(idx + 1, kill.copy());
-            hasChanges = true;
-        });
-        contextMenu.addEntry(t("editor.historystages.remove"), () -> {
-            group.getEntityKills().remove(idx);
-            hasChanges = true;
-        });
-        contextMenu.show(mx, my, this.font);
-    }
-
-    private void showStatContextMenu(int mx, int my, int idx, DependencyGroup group) {
-        contextMenu = new ContextMenu();
-        StatDep stat = group.getStats().get(idx);
-        contextMenu.addEntry(t("editor.historystages.dep.context.min_value"),
-                () -> openCountDialog("stat_value", stat.getStatId(), idx));
-        contextMenu.addEntry(t("editor.historystages.copy_id"),
-                () -> Minecraft.getInstance().keyboardHandler.setClipboard(stat.getStatId()));
-        contextMenu.addEntry(t("editor.historystages.duplicate"), () -> {
-            group.getStats().add(idx + 1, stat.copy());
-            hasChanges = true;
-        });
-        contextMenu.addEntry(t("editor.historystages.remove"), () -> {
-            group.getStats().remove(idx);
-            hasChanges = true;
-        });
-        contextMenu.show(mx, my, this.font);
-    }
-
-    private void openNbtEditScreen(int entryIdx, String itemId) {
-        syncNbtToItems();
-        DependencyItem item = currentGroup().getItems().get(entryIdx);
-        JsonObject currentNbt = item.hasNbt() ? item.getNbt().deepCopy() : null;
-        this.minecraft.setScreen(new NbtItemEditScreen(this, itemId, currentNbt, nbt -> {
-            if (nbt != null) {
-                itemNbtMap.put(entryIdx, nbt);
-                currentGroup().getItems().get(entryIdx).setNbt(nbt.deepCopy());
-            } else {
-                itemNbtMap.remove(entryIdx);
-                currentGroup().getItems().get(entryIdx).setNbt(null);
-            }
-            hasChanges = true;
+    /**
+     * Opens the NBT criterion editor for one row of {@code tab}.
+     *
+     * <p>The tab is passed in rather than looked up under {@code "item"}. Two tabs are built from
+     * {@link ItemRequirementTab} now, and a fixed key would have quietly edited the item tab
+     * NBT while the tag tab was on screen — the row index means nothing outside its own list.
+     */
+    private void openNbtEditScreen(ItemRequirementTab tab, int entryIdx, String entryId) {
+        if (tab == null) return;
+        boolean tagMode = entryId.startsWith("#");
+        String subject = tagMode ? entryId.substring(1) : entryId;
+        this.minecraft.setScreen(new NbtItemEditScreen(this, subject, tagMode, tab.nbtAt(entryIdx), nbt -> {
+            tab.setNbtAt(entryIdx, nbt == null ? null : nbt.deepCopy());
+            // Routes through this screen own save, so the whole stage is persisted.
+            save();
         }));
     }
 
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
-        if (itemSearch != null && itemSearch.isVisible())
-            return itemSearch.mouseDragged(mouseX, mouseY);
-        if (entitySearch != null && entitySearch.isVisible())
-            return entitySearch.mouseDragged(mouseX, mouseY);
-        if (globalStageSearch != null && globalStageSearch.isVisible())
-            return globalStageSearch.mouseDragged(mouseX, mouseY);
-        if (individualStageSearch != null && individualStageSearch.isVisible())
-            return individualStageSearch.mouseDragged(mouseX, mouseY);
-        if (advancementSearch != null && advancementSearch.isVisible())
-            return advancementSearch.mouseDragged(mouseX, mouseY);
-        if (statSearch != null && statSearch.isVisible())
-            return statSearch.mouseDragged(mouseX, mouseY);
+        if (screenOverlay() != null)
+            return screenOverlay().mouseDragged(mouseX, mouseY);
+        if (addonPicker() != null && addonPicker().isVisible())
+            return addonPicker().mouseDragged(mouseX, mouseY);
+        DependencyTab draggedTab = activeAddonTab();
+        if (draggedTab != null && draggedTab.mouseDragged(inputContext(mouseX, mouseY), button))
+            return true;
         if (draggingContentScrollbar) {
             int contentY = HEADER_HEIGHT + TAB_HEIGHT + 6;
             int contentBottom = this.height - 30;
@@ -1733,95 +1648,49 @@ public class DependencyEditorScreen extends Screen {
             draggingContentScrollbar = false;
             return true;
         }
-        if (itemSearch != null && itemSearch.mouseReleased())
+        if (screenOverlay() != null && screenOverlay().mouseReleased())
             return true;
-        if (entitySearch != null && entitySearch.mouseReleased())
+        if (addonPicker() != null && addonPicker().mouseReleased())
             return true;
-        if (globalStageSearch != null && globalStageSearch.mouseReleased())
-            return true;
-        if (individualStageSearch != null && individualStageSearch.mouseReleased())
-            return true;
-        if (advancementSearch != null && advancementSearch.mouseReleased())
-            return true;
-        if (statSearch != null && statSearch.mouseReleased())
+        DependencyTab releasedTab = activeAddonTab();
+        if (releasedTab != null && releasedTab.mouseReleased(inputContext(mouseX, mouseY), button))
             return true;
         return super.mouseReleased(mouseX, mouseY, button);
     }
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (itemSearch != null && itemSearch.isVisible())
-            return itemSearch.keyPressed(keyCode);
-        if (entitySearch != null && entitySearch.isVisible())
-            return entitySearch.keyPressed(keyCode);
-        if (globalStageSearch != null && globalStageSearch.isVisible())
-            return globalStageSearch.keyPressed(keyCode);
-        if (individualStageSearch != null && individualStageSearch.isVisible())
-            return individualStageSearch.keyPressed(keyCode);
-        if (advancementSearch != null && advancementSearch.isVisible())
-            return advancementSearch.keyPressed(keyCode);
-        if (statSearch != null && statSearch.isVisible())
-            return statSearch.keyPressed(keyCode);
-        if (countDialogType != null) {
-            if (keyCode == 256) {
-                closeCountDialog();
-                return true;
-            }
-            if (keyCode == 257) {
-                confirmCountDialog();
-                return true;
-            }
-            if (keyCode == 259 && !countInputText.isEmpty()) { // Backspace
-                countInputText = countInputText.substring(0, countInputText.length() - 1);
-                return true;
-            }
+        if (screenOverlay() != null)
+            return screenOverlay().keyPressed(keyCode);
+        if (addonPicker() != null && addonPicker().isVisible())
+            return addonPicker().keyPressed(keyCode);
+        DependencyTab keyTab = activeAddonTab();
+        if (keyTab != null && keyTab.keyPressed(keyCode, scanCode, modifiers))
             return true;
-        }
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
     @Override
     public boolean charTyped(char codePoint, int modifiers) {
-        if (itemSearch != null && itemSearch.isVisible())
-            return itemSearch.charTyped(codePoint);
-        if (entitySearch != null && entitySearch.isVisible())
-            return entitySearch.charTyped(codePoint);
-        if (globalStageSearch != null && globalStageSearch.isVisible())
-            return globalStageSearch.charTyped(codePoint);
-        if (individualStageSearch != null && individualStageSearch.isVisible())
-            return individualStageSearch.charTyped(codePoint);
-        if (advancementSearch != null && advancementSearch.isVisible())
-            return advancementSearch.charTyped(codePoint);
-        if (statSearch != null && statSearch.isVisible())
-            return statSearch.charTyped(codePoint);
-        if (countDialogType != null) {
-            if (Character.isDigit(codePoint) && countInputText.length() < 10) {
-                countInputText += codePoint;
-            }
+        if (screenOverlay() != null)
+            return screenOverlay().charTyped(codePoint);
+        if (addonPicker() != null && addonPicker().isVisible())
+            return addonPicker().charTyped(codePoint);
+        DependencyTab charTab = activeAddonTab();
+        if (charTab != null && charTab.charTyped(codePoint, modifiers))
             return true;
-        }
         return super.charTyped(codePoint, modifiers);
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
-        return mouseScrolled(mouseX, mouseY, verticalAmount);
-    }
-
-    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
-        if (itemSearch != null && itemSearch.isVisible())
-            return itemSearch.mouseScrolled(mouseX, mouseY, delta);
-        if (entitySearch != null && entitySearch.isVisible())
-            return entitySearch.mouseScrolled(mouseX, mouseY, delta);
-        if (globalStageSearch != null && globalStageSearch.isVisible())
-            return globalStageSearch.mouseScrolled(mouseX, mouseY, delta);
-        if (individualStageSearch != null && individualStageSearch.isVisible())
-            return individualStageSearch.mouseScrolled(mouseX, mouseY, delta);
-        if (advancementSearch != null && advancementSearch.isVisible())
-            return advancementSearch.mouseScrolled(mouseX, mouseY, delta);
-        if (statSearch != null && statSearch.isVisible())
-            return statSearch.mouseScrolled(mouseX, mouseY, delta);
-        if (countDialogType != null)
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        double delta = scrollY;
+        if (screenOverlay() != null)
+            return screenOverlay().mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+        if (addonPicker() != null && addonPicker().isVisible())
+            return addonPicker().mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+        DependencyTab scrollTab = activeAddonTab();
+        if (scrollTab != null && scrollTab.mouseScrolled(inputContext(mouseX, mouseY), scrollX, scrollY))
             return true;
         if (maxTabScroll > 0 && mouseY >= tabY && mouseY < tabY + TAB_HEIGHT) {
             tabScrollOffset = Math.max(0, Math.min(maxTabScroll, tabScrollOffset - (int) (delta * 30)));
@@ -1841,103 +1710,29 @@ public class DependencyEditorScreen extends Screen {
             ratio = Math.max(0, Math.min(1, ratio));
             scrollOffset = Math.round(ratio * maxScroll);
             scrollOffset = Math.max(0, Math.min(maxScroll, scrollOffset));
+            // Snapped, not eased: while the thumb is held the list must track the
+            // cursor exactly, or the thumb drifts from where the pointer is.
+            smoothScroll.set((float) scrollOffset);
         }
     }
 
     private int countGroupEntries(DependencyGroup group) {
-        int count = group.getItems().size() + group.getStages().size()
+        int count = group.getItems().size() + group.getItemTags().size() + group.getStages().size()
                 + group.getIndividualStages().size() + group.getAdvancements().size()
-                + group.getEntityKills().size() + group.getStats().size();
+                + group.getEntityKills().size() + group.getStats().size()
+                + group.getScoreboard().size();
         if (group.getXpLevel() != null && group.getXpLevel().getLevel() > 0)
             count++;
+        // Addon requirements count too, otherwise a group holding nothing else reads as empty in
+        // the group list while the checker treats it as a real dependency.
+        count += group.addonRequirementIds().size();
         return count;
     }
 
     // --- Entity rendering ---
 
-    private LivingEntity getOrCreateEntity(String entityId) {
-        if (entityCache.containsKey(entityId))
-            return entityCache.get(entityId);
-        if (Minecraft.getInstance().level == null)
-            return null;
-        try {
-            ResourceLocation rl = ResourceLocation.tryParse(entityId);
-            if (rl == null)
-                return null;
-            EntityType<?> type = ForgeRegistries.ENTITY_TYPES.getValue(rl);
-            if (type == null)
-                return null;
-            Entity entity = type.create(Minecraft.getInstance().level);
-            if (entity instanceof LivingEntity living) {
-                entityCache.put(entityId, living);
-                return living;
-            }
-            if (entity != null)
-                entity.discard();
-        } catch (Exception ignored) {
-        }
-        entityCache.put(entityId, null);
-        return null;
-    }
-
-    private static void renderSpinningEntity(GuiGraphics guiGraphics, int x, int y, int scale, float angleDegrees,
-            LivingEntity entity) {
-        float origBodyRot = entity.yBodyRot;
-        float origYRot = entity.getYRot();
-        float origXRot = entity.getXRot();
-        float origHeadRotO = entity.yHeadRotO;
-        float origHeadRot = entity.yHeadRot;
-
-        entity.yBodyRot = 180.0F;
-        entity.setYRot(180.0F);
-        entity.setXRot(0.0F);
-        entity.yHeadRot = 180.0F;
-        entity.yHeadRotO = 180.0F;
-
-        Matrix4fStack modelViewStack = RenderSystem.getModelViewStack();
-        modelViewStack.pushMatrix();
-        try {
-            modelViewStack.translate(0.0F, 0.0F, 1500.0F);
-            RenderSystem.applyModelViewMatrix();
-
-            PoseStack poseStack = new PoseStack();
-            poseStack.translate((double) x, (double) y, -950.0D);
-            poseStack.scale((float) scale, (float) scale, (float) scale);
-
-            Quaternionf flipAndSpin = new Quaternionf().rotateZ((float) Math.PI);
-            flipAndSpin.mul(new Quaternionf().rotateY(angleDegrees * ((float) Math.PI / 180.0F)));
-            poseStack.mulPose(flipAndSpin);
-
-            Lighting.setupForEntityInInventory();
-            RenderSystem.disableDepthTest();
-
-            EntityRenderDispatcher dispatcher = Minecraft.getInstance().getEntityRenderDispatcher();
-            dispatcher.overrideCameraOrientation(new Quaternionf());
-            dispatcher.setRenderShadow(false);
-
-            MultiBufferSource.BufferSource bufferSource = Minecraft.getInstance().renderBuffers().bufferSource();
-            RenderSystem.runAsFancy(() -> {
-                dispatcher.render(entity, 0.0D, 0.0D, 0.0D, 0.0F, 1.0F, poseStack, bufferSource, 15728880);
-            });
-            bufferSource.endBatch();
-            dispatcher.setRenderShadow(true);
-            RenderSystem.enableDepthTest();
-        } finally {
-            modelViewStack.popMatrix();
-            RenderSystem.applyModelViewMatrix();
-            Lighting.setupFor3DItems();
-
-            entity.yBodyRot = origBodyRot;
-            entity.setYRot(origYRot);
-            entity.setXRot(origXRot);
-            entity.yHeadRotO = origHeadRotO;
-            entity.yHeadRot = origHeadRot;
-        }
-    }
-
     @Override
     public boolean isPauseScreen() {
         return true;
     }
-
 }

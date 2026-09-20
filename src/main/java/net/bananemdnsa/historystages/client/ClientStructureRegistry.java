@@ -1,132 +1,38 @@
 package net.bananemdnsa.historystages.client;
 
-import net.bananemdnsa.historystages.data.StageManager;
-import net.minecraft.client.Minecraft;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.tags.TagKey;
-import net.minecraft.world.level.levelgen.structure.Structure;
-
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
-import java.util.Set;
-import java.util.TreeSet;
-import net.fabricmc.api.EnvType;
-import net.fabricmc.api.Environment;
 
-@Environment(EnvType.CLIENT)
-public final class ClientStructureRegistry {
-    private static final Set<String> SYNCED_STRUCTURES = new TreeSet<>();
-    private static final Set<String> SYNCED_STRUCTURE_TAGS = new TreeSet<>();
-    private static boolean synced;
-
-    private static final List<String> VANILLA_STRUCTURES = List.of(
-            "minecraft:ancient_city",
-            "minecraft:bastion_remnant",
-            "minecraft:buried_treasure",
-            "minecraft:desert_pyramid",
-            "minecraft:end_city",
-            "minecraft:fortress",
-            "minecraft:igloo",
-            "minecraft:jungle_pyramid",
-            "minecraft:mansion",
-            "minecraft:mineshaft",
-            "minecraft:monument",
-            "minecraft:nether_fossil",
-            "minecraft:ocean_ruin_cold",
-            "minecraft:ocean_ruin_warm",
-            "minecraft:pillager_outpost",
-            "minecraft:ruined_portal",
-            "minecraft:shipwreck",
-            "minecraft:stronghold",
-            "minecraft:swamp_hut",
-            "minecraft:trail_ruins",
-            "minecraft:trial_chambers",
-            "minecraft:village_desert",
-            "minecraft:village_plains",
-            "minecraft:village_savanna",
-            "minecraft:village_snowy",
-            "minecraft:village_taiga"
-    );
-
-    private static final List<String> VANILLA_STRUCTURE_TAGS = List.of(
-            "minecraft:cats_spawn_as_black",
-            "minecraft:cats_spawn_in",
-            "minecraft:dolphin_located",
-            "minecraft:eye_of_ender_located",
-            "minecraft:mineshaft",
-            "minecraft:ocean_ruin",
-            "minecraft:on_ocean_explorer_maps",
-            "minecraft:on_treasure_maps",
-            "minecraft:on_trial_chambers_maps",
-            "minecraft:on_woodland_explorer_maps",
-            "minecraft:ruined_portal",
-            "minecraft:shipwreck",
-            "minecraft:village"
-    );
-
-    private ClientStructureRegistry() {
-    }
+/**
+ * Client-side cache of structure IDs and structure tag IDs synced from the
+ * server. Used by the editor UI to populate the searchable structure list
+ * (and its Tags tab).
+ */
+public class ClientStructureRegistry {
+    private static final List<String> STRUCTURE_IDS = new ArrayList<>();
+    private static final List<String> STRUCTURE_TAG_IDS = new ArrayList<>();
 
     public static synchronized void set(List<String> ids, List<String> tagIds) {
-        SYNCED_STRUCTURES.clear();
-        SYNCED_STRUCTURES.addAll(ids);
-        SYNCED_STRUCTURE_TAGS.clear();
-        SYNCED_STRUCTURE_TAGS.addAll(tagIds);
-        synced = true;
+        STRUCTURE_IDS.clear();
+        STRUCTURE_IDS.addAll(ids);
+        Collections.sort(STRUCTURE_IDS, String::compareToIgnoreCase);
+
+        STRUCTURE_TAG_IDS.clear();
+        STRUCTURE_TAG_IDS.addAll(tagIds);
+        Collections.sort(STRUCTURE_TAG_IDS, String::compareToIgnoreCase);
     }
 
+    /** Backwards-compat overload for callers that only had IDs (no tags). */
     public static synchronized void set(List<String> ids) {
-        set(ids, List.of());
+        set(ids, Collections.emptyList());
     }
 
-    public static synchronized void clear() {
-        SYNCED_STRUCTURES.clear();
-        SYNCED_STRUCTURE_TAGS.clear();
-        synced = false;
+    public static synchronized List<String> get() {
+        return new ArrayList<>(STRUCTURE_IDS);
     }
 
-    public static Set<String> get() {
-        Set<String> values = new TreeSet<>();
-        synchronized (ClientStructureRegistry.class) {
-            if (synced) {
-                values.addAll(SYNCED_STRUCTURES);
-            }
-        }
-        if (values.isEmpty()) {
-            values.addAll(VANILLA_STRUCTURES);
-            Minecraft minecraft = Minecraft.getInstance();
-            if (minecraft.level != null) {
-                minecraft.level.registryAccess().registry(Registries.STRUCTURE)
-                        .ifPresent(registry -> registry.keySet().stream().map(ResourceLocation::toString).forEach(values::add));
-            }
-        }
-        StageManager.getStages().values().forEach(entry ->
-                entry.getStructures().stream().filter(id -> !id.startsWith("#")).forEach(values::add));
-        StageManager.getIndividualStages().values().forEach(entry ->
-                entry.getStructures().stream().filter(id -> !id.startsWith("#")).forEach(values::add));
-        return values;
-    }
-
-    public static Set<String> getTags() {
-        Set<String> values = new TreeSet<>();
-        synchronized (ClientStructureRegistry.class) {
-            if (synced) {
-                values.addAll(SYNCED_STRUCTURE_TAGS);
-            }
-        }
-        if (values.isEmpty()) {
-            values.addAll(VANILLA_STRUCTURE_TAGS);
-            Minecraft minecraft = Minecraft.getInstance();
-            if (minecraft.level != null) {
-                minecraft.level.registryAccess().registry(Registries.STRUCTURE)
-                        .ifPresent(registry -> registry.getTagNames().map(TagKey<Structure>::location)
-                                .map(ResourceLocation::toString).forEach(values::add));
-            }
-        }
-        StageManager.getStages().values().forEach(entry ->
-                entry.getStructures().stream().filter(id -> id.startsWith("#")).map(id -> id.substring(1)).forEach(values::add));
-        StageManager.getIndividualStages().values().forEach(entry ->
-                entry.getStructures().stream().filter(id -> id.startsWith("#")).map(id -> id.substring(1)).forEach(values::add));
-        return values;
+    public static synchronized List<String> getTags() {
+        return new ArrayList<>(STRUCTURE_TAG_IDS);
     }
 }

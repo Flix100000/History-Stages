@@ -1,70 +1,75 @@
 package net.bananemdnsa.historystages.client.editor.widget;
 
+import net.bananemdnsa.historystages.api.editor.widget.AbstractModalScreen;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
-import net.fabricmc.api.EnvType;
-import net.fabricmc.api.Environment;
+import net.minecraft.util.FormattedCharSequence;
 
-@Environment(EnvType.CLIENT)
+import java.util.List;
+
 /**
- * A modal confirmation dialog overlay.
+ * A modal confirmation dialog overlay: a message and a confirm/cancel pair.
  */
-public class ConfirmDialog extends Screen {
-    private final Screen parent;
+public class ConfirmDialog extends AbstractModalScreen {
+
+    private static final int MESSAGE_GREY = 0xAAAAAA;
+    private static final int LINE_H = 10;
+
     private final Component message;
-    private final Runnable onConfirm;
+    /** Named apart from the onConfirm() hook it is invoked from, which would shadow confusingly. */
+    private final Runnable confirmAction;
+
+    /**
+     * Computed in {@link #contentHeight()} (which {@code AbstractModalScreen.init()} always
+     * calls before the first render) and reused by {@link #renderContent}, so the wrap only
+     * runs once per open rather than every frame.
+     */
+    private List<FormattedCharSequence> wrappedMessage = List.of();
 
     public ConfirmDialog(Screen parent, Component title, Component message, Runnable onConfirm) {
-        super(title);
-        this.parent = parent;
+        super(parent, title);
         this.message = message;
-        this.onConfirm = onConfirm;
+        this.confirmAction = onConfirm;
+    }
+
+    /**
+     * Confirmation here means deleting a stage or discarding unsaved edits, so it stays a
+     * deliberate click. The pre-refactor dialog had no ENTER handling either.
+     */
+    @Override
+    protected boolean confirmOnEnter() {
+        return false;
     }
 
     @Override
-    protected void init() {
-        int centerX = this.width / 2;
-        int centerY = this.height / 2;
+    protected int dialogWidth() {
+        return 250;
+    }
 
-        this.addRenderableWidget(StyledButton.of(
-                Component.translatable("editor.historystages.confirm"),
-                btn -> onConfirm.run(), centerX - 105, centerY + 20, 100, 20));
-
-        this.addRenderableWidget(StyledButton.of(
-                Component.translatable("editor.historystages.cancel"),
-                btn -> this.minecraft.setScreen(parent), centerX + 5, centerY + 20, 100, 20));
+    /**
+     * Wraps to the dialog's content width and grows to fit. Every message used before this
+     * wrapping was added stayed within one line, so {@code wrappedMessage.size()} is 1 for them
+     * and this still returns the original fixed 24 — existing dialogs render pixel-identical.
+     */
+    @Override
+    protected int contentHeight() {
+        int width = dialogWidth() - PAD * 2;
+        wrappedMessage = this.font.split(message, width);
+        return Math.max(24, wrappedMessage.size() * LINE_H + 8);
     }
 
     @Override
-    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        // Fully opaque dark background to prevent text bleed-through
-        guiGraphics.fill(0, 0, this.width, this.height, 0xFF0A0A0A);
-
-        // Dialog box
-        int boxW = 250;
-        int boxH = 100;
-        int boxX = (this.width - boxW) / 2;
-        int boxY = (this.height - boxH) / 2;
-        guiGraphics.fill(boxX, boxY, boxX + boxW, boxY + boxH, 0xFF2D2D2D);
-        guiGraphics.fill(boxX + 1, boxY + 1, boxX + boxW - 1, boxY + boxH - 1, 0xFF1A1A1A);
-
-        // Title
-        guiGraphics.drawCenteredString(this.font, this.title, this.width / 2, boxY + 10, 0xFFFFFF);
-
-        // Message
-        guiGraphics.drawCenteredString(this.font, this.message, this.width / 2, boxY + 30, 0xAAAAAA);
-
-        super.render(guiGraphics, mouseX, mouseY, partialTick);
+    protected void renderContent(GuiGraphics g, int x, int y, int w, int mouseX, int mouseY) {
+        int cy = y + 8;
+        for (FormattedCharSequence line : wrappedMessage) {
+            g.drawCenteredString(this.font, line, x + w / 2, cy, MESSAGE_GREY);
+            cy += LINE_H;
+        }
     }
 
     @Override
-    public boolean shouldCloseOnEsc() {
-        return true;
-    }
-
-    @Override
-    public void onClose() {
-        this.minecraft.setScreen(parent);
+    protected void onConfirm() {
+        confirmAction.run();
     }
 }

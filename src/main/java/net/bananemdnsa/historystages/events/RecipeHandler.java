@@ -1,76 +1,206 @@
 package net.bananemdnsa.historystages.events;
 
-import net.bananemdnsa.historystages.data.StageManager;
-import net.bananemdnsa.historystages.util.StageLockHelper;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+
+import net.bananemdnsa.historystages.data.lock.FluidRecipeIndex;
+import net.bananemdnsa.historystages.data.lock.FluidRecipeScanner;
+
+import net.bananemdnsa.historystages.Config;
+import net.bananemdnsa.historystages.util.CurrentRegistries;
+import net.bananemdnsa.historystages.util.lock.RecipeCraftContext;
+import net.bananemdnsa.historystages.util.lock.StageLockHelper;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.core.RegistryAccess;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
-import net.minecraft.world.level.Level;
+import org.jetbrains.annotations.Nullable;
 
-public final class RecipeHandler {
-    private RecipeHandler() {
-    }
+/**
+ * The single place that judges whether a recipe is locked.
+ *
+ * <p>Both questions below ask the same thing first: is anyone known to be crafting? A station that
+ * knows sets a {@link RecipeCraftContext} around its one resolution and gets an answer across both
+ * scopes; everything else — furnaces, hoppers, autocrafters, mod menus we do not hook — gets the
+ * global-only answer it has always got.
+ *
+ * <p>Client and server move together on purpose. Were only one side to consult individual stages,
+ * the player would see a preview they cannot take out, or an output the server refuses — worse
+ * than either side being wrong on its own.
+ */
+public class RecipeHandler {
+    /**
+     * Checks if a recipe's output is locked based on history stages.
+     * Uses ClientStageCache on the client side, SERVER_CACHE on the server side.
+     */
+    public static boolean isOutputLocked(RecipeHolder<?> holder, boolean isClientSide) {
+        if (holder == null) return false;
 
-    public static boolean isOutputLocked(Recipe<?> recipe, boolean isClientSide) {
-        return isOutputLocked(recipe, RegistryAccess.EMPTY, isClientSide);
-    }
-
-    public static boolean isOutputLocked(Recipe<?> recipe, RegistryAccess registryAccess, boolean isClientSide) {
-        if (recipe == null) {
-            return false;
-        }
         ItemStack result;
         try {
-            result = recipe.getResultItem(registryAccess);
-        } catch (Exception ignored) {
+            result = holder.value().getResultItem(CurrentRegistries.orEmpty());
+        } catch (Exception e) {
             return false;
         }
-        if (result.isEmpty()) {
-            return false;
+
+        if (result.isEmpty()) return false;
+
+        UUID crafter = crafter();
+
+        // Respects lock_actions["recipe"]: if "recipe" is explicitly allowed, the recipe stays visible/craftable
+        if (isClientSide) {
+            return StageLockHelper.isActionLockedForClient(result, "recipe")
+                    || (crafter != null
+                            && StageLockHelper.isActionLockedByIndividualStageClient(result, "recipe"));
         }
-        return isClientSide
-                ? StageLockHelper.isActionLockedForClient(result, "recipe")
-                : StageLockHelper.isActionLockedForServer(result, "recipe");
+        return StageLockHelper.isActionLockedForServer(result, "recipe")
+                || (crafter != null
+                        && StageLockHelper.isActionLockedByIndividualStage(result, crafter, "recipe"));
     }
 
-    public static boolean isRecipeIdLocked(ResourceLocation recipeId, boolean isClientSide) {
-        return recipeId != null && StageManager.isRecipeIdLocked(recipeId.toString(), isClientSide);
+    /**
+     * Whether a fluid this recipe touches is gated for the action that side implies.
+     *
+     * <p>{@code recipe} covers the fluids a recipe produces and {@code ingredient} the ones it
+     * consumes, because those are different intents: "you cannot make molten copper yet" is not
+     * "everything needing lava is out of reach". Where the recipe's own spelling did not settle
+     * which side a fluid sits on, either action gates it — a recipe too many is a nuisance, a
+     * recipe too few is a hole.
+     */
+    public static boolean isFluidGatedForViewer(String recipeId) {
+        // A recipe viewer has no resolution in progress and therefore no crafter, but the person
+        // looking at the screen is the player — so their individual stages count here, exactly as
+        // they do for the recipe-id lock the viewers already consult.
+        return isFluidGated(recipeId, true, true, null);
     }
 
-    public static boolean isRecipeLocked(RecipeHolder<?> recipe, RegistryAccess registryAccess, boolean isClientSide) {
-        return recipe != null
-                && (isOutputLocked(recipe.value(), registryAccess, isClientSide)
-                || isRecipeIdLocked(recipe.id(), isClientSide));
-    }
+    private static boolean isFluidGated(String recipeId, boolean isClientSide,
+                                        boolean includeIndividual, UUID crafter) {
+        if (FluidRecipeIndex.isEmpty()) return false;
 
-    public static boolean isCraftingResultLocked(ItemStack stack, Level level) {
-        if (stack == null || stack.isEmpty() || level == null) {
-            return false;
-        }
-        if (level.isClientSide()
-                ? StageLockHelper.isActionLockedForClient(stack, "recipe")
-                : StageLockHelper.isActionLockedForServer(stack, "recipe")) {
-            return true;
-        }
-        for (RecipeHolder<?> holder : level.getRecipeManager().getRecipes()) {
-            if (!isRecipeIdLocked(holder.id(), level.isClientSide())) {
-                continue;
-            }
-            ItemStack result = getResult(holder.value(), level.registryAccess());
-            if (!result.isEmpty() && ItemStack.isSameItemSameComponents(stack, result)) {
-                return true;
+        Map<String, Set<FluidRecipeScanner.Position>> touched = FluidRecipeIndex.fluidsIn(recipeId);
+        if (touched.isEmpty()) return false;
+
+        for (Map.Entry<String, Set<FluidRecipeScanner.Position>> entry : touched.entrySet()) {
+            String fluidId = entry.getKey();
+            for (FluidRecipeScanner.Position position : entry.getValue()) {
+                boolean gated = switch (position) {
+                    case OUTPUT -> fluidActionGated(fluidId, "recipe", isClientSide,
+                            includeIndividual, crafter);
+                    case INPUT -> fluidActionGated(fluidId, "ingredient", isClientSide,
+                            includeIndividual, crafter);
+                    case UNKNOWN -> fluidActionGated(fluidId, "recipe", isClientSide,
+                                    includeIndividual, crafter)
+                            || fluidActionGated(fluidId, "ingredient", isClientSide,
+                                    includeIndividual, crafter);
+                };
+                if (gated) return true;
             }
         }
         return false;
     }
 
-    private static ItemStack getResult(Recipe<?> recipe, RegistryAccess registryAccess) {
-        try {
-            return recipe.getResultItem(registryAccess);
-        } catch (Exception ignored) {
-            return ItemStack.EMPTY;
+    /**
+     * The global half always counts; {@code includeIndividual} decides whether the per-player half
+     * does. Client-side the individual set is the local player's, so no uuid is needed there —
+     * server-side there is nobody to resolve it against without one.
+     */
+    private static boolean fluidActionGated(String fluidId, String action, boolean isClientSide,
+                                            boolean includeIndividual, UUID crafter) {
+        if (isClientSide) {
+            return StageLockHelper.isFluidActionLockedForClient(fluidId, action)
+                    || (includeIndividual
+                            && StageLockHelper.isFluidActionLockedByIndividualStageClient(fluidId, action));
         }
+        return StageLockHelper.isFluidActionLockedForServer(fluidId, action)
+                || (includeIndividual && crafter != null
+                        && StageLockHelper.isFluidActionLockedByIndividualStage(fluidId, crafter, action));
+    }
+
+    /** Overload without side info — defaults to server-side check. */
+    public static boolean isOutputLocked(RecipeHolder<?> holder) {
+        return isOutputLocked(holder, false);
+    }
+
+    /**
+     * Whether this recipe is gated for whoever is resolving it right now.
+     *
+     * <p>The answer a station gets when it asks which recipe fits what is inside it, and the two
+     * routes that question can be gated by: the recipe's own id on a stage, or an item it produces
+     * whose lock covers {@code recipe}. Unlike {@link #isLockedForEveryone} it reads the
+     * {@link RecipeCraftContext}, so an individual stage counts wherever a station named a player.
+     *
+     * <p>One method rather than two calls at every hook, because there is now more than one place
+     * the resolution gate has to be applied from — {@code RecipeManagerMixin} for the vanilla
+     * manager, {@code mixin/fastsuite/AuxRecipeManagerMixin} for the one FastSuite puts in its
+     * place — and two hooks disagreeing about what counts as gated is exactly what produced the
+     * duplication bug the FastSuite hook exists to fix.
+     */
+    public static boolean isLockedForResolution(RecipeHolder<?> holder, boolean isClientSide) {
+        if (holder == null) return false;
+        return isOutputLocked(holder, isClientSide) || isRecipeIdLocked(holder.id(), isClientSide);
+    }
+
+    /**
+     * Whether this recipe is gated for everyone on the server, by any of the three routes: its own
+     * id on a stage, an item it produces whose lock covers {@code recipe}, or a fluid it touches.
+     *
+     * <p>Deliberately blind to {@link RecipeCraftContext}. This is the answer given to a station
+     * that asked for the whole recipe list rather than for one recipe, and that answer is cached
+     * and handed to every station after it — so a per-player verdict here would let whoever walked
+     * past first decide for everybody. Individual stages keep to the paths where a player is
+     * actually named.
+     */
+    public static boolean isLockedForEveryone(RecipeHolder<?> holder) {
+        if (holder == null) return false;
+
+        ItemStack result;
+        try {
+            result = holder.value().getResultItem(CurrentRegistries.orEmpty());
+        } catch (Exception e) {
+            result = ItemStack.EMPTY;
+        }
+        if (!result.isEmpty() && StageLockHelper.isActionLockedForServer(result, "recipe")) return true;
+
+        String id = holder.id().toString();
+        return isFluidGated(id, false, false, null) || StageLockHelper.isRecipeLockedForServer(id);
+    }
+
+    public static boolean isRecipeIdLocked(ResourceLocation recipeId, boolean isClientSide) {
+        if (recipeId == null) return false;
+
+        String id = recipeId.toString();
+        UUID crafter = crafter();
+
+        // A recipe can be gated by a fluid it touches without anyone having listed the recipe.
+        // Checked first because it is a map lookup that misses for almost every recipe.
+        if (isFluidGated(id, isClientSide, crafter != null, crafter)) return true;
+
+        if (isClientSide) {
+            // The client's crafter is always the local player, so the individual set to consult is
+            // the one ClientStageStates already holds. The context only decides whether to ask.
+            return crafter != null
+                    ? StageLockHelper.isRecipeLockedForClient(id)
+                    : StageLockHelper.isRecipeLockedForClientGlobalOnly(id);
+        }
+        return crafter != null
+                ? StageLockHelper.isRecipeLockedForPlayer(id, crafter)
+                : StageLockHelper.isRecipeLockedForServer(id);
+    }
+
+    public static boolean isRecipeIdLocked(ResourceLocation recipeId) {
+        return isRecipeIdLocked(recipeId, false);
+    }
+
+    /**
+     * The crafter of the resolution in progress, or null when there is none — which is also the
+     * answer while {@code individualLockRecipes} is off. Reading the switch here rather than at
+     * every station means turning it off restores the previous behaviour everywhere at once,
+     * including on the client.
+     */
+    @Nullable
+    private static UUID crafter() {
+        if (!Config.GAMEPLAY.individualLockRecipes.get()) return null;
+        return RecipeCraftContext.crafter();
     }
 }

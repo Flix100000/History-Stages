@@ -1,272 +1,285 @@
 package net.bananemdnsa.historystages.client.editor;
 
-import com.google.gson.JsonArray;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonPrimitive;
+import net.bananemdnsa.historystages.api.editor.widget.AbstractInputScreen;
+import net.bananemdnsa.historystages.api.editor.widget.InputField;
+import net.bananemdnsa.historystages.api.editor.widget.InputValues;
+import net.bananemdnsa.historystages.api.editor.widget.PickerOverlay;
+import net.bananemdnsa.historystages.client.editor.anim.Anim;
+import net.bananemdnsa.historystages.client.editor.anim.Ease;
+import net.bananemdnsa.historystages.client.editor.anim.Fade;
+import net.bananemdnsa.historystages.client.editor.anim.Timing;
+import net.bananemdnsa.historystages.client.editor.nbt.ComponentCriterion;
+import net.bananemdnsa.historystages.client.editor.nbt.ComponentShapes;
+import net.bananemdnsa.historystages.client.editor.nbt.CriterionCard;
+import net.bananemdnsa.historystages.client.editor.nbt.CustomDataCriterion;
+import net.bananemdnsa.historystages.client.editor.nbt.EnchantmentListCriterion;
+import net.bananemdnsa.historystages.client.editor.nbt.NbtCriteriaCodec;
+import net.bananemdnsa.historystages.client.editor.nbt.NbtCriteriaValidator;
+import net.bananemdnsa.historystages.client.editor.nbt.NbtCriterion;
+import net.bananemdnsa.historystages.client.editor.nbt.NbtPresets;
+import net.bananemdnsa.historystages.client.editor.nbt.TextListCriterion;
+import net.bananemdnsa.historystages.client.editor.nbt.ValueKind;
+import net.bananemdnsa.historystages.client.editor.widget.ConfirmDialog;
+import net.bananemdnsa.historystages.client.editor.widget.Scrollbar;
 import net.bananemdnsa.historystages.client.editor.widget.StyledButton;
+import net.bananemdnsa.historystages.client.editor.toast.EditorToast;
+import net.bananemdnsa.historystages.client.editor.toast.EditorToastHandler;
+import net.bananemdnsa.historystages.client.editor.widget.list.SearchableEnchantmentList;
+import net.bananemdnsa.historystages.client.editor.widget.list.SearchableItemList;
+import net.bananemdnsa.historystages.client.editor.widget.list.SearchableItemPropertyList;
+import net.bananemdnsa.historystages.client.editor.widget.list.SearchableNbtCriterionList;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
+import net.minecraft.core.Registry;
+import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.sounds.SoundEvents;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.alchemy.Potion;
 import net.minecraft.world.item.enchantment.Enchantment;
-import net.minecraftforge.registries.ForgeRegistries;
+
+import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
-import net.fabricmc.api.EnvType;
-import net.fabricmc.api.Environment;
 
-@Environment(EnvType.CLIENT)
 /**
- * Screen for editing NBT criteria on an item entry.
- * Shows a tree of possible NBT properties with checkboxes and value editors.
+ * Editor for the NBT criteria on one item or tag entry.
+ *
+ * <p>Shows only the criteria that are actually set, one card each, and adds new ones through a
+ * searchable picker. What the picker offers follows {@code NbtMatcher}: data components go into
+ * {@code components}, the two enchantment lists stay top-level because the matcher synthesises
+ * them, and a free top-level key means "look this up in the item's custom_data".
  */
 public class NbtItemEditScreen extends Screen {
     private final Screen parent;
     private final String itemId;
+    private final boolean tagMode;
     private final JsonObject currentNbt;
     private final Consumer<JsonObject> onSave;
 
-    // NBT property definitions — built once, persisted across init() calls
-    private final List<NbtProperty> properties = new ArrayList<>();
-    private boolean propertiesBuilt = false;
+    /** The criteria being edited. Survives {@link #init()} — see {@link #criteriaLoaded}. */
+    private final List<NbtCriterion> criteria = new ArrayList<>();
+    /** One laid-out card per criterion, in the same order. Rebuilt by {@link #refresh()}. */
+    private final List<CriterionCard.Built> cards = new ArrayList<>();
+    private List<NbtCriteriaValidator.Warning> warnings = List.of();
+    private CriterionCard card;
+
+    /**
+     * Loading happens once, not on every {@link #init()}. The screen is re-initialised whenever a
+     * value dialog closes, and re-reading {@link #currentNbt} there would throw away every edit —
+     * including a deliberate "clear all".
+     */
+    private boolean criteriaLoaded = false;
+
+    private PickerOverlay pickerOverlay;
+    /** What the criteria looked like when last saved, so "unsaved" means something. */
+    private JsonObject savedSnapshot = new JsonObject();
+    private boolean dirty = false;
+    private boolean showJson = false;
+    private List<FormattedCharSequence> jsonLines = List.of();
+    private int jsonScroll = 0;
+
     private double scrollOffset = 0;
+    /** Sub-pixel scroll chasing {@link #scrollOffset}; render and the click paths both read it. */
+    private final Anim smoothScroll = new Anim();
     private int maxScroll = 0;
+    private final Scrollbar scrollbar = new Scrollbar();
 
     // Layout
     private static final int PADDING = 20;
-    private static final int ROW_HEIGHT = 22;
-    private static final int INDENT = 16;
-    private static final int CHECKBOX_SIZE = 12;
-    private static final int HEADER_HEIGHT = 60;
-
-    // Validation warnings
-    private List<String> validationWarnings = new ArrayList<>();
-    private boolean showingWarnings = false;
-
-    // Scrollbar dragging
-    private boolean draggingScrollbar = false;
+    /**
+     * Item row, then the toolbar row, then the divider. Sized so nothing touches: the id ends at
+     * 36 and the buttons start at {@link #TOOLBAR_Y}.
+     */
+    private static final int HEADER_HEIGHT = 74;
+    private static final int TOOLBAR_Y = 42;
+    private static final int TOOLBAR_H = 18;
+    private static final int CARD_GAP = 6;
+    private static final int FOOTER_HEIGHT = 40;
 
     // Cached suggestion lists
-    private static List<String> enchantmentIds = null;
     private static List<String> potionIds = null;
 
     public NbtItemEditScreen(Screen parent, String itemId, JsonObject currentNbt, Consumer<JsonObject> onSave) {
-        super(Component.literal("NBT Editor"));
+        this(parent, itemId, false, currentNbt, onSave);
+    }
+
+    public NbtItemEditScreen(Screen parent, String itemId, boolean tagMode, JsonObject currentNbt, Consumer<JsonObject> onSave) {
+        super(Component.translatable("editor.historystages.nbt.title"));
         this.parent = parent;
         this.itemId = itemId;
+        this.tagMode = tagMode;
         this.currentNbt = currentNbt;
         this.onSave = onSave;
     }
 
     @Override
     protected void init() {
-        // Only build properties once — not on every init() call (screen switches)
-        if (!propertiesBuilt) {
-            buildPropertyTree();
-            loadCurrentValues();
-            propertiesBuilt = true;
+        if (!criteriaLoaded) {
+            criteria.addAll(NbtCriteriaCodec.load(currentNbt));
+            // The baseline is what the criteria write out to, not the file as it was: loading and
+            // writing back can differ harmlessly (a number that had been stored as a string), and
+            // flagging that as an unsaved change would cry wolf on every open.
+            savedSnapshot = NbtCriteriaCodec.write(criteria);
+            criteriaLoaded = true;
         }
+        this.card = new CriterionCard(this.font);
+
+        Component addLabel = Component.translatable("editor.historystages.nbt.add_criterion");
+        int addW = this.font.width(addLabel) + 16;
+        this.addRenderableWidget(StyledButton.of(addLabel, btn -> openCriterionPicker(),
+                PADDING, TOOLBAR_Y, addW, TOOLBAR_H));
+
+        Component fromItemLabel = Component.translatable("editor.historystages.nbt.from_item");
+        int fromItemW = this.font.width(fromItemLabel) + 16;
+        this.addRenderableWidget(StyledButton.of(fromItemLabel, btn -> openItemCriteriaPicker(),
+                PADDING + addW + 6, TOOLBAR_Y, fromItemW, TOOLBAR_H));
+
+        Component jsonLabel = Component.translatable(showJson
+                ? "editor.historystages.nbt.hide_json"
+                : "editor.historystages.nbt.show_json");
+        this.addRenderableWidget(StyledButton.of(jsonLabel, btn -> {
+            showJson = !showJson;
+            rebuild();
+        }, PADDING + addW + fromItemW + 12, TOOLBAR_Y, this.font.width(jsonLabel) + 16, TOOLBAR_H));
 
         this.addRenderableWidget(StyledButton.of(
                 Component.translatable("editor.historystages.back"),
                 btn -> this.minecraft.setScreen(parent),
                 PADDING, this.height - 30, 60, 20));
 
-        this.addRenderableWidget(StyledButton.of(
-                Component.literal("Save NBT"),
-                btn -> saveAndClose(),
-                this.width / 2 - 50, this.height - 30, 100, 20));
+        Component clearLabel = Component.translatable("editor.historystages.nbt.clear_all");
+        this.addRenderableWidget(StyledButton.of(clearLabel, btn -> confirmClearAll(),
+                PADDING + 66, this.height - 30, this.font.width(clearLabel) + 16, 20));
 
         this.addRenderableWidget(StyledButton.of(
-                Component.literal("Clear All"),
-                btn -> {
-                    for (NbtProperty p : properties) {
-                        p.enabled = false;
-                        p.enchantments.clear();
-                        p.stringListValues.clear();
-                        p.value = null;
-                        for (NbtProperty child : p.children) {
-                            child.enabled = false;
-                            child.value = null;
-                            child.stringListValues.clear();
-                        }
-                    }
-                },
-                this.width - PADDING - 80, this.height - 30, 80, 20));
+                Component.translatable("editor.historystages.nbt.save"),
+                btn -> saveNbt(),
+                this.width - PADDING - 100, this.height - 30, 100, 20));
 
+        refresh();
+    }
+
+    /** Re-runs {@link #init()} so the JSON button's label and width follow its new state. */
+    private void rebuild() {
+        this.rebuildWidgets();
+    }
+
+    // ==========================================
+    // Derived state
+    // ==========================================
+
+    /**
+     * Recomputes everything that hangs off {@link #criteria}. Called after every change rather
+     * than piecemeal, because warnings, card heights, the JSON preview and the scroll extent all
+     * depend on each other — updating them separately is how they drift apart.
+     */
+    private void refresh() {
+        revalidate();
+        relayout();
+        JsonObject written = NbtCriteriaCodec.write(criteria);
+        dirty = !written.equals(savedSnapshot);
+        refreshJson(written);
         updateMaxScroll();
     }
 
-    @Override
-    public void onClose() {
-        this.minecraft.setScreen(parent);
-    }
-
-    private void buildPropertyTree() {
-        properties.clear();
-
-        // Enchantments
-        properties.add(new NbtProperty("Enchantments", NbtType.ENCHANTMENT_LIST, "Enchantments on the item"));
-
-        // StoredEnchantments (enchanted books)
-        properties.add(new NbtProperty("StoredEnchantments", NbtType.ENCHANTMENT_LIST, "Stored enchantments (books)"));
-
-        // CustomModelData
-        properties.add(new NbtProperty("CustomModelData", NbtType.INTEGER, "Custom model data (resource packs)"));
-
-        // display compound
-        NbtProperty display = new NbtProperty("display", NbtType.COMPOUND, "Display properties");
-        display.children.add(new NbtProperty("Name", NbtType.STRING, "Custom item name (JSON text)"));
-        display.children.add(new NbtProperty("Lore", NbtType.STRING_LIST, "Custom lore lines (JSON text)"));
-        properties.add(display);
-
-        // Potion
-        properties.add(new NbtProperty("Potion", NbtType.STRING, "Potion type ID"));
-
-        // Unbreakable
-        properties.add(new NbtProperty("Unbreakable", NbtType.BOOLEAN, "Item cannot break"));
-
-        // RepairCost
-        properties.add(new NbtProperty("RepairCost", NbtType.INTEGER, "Anvil repair cost"));
-    }
-
-    private void loadCurrentValues() {
-        if (currentNbt == null)
+    private void revalidate() {
+        if (this.minecraft == null || this.minecraft.level == null) {
+            // No world means no registries to check against; a warning here would be a guess.
+            warnings = List.of();
             return;
-
-        // Collect known property keys
-        java.util.Set<String> knownKeys = new java.util.HashSet<>();
-        for (NbtProperty prop : properties) {
-            knownKeys.add(prop.key);
-            if (currentNbt.has(prop.key)) {
-                prop.enabled = true;
-                loadPropertyValue(prop, currentNbt);
-            }
-            if (prop.type == NbtType.COMPOUND && currentNbt.has(prop.key)) {
-                JsonObject compound = currentNbt.getAsJsonObject(prop.key);
-                for (NbtProperty child : prop.children) {
-                    if (compound.has(child.key)) {
-                        child.enabled = true;
-                        loadChildValue(child, compound);
-                    }
-                }
-            }
         }
+        warnings = new NbtCriteriaValidator(this::maxEnchantmentLevel, this::potionExists)
+                .validate(criteria);
+    }
 
-        // Load unknown keys as custom NBT properties
-        for (var entry : currentNbt.entrySet()) {
-            if (!knownKeys.contains(entry.getKey())) {
-                NbtProperty custom = new NbtProperty(entry.getKey(), NbtType.STRING, "Custom NBT key");
-                custom.enabled = true;
-                if (entry.getValue().isJsonPrimitive()) {
-                    custom.value = entry.getValue().getAsString();
-                } else {
-                    custom.value = entry.getValue().toString();
-                }
-                properties.add(custom);
-            }
+    private void relayout() {
+        cards.clear();
+        if (card == null) return;
+        int width = contentWidth();
+        for (int i = 0; i < criteria.size(); i++) {
+            cards.add(card.layout(criteria.get(i), width, warningsFor(i)));
         }
     }
 
-    private void loadPropertyValue(NbtProperty prop, JsonObject source) {
-        switch (prop.type) {
-            case INTEGER, STRING -> {
-                if (source.get(prop.key).isJsonPrimitive()) {
-                    prop.value = source.get(prop.key).getAsString();
-                }
-            }
-            case BOOLEAN -> prop.value = source.get(prop.key).getAsBoolean() ? "true" : "false";
-            case ENCHANTMENT_LIST -> {
-                if (source.get(prop.key).isJsonArray()) {
-                    JsonArray arr = source.getAsJsonArray(prop.key);
-                    prop.enchantments.clear();
-                    for (var el : arr) {
-                        if (el.isJsonObject()) {
-                            JsonObject ench = el.getAsJsonObject();
-                            String id = ench.has("id") ? ench.get("id").getAsString() : "";
-                            String lvl = ench.has("lvl") ? ench.get("lvl").getAsString() : "1";
-                            prop.enchantments.add(new EnchantmentEntry(id, lvl));
-                        }
-                    }
-                }
-            }
-            case STRING_LIST -> {
-                if (source.get(prop.key).isJsonArray()) {
-                    prop.stringListValues.clear();
-                    for (var el : source.getAsJsonArray(prop.key)) {
-                        prop.stringListValues.add(el.getAsString());
-                    }
-                }
-            }
-            default -> {
-            }
-        }
+    private List<NbtCriteriaValidator.Warning> warningsFor(int criterionIndex) {
+        return warnings.stream()
+                .filter(w -> w.criterionIndex() == criterionIndex)
+                .collect(Collectors.toList());
     }
 
-    private void loadChildValue(NbtProperty child, JsonObject compound) {
-        switch (child.type) {
-            case STRING -> {
-                if (compound.get(child.key).isJsonPrimitive()) {
-                    child.value = compound.get(child.key).getAsString();
-                }
-            }
-            case STRING_LIST -> {
-                if (compound.get(child.key).isJsonArray()) {
-                    child.stringListValues.clear();
-                    for (var el : compound.getAsJsonArray(child.key)) {
-                        child.stringListValues.add(el.getAsString());
-                    }
-                }
-            }
-            default -> loadPropertyValue(child, compound);
+    private void refreshJson(JsonObject nbt) {
+        if (!showJson) {
+            jsonLines = List.of();
+            jsonScroll = 0;
+            return;
         }
+        String text = nbt.isEmpty()
+                ? Component.translatable("editor.historystages.nbt.json.empty").getString()
+                : new GsonBuilder().setPrettyPrinting().create().toJson(nbt);
+        jsonLines = this.font.split(Component.literal(text), jsonPanelWidth() - 16);
+        jsonScroll = 0;
+    }
+
+    private int jsonPanelWidth() {
+        return Math.min(380, this.width - PADDING * 2);
+    }
+
+    private int jsonPanelHeight() {
+        return Math.min(this.height - 80, jsonLines.size() * 10 + 22);
+    }
+
+    private Integer maxEnchantmentLevel(String id) {
+        ResourceLocation rl = ResourceLocation.tryParse(id);
+        if (rl == null) return null;
+        Registry<Enchantment> registry = this.minecraft.level.registryAccess()
+                .registryOrThrow(Registries.ENCHANTMENT);
+        Enchantment enchantment = registry.get(rl);
+        return enchantment == null ? null : enchantment.getMaxLevel();
+    }
+
+    private boolean potionExists(String id) {
+        ResourceLocation rl = ResourceLocation.tryParse(id);
+        return rl != null && BuiltInRegistries.POTION.get(rl) != null;
+    }
+
+    /** The bar keeps its column even while nothing is drawn there, so text never reflows. */
+    private int scrollbarX() {
+        return this.width - PADDING - Scrollbar.WIDTH;
+    }
+
+    private int contentWidth() {
+        return this.width - PADDING * 2 - Scrollbar.WIDTH - 4;
+    }
+
+    private int listTop() {
+        return HEADER_HEIGHT;
+    }
+
+    private int listBottom() {
+        return this.height - FOOTER_HEIGHT;
     }
 
     private void updateMaxScroll() {
-        int contentHeight = calculateContentHeight();
-        int visibleHeight = this.height - HEADER_HEIGHT - 50;
-        maxScroll = Math.max(0, contentHeight - visibleHeight);
-        scrollOffset = Math.min(scrollOffset, maxScroll);
-    }
-
-    private int calculateContentHeight() {
-        int height = 0;
-        for (NbtProperty prop : properties) {
-            height += ROW_HEIGHT;
-            if (prop.type == NbtType.ENCHANTMENT_LIST && prop.enabled) {
-                height += prop.enchantments.size() * ROW_HEIGHT;
-                height += ROW_HEIGHT; // Add button
-            }
-            if (prop.type == NbtType.STRING_LIST && prop.enabled && prop.children.isEmpty()) {
-                height += prop.stringListValues.size() * ROW_HEIGHT;
-                height += ROW_HEIGHT;
-            }
-            if (prop.type == NbtType.COMPOUND) {
-                for (NbtProperty child : prop.children) {
-                    height += ROW_HEIGHT;
-                    if (child.type == NbtType.STRING_LIST && child.enabled) {
-                        height += child.stringListValues.size() * ROW_HEIGHT;
-                        height += ROW_HEIGHT;
-                    }
-                }
-            }
+        int total = 0;
+        for (CriterionCard.Built built : cards) {
+            total += built.height() + CARD_GAP;
         }
-        height += ROW_HEIGHT; // Custom NBT add row
-        return height;
+        maxScroll = Math.max(0, total - (listBottom() - listTop()));
+        scrollOffset = Math.max(0, Math.min(scrollOffset, maxScroll));
     }
 
     // ==========================================
@@ -275,537 +288,585 @@ public class NbtItemEditScreen extends Screen {
 
     @Override
     public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+        // No-op — we draw our own background in render() and want to avoid 1.21's menu blur shader
     }
 
     @Override
     public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
-        EditorBlurController.enter(this.minecraft);
-
         g.fill(0, 0, this.width, this.height, 0xE0101010);
 
-        // Header: item display
-        Item item = ForgeRegistries.ITEMS.getValue(ResourceLocation.tryParse(itemId));
-        if (item != null) {
-            ItemStack stack = new ItemStack(item);
-            g.renderItem(stack, PADDING, 10);
-            g.drawString(this.font, item.getDescription(), PADDING + 22, 14, 0xFFFFFF);
-        }
-        g.drawString(this.font, itemId, PADDING + 22, 28, 0x888888);
-        g.drawString(this.font, "NBT Properties", PADDING, HEADER_HEIGHT - 16, 0xFFCC00);
+        smoothScroll.approach((float) scrollOffset, Timing.SCROLL_HALF_LIFE_MS);
+        smoothScroll.settle((float) scrollOffset, 0.5f);
 
-        // Separator
-        g.fill(PADDING, HEADER_HEIGHT - 4, this.width - PADDING, HEADER_HEIGHT - 3, 0x40FFCC00);
+        renderHeader(g);
 
-        // Content area with scissor
-        int listTop = HEADER_HEIGHT;
-        int listBottom = this.height - 40;
+        int listTop = listTop();
+        int listBottom = listBottom();
         g.enableScissor(0, listTop, this.width, listBottom);
 
-        int y = listTop - (int) scrollOffset;
-        int contentLeft = PADDING;
-        int contentRight = this.width - PADDING;
-
-        for (NbtProperty prop : properties) {
-            if (y + ROW_HEIGHT > listTop - ROW_HEIGHT && y < listBottom + ROW_HEIGHT) {
-                renderProperty(g, prop, contentLeft, y, contentRight, mouseX, mouseY);
+        if (criteria.isEmpty()) {
+            renderEmptyState(g, listTop, listBottom);
+        } else {
+            int y = listTop - Math.round(smoothScroll.value());
+            for (int i = 0; i < cards.size(); i++) {
+                CriterionCard.Built built = cards.get(i);
+                if (y + built.height() > listTop && y < listBottom) {
+                    card.render(g, built, PADDING, y, mouseX, mouseY);
+                }
+                y += built.height() + CARD_GAP;
             }
-            y += ROW_HEIGHT;
-
-            if (prop.type == NbtType.ENCHANTMENT_LIST && prop.enabled) {
-                for (int ei = 0; ei < prop.enchantments.size(); ei++) {
-                    if (y + ROW_HEIGHT > listTop - ROW_HEIGHT && y < listBottom + ROW_HEIGHT) {
-                        renderEnchantmentEntry(g, prop, ei, contentLeft + INDENT, y, contentRight, mouseX, mouseY);
-                    }
-                    y += ROW_HEIGHT;
-                }
-                if (y + ROW_HEIGHT > listTop - ROW_HEIGHT && y < listBottom + ROW_HEIGHT) {
-                    renderAddButton(g, contentLeft + INDENT, y, "+ Add Enchantment", mouseX, mouseY);
-                }
-                y += ROW_HEIGHT;
-            }
-
-            if (prop.type == NbtType.COMPOUND) {
-                for (NbtProperty child : prop.children) {
-                    if (y + ROW_HEIGHT > listTop - ROW_HEIGHT && y < listBottom + ROW_HEIGHT) {
-                        renderProperty(g, child, contentLeft + INDENT, y, contentRight, mouseX, mouseY);
-                    }
-                    y += ROW_HEIGHT;
-
-                    if (child.type == NbtType.STRING_LIST && child.enabled) {
-                        for (int si = 0; si < child.stringListValues.size(); si++) {
-                            if (y + ROW_HEIGHT > listTop - ROW_HEIGHT && y < listBottom + ROW_HEIGHT) {
-                                renderStringListEntry(g, child, si, contentLeft + INDENT * 2, y, contentRight, mouseX,
-                                        mouseY);
-                            }
-                            y += ROW_HEIGHT;
-                        }
-                        if (y + ROW_HEIGHT > listTop - ROW_HEIGHT && y < listBottom + ROW_HEIGHT) {
-                            renderAddButton(g, contentLeft + INDENT * 2, y, "+ Add Entry", mouseX, mouseY);
-                        }
-                        y += ROW_HEIGHT;
-                    }
-                }
-            }
-
-            if (prop.type == NbtType.STRING_LIST && prop.enabled && prop.children.isEmpty()) {
-                for (int si = 0; si < prop.stringListValues.size(); si++) {
-                    if (y + ROW_HEIGHT > listTop - ROW_HEIGHT && y < listBottom + ROW_HEIGHT) {
-                        renderStringListEntry(g, prop, si, contentLeft + INDENT, y, contentRight, mouseX, mouseY);
-                    }
-                    y += ROW_HEIGHT;
-                }
-                if (y + ROW_HEIGHT > listTop - ROW_HEIGHT && y < listBottom + ROW_HEIGHT) {
-                    renderAddButton(g, contentLeft + INDENT, y, "+ Add Entry", mouseX, mouseY);
-                }
-                y += ROW_HEIGHT;
-            }
-        }
-
-        // Custom NBT add row
-        if (y + ROW_HEIGHT > listTop - ROW_HEIGHT && y < listBottom + ROW_HEIGHT) {
-            renderAddButton(g, contentLeft, y, "+ Custom NBT Key", mouseX, mouseY);
         }
 
         g.disableScissor();
 
-        // Scrollbar
-        if (maxScroll > 0) {
-            int barX = this.width - 8;
-            int barW = 6;
-            int barH = listBottom - listTop;
-            int thumbH = Math.max(20, (int) ((float) barH * barH / (barH + maxScroll)));
-            int thumbY = listTop + (int) ((float) scrollOffset / maxScroll * (barH - thumbH));
-            boolean barHovered = mouseX >= barX && mouseX < barX + barW && mouseY >= listTop && mouseY < listBottom;
-            g.fill(barX, listTop, barX + barW, listBottom, 0x20FFFFFF);
-            int thumbColor = draggingScrollbar ? 0xFFFFCC00 : (barHovered ? 0xC0FFCC00 : 0x80FFCC00);
-            g.fill(barX, thumbY, barX + barW, thumbY + thumbH, thumbColor);
-        }
+        scrollbar.render(g, scrollbarX(), listTop, listBottom,
+                smoothScroll.value(), maxScroll, mouseX, mouseY);
+
+        if (dirty) renderUnsavedMarker(g);
 
         super.render(g, mouseX, mouseY, partialTick);
 
-        // Validation warning overlay — on high Z-level so it covers all text
-        if (showingWarnings && !validationWarnings.isEmpty()) {
+        // Lifted onto its own Z layer and dimmed underneath: text is batched and flushed after the
+        // picker's panel fills, so the cards and button labels below would otherwise bleed through
+        // it. Same treatment every other picker in the editor gets.
+        // A picker can hide itself without telling anyone — Escape goes straight to its own key
+        // handler. Dropping the stale reference here rather than only in the input paths keeps the
+        // dim from outliving the panel it belongs to.
+        syncPickerState();
+        if (pickerOverlay != null) {
             g.pose().pushPose();
-            g.pose().translate(0, 0, 400);
-
-            g.fill(0, 0, this.width, this.height, 0xFF000000);
-            int dlgW = 300;
-            int dlgH = 50 + validationWarnings.size() * 12 + 30;
-            int dlgX = this.width / 2 - dlgW / 2;
-            int dlgY = this.height / 2 - dlgH / 2;
-            g.fill(dlgX, dlgY, dlgX + dlgW, dlgY + dlgH, 0xF0181818);
-            g.fill(dlgX, dlgY, dlgX + dlgW, dlgY + 2, 0xFFFF6600);
-
-            g.drawString(this.font, "Warnings (save anyway?)", dlgX + 10, dlgY + 8, 0xFFFF6600);
-            int wy = dlgY + 24;
-            for (String warning : validationWarnings) {
-                g.drawString(this.font, "- " + warning, dlgX + 10, wy, 0xFFAAAA);
-                wy += 12;
-            }
-
-            // Save Anyway button
-            int btnY = wy + 6;
-            int btnSaveX = this.width / 2 - 70;
-            int btnCancelX = this.width / 2 + 10;
-            boolean saveHover = mouseX >= btnSaveX && mouseX < btnSaveX + 60 && mouseY >= btnY && mouseY < btnY + 18;
-            boolean cancelHover = mouseX >= btnCancelX && mouseX < btnCancelX + 60 && mouseY >= btnY
-                    && mouseY < btnY + 18;
-            g.fill(btnSaveX, btnY, btnSaveX + 60, btnY + 18, saveHover ? 0x80FF6600 : 0x40FF6600);
-            g.drawString(this.font, "Save", btnSaveX + 18, btnY + 5, 0xFFFFFF);
-            g.fill(btnCancelX, btnY, btnCancelX + 60, btnY + 18, cancelHover ? 0x80FFFFFF : 0x40FFFFFF);
-            g.drawString(this.font, "Cancel", btnCancelX + 12, btnY + 5, 0xFFFFFF);
-
+            g.pose().translate(0, 0, 200);
+            g.fill(0, 0, this.width, this.height, 0x80000000);
+            pickerOverlay.render(g, this.font, mouseX, mouseY);
             g.pose().popPose();
+        } else if (showJson) {
+            renderJsonOverlay(g);
         }
     }
 
-    private void renderProperty(GuiGraphics g, NbtProperty prop, int x, int y, int right, int mx, int my) {
-        // Checkbox
-        int cbX = x;
-        int cbY = y + (ROW_HEIGHT - CHECKBOX_SIZE) / 2;
-        boolean cbHovered = mx >= cbX && mx < cbX + CHECKBOX_SIZE && my >= cbY && my < cbY + CHECKBOX_SIZE;
-
-        g.fill(cbX, cbY, cbX + CHECKBOX_SIZE, cbY + CHECKBOX_SIZE, cbHovered ? 0x60FFFFFF : 0x40FFFFFF);
-        g.fill(cbX + 1, cbY + 1, cbX + CHECKBOX_SIZE - 1, cbY + CHECKBOX_SIZE - 1, 0xE0101010);
-        if (prop.enabled) {
-            g.fill(cbX + 3, cbY + 3, cbX + CHECKBOX_SIZE - 3, cbY + CHECKBOX_SIZE - 3, 0xFFFFCC00);
-        }
-
-        // Label
-        int textX = cbX + CHECKBOX_SIZE + 6;
-        int textColor = prop.enabled ? 0xFFFFFF : 0x888888;
-        g.drawString(this.font, prop.key, textX, y + (ROW_HEIGHT - 8) / 2, textColor);
-
-        // Description
-        String desc = prop.description;
-        int descX = textX + this.font.width(prop.key) + 10;
-        if (descX + this.font.width(desc) < right) {
-            g.drawString(this.font, desc, descX, y + (ROW_HEIGHT - 8) / 2, 0x555555);
-        }
-
-        // Value field for simple types
-        if (prop.enabled && (prop.type == NbtType.INTEGER || prop.type == NbtType.STRING)) {
-            int fieldW = Math.min(150, right - descX - 10);
-            int fieldX = right - fieldW - 10;
-            int fieldY = y + 2;
-            boolean fieldHovered = mx >= fieldX && mx < fieldX + fieldW && my >= fieldY && my < fieldY + ROW_HEIGHT - 4;
-            int borderColor = fieldHovered ? 0xFF6A6A6A : 0xFF4A4A4A;
-            g.fill(fieldX - 1, fieldY - 1, fieldX + fieldW + 1, fieldY + ROW_HEIGHT - 3, borderColor);
-            g.fill(fieldX, fieldY, fieldX + fieldW, fieldY + ROW_HEIGHT - 4, 0xFF0D0D0D);
-            String displayVal = prop.value != null ? prop.value : "";
-            if (displayVal.isEmpty()) {
-                g.drawString(this.font, "click to edit...", fieldX + 4, fieldY + 4, 0x555555);
-            } else {
-                g.drawString(this.font, displayVal, fieldX + 4, fieldY + 4, 0xCCCCCC);
+    private void renderHeader(GuiGraphics g) {
+        if (tagMode) {
+            g.drawString(this.font, "#" + itemId, PADDING, 16, 0xFFFFFF);
+        } else {
+            Item item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(itemId));
+            if (item != null) {
+                g.renderItem(new ItemStack(item), PADDING, 12);
+                g.drawString(this.font, item.getDescription(), PADDING + 22, 14, 0xFFFFFF);
             }
+            g.drawString(this.font, itemId, PADDING + 22, 28, 0x888888);
         }
 
-        if (prop.enabled && prop.type == NbtType.BOOLEAN) {
-            boolean boolVal = "true".equals(prop.value);
-            String label = boolVal ? "true" : "false";
-            int labelX = right - this.font.width(label) - 16;
-            g.drawString(this.font, label, labelX, y + (ROW_HEIGHT - 8) / 2, boolVal ? 0x88FF88 : 0xFF8888);
+        String count = criteria.isEmpty()
+                ? Component.translatable("editor.historystages.nbt.count.none").getString()
+                : criteria.size() == 1
+                        ? Component.translatable("editor.historystages.nbt.count.one").getString()
+                        : Component.translatable("editor.historystages.nbt.count", criteria.size()).getString();
+        g.drawString(this.font, count, this.width - PADDING - this.font.width(count),
+                TOOLBAR_Y + (TOOLBAR_H - 8) / 2, 0x888888);
+
+        g.fill(PADDING, HEADER_HEIGHT - 6, this.width - PADDING, HEADER_HEIGHT - 5, 0x40FFCC00);
+    }
+
+    /**
+     * The JSON view as a panel over the screen rather than a strip wedged under the header. Wedging
+     * it in pushed the cards down and shrank the list every time it opened; a panel leaves the
+     * screen underneath exactly where it was.
+     */
+    private void renderJsonOverlay(GuiGraphics g) {
+        int panelW = jsonPanelWidth();
+        int panelH = jsonPanelHeight();
+        int panelX = (this.width - panelW) / 2;
+        int panelY = (this.height - panelH) / 2;
+
+        g.pose().pushPose();
+        g.pose().translate(0, 0, 200);
+        g.fill(0, 0, this.width, this.height, 0x80000000);
+
+        g.fill(panelX, panelY, panelX + panelW, panelY + panelH, 0xFF2F2F2F);
+        g.fill(panelX + 1, panelY + 1, panelX + panelW - 1, panelY + panelH - 1, 0xFF0D0D0D);
+
+        String title = Component.translatable("editor.historystages.nbt.show_json").getString();
+        g.drawString(this.font, title, panelX + 8, panelY + 6, 0xFFCC00);
+        g.fill(panelX + 8, panelY + 17, panelX + panelW - 8, panelY + 18, 0x40FFCC00);
+
+        int textTop = panelY + 22;
+        int textBottom = panelY + panelH - 4;
+        g.enableScissor(panelX + 1, textTop, panelX + panelW - 1, textBottom);
+        int y = textTop - jsonScroll;
+        for (FormattedCharSequence line : jsonLines) {
+            g.drawString(this.font, line, panelX + 8, y, 0xCCCCCC);
+            y += 10;
         }
+        g.disableScissor();
+
+        g.pose().popPose();
     }
 
-    private void renderEnchantmentEntry(GuiGraphics g, NbtProperty prop, int idx, int x, int y, int right, int mx,
-            int my) {
-        EnchantmentEntry ench = prop.enchantments.get(idx);
-
-        // Remove button [X]
-        int removeX = x;
-        int removeY = y + (ROW_HEIGHT - 10) / 2;
-        boolean removeHovered = mx >= removeX && mx < removeX + 10 && my >= removeY && my < removeY + 10;
-        g.fill(removeX, removeY, removeX + 10, removeY + 10, removeHovered ? 0x80FF4444 : 0x40FF4444);
-        g.drawString(this.font, "x", removeX + 2, removeY + 1, 0xFFFFFF);
-
-        // ID field
-        int idX = x + 16;
-        int fieldW = (right - idX - 80) / 2;
-        boolean idHovered = mx >= idX && mx < idX + fieldW && my >= y + 2 && my < y + ROW_HEIGHT - 4;
-        int idBorder = idHovered ? 0xFF6A6A6A : 0xFF4A4A4A;
-        g.fill(idX - 1, y + 1, idX + fieldW + 1, y + ROW_HEIGHT - 3, idBorder);
-        g.fill(idX, y + 2, idX + fieldW, y + ROW_HEIGHT - 4, 0xFF0D0D0D);
-        g.drawString(this.font, ench.id.isEmpty() ? "enchantment id..." : ench.id, idX + 4, y + 6,
-                ench.id.isEmpty() ? 0x555555 : 0xCCCCCC);
-
-        // Level label + field
-        int lvlLabelX = idX + fieldW + 8;
-        g.drawString(this.font, "lvl:", lvlLabelX, y + 6, 0x888888);
-        int lvlFieldX = lvlLabelX + this.font.width("lvl:") + 4;
-        int lvlFieldW = 50;
-        boolean lvlHovered = mx >= lvlFieldX && mx < lvlFieldX + lvlFieldW && my >= y + 2 && my < y + ROW_HEIGHT - 4;
-        int lvlBorder = lvlHovered ? 0xFF6A6A6A : 0xFF4A4A4A;
-        g.fill(lvlFieldX - 1, y + 1, lvlFieldX + lvlFieldW + 1, y + ROW_HEIGHT - 3, lvlBorder);
-        g.fill(lvlFieldX, y + 2, lvlFieldX + lvlFieldW, y + ROW_HEIGHT - 4, 0xFF0D0D0D);
-        g.drawString(this.font, ench.level.isEmpty() ? "1" : ench.level, lvlFieldX + 4, y + 6,
-                ench.level.isEmpty() ? 0x555555 : 0xCCCCCC);
+    private int maxJsonScroll() {
+        int viewport = jsonPanelHeight() - 26;
+        return Math.max(0, jsonLines.size() * 10 - viewport);
     }
 
-    private void renderStringListEntry(GuiGraphics g, NbtProperty prop, int idx, int x, int y, int right, int mx,
-            int my) {
-        String val = prop.stringListValues.get(idx);
-
-        // Remove button
-        int removeX = x;
-        int removeY = y + (ROW_HEIGHT - 10) / 2;
-        boolean removeHovered = mx >= removeX && mx < removeX + 10 && my >= removeY && my < removeY + 10;
-        g.fill(removeX, removeY, removeX + 10, removeY + 10, removeHovered ? 0x80FF4444 : 0x40FF4444);
-        g.drawString(this.font, "x", removeX + 2, removeY + 1, 0xFFFFFF);
-
-        // Value field
-        int fieldX = x + 16;
-        int fieldW = right - fieldX - 10;
-        boolean fieldHovered = mx >= fieldX && mx < fieldX + fieldW && my >= y + 2 && my < y + ROW_HEIGHT - 4;
-        int fieldBorder = fieldHovered ? 0xFF6A6A6A : 0xFF4A4A4A;
-        g.fill(fieldX - 1, y + 1, fieldX + fieldW + 1, y + ROW_HEIGHT - 3, fieldBorder);
-        g.fill(fieldX, y + 2, fieldX + fieldW, y + ROW_HEIGHT - 4, 0xFF0D0D0D);
-        g.drawString(this.font, val.isEmpty() ? "click to edit..." : val, fieldX + 4, y + 6,
-                val.isEmpty() ? 0x555555 : 0xCCCCCC);
+    private void closeJson() {
+        showJson = false;
+        rebuild();
     }
 
-    private void renderAddButton(GuiGraphics g, int x, int y, String label, int mx, int my) {
-        int w = this.font.width(label) + 12;
-        boolean hovered = mx >= x && mx < x + w && my >= y && my < y + ROW_HEIGHT;
-        g.fill(x, y + 2, x + w, y + ROW_HEIGHT - 2, hovered ? 0x40FFCC00 : 0x20FFFFFF);
-        g.drawString(this.font, label, x + 6, y + (ROW_HEIGHT - 8) / 2, hovered ? 0xFFCC00 : 0x888888);
+    private void renderEmptyState(GuiGraphics g, int listTop, int listBottom) {
+        String subject = tagMode
+                ? "#" + itemId
+                : itemDisplayName();
+        String title = Component.translatable("editor.historystages.nbt.empty.title", subject).getString();
+        String hint = Component.translatable("editor.historystages.nbt.empty.hint").getString();
+
+        int centerY = (listTop + listBottom) / 2;
+        g.drawString(this.font, title, (this.width - this.font.width(title)) / 2, centerY - 10, 0x7A7A7A);
+        g.drawString(this.font, hint, (this.width - this.font.width(hint)) / 2, centerY + 4, 0x5F5F5F);
+    }
+
+    /**
+     * Breathing gold dot and label left of the save button — the marker the rest of the editor
+     * uses, on the same {@link Timing#BREATHE_PERIOD_MS} cycle so the two never pulse out of step.
+     */
+    private void renderUnsavedMarker(GuiGraphics g) {
+        float phase = (System.currentTimeMillis() % (long) Timing.BREATHE_PERIOD_MS)
+                / Timing.BREATHE_PERIOD_MS;
+        int alpha = (int) ((0.35f + 0.45f * Ease.breathe(phase)) * 255);
+
+        String label = Component.translatable("editor.historystages.unsaved").getString();
+        int labelX = this.width - PADDING - 100 - 8 - this.font.width(label);
+        int y = this.height - 24;
+
+        g.fill(labelX - 10, y + 1, labelX - 4, y + 7, (alpha << 24) | 0xFFCC00);
+        g.drawString(this.font, label, labelX, y, 0xFFCC00);
+    }
+
+    private String itemDisplayName() {
+        Item item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(itemId));
+        return item != null ? item.getDescription().getString() : itemId;
     }
 
     // ==========================================
-    // Click handling
+    // Input
     // ==========================================
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        // Handle warning overlay clicks
-        if (showingWarnings && !validationWarnings.isEmpty()) {
-            int dlgH = 50 + validationWarnings.size() * 12 + 30;
-            int dlgY = this.height / 2 - dlgH / 2;
-            int btnY = dlgY + 24 + validationWarnings.size() * 12 + 6;
-            int btnSaveX = this.width / 2 - 70;
-            int btnCancelX = this.width / 2 + 10;
-            if (mouseX >= btnSaveX && mouseX < btnSaveX + 60 && mouseY >= btnY && mouseY < btnY + 18) {
-                // Save anyway
-                JsonObject nbt = buildNbtJson();
-                onSave.accept(nbt.size() > 0 ? nbt : null);
-                this.minecraft.setScreen(parent);
-                return true;
-            }
-            if (mouseX >= btnCancelX && mouseX < btnCancelX + 60 && mouseY >= btnY && mouseY < btnY + 18) {
-                showingWarnings = false;
-                return true;
-            }
-            return true; // consume all clicks while overlay is shown
-        }
-
-        if (super.mouseClicked(mouseX, mouseY, button))
+        syncPickerState();
+        if (pickerOverlay != null) {
+            // The picker owns the pointer while it is up: a click outside its panel dismisses it
+            // rather than falling through to a card underneath.
+            pickerOverlay.mouseClicked(mouseX, mouseY);
+            syncPickerState();
             return true;
-        if (button != 0)
-            return false;
-
-        int listTop = HEADER_HEIGHT;
-        int listBottom = this.height - 40;
-
-        // Scrollbar click — start dragging
-        if (maxScroll > 0) {
-            int barX = this.width - 8;
-            int barW = 6;
-            if (mouseX >= barX && mouseX < barX + barW && mouseY >= listTop && mouseY < listBottom) {
-                draggingScrollbar = true;
-                updateScrollFromMouse(mouseY, listTop, listBottom);
-                return true;
-            }
         }
 
-        if (mouseY < listTop || mouseY > listBottom)
-            return false;
+        // Same rule for the JSON panel: it is a look at the result, so any click dismisses it
+        // rather than reaching a card behind it.
+        if (showJson) {
+            closeJson();
+            return true;
+        }
 
-        int y = listTop - (int) scrollOffset;
-        int contentLeft = PADDING;
-        int contentRight = this.width - PADDING;
+        int listTop = listTop();
+        int listBottom = listBottom();
 
-        for (NbtProperty prop : properties) {
-            if (handlePropertyClick(prop, contentLeft, y, contentRight, mouseX, mouseY))
-                return true;
-            y += ROW_HEIGHT;
+        if (scrollbar.mouseClicked(mouseX, mouseY)) {
+            scrollOffset = scrollbar.scrollFor(mouseY);
+            return true;
+        }
 
-            if (prop.type == NbtType.ENCHANTMENT_LIST && prop.enabled) {
-                for (int ei = 0; ei < prop.enchantments.size(); ei++) {
-                    if (handleEnchantmentClick(prop, ei, contentLeft + INDENT, y, contentRight, mouseX, mouseY))
-                        return true;
-                    y += ROW_HEIGHT;
-                }
-                int addW = this.font.width("+ Add Enchantment") + 12;
-                if (mouseX >= contentLeft + INDENT && mouseX < contentLeft + INDENT + addW && mouseY >= y
-                        && mouseY < y + ROW_HEIGHT) {
-                    Minecraft.getInstance().getSoundManager()
-                            .play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
-                    prop.enchantments.add(new EnchantmentEntry("", "1"));
-                    updateMaxScroll();
+        if (mouseY >= listTop && mouseY < listBottom) {
+            int y = listTop - Math.round(smoothScroll.value());
+            for (int i = 0; i < cards.size(); i++) {
+                CriterionCard.Built built = cards.get(i);
+                CriterionCard.Hit hit = card.hitTest(built, PADDING, y, mouseX, mouseY);
+                if (hit != null) {
+                    playClick();
+                    handleHit(i, hit);
                     return true;
                 }
-                y += ROW_HEIGHT;
-            }
-
-            if (prop.type == NbtType.COMPOUND) {
-                for (NbtProperty child : prop.children) {
-                    if (handlePropertyClick(child, contentLeft + INDENT, y, contentRight, mouseX, mouseY))
-                        return true;
-                    y += ROW_HEIGHT;
-
-                    if (child.type == NbtType.STRING_LIST && child.enabled) {
-                        for (int si = 0; si < child.stringListValues.size(); si++) {
-                            if (handleStringListClick(child, si, contentLeft + INDENT * 2, y, contentRight, mouseX,
-                                    mouseY))
-                                return true;
-                            y += ROW_HEIGHT;
-                        }
-                        int addW = this.font.width("+ Add Entry") + 12;
-                        if (mouseX >= contentLeft + INDENT * 2 && mouseX < contentLeft + INDENT * 2 + addW
-                                && mouseY >= y && mouseY < y + ROW_HEIGHT) {
-                            Minecraft.getInstance().getSoundManager()
-                                    .play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
-                            child.stringListValues.add("");
-                            updateMaxScroll();
-                            return true;
-                        }
-                        y += ROW_HEIGHT;
-                    }
-                }
-            }
-
-            if (prop.type == NbtType.STRING_LIST && prop.enabled && prop.children.isEmpty()) {
-                for (int si = 0; si < prop.stringListValues.size(); si++) {
-                    if (handleStringListClick(prop, si, contentLeft + INDENT, y, contentRight, mouseX, mouseY))
-                        return true;
-                    y += ROW_HEIGHT;
-                }
-                int addW = this.font.width("+ Add Entry") + 12;
-                if (mouseX >= contentLeft + INDENT && mouseX < contentLeft + INDENT + addW && mouseY >= y
-                        && mouseY < y + ROW_HEIGHT) {
-                    Minecraft.getInstance().getSoundManager()
-                            .play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
-                    prop.stringListValues.add("");
-                    updateMaxScroll();
-                    return true;
-                }
-                y += ROW_HEIGHT;
+                y += built.height() + CARD_GAP;
             }
         }
 
-        // Custom NBT add
-        int addW = this.font.width("+ Custom NBT Key") + 12;
-        if (mouseX >= contentLeft && mouseX < contentLeft + addW && mouseY >= y && mouseY < y + ROW_HEIGHT) {
-            Minecraft.getInstance().getSoundManager()
-                    .play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
-            openCustomNbtDialog();
-            return true;
-        }
-
-        return false;
+        return super.mouseClicked(mouseX, mouseY, button);
     }
 
-    private boolean handlePropertyClick(NbtProperty prop, int x, int y, int right, double mx, double my) {
-        int cbX = x;
-        int cbY = y + (ROW_HEIGHT - CHECKBOX_SIZE) / 2;
-        if (mx >= cbX && mx < cbX + CHECKBOX_SIZE && my >= cbY && my < cbY + CHECKBOX_SIZE) {
-            Minecraft.getInstance().getSoundManager()
-                    .play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
-            prop.enabled = !prop.enabled;
-            if (!prop.enabled) {
-                prop.value = null;
-                prop.enchantments.clear();
-                prop.stringListValues.clear();
+    private void handleHit(int index, CriterionCard.Hit hit) {
+        NbtCriterion criterion = criteria.get(index);
+
+        if (hit instanceof CriterionCard.Hit.Remove) {
+            criteria.remove(index);
+            refresh();
+        } else if (hit instanceof CriterionCard.Hit.ConvertLegacy) {
+            convertLegacy(index, (CustomDataCriterion) criterion);
+        } else if (hit instanceof CriterionCard.Hit.EditKey) {
+            CustomDataCriterion custom = (CustomDataCriterion) criterion;
+            openInput(Component.translatable("editor.historystages.nbt.custom.key_label").getString(),
+                    custom.key, List.of(), value -> {
+                        custom.key = value;
+                        custom.legacySuspect = NbtPresets.isLegacyKey(value);
+                    });
+        } else if (hit instanceof CriterionCard.Hit.EditValue) {
+            editValue(criterion);
+        } else if (hit instanceof CriterionCard.Hit.EditLine(int line)) {
+            editLine(criterion, line);
+        } else if (hit instanceof CriterionCard.Hit.EditLevel(int line)) {
+            EnchantmentListCriterion ench = (EnchantmentListCriterion) criterion;
+            openInput(Component.translatable("editor.historystages.nbt.input.level_range").getString(),
+                    ench.lines.get(line).level, List.of(), value -> ench.lines.get(line).level = value);
+        } else if (hit instanceof CriterionCard.Hit.RemoveLine(int line)) {
+            removeLine(criterion, line);
+            refresh();
+        } else if (hit instanceof CriterionCard.Hit.AddLine) {
+            addLine(criterion);
+            refresh();
+        } else if (hit instanceof CriterionCard.Hit.FillFromItem) {
+            openItemValuePicker((ComponentCriterion) criterion);
+        }
+    }
+
+    private void editValue(NbtCriterion criterion) {
+        if (criterion instanceof ComponentCriterion comp) {
+            // A raw-JSON field for a value that is simply a name or a number is what made this
+            // screen unusable; only the shapes that really are free-form get the JSON dialog.
+            if (comp.valueKind == ValueKind.JSON) {
+                this.minecraft.setScreen(new ComponentValueEditScreen(this, comp.componentId(),
+                        comp.valueJson.isEmpty() ? "{}" : comp.valueJson,
+                        json -> comp.valueJson = json));
+            } else if (comp.valueKind != ValueKind.PRESENCE) {
+                String title = Component.translatable(comp.valueKind == ValueKind.NUMBER
+                        ? "editor.historystages.nbt.hint.number"
+                        : "editor.historystages.nbt.input.value").getString();
+                openInput(title, comp.displayValue(), List.of(), comp::setFromDisplay);
             }
-            updateMaxScroll();
-            return true;
+            return;
         }
-
-        if (prop.enabled && (prop.type == NbtType.INTEGER || prop.type == NbtType.STRING)) {
-            int fieldW = Math.min(150, right - x - 100);
-            int fieldX = right - fieldW - 10;
-            int fieldY = y + 2;
-            if (mx >= fieldX && mx < fieldX + fieldW && my >= fieldY && my < fieldY + ROW_HEIGHT - 4) {
-                openValueEditor(prop);
-                return true;
-            }
-        }
-
-        if (prop.enabled && prop.type == NbtType.BOOLEAN) {
-            String label = "true".equals(prop.value) ? "true" : "false";
-            int labelX = right - this.font.width(label) - 16;
-            if (mx >= labelX && mx < right && my >= y && my < y + ROW_HEIGHT) {
-                prop.value = "true".equals(prop.value) ? "false" : "true";
-                return true;
-            }
-        }
-
-        return false;
+        CustomDataCriterion custom = (CustomDataCriterion) criterion;
+        List<String> suggestions = "Potion".equals(custom.key) ? getPotionSuggestions() : List.of();
+        openInput(Component.translatable("editor.historystages.nbt.custom.value_label").getString(),
+                custom.valueText, suggestions, value -> custom.valueText = value);
     }
 
-    private boolean handleEnchantmentClick(NbtProperty prop, int idx, int x, int y, int right, double mx, double my) {
-        // Remove button
-        int removeX = x;
-        int removeY = y + (ROW_HEIGHT - 10) / 2;
-        if (mx >= removeX && mx < removeX + 10 && my >= removeY && my < removeY + 10) {
-            Minecraft.getInstance().getSoundManager()
-                    .play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
-            prop.enchantments.remove(idx);
-            updateMaxScroll();
-            return true;
+    private void editLine(NbtCriterion criterion, int line) {
+        if (criterion instanceof EnchantmentListCriterion ench) {
+            openEnchantmentPicker(ench, line);
+            return;
         }
-
-        EnchantmentEntry ench = prop.enchantments.get(idx);
-
-        // ID field click
-        int idX = x + 16;
-        int fieldW = (right - idX - 80) / 2;
-        if (mx >= idX && mx < idX + fieldW && my >= y + 2 && my < y + ROW_HEIGHT - 4) {
-            openSuggestingInput("Enchantment ID", ench.id, getEnchantmentSuggestions(), val -> ench.id = val);
-            return true;
-        }
-
-        // Level field click
-        int lvlLabelX = idX + fieldW + 8;
-        int lvlFieldX = lvlLabelX + this.font.width("lvl:") + 4;
-        int lvlFieldW = 50;
-        if (mx >= lvlFieldX && mx < lvlFieldX + lvlFieldW && my >= y + 2 && my < y + ROW_HEIGHT - 4) {
-            openSuggestingInput("Level (or range, e.g. 1-4)", ench.level, Collections.emptyList(),
-                    val -> ench.level = val);
-            return true;
-        }
-
-        return false;
+        TextListCriterion list = (TextListCriterion) criterion;
+        openInput(Component.translatable("editor.historystages.nbt.input.value").getString(),
+                list.lines.get(line), List.of(), value -> list.lines.set(line, value));
     }
 
-    private boolean handleStringListClick(NbtProperty prop, int idx, int x, int y, int right, double mx, double my) {
-        int removeX = x;
-        int removeY = y + (ROW_HEIGHT - 10) / 2;
-        if (mx >= removeX && mx < removeX + 10 && my >= removeY && my < removeY + 10) {
-            Minecraft.getInstance().getSoundManager()
-                    .play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
-            prop.stringListValues.remove(idx);
-            updateMaxScroll();
-            return true;
+    private void removeLine(NbtCriterion criterion, int line) {
+        if (criterion instanceof EnchantmentListCriterion ench) {
+            ench.lines.remove(line);
+        } else if (criterion instanceof TextListCriterion list) {
+            list.lines.remove(line);
         }
+    }
 
-        int fieldX = x + 16;
-        if (mx >= fieldX && mx < right - 10 && my >= y + 2 && my < y + ROW_HEIGHT - 4) {
-            openSuggestingInput("Value", prop.stringListValues.get(idx), Collections.emptyList(),
-                    val -> prop.stringListValues.set(idx, val));
-            return true;
+    private void addLine(NbtCriterion criterion) {
+        if (criterion instanceof EnchantmentListCriterion ench) {
+            ench.lines.add(new EnchantmentListCriterion.Line("", ""));
+        } else if (criterion instanceof TextListCriterion list) {
+            list.lines.add("");
         }
-
-        return false;
     }
 
-    // ==========================================
-    // Editor dialogs
-    // ==========================================
+    /**
+     * Swaps a legacy top-level key for the component it was almost certainly meant to be. Only
+     * ever on request — the same key may be a pack's own custom_data entry, and rewriting that
+     * silently would break it.
+     */
+    private void convertLegacy(int index, CustomDataCriterion custom) {
+        String componentId = NbtPresets.componentForLegacyKey(custom.key);
+        if (componentId == null) return;
 
-    private void openValueEditor(NbtProperty prop) {
-        String title = prop.key;
-        List<String> suggestions = Collections.emptyList();
-        if (prop.type == NbtType.INTEGER)
-            title += " (number or range, e.g. 42 or 1-4)";
-        if ("Potion".equals(prop.key))
-            suggestions = getPotionSuggestions();
-        openSuggestingInput(title, prop.value != null ? prop.value : "", suggestions, val -> prop.value = val);
+        NbtPresets.Preset preset = NbtPresets.byComponentId(componentId);
+        String presetName = preset == null ? null : preset.nameKey();
+        criteria.set(index, preset != null && preset.valueKind() == ValueKind.TEXT_LIST
+                ? new TextListCriterion(componentId, presetName)
+                : new ComponentCriterion(componentId, preset == null ? "" : preset.defaultValue(), presetName));
+        refresh();
     }
 
-    private void openSuggestingInput(String title, String currentValue, List<String> suggestions,
-            Consumer<String> onDone) {
-        this.minecraft.setScreen(new SuggestingInputScreen(this, title, currentValue, suggestions, onDone));
-    }
-
-    private void openCustomNbtDialog() {
-        this.minecraft.setScreen(new CustomNbtInputScreen(this, (key, value) -> {
-            NbtProperty custom = new NbtProperty(key, NbtType.STRING, "Custom NBT key");
-            custom.enabled = true;
-            custom.value = value;
-            properties.add(properties.size(), custom);
-            updateMaxScroll();
+    private void openInput(String title, String current, List<String> suggestions, Consumer<String> onDone) {
+        this.minecraft.setScreen(new SuggestingInputScreen(this, title, current, suggestions, value -> {
+            onDone.accept(value);
+            refresh();
         }));
+    }
+
+    private void playClick() {
+        if (this.minecraft != null) {
+            this.minecraft.getSoundManager().play(
+                    SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.value(), 1.0F));
+        }
+    }
+
+    // ==========================================
+    // Adding criteria
+    // ==========================================
+
+    private void openCriterionPicker() {
+        SearchableNbtCriterionList picker = new SearchableNbtCriterionList(
+                selection -> {
+                    closePicker();
+                    addFromSelection(selection);
+                },
+                () -> criteria.stream().map(NbtCriterion::identity).collect(Collectors.toList()));
+        pickerOverlay = picker;
+        picker.show(this.width / 2, this.height / 2, this.width);
+    }
+
+    private void addFromSelection(String selection) {
+        if (selection.startsWith(SearchableNbtCriterionList.PRESET)) {
+            String id = selection.substring(SearchableNbtCriterionList.PRESET.length());
+            NbtPresets.Preset preset = NbtPresets.byComponentId(id);
+            if (preset == null) return;
+            if (preset.valueKind() == ValueKind.TEXT_LIST) {
+                TextListCriterion list = new TextListCriterion(id, preset.nameKey());
+                list.lines.add("");
+                criteria.add(list);
+            } else {
+                criteria.add(new ComponentCriterion(id, preset.defaultValue(), preset.nameKey()));
+            }
+
+        } else if (selection.startsWith(SearchableNbtCriterionList.COMPONENT)) {
+            String id = selection.substring(SearchableNbtCriterionList.COMPONENT.length());
+            NbtPresets.Preset preset = NbtPresets.byComponentId(id);
+            criteria.add(new ComponentCriterion(id, preset == null ? "" : preset.defaultValue(),
+                    preset == null ? null : preset.nameKey()));
+
+        } else if (selection.startsWith(SearchableNbtCriterionList.ENCHANTMENTS)) {
+            String key = selection.substring(SearchableNbtCriterionList.ENCHANTMENTS.length());
+            EnchantmentListCriterion ench = new EnchantmentListCriterion(key);
+            ench.lines.add(new EnchantmentListCriterion.Line("", ""));
+            criteria.add(ench);
+
+        } else if (selection.startsWith(SearchableNbtCriterionList.CUSTOM_DATA)) {
+            this.minecraft.setScreen(new CustomNbtInputScreen(this, (key, value) -> {
+                criteria.add(new CustomDataCriterion(key, value, NbtPresets.isLegacyKey(key)));
+                refresh();
+            }));
+            return;
+        }
+
+        refresh();
+    }
+
+    /**
+     * The other way round: pick an item, then tick what it actually has.
+     *
+     * <p>Adding a criterion by hand means naming a component and writing its value in the encoded
+     * form the matcher compares against — for a modded item there is no way to know either. Reading
+     * both off the item removes the question instead of explaining it.
+     */
+    private void openItemCriteriaPicker() {
+        SearchableItemList picker = new SearchableItemList(id -> {
+            closePicker();
+            EditorToastHandler.show(EditorToast.Level.INFO,
+                    Component.translatable("editor.historystages.nbt.from_item"),
+                    Component.translatable("editor.historystages.nbt.fill_from_item.needs_stack"));
+        });
+        picker.setValueMode();
+        picker.setOnSelectWithNbt((id, nbt) -> {
+            closePicker();
+            offerItemCriteria(id, nbt);
+        });
+        pickerOverlay = picker;
+        picker.show(this.width / 2, this.height / 2, this.width);
+    }
+
+    private void offerItemCriteria(String itemName, JsonObject nbt) {
+        List<NbtCriterion> candidates = NbtCriteriaCodec.load(nbt);
+        if (candidates.isEmpty()) {
+            EditorToastHandler.show(EditorToast.Level.INFO,
+                    Component.translatable("editor.historystages.nbt.from_item"),
+                    Component.translatable("editor.historystages.nbt.from_item.nothing", itemName));
+            return;
+        }
+
+        // Keyed by identity because that is what the multi-select callback hands back, one call
+        // per ticked row.
+        java.util.Map<String, NbtCriterion> byIdentity = new java.util.LinkedHashMap<>();
+        for (NbtCriterion candidate : candidates) {
+            byIdentity.putIfAbsent(candidate.identity(), candidate);
+        }
+
+        SearchableItemPropertyList list = new SearchableItemPropertyList(
+                List.copyOf(byIdentity.values()),
+                identity -> {
+                    NbtCriterion picked = byIdentity.get(identity);
+                    if (picked != null && criteria.stream().noneMatch(c -> c.identity().equals(identity))) {
+                        criteria.add(picked);
+                    }
+                    refresh();
+                },
+                () -> criteria.stream().map(NbtCriterion::identity).collect(Collectors.toList()));
+
+        pickerOverlay = list;
+        list.show(this.width / 2, this.height / 2, this.width);
+    }
+
+    /**
+     * Reads one component's value off an item the author picks, and drops the encoded JSON into the
+     * field.
+     *
+     * <p>This is the answer to "what am I supposed to write in there" for every component the
+     * preset table does not cover, mod-defined ones included: the value comes out of the same
+     * encoder {@code NbtMatcher} runs, so whatever lands in the field is by definition a value that
+     * matches the item it was taken from.
+     */
+    private void openItemValuePicker(ComponentCriterion comp) {
+        DataComponentType<?> type = BuiltInRegistries.DATA_COMPONENT_TYPE
+                .get(ResourceLocation.parse(comp.componentId()));
+
+        SearchableItemList picker = new SearchableItemList(id -> {
+            // Reached only from the registry tab, where there is no stack behind the entry and so
+            // nothing to read a value off.
+            closePicker();
+            EditorToastHandler.show(EditorToast.Level.INFO,
+                    Component.translatable("editor.historystages.nbt.fill_from_item"),
+                    Component.translatable("editor.historystages.nbt.fill_from_item.needs_stack"));
+        });
+        picker.setValueMode();
+        // Only offer stacks that carry the component at all — "which item has this?" is half the
+        // question, and the inventory can answer it instead of the author guessing.
+        if (type != null) picker.setStackFilter(stack -> stack.get(type) != null);
+        picker.setOnSelectWithNbt((id, nbt) -> {
+            closePicker();
+            JsonObject components = nbt != null && nbt.has("components")
+                    ? nbt.getAsJsonObject("components")
+                    : null;
+            if (components == null || !components.has(comp.componentId())) {
+                EditorToastHandler.show(EditorToast.Level.INFO,
+                        Component.translatable("editor.historystages.nbt.fill_from_item"),
+                        Component.translatable("editor.historystages.nbt.fill_from_item.missing",
+                                id, comp.componentId()));
+                return;
+            }
+            comp.valueJson = components.get(comp.componentId()).toString();
+            refresh();
+        });
+        pickerOverlay = picker;
+        picker.show(this.width / 2, this.height / 2, this.width);
+    }
+
+    /**
+     * Picks the enchantment from the registry instead of having it typed.
+     *
+     * <p>The ids the other lines already use are greyed out — naming the same enchantment twice in
+     * one criterion says nothing the first line did not.
+     */
+    private void openEnchantmentPicker(EnchantmentListCriterion ench, int line) {
+        SearchableEnchantmentList picker = new SearchableEnchantmentList(
+                id -> {
+                    closePicker();
+                    ench.lines.get(line).id = id;
+                    refresh();
+                },
+                () -> {
+                    List<String> taken = new ArrayList<>();
+                    for (int i = 0; i < ench.lines.size(); i++) {
+                        if (i != line && !ench.lines.get(i).id.isBlank()) {
+                            taken.add(ench.lines.get(i).id);
+                        }
+                    }
+                    return taken;
+                });
+        pickerOverlay = picker;
+        picker.show(this.width / 2, this.height / 2, this.width);
+    }
+
+    private void syncPickerState() {
+        if (pickerOverlay != null && !pickerOverlay.isVisible()) pickerOverlay = null;
+    }
+
+    private void closePicker() {
+        if (pickerOverlay != null) {
+            pickerOverlay.hide();
+            pickerOverlay = null;
+        }
+    }
+
+    // ==========================================
+    // Scrolling and drag
+    // ==========================================
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        syncPickerState();
+        if (pickerOverlay != null) return pickerOverlay.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+        if (showJson) {
+            jsonScroll = (int) Math.max(0, Math.min(maxJsonScroll(), jsonScroll - scrollY * 12));
+            return true;
+        }
+        scrollOffset = Math.max(0, Math.min(maxScroll, scrollOffset - scrollY * 12));
+        return true;
+    }
+
+    @Override
+    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+        syncPickerState();
+        if (pickerOverlay != null && pickerOverlay.mouseDragged(mouseX, mouseY)) return true;
+        if (scrollbar.isDragging()) {
+            scrollOffset = scrollbar.scrollFor(mouseY);
+            return true;
+        }
+        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+    }
+
+    @Override
+    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        syncPickerState();
+        if (pickerOverlay != null && pickerOverlay.mouseReleased()) return true;
+        if (scrollbar.isDragging()) {
+            scrollbar.mouseReleased();
+            return true;
+        }
+        return super.mouseReleased(mouseX, mouseY, button);
+    }
+
+    @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        syncPickerState();
+        if (pickerOverlay != null && pickerOverlay.keyPressed(keyCode)) {
+            syncPickerState();
+            return true;
+        }
+        if (showJson && keyCode == GLFW.GLFW_KEY_ESCAPE) {
+            closeJson();
+            return true;
+        }
+        return super.keyPressed(keyCode, scanCode, modifiers);
+    }
+
+    /**
+     * Escape goes back to the screen that opened this one, not out of the editor altogether.
+     * {@code Screen.onClose} defaults to setting the screen to null, which drops the author into
+     * the world and loses the way back.
+     */
+    @Override
+    public void onClose() {
+        this.minecraft.setScreen(parent);
+    }
+
+    @Override
+    public boolean charTyped(char c, int modifiers) {
+        syncPickerState();
+        if (pickerOverlay != null && pickerOverlay.charTyped(c)) return true;
+        return super.charTyped(c, modifiers);
     }
 
     // ==========================================
     // Suggestions
     // ==========================================
 
-    private static List<String> getEnchantmentSuggestions() {
-        if (enchantmentIds == null) {
-            enchantmentIds = new ArrayList<>();
-            var registry = getEnchantmentRegistry();
-            if (registry != null) {
-                registry.listElementIds().forEach(key -> enchantmentIds.add(key.location().toString()));
-            }
-            Collections.sort(enchantmentIds);
-        }
-        return enchantmentIds;
-    }
-
     private static List<String> getPotionSuggestions() {
-        if (potionIds == null) {
+        if (potionIds == null || potionIds.isEmpty()) {
             potionIds = new ArrayList<>();
             for (ResourceLocation key : BuiltInRegistries.POTION.keySet()) {
                 potionIds.add(key.toString());
@@ -816,301 +877,98 @@ public class NbtItemEditScreen extends Screen {
     }
 
     // ==========================================
-    // Save
+    // Save and clear
     // ==========================================
 
-    private void saveAndClose() {
-        validationWarnings = validateNbt();
-        if (!validationWarnings.isEmpty() && !showingWarnings) {
-            showingWarnings = true;
-            return;
-        }
-        JsonObject nbt = buildNbtJson();
-        onSave.accept(nbt.size() > 0 ? nbt : null);
-        this.minecraft.setScreen(parent);
+    /**
+     * Hands the criteria up and stays put. Warnings live on the cards and do not block this —
+     * they are guesses about registries this client happens to know, not errors.
+     */
+    private void saveNbt() {
+        JsonObject nbt = NbtCriteriaCodec.write(criteria);
+        onSave.accept(nbt.isEmpty() ? null : nbt);
+        savedSnapshot = nbt;
+        dirty = false;
     }
 
-    private List<String> validateNbt() {
-        List<String> warnings = new ArrayList<>();
-        for (NbtProperty prop : properties) {
-            if (!prop.enabled)
-                continue;
-            if (prop.type == NbtType.ENCHANTMENT_LIST) {
-                for (EnchantmentEntry ench : prop.enchantments) {
-                    if (ench.id.isEmpty())
-                        continue;
-                    ResourceLocation enchRL = ResourceLocation.tryParse(ench.id);
-                    var registry = getEnchantmentRegistry();
-                    Enchantment enchObj = enchRL != null && registry != null
-                            ? registry.get(ResourceKey.create(Registries.ENCHANTMENT, enchRL))
-                                    .map(net.minecraft.core.Holder.Reference::value)
-                                    .orElse(null)
-                            : null;
-                    if (enchObj == null) {
-                        warnings.add("Unknown enchantment: " + ench.id);
-                    } else {
-                        int maxLevel = enchObj.getMaxLevel();
-                        if (ench.level.matches("\\d+")) {
-                            int lvl = Integer.parseInt(ench.level);
-                            if (lvl > maxLevel) {
-                                warnings.add(ench.id + " max level is " + maxLevel + ", got " + lvl);
-                            }
-                        } else if (ench.level.matches("\\d+-\\d+")) {
-                            String[] parts = ench.level.split("-");
-                            int max = Integer.parseInt(parts[1]);
-                            if (max > maxLevel) {
-                                warnings.add(ench.id + " max level is " + maxLevel + ", range goes to " + max);
-                            }
-                        }
-                    }
-                }
-            }
-            if ("Potion".equals(prop.key) && prop.value != null && !prop.value.isEmpty()) {
-                ResourceLocation potionRL = ResourceLocation.tryParse(prop.value);
-                Potion potion = potionRL != null ? BuiltInRegistries.POTION.get(potionRL) : null;
-                if (potion == null) {
-                    warnings.add("Unknown potion: " + prop.value);
-                }
-            }
-        }
-        return warnings;
-    }
-
-    private JsonObject buildNbtJson() {
-        JsonObject nbt = new JsonObject();
-
-        for (NbtProperty prop : properties) {
-            if (!prop.enabled)
-                continue;
-
-            switch (prop.type) {
-                case INTEGER -> {
-                    if (prop.value != null && !prop.value.isEmpty()) {
-                        if (prop.value.matches("\\d+-\\d+")) {
-                            nbt.addProperty(prop.key, prop.value);
-                        } else {
-                            try {
-                                nbt.addProperty(prop.key, Integer.parseInt(prop.value));
-                            } catch (NumberFormatException ignored) {
-                            }
-                        }
-                    }
-                }
-                case STRING -> {
-                    if (prop.value != null && !prop.value.isEmpty()) {
-                        nbt.addProperty(prop.key, prop.value);
-                    }
-                }
-                case BOOLEAN -> nbt.addProperty(prop.key, "true".equals(prop.value));
-                case ENCHANTMENT_LIST -> {
-                    JsonArray arr = new JsonArray();
-                    for (EnchantmentEntry ench : prop.enchantments) {
-                        if (!ench.id.isEmpty()) {
-                            JsonObject obj = new JsonObject();
-                            obj.addProperty("id", ench.id);
-                            if (ench.level.matches("\\d+-\\d+")) {
-                                obj.addProperty("lvl", ench.level);
-                            } else {
-                                try {
-                                    obj.addProperty("lvl", Integer.parseInt(ench.level));
-                                } catch (NumberFormatException e) {
-                                    obj.addProperty("lvl", 1);
-                                }
-                            }
-                            arr.add(obj);
-                        }
-                    }
-                    if (arr.size() > 0)
-                        nbt.add(prop.key, arr);
-                }
-                case STRING_LIST -> {
-                    JsonArray arr = new JsonArray();
-                    for (String val : prop.stringListValues) {
-                        if (!val.isEmpty())
-                            arr.add(val);
-                    }
-                    if (arr.size() > 0)
-                        nbt.add(prop.key, arr);
-                }
-                case COMPOUND -> {
-                    JsonObject compound = new JsonObject();
-                    for (NbtProperty child : prop.children) {
-                        if (!child.enabled)
-                            continue;
-                        switch (child.type) {
-                            case STRING -> {
-                                if (child.value != null && !child.value.isEmpty()) {
-                                    compound.addProperty(child.key, child.value);
-                                }
-                            }
-                            case STRING_LIST -> {
-                                JsonArray arr = new JsonArray();
-                                for (String val : child.stringListValues) {
-                                    if (!val.isEmpty())
-                                        arr.add(val);
-                                }
-                                if (arr.size() > 0)
-                                    compound.add(child.key, arr);
-                            }
-                            default -> {
-                            }
-                        }
-                    }
-                    if (compound.size() > 0)
-                        nbt.add(prop.key, compound);
-                }
-            }
-        }
-        return nbt;
-    }
-
-    @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
-        return mouseScrolled(mouseX, mouseY, verticalAmount);
-    }
-
-    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
-        scrollOffset = Math.max(0, Math.min(maxScroll, scrollOffset - delta * 10));
-        return true;
-    }
-
-    @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        if (draggingScrollbar) {
-            draggingScrollbar = false;
-            return true;
-        }
-        return super.mouseReleased(mouseX, mouseY, button);
-    }
-
-    @Override
-    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
-        if (draggingScrollbar && maxScroll > 0) {
-            updateScrollFromMouse(mouseY, HEADER_HEIGHT, this.height - 40);
-            return true;
-        }
-        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
-    }
-
-    private void updateScrollFromMouse(double mouseY, int listTop, int listBottom) {
-        int barH = listBottom - listTop;
-        int thumbH = Math.max(20, (int) ((float) barH * barH / (barH + maxScroll)));
-        float usableH = barH - thumbH;
-        float relativeY = (float) (mouseY - listTop - thumbH / 2.0) / usableH;
-        relativeY = Math.max(0, Math.min(1, relativeY));
-        scrollOffset = relativeY * maxScroll;
-    }
-
-    @Override
-    public boolean isPauseScreen() {
-        return true;
-    }
-
-    private static net.minecraft.core.HolderLookup.RegistryLookup<Enchantment> getEnchantmentRegistry() {
-        if (Minecraft.getInstance().level == null) {
-            return null;
-        }
-        return Minecraft.getInstance().level.registryAccess().lookupOrThrow(Registries.ENCHANTMENT);
-    }
-
-    // ==========================================
-    // Data types
-    // ==========================================
-
-    enum NbtType {
-        INTEGER, STRING, BOOLEAN, ENCHANTMENT_LIST, STRING_LIST, COMPOUND
-    }
-
-    static class NbtProperty {
-        String key;
-        NbtType type;
-        String description;
-        boolean enabled = false;
-        String value = null;
-        List<EnchantmentEntry> enchantments = new ArrayList<>();
-        List<String> stringListValues = new ArrayList<>();
-        List<NbtProperty> children = new ArrayList<>();
-
-        NbtProperty(String key, NbtType type, String description) {
-            this.key = key;
-            this.type = type;
-            this.description = description;
-        }
-    }
-
-    static class EnchantmentEntry {
-        String id;
-        String level;
-
-        EnchantmentEntry(String id, String level) {
-            this.id = id;
-            this.level = level;
-        }
+    private void confirmClearAll() {
+        if (criteria.isEmpty()) return;
+        this.minecraft.setScreen(new ConfirmDialog(this,
+                Component.translatable("editor.historystages.nbt.clear_all.confirm.title"),
+                Component.translatable("editor.historystages.nbt.clear_all.confirm.message", criteria.size()),
+                () -> {
+                    criteria.clear();
+                    refresh();
+                }));
     }
 
     // ==========================================
     // Input screen with autocomplete suggestions
     // ==========================================
 
-    static class SuggestingInputScreen extends Screen {
-        private final Screen parent;
-        private final String title;
-        private final String currentValue;
-        private final List<String> allSuggestions;
-        private final Consumer<String> onDone;
-        private EditBox inputField;
-        private List<String> filteredSuggestions = new ArrayList<>();
-        private int suggestionScroll = 0;
+    static class SuggestingInputScreen extends AbstractInputScreen {
         private static final int MAX_VISIBLE_SUGGESTIONS = 6;
         private static final int SUGGESTION_HEIGHT = 14;
 
-        SuggestingInputScreen(Screen parent, String title, String currentValue, List<String> suggestions,
-                Consumer<String> onDone) {
-            super(Component.literal(title));
+        private final Screen parent;
+        private final String currentValue;
+        private final List<String> allSuggestions;
+        private final Consumer<String> onDone;
+        private List<String> filteredSuggestions = new ArrayList<>();
+        private int suggestionScroll = 0;
+        /** Hover progress of the suggestion rows, keyed by visible slot. */
+        private final java.util.Map<Integer, Anim> suggestionHover = new java.util.HashMap<>();
+        private boolean draggingScrollbar = false;
+        /** Last query the list was filtered against, so a re-filter can tell a change from a repoll. */
+        private String lastFilterInput = null;
+
+        /** List bounds, recomputed every frame from the area the base class hands us. */
+        private int listX, listY, listW;
+
+        /** Distance of the scrollbar's left edge from the list's right edge. */
+        private static final int SCROLLBAR_INSET_X = 3;
+
+        SuggestingInputScreen(Screen parent, String title, String currentValue, List<String> suggestions, Consumer<String> onDone) {
+            super(parent, Component.literal(title));
             this.parent = parent;
-            this.title = title;
             this.currentValue = currentValue;
             this.allSuggestions = suggestions;
             this.onDone = onDone;
-        }
-
-        @Override
-        protected void init() {
-            int centerX = this.width / 2;
-            int centerY = this.height / 2 - 30;
-
-            inputField = new EditBox(this.font, centerX - 120 + 4, centerY + 6, 240 - 4, 20, Component.literal(title));
-            inputField.setMaxLength(512);
-            inputField.setValue(currentValue);
-            inputField.setBordered(false);
-            inputField.setTextColor(0xFFFFFF);
-            inputField.moveCursorToEnd(false);
-            inputField.setResponder(val -> {
-                updateSuggestions(val);
-                suggestionScroll = 0;
-            });
-            this.addRenderableWidget(inputField);
-            this.setFocused(inputField);
-
-            int btnY = centerY + 26
-                    + Math.min(MAX_VISIBLE_SUGGESTIONS, Math.max(0, allSuggestions.size())) * SUGGESTION_HEIGHT
-                    + 6;
-            this.addRenderableWidget(StyledButton.of(
-                    Component.literal("OK"),
-                    btn -> confirm(),
-                    centerX - 105, btnY, 100, 20));
-            this.addRenderableWidget(StyledButton.of(
-                    Component.literal("Cancel"),
-                    btn -> this.minecraft.setScreen(parent),
-                    centerX + 5, btnY, 100, 20));
-
             updateSuggestions(currentValue);
         }
 
+        @Override
+        protected Component confirmLabel() {
+            return Component.translatable("editor.historystages.nbt.ok");
+        }
+
+        @Override
+        protected List<InputField> fields() {
+            return List.of(InputField.text("value").maxLength(512).initial(currentValue));
+        }
+
+        /**
+         * Reserves the maximum list height rather than the current one: the box geometry is
+         * computed once in init(), so a height that tracked the hit count would make the
+         * dialog jump on every keystroke.
+         */
+        @Override
+        protected int extraContentHeight() {
+            return allSuggestions.isEmpty() ? 0 : MAX_VISIBLE_SUGGESTIONS * SUGGESTION_HEIGHT;
+        }
+
+        /**
+         * Re-filters the list, and rewinds the scroll whenever the query actually changed —
+         * the base class owns the EditBox responder, so the query is polled each frame rather
+         * than pushed, and only a real change should move the user's scroll position.
+         */
         private void updateSuggestions(String input) {
+            boolean queryChanged = !input.equals(lastFilterInput);
+            lastFilterInput = input;
+            if (queryChanged) suggestionScroll = 0;
+
             if (allSuggestions.isEmpty() || input.isEmpty()) {
-                filteredSuggestions = allSuggestions.isEmpty() ? Collections.emptyList()
-                        : new ArrayList<>(allSuggestions);
+                filteredSuggestions = allSuggestions.isEmpty() ? Collections.emptyList() : new ArrayList<>(allSuggestions);
                 return;
             }
             String lower = input.toLowerCase();
@@ -1120,265 +978,326 @@ public class NbtItemEditScreen extends Screen {
                     .collect(Collectors.toList());
         }
 
-        @Override
-        public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+        private int maxScroll() {
+            return Math.max(0, filteredSuggestions.size() - MAX_VISIBLE_SUGGESTIONS);
+        }
+
+        /** The 5px-wide strip the scrollbar reacts in — wider than the 2px it draws, to be hittable. */
+        private boolean inScrollbar(double mx, double my) {
+            if (maxScroll() <= 0) return false;
+            int barX = listX + listW - SCROLLBAR_INSET_X;
+            int listH = visibleCount() * SUGGESTION_HEIGHT;
+            return mx >= barX - 2 && mx <= barX + 4 && my >= listY && my < listY + listH;
+        }
+
+        /** Maps a y inside the bar onto a scroll row, centring the thumb on the cursor. */
+        private void scrollFromMouse(double my) {
+            int listH = visibleCount() * SUGGESTION_HEIGHT;
+            int thumbH = Math.max(4, listH * MAX_VISIBLE_SUGGESTIONS / Math.max(1, filteredSuggestions.size()));
+            float usable = listH - thumbH;
+            if (usable <= 0) return;
+            float ratio = (float) ((my - listY - thumbH / 2.0) / usable);
+            ratio = Math.max(0.0f, Math.min(1.0f, ratio));
+            suggestionScroll = Math.round(ratio * maxScroll());
+        }
+
+        private int visibleCount() {
+            return Math.min(MAX_VISIBLE_SUGGESTIONS, filteredSuggestions.size());
         }
 
         @Override
-        public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
-            g.fill(0, 0, this.width, this.height, 0xC0000000);
-            int centerX = this.width / 2;
-            int centerY = this.height / 2 - 30;
+        protected void renderExtraContent(GuiGraphics g, int x, int y, int w, int mouseX, int mouseY) {
+            // The base class owns the EditBox responder (it drives validation), so the filter is
+            // refreshed from the live value each frame instead of on a change callback.
+            updateSuggestions(box(0).getValue());
+            suggestionScroll = Math.min(suggestionScroll, maxScroll());
 
-            int visibleSuggestions = Math.min(MAX_VISIBLE_SUGGESTIONS, filteredSuggestions.size());
-            int suggestionsH = visibleSuggestions * SUGGESTION_HEIGHT;
+            listX = x;
+            listY = y;
+            listW = w;
 
-            // Dialog background
-            int dlgW = 280;
-            int dlgH = 90 + suggestionsH;
-            int dlgX = centerX - dlgW / 2;
-            int dlgY = centerY - 20;
-            g.fill(dlgX, dlgY, dlgX + dlgW, dlgY + dlgH, 0xF0181818);
-            g.fill(dlgX, dlgY, dlgX + dlgW, dlgY + 2, 0xFFFFCC00);
+            if (filteredSuggestions.isEmpty()) return;
 
-            g.drawCenteredString(this.font, title, centerX, dlgY + 10, 0xFFCC00);
+            int visible = visibleCount();
+            int listH = visible * SUGGESTION_HEIGHT;
+            g.fill(listX, listY, listX + listW, listY + listH, 0xF0222222);
 
-            // Input field background
-            int fieldX = centerX - 120;
-            int fieldY = centerY;
-            int fieldW = 240;
-            int fieldH = 20;
-            int borderColor = inputField.isFocused() ? 0xFFFFCC00 : 0xFF4A4A4A;
-            g.fill(fieldX - 1, fieldY - 1, fieldX + fieldW + 1, fieldY + fieldH + 1, borderColor);
-            g.fill(fieldX, fieldY, fieldX + fieldW, fieldY + fieldH, 0xFF0D0D0D);
+            String input = box(0).getValue().toLowerCase();
+            for (int i = 0; i < visible; i++) {
+                int idx = i + suggestionScroll;
+                if (idx >= filteredSuggestions.size()) break;
+                String suggestion = filteredSuggestions.get(idx);
+                int itemY = listY + i * SUGGESTION_HEIGHT;
+                boolean hovered = mouseX >= listX && mouseX < listX + listW
+                        && mouseY >= itemY && mouseY < itemY + SUGGESTION_HEIGHT;
 
-            // Suggestions list
-            if (!filteredSuggestions.isEmpty() && !allSuggestions.isEmpty()) {
-                int sugY = centerY + 24;
-                int sugX = centerX - 120;
-                int sugW = 240;
-
-                g.fill(sugX, sugY, sugX + sugW, sugY + suggestionsH, 0xF0222222);
-
-                int maxScroll = Math.max(0, filteredSuggestions.size() - MAX_VISIBLE_SUGGESTIONS);
-                suggestionScroll = Math.min(suggestionScroll, maxScroll);
-
-                for (int i = 0; i < visibleSuggestions; i++) {
-                    int idx = i + suggestionScroll;
-                    if (idx >= filteredSuggestions.size())
-                        break;
-                    String suggestion = filteredSuggestions.get(idx);
-                    int itemY = sugY + i * SUGGESTION_HEIGHT;
-                    boolean hovered = mouseX >= sugX && mouseX < sugX + sugW && mouseY >= itemY
-                            && mouseY < itemY + SUGGESTION_HEIGHT;
-
-                    if (hovered) {
-                        g.fill(sugX, itemY, sugX + sugW, itemY + SUGGESTION_HEIGHT, 0x40FFCC00);
-                    }
-
-                    // Highlight matching part
-                    String input = inputField.getValue().toLowerCase();
-                    int matchIdx = suggestion.toLowerCase().indexOf(input);
-                    if (matchIdx >= 0 && !input.isEmpty()) {
-                        String before = suggestion.substring(0, matchIdx);
-                        String match = suggestion.substring(matchIdx, matchIdx + input.length());
-                        String after = suggestion.substring(matchIdx + input.length());
-                        int tx = sugX + 4;
-                        g.drawString(this.font, before, tx, itemY + 3, 0x999999);
-                        tx += this.font.width(before);
-                        g.drawString(this.font, match, tx, itemY + 3, 0xFFCC00);
-                        tx += this.font.width(match);
-                        g.drawString(this.font, after, tx, itemY + 3, 0x999999);
-                    } else {
-                        g.drawString(this.font, suggestion, sugX + 4, itemY + 3, 0x999999);
-                    }
+                float sh = Ease.outCubic(suggestionHover.computeIfAbsent(i, k -> new Anim())
+                        .ramp(hovered, Timing.HOVER_IN_MS, Timing.HOVER_OUT_MS));
+                if (sh > 0.001f) {
+                    g.fill(listX, itemY, listX + listW, itemY + SUGGESTION_HEIGHT,
+                            Fade.rgba(0xFFCC00, 0.25f * sh));
+                    g.fill(listX, itemY, listX + 1, itemY + SUGGESTION_HEIGHT, Fade.rgba(0xFFCC00, sh));
                 }
 
-                // Scroll indicator
-                if (filteredSuggestions.size() > MAX_VISIBLE_SUGGESTIONS) {
-                    int barX = sugX + sugW - 3;
-                    int thumbH = Math.max(4, suggestionsH * MAX_VISIBLE_SUGGESTIONS / filteredSuggestions.size());
-                    int thumbY = sugY + (int) ((float) suggestionScroll / maxScroll * (suggestionsH - thumbH));
-                    g.fill(barX, sugY, barX + 2, sugY + suggestionsH, 0x20FFFFFF);
-                    g.fill(barX, thumbY, barX + 2, thumbY + thumbH, 0x80FFCC00);
+                // Highlight the part matching the current input
+                int matchIdx = suggestion.toLowerCase().indexOf(input);
+                if (matchIdx >= 0 && !input.isEmpty()) {
+                    String before = suggestion.substring(0, matchIdx);
+                    String match = suggestion.substring(matchIdx, matchIdx + input.length());
+                    String after = suggestion.substring(matchIdx + input.length());
+                    int tx = listX + 4;
+                    g.drawString(this.font, before, tx, itemY + 3, 0x999999);
+                    tx += this.font.width(before);
+                    g.drawString(this.font, match, tx, itemY + 3, 0xFFCC00);
+                    tx += this.font.width(match);
+                    g.drawString(this.font, after, tx, itemY + 3, 0x999999);
+                } else {
+                    g.drawString(this.font, suggestion, listX + 4, itemY + 3, 0x999999);
                 }
             }
 
-            super.render(g, mouseX, mouseY, partialTick);
-        }
-
-        @Override
-        public boolean mouseClicked(double mouseX, double mouseY, int button) {
-            if (super.mouseClicked(mouseX, mouseY, button))
-                return true;
-
-            // Check if clicking on a suggestion
-            if (!filteredSuggestions.isEmpty() && !allSuggestions.isEmpty()) {
-                int centerX = this.width / 2;
-                int centerY = this.height / 2 - 30;
-                int sugY = centerY + 24;
-                int sugX = centerX - 120;
-                int sugW = 240;
-                int visibleSuggestions = Math.min(MAX_VISIBLE_SUGGESTIONS, filteredSuggestions.size());
-
-                if (mouseX >= sugX && mouseX < sugX + sugW && mouseY >= sugY
-                        && mouseY < sugY + visibleSuggestions * SUGGESTION_HEIGHT) {
-                    int idx = (int) ((mouseY - sugY) / SUGGESTION_HEIGHT) + suggestionScroll;
-                    if (idx >= 0 && idx < filteredSuggestions.size()) {
-                        Minecraft.getInstance().getSoundManager()
-                                .play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
-                        inputField.setValue(filteredSuggestions.get(idx));
-                        return true;
-                    }
-                }
+            // Scrollbar — draggable, and brightening on hover so that reads as an affordance.
+            if (filteredSuggestions.size() > MAX_VISIBLE_SUGGESTIONS) {
+                int barX = listX + listW - SCROLLBAR_INSET_X;
+                int thumbH = Math.max(4, listH * MAX_VISIBLE_SUGGESTIONS / filteredSuggestions.size());
+                int thumbY = listY + (int) ((float) suggestionScroll / maxScroll() * (listH - thumbH));
+                int thumbColor = draggingScrollbar ? 0xFFFFCC00
+                        : (inScrollbar(mouseX, mouseY) ? 0xC0FFCC00 : 0x80FFCC00);
+                g.fill(barX, listY, barX + 2, listY + listH, 0x20FFFFFF);
+                g.fill(barX, thumbY, barX + 2, thumbY + thumbH, thumbColor);
             }
-
-            return false;
         }
 
         @Override
-        public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
-            return mouseScrolled(mouseX, mouseY, verticalAmount);
-        }
+        protected boolean extraContentMouseClicked(double mx, double my, int button) {
+            if (button != 0) return false;
+            if (filteredSuggestions.isEmpty()) return false;
 
-        public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
-            if (!filteredSuggestions.isEmpty()) {
-                int maxScroll = Math.max(0, filteredSuggestions.size() - MAX_VISIBLE_SUGGESTIONS);
-                suggestionScroll = (int) Math.max(0, Math.min(maxScroll, suggestionScroll - delta));
+            // Scrollbar wins over the rows it sits on top of.
+            if (inScrollbar(mx, my)) {
+                draggingScrollbar = true;
+                scrollFromMouse(my);
                 return true;
             }
-            return false;
+
+            int listH = visibleCount() * SUGGESTION_HEIGHT;
+            if (mx < listX || mx >= listX + listW || my < listY || my >= listY + listH) return false;
+
+            int idx = (int) ((my - listY) / SUGGESTION_HEIGHT) + suggestionScroll;
+            if (idx < 0 || idx >= filteredSuggestions.size()) return false;
+
+            Minecraft.getInstance().getSoundManager().play(
+                    SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
+            box(0).setValue(filteredSuggestions.get(idx));
+            return true;
         }
 
-        private void confirm() {
-            onDone.accept(inputField.getValue());
+        @Override
+        protected boolean extraContentMouseDragged(double mx, double my, int button) {
+            if (!draggingScrollbar) return false;
+            scrollFromMouse(my);
+            return true;
+        }
+
+        @Override
+        protected boolean extraContentMouseReleased(double mx, double my, int button) {
+            if (!draggingScrollbar) return false;
+            draggingScrollbar = false;
+            return true;
+        }
+
+        @Override
+        protected boolean extraContentMouseScrolled(double mx, double my, double scrollY) {
+            if (filteredSuggestions.isEmpty()) return false;
+            suggestionScroll = (int) Math.max(0, Math.min(maxScroll(), suggestionScroll - scrollY));
+            return true;
+        }
+
+        @Override
+        protected void onConfirm(InputValues values) {
+            onDone.accept(values.getString("value"));
             this.minecraft.setScreen(parent);
         }
-
-        @Override
-        public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-            if (keyCode == 257) {
-                confirm();
-                return true;
-            } // Enter
-            if (keyCode == 256) {
-                this.minecraft.setScreen(parent);
-                return true;
-            } // Escape
-            return super.keyPressed(keyCode, scanCode, modifiers);
-        }
-
-        @Override
-    public boolean isPauseScreen() {
-        return true;
-    }
     }
 
     // ==========================================
     // Custom NBT input screen
     // ==========================================
 
-    static class CustomNbtInputScreen extends Screen {
+    static class CustomNbtInputScreen extends AbstractInputScreen {
         private final Screen parent;
         private final java.util.function.BiConsumer<String, String> onDone;
-        private EditBox keyField;
-        private EditBox valueField;
 
         CustomNbtInputScreen(Screen parent, java.util.function.BiConsumer<String, String> onDone) {
-            super(Component.literal("Custom NBT"));
+            super(parent, Component.translatable("editor.historystages.nbt.custom.heading"));
             this.parent = parent;
             this.onDone = onDone;
         }
 
         @Override
-        protected void init() {
-            int centerX = this.width / 2;
-            int centerY = this.height / 2;
-
-            keyField = new EditBox(this.font, centerX - 120 + 4, centerY - 14 + 6, 240 - 4, 20, Component.literal("Key"));
-            keyField.setMaxLength(128);
-            keyField.setHint(Component.literal("e.g. CustomModelData"));
-            keyField.setBordered(false);
-            keyField.setTextColor(0xFFFFFF);
-            this.addRenderableWidget(keyField);
-            this.setFocused(keyField);
-
-            valueField = new EditBox(this.font, centerX - 120 + 4, centerY + 30 + 6, 240 - 4, 20, Component.literal("Value"));
-            valueField.setMaxLength(512);
-            valueField.setHint(Component.literal("value"));
-            valueField.setBordered(false);
-            valueField.setTextColor(0xFFFFFF);
-            this.addRenderableWidget(valueField);
-
-            this.addRenderableWidget(StyledButton.of(
-                    Component.literal("OK"),
-                    btn -> confirm(),
-                    centerX - 105, centerY + 60, 100, 20));
-            this.addRenderableWidget(StyledButton.of(
-                    Component.literal("Cancel"),
-                    btn -> this.minecraft.setScreen(parent),
-                    centerX + 5, centerY + 60, 100, 20));
+        protected Component confirmLabel() {
+            return Component.translatable("editor.historystages.nbt.ok");
         }
 
         @Override
-        public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+        protected List<InputField> fields() {
+            return List.of(
+                    InputField.text("key")
+                            .label(Component.translatable("editor.historystages.nbt.custom.key_label"))
+                            .hint(Component.translatable("editor.historystages.nbt.custom.key_hint"))
+                            .maxLength(128)
+                            .validator(v -> v.isEmpty()
+                                    ? Component.translatable("editor.historystages.input.empty") : null),
+                    InputField.text("value")
+                            .label(Component.translatable("editor.historystages.nbt.custom.value_label"))
+                            .hint(Component.translatable("editor.historystages.nbt.custom.value_hint"))
+                            .maxLength(512));
         }
 
         @Override
-        public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
-            g.fill(0, 0, this.width, this.height, 0xC0000000);
-            int centerX = this.width / 2;
-            int centerY = this.height / 2;
-
-            int dlgW = 280;
-            int dlgH = 160;
-            int dlgX = centerX - dlgW / 2;
-            int dlgY = centerY - dlgH / 2;
-            g.fill(dlgX, dlgY, dlgX + dlgW, dlgY + dlgH, 0xF0181818);
-            g.fill(dlgX, dlgY, dlgX + dlgW, dlgY + 2, 0xFFFFCC00);
-
-            g.drawCenteredString(this.font, "Custom NBT Key", centerX, dlgY + 10, 0xFFCC00);
-
-            g.drawString(this.font, "Key", centerX - 120, centerY - 26, 0x999999);
-            int kx = centerX - 120, ky = centerY - 14, kw = 240, kh = 20;
-            int kBorder = keyField.isFocused() ? 0xFFFFCC00 : 0xFF4A4A4A;
-            g.fill(kx - 1, ky - 1, kx + kw + 1, ky + kh + 1, kBorder);
-            g.fill(kx, ky, kx + kw, ky + kh, 0xFF0D0D0D);
-
-            g.drawString(this.font, "Value", centerX - 120, centerY + 18, 0x999999);
-            int vx = centerX - 120, vy = centerY + 30, vw = 240, vh = 20;
-            int vBorder = valueField.isFocused() ? 0xFFFFCC00 : 0xFF4A4A4A;
-            g.fill(vx - 1, vy - 1, vx + vw + 1, vy + vh + 1, vBorder);
-            g.fill(vx, vy, vx + vw, vy + vh, 0xFF0D0D0D);
-
-            super.render(g, mouseX, mouseY, partialTick);
-        }
-
-        private void confirm() {
-            String key = keyField.getValue().trim();
-            String value = valueField.getValue().trim();
-            if (!key.isEmpty()) {
-                onDone.accept(key, value);
-            }
+        protected void onConfirm(InputValues values) {
+            onDone.accept(values.getString("key"), values.getString("value"));
             this.minecraft.setScreen(parent);
         }
+    }
 
-        @Override
-        public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-            if (keyCode == 257) {
-                confirm();
-                return true;
-            }
-            if (keyCode == 256) {
-                this.minecraft.setScreen(parent);
-                return true;
-            }
-            return super.keyPressed(keyCode, scanCode, modifiers);
+    // ==========================================
+    // Component value editor (raw JSON object for one data-component)
+    // ==========================================
+
+    static class ComponentValueEditScreen extends AbstractInputScreen {
+        private final Screen parent;
+        private final String componentId;
+        private final String initialValue;
+        private final Consumer<String> onDone;
+        /** A real value of this component, read once on open. Null when nothing in game has one. */
+        private final String example;
+        /** Smallest value the codec accepts, found by trial. Null when trial came up empty. */
+        private final String skeleton;
+        /** Whether {@code {}} is valid, i.e. a bare "is this property set" criterion works. */
+        private final boolean presenceWorks;
+        /** Last resort when neither an example nor a skeleton turned up. */
+        private final String requirement;
+
+        ComponentValueEditScreen(Screen parent, String componentId, String initialValue, Consumer<String> onDone) {
+            super(parent, Component.translatable("editor.historystages.nbt.component.heading"));
+            this.parent = parent;
+            this.componentId = componentId;
+            this.initialValue = initialValue != null ? initialValue : "{}";
+            this.onDone = onDone;
+            this.example = ComponentShapes.exampleFor(componentId);
+            this.skeleton = example != null ? null : ComponentShapes.skeletonFor(componentId);
+            this.presenceWorks = "{}".equals(skeleton) || ComponentShapes.acceptsEmptyObject(componentId);
+            this.requirement = example != null || skeleton != null
+                    ? null
+                    : ComponentShapes.requirementHint(componentId);
         }
 
         @Override
-    public boolean isPauseScreen() {
-        return true;
-    }
+        protected Component subtitle() {
+            return Component.literal(componentId);
+        }
+
+        @Override
+        protected int dialogWidth() { return 460; }
+
+        @Override
+        protected Component confirmLabel() {
+            return Component.translatable("editor.historystages.nbt.ok");
+        }
+
+        @Override
+        protected List<InputField> fields() {
+            return List.of(InputField.text("json")
+                    .maxLength(8192)
+                    .hint(Component.literal(example != null ? example
+                            : skeleton != null ? skeleton : "{\"key\": \"value\"}"))
+                    .initial(initialValue)
+                    .validator(this::validateJson));
+        }
+
+        @Override
+        protected int extraContentHeight() {
+            if (example != null) return 14 + exampleLines().size() * 10 + 14;
+            if (skeleton != null) return 14 + skeletonLines().size() * 10 + 14;
+            return requirement == null ? 0 : 14 + requirementLines().size() * 10;
+        }
+
+        /**
+         * Shows what this component looks like on a real item, and says that a criterion only has
+         * to name the fields it cares about. Without that second sentence the example reads as a
+         * form to fill in completely, which would match far fewer items than intended.
+         */
+        @Override
+        protected void renderExtraContent(GuiGraphics g, int x, int y, int w, int mouseX, int mouseY) {
+            if (example == null && skeleton != null) {
+                g.drawString(this.font,
+                        Component.translatable("editor.historystages.nbt.shape.skeleton"), x, y, 0xFF8A8A8A);
+                int skelY = y + 12;
+                for (FormattedCharSequence line : skeletonLines()) {
+                    g.drawString(this.font, line, x, skelY, 0xFFCCCCCC);
+                    skelY += 10;
+                }
+                g.drawString(this.font, Component.translatable(presenceWorks
+                                ? "editor.historystages.nbt.shape.presence_ok"
+                                : "editor.historystages.nbt.shape.subset"),
+                        x, skelY + 3, 0xFF8A8A8A);
+                return;
+            }
+
+            if (example == null) {
+                if (requirement == null) return;
+                g.drawString(this.font,
+                        Component.translatable("editor.historystages.nbt.shape.requires"), x, y, 0xFF8A8A8A);
+                int reqY = y + 12;
+                for (FormattedCharSequence line : requirementLines()) {
+                    g.drawString(this.font, line, x, reqY, 0xFFCCCCCC);
+                    reqY += 10;
+                }
+                return;
+            }
+
+            g.drawString(this.font,
+                    Component.translatable("editor.historystages.nbt.shape.example"), x, y, 0xFF8A8A8A);
+            int lineY = y + 12;
+            for (FormattedCharSequence line : exampleLines()) {
+                g.drawString(this.font, line, x, lineY, 0xFFCCCCCC);
+                lineY += 10;
+            }
+            g.drawString(this.font,
+                    Component.translatable("editor.historystages.nbt.shape.subset"), x, lineY + 3, 0xFF8A8A8A);
+        }
+
+        private List<FormattedCharSequence> exampleLines() {
+            return this.font.split(Component.literal(example), dialogWidth() - 40);
+        }
+
+        private List<FormattedCharSequence> skeletonLines() {
+            return this.font.split(Component.literal(skeleton), dialogWidth() - 40);
+        }
+
+        private List<FormattedCharSequence> requirementLines() {
+            return this.font.split(Component.literal(requirement), dialogWidth() - 40);
+        }
+
+        /** Any JSON type is allowed — objects, arrays, strings, numbers, booleans — but not null. */
+        private Component validateJson(String raw) {
+            if (raw.isEmpty()) return Component.translatable("editor.historystages.nbt.json.empty");
+            try {
+                com.google.gson.JsonElement parsed = com.google.gson.JsonParser.parseString(raw);
+                if (parsed.isJsonNull()) {
+                    return Component.translatable("editor.historystages.nbt.json.not_object");
+                }
+                return null;
+            } catch (Exception e) {
+                return Component.translatable("editor.historystages.nbt.json.invalid", e.getMessage());
+            }
+        }
+
+        @Override
+        protected void onConfirm(InputValues values) {
+            onDone.accept(values.getString("json"));
+            this.minecraft.setScreen(parent);
+        }
     }
 }

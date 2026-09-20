@@ -4,28 +4,135 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
+import com.mojang.serialization.DynamicOps;
+import it.unimi.dsi.fastutil.objects.Object2IntMap;
+import net.bananemdnsa.historystages.util.CurrentRegistries;
+import net.bananemdnsa.historystages.util.DebugLogger;
+import net.minecraft.core.Holder;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.component.TypedDataComponent;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.*;
+import net.minecraft.resources.RegistryOps;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.item.enchantment.Enchantment;
+import net.minecraft.world.item.enchantment.ItemEnchantments;
 
 /**
  * Matches ItemStack NBT data against JSON-defined NBT criteria.
+ * <p>
+ * In MC 1.21+ this reads {@link DataComponents#CUSTOM_DATA} and additionally
+ * synthesizes two virtual sub-trees so user-friendly JSON configs keep working:
+ * <ul>
+ *     <li>Legacy {@code Enchantments} / {@code StoredEnchantments} lists from
+ *         the vanilla enchantment components.</li>
+ *     <li>A {@code components} sub-object containing any data component the
+ *         criteria references, encoded via its own codec. This lets users
+ *         match against mod-defined components (e.g.
+ *         {@code irons_spellbooks:spell_container}).</li>
+ * </ul>
  * Supports exact matching and numeric ranges (e.g., "1-4" matches 1, 2, 3, 4).
  */
 public class NbtMatcher {
 
     /**
-     * Checks if an ItemStack's NBT matches the given criteria.
-     * All keys in the criteria must be present and match in the item's NBT.
+     * Checks if an ItemStack's data matches the given criteria.
+     * All keys in the criteria must be present and match in the item's data.
      */
     public static boolean matches(ItemStack stack, JsonObject nbtCriteria) {
         if (nbtCriteria == null || nbtCriteria.size() == 0) return true;
 
-        CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
-        if (tag == null) return false;
+        CompoundTag tag = buildMatchTag(stack, nbtCriteria);
+        return !tag.isEmpty() && matchesCompound(tag, nbtCriteria);
+    }
 
-        return matchesCompound(tag, nbtCriteria);
+    private static CompoundTag buildMatchTag(ItemStack stack, JsonObject criteria) {
+        CustomData customData = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY);
+        CompoundTag tag = customData.copyTag();
+
+        // Legacy vanilla enchantment lists (kept for backward-compat with older
+        // JSON configs that used the pre-1.20.5 NBT layout).
+        if (criteria.has("Enchantments") && !tag.contains("Enchantments")) {
+            ItemEnchantments active = stack.get(DataComponents.ENCHANTMENTS);
+            if (active != null && !active.isEmpty()) {
+                tag.put("Enchantments", toLegacyEnchantmentList(active));
+            }
+        }
+        if (criteria.has("StoredEnchantments") && !tag.contains("StoredEnchantments")) {
+            ItemEnchantments stored = stack.get(DataComponents.STORED_ENCHANTMENTS);
+            if (stored != null && !stored.isEmpty()) {
+                tag.put("StoredEnchantments", toLegacyEnchantmentList(stored));
+            }
+        }
+
+        // Generic data-component matching: only encode the components the
+        // criteria actually references, to avoid serializing the entire
+        // component map on every match.
+        if (criteria.has("components") && criteria.get("components").isJsonObject()
+                && !tag.contains("components")) {
+            CompoundTag components = encodeReferencedComponents(stack, criteria.getAsJsonObject("components"));
+            if (!components.isEmpty()) tag.put("components", components);
+        }
+        return tag;
+    }
+
+    private static CompoundTag encodeReferencedComponents(ItemStack stack, JsonObject componentCriteria) {
+        CompoundTag out = new CompoundTag();
+        for (String componentId : componentCriteria.keySet()) {
+            ResourceLocation rl = ResourceLocation.tryParse(componentId);
+            if (rl == null) continue;
+            DataComponentType<?> type = BuiltInRegistries.DATA_COMPONENT_TYPE.get(rl);
+            if (type == null) continue; // unknown component (mod not loaded or typo)
+            Tag encoded = encodeComponent(stack, type);
+            if (encoded != null) out.put(componentId, encoded);
+        }
+        return out;
+    }
+
+    private static <T> Tag encodeComponent(ItemStack stack, DataComponentType<T> type) {
+        T value = stack.get(type);
+        if (value == null) return null;
+        if (type.codec() == null) return null; // transient component, no codec
+        TypedDataComponent<T> typed = new TypedDataComponent<>(type, value);
+        return typed.encodeValue(matchOps())
+                .resultOrPartial(err -> DebugLogger.runtimeThrottled(
+                        "NBT Matching",
+                        "encode_" + BuiltInRegistries.DATA_COMPONENT_TYPE.getKey(type),
+                        "Could not encode component "
+                                + BuiltInRegistries.DATA_COMPONENT_TYPE.getKey(type)
+                                + " for matching: " + err))
+                .orElse(null);
+    }
+
+    /**
+     * Data components backed by a registry reference (e.g. a mod's
+     * {@code RegistryFixedCodec<Holder<T>>}, such as Iron's Jewelry's
+     * {@code stored_pattern}) can only encode through a {@link RegistryOps}
+     * that knows about that registry — plain {@link NbtOps#INSTANCE} makes
+     * their codec fail silently. Wrap with whatever registry access is
+     * available; components that don't need it are unaffected.
+     */
+    private static DynamicOps<Tag> matchOps() {
+        HolderLookup.Provider registries = CurrentRegistries.get();
+        return registries != null ? RegistryOps.create(NbtOps.INSTANCE, registries) : NbtOps.INSTANCE;
+    }
+
+    private static ListTag toLegacyEnchantmentList(ItemEnchantments enchantments) {
+        ListTag list = new ListTag();
+        for (Object2IntMap.Entry<Holder<Enchantment>> entry : enchantments.entrySet()) {
+            ResourceLocation id = entry.getKey().unwrapKey().map(ResourceKey::location).orElse(null);
+            if (id == null) continue;
+            CompoundTag e = new CompoundTag();
+            e.putString("id", id.toString());
+            e.putInt("lvl", entry.getIntValue());
+            list.add(e);
+        }
+        return list;
     }
 
     private static boolean matchesCompound(CompoundTag tag, JsonObject criteria) {

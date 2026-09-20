@@ -1,23 +1,41 @@
 {
   "required": true,
+  "minVersion": "0.8",
   "package": "net.bananemdnsa.historystages.mixin",
   "compatibilityLevel": "JAVA_21",
+  "refmap": "historystages.refmap.json",
   "mixins": [
-    "AbstractContainerMenuMixin",
-    "AnvilMenuMixin",
-    "BlockStateBaseMixin",
-    "CraftingMenuMixin",
-    "EnchantmentMenuMixin",
-    "ItemEntityPickupMixin",
-    "LivingEntityDropMixin",
-    "PlayerOpenMenuMixin",
-    "RecipeManagerCheckMixin",
+    "AttributeLockMixin",
     "RecipeManagerMixin",
-    "ServerPlayerMixin"
+    "CraftingMenuMixin",
+    "StonecutterMenuMixin",
+    "SmithingMenuMixin",
+    "RecipeBookPlacementMixin",
+    "StructureGenerationMixin",
+    "ContainerClickMixin",
+    "EnchantmentMenuMixin",
+    "MerchantOffersMixin",
+    "MerchantContainerMixin",
+    "jei.RecipeLayoutMixin",
+    "fastsuite.AuxRecipeManagerMixin"
   ],
   "client": [
-      "client.GuiGraphicsMixin",
-      "client.jei.RecipeLayoutMixin"
+    "bettercombat.AttackStartLockMixin",
+    "bettercombat.WeaponRegistryMixin",
+    "ClientAdvancementsAccessor",
+    "ClientRecipeBookMixin",
+    "ItemStackMixin",
+    "ZoneBarrierMixin",
+    "toast.ToastComponentMixin",
+    "toast.ToastComponentAccessor",
+    "toast.ToastInstanceMixin",
+    "toast.ToastInstanceAccessor",
+    "emi.RecipeScreenMixin",
+    "emi.ItemEmiStackMixin",
+    "emi.FluidEmiStackMixin",
+    "emi.StackBatcherMixin",
+    "emi.SlotWidgetMixin",
+    "jei.FluidTankRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1

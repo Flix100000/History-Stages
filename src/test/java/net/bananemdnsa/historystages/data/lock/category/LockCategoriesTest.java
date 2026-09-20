@@ -1,0 +1,73 @@
+package net.bananemdnsa.historystages.data.lock.category;
+
+import net.bananemdnsa.historystages.api.lock.LockCategory;
+
+import java.util.List;
+
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class LockCategoriesTest {
+
+    @Test
+    void theSixteenBuiltInsAreRegisteredInEditorTabOrder() {
+        List<String> ids = LockCategories.all().stream().map(LockCategory::id).toList();
+        assertEquals(List.of(
+                "historystages:items",
+                // Next to items on purpose: it answers about the same subject, reading what the
+                // stack carries rather than what it is.
+                "historystages:fluids",
+                "historystages:tags",
+                "historystages:mods",
+                "historystages:mod_exceptions",
+                "historystages:recipes",
+                "historystages:dimensions",
+                "historystages:attacklock",
+                "historystages:spawnlock",
+                "historystages:interactionlock",
+                // Three categories sharing one tab. They are asked separately - an item entry
+                // narrows to a side of the offer, a profession or level hides the merchant
+                // whole - so they are three lists rather than one list of a mixed type.
+                "historystages:trades",
+                "historystages:trade_professions",
+                "historystages:trade_levels",
+                "historystages:structures",
+                "historystages:biomes",
+                // Last, and unlike every neighbour it gates a place rather than a thing: there is
+                // no id to match, so the handler asks its own index with a position instead.
+                "historystages:zones"), ids);
+    }
+
+    @Test
+    void categoriesAreLookedUpById() {
+        assertNotNull(LockCategories.byId("historystages:items"));
+        assertEquals("historystages:items", LockCategories.byId("historystages:items").id());
+    }
+
+    @Test
+    void anUnknownIdIsNullRatherThanAnException() {
+        assertNull(LockCategories.byId("mymod:villagertrades"));
+    }
+
+    @Test
+    void everyCategoryDeclaresBothLangKeys() {
+        for (LockCategory<?> category : LockCategories.all()) {
+            assertTrue(category.tabLangKey().startsWith("editor.historystages.tab."),
+                    category.id() + " has an unexpected tab lang key: " + category.tabLangKey());
+            assertTrue(category.tooltipLangKey().startsWith("editor.historystages.tooltip."),
+                    category.id() + " has an unexpected tooltip lang key: " + category.tooltipLangKey());
+        }
+    }
+
+    @Test
+    void everyCategoryIdIsNamespaced() {
+        for (LockCategory<?> category : LockCategories.all()) {
+            assertTrue(category.id().startsWith("historystages:"),
+                    "built-in category is not namespaced: " + category.id());
+        }
+    }
+}

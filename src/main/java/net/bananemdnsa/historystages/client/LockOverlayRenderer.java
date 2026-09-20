@@ -2,93 +2,62 @@ package net.bananemdnsa.historystages.client;
 
 import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.HistoryStages;
-import net.bananemdnsa.historystages.client.editor.EditorBlurController;
-import net.bananemdnsa.historystages.util.StageLockHelper;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.item.ItemStack;
-import net.fabricmc.api.EnvType;
-import net.fabricmc.api.Environment;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.world.level.levelgen.structure.BoundingBox;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.RenderGuiEvent;
 
-@Environment(EnvType.CLIENT)
+import java.util.List;
+
+/**
+ * Full-screen red tint drawn over the HUD when the local player's position lies inside any of
+ * the lock shapes cached by {@link LockBorderClientCache}. Looks like the player is wearing
+ * red glasses — a constant signal that they're inside a locked structure.
+ *
+ * <p>Containment is checked client-side against the cached shapes. No extra packet needed:
+ * the same shape list that drives the wall force-field also drives this overlay, so the two
+ * stay in sync automatically.
+ */
+@EventBusSubscriber(modid = HistoryStages.MOD_ID, value = Dist.CLIENT)
 public final class LockOverlayRenderer {
-    private static final ResourceLocation LOCK_ICON = HistoryStages.id("textures/gui/lock_overlay.png");
-    private static final ResourceLocation SILVER_LOCK_ICON = HistoryStages.id("textures/gui/lock_overlay_silver.png");
-    private static final ResourceLocation DUAL_LOCK_ICON = HistoryStages.id("textures/gui/lock_overlay_dual.png");
-    private static int suppressionDepth = 0;
 
-    private LockOverlayRenderer() {
+    private LockOverlayRenderer() {}
+
+    @SubscribeEvent
+    public static void onRenderGui(RenderGuiEvent.Post event) {
+        if (!Config.VISUAL.structureLockOverlayEnabled.get()) return;
+
+        Minecraft mc = Minecraft.getInstance();
+        LocalPlayer player = mc.player;
+        if (player == null || player.isSpectator()) return;
+        if (mc.options.hideGui) return;
+
+        if (!isInsideLockedShape(player.getX(), player.getY(), player.getZ())) return;
+
+        double opacity = Config.VISUAL.structureLockOverlayOpacity.get();
+        if (opacity <= 0.0) return;
+
+        int alpha = (int) Math.round(Math.min(1.0, opacity) * 255.0);
+        // ARGB: high alpha + saturated red; GuiGraphics#fill takes 0xAARRGGBB.
+        int color = (alpha << 24) | 0x00C00000;
+
+        GuiGraphics gg = event.getGuiGraphics();
+        gg.fill(0, 0, gg.guiWidth(), gg.guiHeight(), color);
     }
 
-    public static void render(GuiGraphics guiGraphics, Font font, ItemStack stack, int x, int y) {
-        if (suppressionDepth > 0 || stack == null || stack.isEmpty() || !Config.CLIENT.showLockIcons) {
-            return;
-        }
-        Minecraft minecraft = Minecraft.getInstance();
-        if (EditorBlurController.isManagedScreen(minecraft.screen) || isEditorRenderStack()) {
-            return;
-        }
-
-        boolean globallyLocked = isGloballyLocked(stack);
-        boolean dualPhaseGlobal = globallyLocked && StageLockHelper.isDualPhaseGloballyLockedClient(stack);
-        boolean individuallyLocked = !globallyLocked
-                && Config.CLIENT.showSilverLockIcons
-                && StageLockHelper.isActionLockedByIndividualStageClient(stack, "icon");
-
-        if (!globallyLocked && !individuallyLocked) {
-            return;
-        }
-
-        ResourceLocation icon = dualPhaseGlobal ? DUAL_LOCK_ICON
-                : (individuallyLocked ? SILVER_LOCK_ICON : LOCK_ICON);
-        guiGraphics.pose().pushPose();
-        guiGraphics.pose().translate(x, y, 250);
-        guiGraphics.pose().scale(0.25f, 0.25f, 1.0f);
-        guiGraphics.blit(icon, 0, 0, 0, 0, 32, 32, 32, 32);
-        guiGraphics.pose().popPose();
-    }
-
-    private static boolean isGloballyLocked(ItemStack stack) {
-        return StageLockHelper.isActionLockedForClient(stack, "icon");
-    }
-
-    private static boolean isRecipeViewerContext(Minecraft minecraft) {
-        if (isRecipeViewerRenderStack()) {
-            return true;
-        }
-        if (minecraft == null || minecraft.screen == null) {
-            return false;
-        }
-        String className = minecraft.screen.getClass().getName().toLowerCase(java.util.Locale.ROOT);
-        return className.contains("jei") || className.contains("emi");
-    }
-
-    private static boolean isEditorRenderStack() {
-        for (StackTraceElement element : Thread.currentThread().getStackTrace()) {
-            if (element.getClassName().startsWith("net.bananemdnsa.historystages.client.editor.")) {
+    private static boolean isInsideLockedShape(double x, double y, double z) {
+        List<BoundingBox> boxes = LockBorderClientCache.get();
+        for (BoundingBox b : boxes) {
+            if (x > b.minX() && x < b.maxX() + 1.0
+                    && y > b.minY() && y < b.maxY() + 1.0
+                    && z > b.minZ() && z < b.maxZ() + 1.0) {
                 return true;
             }
         }
         return false;
-    }
-
-    private static boolean isRecipeViewerRenderStack() {
-        for (StackTraceElement element : Thread.currentThread().getStackTrace()) {
-            String className = element.getClassName().toLowerCase(java.util.Locale.ROOT);
-            if (className.startsWith("mezz.jei.") || className.startsWith("dev.emi.emi.")) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public static void pushSuppressed() {
-        suppressionDepth++;
-    }
-
-    public static void popSuppressed() {
-        suppressionDepth = Math.max(0, suppressionDepth - 1);
     }
 }

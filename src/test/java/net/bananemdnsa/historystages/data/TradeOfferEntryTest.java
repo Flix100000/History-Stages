@@ -1,0 +1,114 @@
+package net.bananemdnsa.historystages.data;
+
+import com.google.gson.JsonObject;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+/**
+ * A named trade is only worth naming if it names exactly one. Everything about the merchant is
+ * part of that, and the identity string carries all of it — through the picker, through the
+ * already-added check, and back again.
+ */
+class TradeOfferEntryTest {
+
+    private static TradeOfferEntry librarianBookshelf() {
+        return new TradeOfferEntry("minecraft:librarian", 2,
+                "minecraft:bookshelf", "minecraft:emerald", null);
+    }
+
+    @Test
+    void anEntryNamesTheTradeItWasBuiltFrom() {
+        TradeOfferEntry entry = librarianBookshelf();
+        assertTrue(entry.gates("minecraft:librarian", 2,
+                "minecraft:bookshelf", "minecraft:emerald", null));
+    }
+
+    @Test
+    void everyPartOfTheTradeHasToAgree() {
+        TradeOfferEntry entry = librarianBookshelf();
+
+        assertFalse(entry.gates("minecraft:cartographer", 2,
+                "minecraft:bookshelf", "minecraft:emerald", null), "another merchant");
+        assertFalse(entry.gates("minecraft:librarian", 4,
+                "minecraft:bookshelf", "minecraft:emerald", null), "another level");
+        assertFalse(entry.gates("minecraft:librarian", 2,
+                "minecraft:book", "minecraft:emerald", null), "other goods");
+        assertFalse(entry.gates("minecraft:librarian", 2,
+                "minecraft:bookshelf", "minecraft:wheat", null), "another price");
+        assertFalse(entry.gates("minecraft:librarian", 2,
+                "minecraft:bookshelf", "minecraft:emerald", "minecraft:book"),
+                "a second price makes it a different trade");
+    }
+
+    /**
+     * The criterion narrows a trade that is already named; it is not part of naming it. Two
+     * entries for the same trade, one of them narrowed, are still the same trade — which is what
+     * keeps the picker from offering a row it has already listed.
+     */
+    @Test
+    void theCriterionIsNotPartOfTheIdentity() {
+        JsonObject nbt = new JsonObject();
+        nbt.addProperty("tier", "gold");
+        TradeOfferEntry plain = librarianBookshelf();
+        TradeOfferEntry narrowed = new TradeOfferEntry("minecraft:librarian", 2,
+                "minecraft:bookshelf", "minecraft:emerald", null, nbt);
+
+        assertEquals(plain.identity(), narrowed.identity());
+        assertFalse(plain.hasNbt());
+        assertTrue(narrowed.hasNbt());
+    }
+
+    @Test
+    void anEmptyCriterionObjectConstrainsNothing() {
+        assertFalse(new TradeOfferEntry("a:b", 1, "c:d", null, null, new JsonObject()).hasNbt());
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // The identity travels from the picker back into an entry, so it has to survive the trip
+    // -----------------------------------------------------------------------------------------
+
+    @Test
+    void anIdentityRebuildsTheEntryItCameFrom() {
+        TradeOfferEntry entry = new TradeOfferEntry("minecraft:librarian", 3,
+                "minecraft:enchanted_book", "minecraft:emerald", "minecraft:book");
+        TradeOfferEntry back = TradeOfferEntry.decode(entry.identity());
+
+        assertEquals(entry, back);
+    }
+
+    @Test
+    void aTradeWithOnePriceSurvivesTheTripToo() {
+        TradeOfferEntry entry = librarianBookshelf();
+        TradeOfferEntry back = TradeOfferEntry.decode(entry.identity());
+
+        assertEquals(entry, back);
+        assertNull(back.takesBId(), "an absent second price must not come back as an empty id");
+    }
+
+    @Test
+    void aTradeThatCostsNothingSurvivesTheTrip() {
+        TradeOfferEntry entry = new TradeOfferEntry("mod:trader", 1, "mod:gift", null, null);
+        assertEquals(entry, TradeOfferEntry.decode(entry.identity()));
+    }
+
+    @Test
+    void twoDifferentTradesNeverShareAnIdentity() {
+        assertNotEquals(librarianBookshelf().identity(),
+                new TradeOfferEntry("minecraft:librarian", 2,
+                        "minecraft:bookshelf", "minecraft:emerald", "minecraft:book").identity(),
+                "the second price is what tells four of a farmer's trades apart");
+    }
+
+    @Test
+    void rubbishDecodesToNothingRatherThanToAWrongTrade() {
+        assertNull(TradeOfferEntry.decode(null));
+        assertNull(TradeOfferEntry.decode(""));
+        assertNull(TradeOfferEntry.decode("minecraft:librarian"));
+        assertNull(TradeOfferEntry.decode("minecraft:librarian\0notanumber\0a:b\0\0"));
+    }
+}

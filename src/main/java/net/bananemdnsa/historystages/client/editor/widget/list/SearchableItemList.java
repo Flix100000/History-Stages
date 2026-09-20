@@ -1,0 +1,1659 @@
+package net.bananemdnsa.historystages.client.editor.widget.list;
+
+import net.bananemdnsa.historystages.api.editor.widget.PickerOverlay;
+import net.bananemdnsa.historystages.client.editor.widget.GridGeometry;
+import net.bananemdnsa.historystages.client.editor.widget.ItemSlotGrid;
+import net.bananemdnsa.historystages.client.editor.widget.SearchPanelChrome;
+import net.bananemdnsa.historystages.api.editor.widget.SearchBar;
+
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.mojang.serialization.JsonOps;
+import net.bananemdnsa.historystages.compat.reliableremover.ReliableRemoverCompat;
+import net.bananemdnsa.historystages.client.editor.nbt.ComponentShapes;
+import net.bananemdnsa.historystages.client.editor.anim.Anim;
+import net.bananemdnsa.historystages.client.editor.anim.Fade;
+import net.bananemdnsa.historystages.client.editor.anim.Ease;
+import net.bananemdnsa.historystages.client.editor.anim.Timing;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.client.resources.sounds.SimpleSoundInstance;
+import net.minecraft.core.component.DataComponentPatch;
+import net.minecraft.core.component.DataComponentType;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.nbt.NbtOps;
+import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.alchemy.Potion;
+import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.item.enchantment.Enchantment;
+import net.minecraft.world.item.enchantment.ItemEnchantments;
+import net.minecraft.core.registries.BuiltInRegistries;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+
+/**
+ * Creative menu-style item grid with search bar.
+ * Supports a Registry tab, an Inventory tab, and — when multi-select is
+ * enabled — a "Selected" tab that lists all currently selected items for
+ * review and deselection. The Selected tab reuses the shared SearchBar with
+ * a different placeholder.
+ */
+public class SearchableItemList implements PickerOverlay {
+    /**
+     * Borrowed from the painter rather than declared again. Two constants meaning the same pitch —
+     * one the grid paints at, one clicks resolve at — is how a click lands on the wrong row the
+     * moment somebody changes only one of them.
+     */
+    private static final int SLOT_SIZE = ItemSlotGrid.SLOT_SIZE;
+    private static final int GRID_COLS = 9;
+    private static final int PADDING = 6;
+    private static final int TAB_HEIGHT = 14;
+    private static final int TAB_PAD = 4;
+    private static final int SCROLLBAR_GAP = ItemSlotGrid.SCROLLBAR_GAP;
+    private static final int ADD_BTN_W = 100;
+    private static final int ADD_BTN_H = 20;
+    private static final int SELECTALL_BTN_H = 14;
+    private static final int SELECTALL_BTN_GAP = 4;
+
+    private static final int TAB_REGISTRY = 0;
+    private static final int TAB_INVENTORY = 1;
+    private static final int TAB_SELECTED = 2;
+
+    private final List<ItemEntry> allItems = new ArrayList<>();
+    private final List<ItemEntry> filteredItems = new ArrayList<>();
+    /**
+     * Ids Reliable Remover reports as deleted. Empty when the mod is absent, which is also the
+     * signal that the matching filter option was never registered.
+     *
+     * <p>Taken once, when the picker is built: the pack's rules are not going to change between
+     * two clicks in the editor, and asking per item on every keystroke would put a rule sweep
+     * behind every character typed into the search bar.
+     */
+    private final Set<String> removedItems = new HashSet<>();
+    /**
+     * The stacks of {@link #filteredItems}, seen as a list without copying one.
+     *
+     * <p>{@link ItemSlotGrid} paints from a {@code List<ItemStack>} so it need not know what an
+     * entry is. Handing it one by copying would allocate the whole filtered registry every frame
+     * to paint the ~45 visible cells; this projects instead. Correct because
+     * {@code filteredItems} is mutated in place and never reassigned.
+     */
+    private final List<ItemStack> filteredStacks = new java.util.AbstractList<>() {
+        @Override
+        public ItemStack get(int index) {
+            return filteredItems.get(index).stack;
+        }
+
+        @Override
+        public int size() {
+            return filteredItems.size();
+        }
+    };
+    /**
+     * Snapshot of selected items taken when the Selected tab is entered. Stays
+     * stable while on the tab — toggling deselect/reselect modifies the
+     * underlying sets but leaves the snapshot intact, so the grid doesn't
+     * shift under the cursor and the user can undo a misclick. Cleared on tab
+     * exit; rebuilt on next entry.
+     */
+    private final List<SelectedRef> selectedSnapshot = new ArrayList<>();
+    /** Filtered view of {@link #selectedSnapshot} for the current search filter. */
+    private final List<SelectedRef> selectedView = new ArrayList<>();
+    private final Consumer<String> onSelect;
+    /**
+     * Optional callback invoked when the user holds Ctrl while confirming the
+     * add. The JsonObject contains match criteria derived from the selected
+     * inventory ItemStack (top-level custom_data keys plus a "components"
+     * sub-object holding every non-default data component). Null when the
+     * caller doesn't support per-entry NBT (then Ctrl is treated as a regular
+     * add).
+     */
+    private BiConsumer<String, JsonObject> onSelectWithNbt = null;
+    /** See {@link #setValueMode()}. */
+    private boolean alwaysWithNbt = false;
+    private boolean openOnInventory = false;
+    /** See {@link #setStackFilter}. */
+    private java.util.function.Predicate<ItemStack> stackFilter = null;
+    private final Supplier<Collection<String>> alreadyAddedSupplier;
+    private final SearchBar searchBar;
+
+    private int panelX, panelY, panelW, panelH;
+    private int centerX, centerY;
+    private boolean visible = false;
+    private int scrollRow = 0;
+    private int maxScrollRow = 0;
+    private boolean draggingScrollbar = false;
+
+    private int currentTab = TAB_REGISTRY;
+    private boolean multiSelect = false;
+    private final Set<String> selectedRegistryIds = new LinkedHashSet<>();
+    private final Set<Integer> selectedInventorySlots = new LinkedHashSet<>();
+    /** Hover progress per inventory slot. Bounded by the 41 slots the grid can show. */
+    private final Map<Integer, Anim> slotHover = new HashMap<>();
+    /** Selection progress per slot, so ticking one is a visible change rather than a repaint. */
+    private final Map<Integer, Anim> slotSelect = new HashMap<>();
+    /** Subset of {@link #selectedInventorySlots} that were Ctrl-clicked and
+     *  should be added with NBT match criteria built from the live ItemStack. */
+    private final Set<Integer> nbtSelectedInventorySlots = new LinkedHashSet<>();
+
+    private final Anim tabIndicatorXAnim = new Anim();
+    private final Anim tabIndicatorWAnim = new Anim();
+    private boolean tabIndicatorInit = false;
+
+    private final Anim addHoverProgress = new Anim();
+
+    private Set<String> modFilterSet = null;
+
+    /** Optional "is locked by stage" predicate enabled via {@link #setLockedFilter}. */
+    /**
+     * Extra exclusions offered in the filter menu, keyed by the option they belong to.
+     *
+     * <p>A map rather than a field per filter. There was one — "hide locked", for the auto-trigger
+     * editor — and the trades picker wanted a second on the same terms; a third field would have
+     * been the point at which somebody noticed, and by then there would be three copies of the
+     * same two lines.
+     */
+    private final java.util.Map<String, java.util.function.Predicate<String>> exclusions =
+            new java.util.LinkedHashMap<>();
+
+    public SearchableItemList(Consumer<String> onSelect) {
+        this(onSelect, null);
+    }
+
+    public SearchableItemList(Consumer<String> onSelect, Supplier<Collection<String>> alreadyAddedSupplier) {
+        this.onSelect = onSelect;
+        this.alreadyAddedSupplier = alreadyAddedSupplier;
+        this.searchBar = SearchPanelChrome.createSearchBar(Component.translatable("editor.historystages.search_items").getString(), this::applyFilter, alreadyAddedSupplier);
+
+        boolean askReliableRemover = ReliableRemoverCompat.isPresent();
+        for (Item item : BuiltInRegistries.ITEM) {
+            ResourceLocation key = BuiltInRegistries.ITEM.getKey(item);
+            if (key != null) {
+                ItemStack stack = new ItemStack(item);
+                String searchName = stack.getHoverName().getString().toLowerCase();
+                allItems.add(new ItemEntry(key.toString(), stack, searchName));
+                if (askReliableRemover && ReliableRemoverCompat.isRemoved(stack)) {
+                    removedItems.add(key.toString());
+                }
+            }
+        }
+        if (!removedItems.isEmpty()) {
+            SearchPanelChrome.addRemovedFilter(searchBar);
+        }
+        applyFilter("");
+    }
+
+    public void setMultiSelect(boolean multi) {
+        this.multiSelect = multi;
+    }
+
+    /**
+     * Enables Ctrl-add: when the user holds Ctrl while confirming the add, this
+     * callback fires instead of {@link #onSelect}, with NBT criteria built from
+     * the inventory ItemStack. Has no effect for registry-tab items (no stack
+     * data to dump) — those still go through {@link #onSelect}.
+     */
+    public void setOnSelectWithNbt(BiConsumer<String, JsonObject> onSelectWithNbt) {
+        this.onSelectWithNbt = onSelectWithNbt;
+    }
+
+    /**
+     * Opens on the inventory tab and makes every pick there carry its NBT, without Ctrl.
+     *
+     * <p>For callers that want a value read off a real stack rather than an item id — the NBT
+     * editor filling in one component's encoded form. Ctrl-add is a shortcut for callers that want
+     * either; here the stack is the whole point, so requiring the modifier would only produce
+     * clicks that appear to do nothing.
+     */
+    public void setValueMode() {
+        this.alwaysWithNbt = true;
+        this.openOnInventory = true;
+    }
+
+    /**
+     * Hides inventory stacks the predicate rejects, so the grid only offers what the caller can
+     * actually use — an item that lacks the component being filled in has nothing to give.
+     */
+    public void setStackFilter(java.util.function.Predicate<ItemStack> stackFilter) {
+        this.stackFilter = stackFilter;
+    }
+
+    public void show(int centerX, int centerY, int parentWidth) {
+        this.centerX = centerX;
+        this.centerY = centerY;
+        this.visible = true;
+        this.scrollRow = 0;
+        this.currentTab = openOnInventory ? TAB_INVENTORY : TAB_REGISTRY;
+        searchBar.setFocused(currentTab != TAB_INVENTORY);
+        this.selectedRegistryIds.clear();
+        this.selectedInventorySlots.clear();
+        this.nbtSelectedInventorySlots.clear();
+        this.tabIndicatorInit = false;
+        searchBar.setPlaceholder(Component.translatable("editor.historystages.search_items").getString());
+        searchBar.setText("");
+        recalcPanelSize();
+    }
+
+    private boolean isInventoryTab() {
+        return currentTab == TAB_INVENTORY;
+    }
+
+    private boolean isSelectedTab() {
+        return currentTab == TAB_SELECTED;
+    }
+
+    /** Reserved height for the select-all row in registry / selected modes. */
+    private int selectAllRowReserve() {
+        return multiSelect ? SELECTALL_BTN_H + 4 : 0;
+    }
+
+    /** Top Y of the item grid, shifted down by the reserved select-all row. */
+    private int gridTopY() {
+        int searchY = panelY + PADDING + TAB_HEIGHT + 4;
+        return searchY + SearchBar.HEIGHT + PADDING + selectAllRowReserve();
+    }
+
+    /**
+     * Number of item rows that fit between the grid top and the Add button on the Registry /
+     * Selected tabs. Derived from the fixed panel height so the grid fills the panel instead of
+     * the panel shrinking to the grid.
+     */
+    private int gridRows() {
+        int gridBottom = panelY + panelH - PADDING - ADD_BTN_H - PADDING;
+        return GridGeometry.rowsThatFit(gridBottom - gridTopY(), SLOT_SIZE);
+    }
+
+    /** Y of the select-all button row (just below the search bar). */
+    private int selectAllRowY() {
+        int searchY = panelY + PADDING + TAB_HEIGHT + 4;
+        return searchY + SearchBar.HEIGHT + PADDING;
+    }
+
+    /** The button row is always present on the Registry / Selected tabs; buttons grey out when idle. */
+    private boolean selectAllButtonsVisible() {
+        return multiSelect && !isInventoryTab();
+    }
+
+    /**
+     * Whether the buttons are actionable: on the Registry tab only once a query narrows the list
+     * (select-all with no filter would mean the whole registry), always on the Selected tab.
+     */
+    private boolean selectAllContextActive() {
+        if (isSelectedTab()) return true;
+        String q = searchBar.getText();
+        return q != null && !q.isEmpty();
+    }
+
+    private int totalSelectionCount() {
+        return selectedRegistryIds.size() + selectedInventorySlots.size();
+    }
+
+    /**
+     * The Selected tab is present for the whole lifetime of a multi-select panel, empty or
+     * not. Showing it only once something is selected would resize the tab bar mid-click.
+     */
+    private boolean showSelectedTab() {
+        return multiSelect;
+    }
+
+    private boolean isStillSelected(SelectedRef ref) {
+        return ref.fromInventory
+                ? selectedInventorySlots.contains(ref.inventorySlot)
+                : selectedRegistryIds.contains(ref.entry.id);
+    }
+
+    private int calcMinTabWidth() {
+        Font font = Minecraft.getInstance().font;
+        int total = PADDING * 2;
+        List<String> labels = tabLabels();
+        for (int i = 0; i < labels.size(); i++) {
+            total += font.width(labels.get(i)) + TAB_PAD * 2;
+            if (i < labels.size() - 1)
+                total += 2;
+        }
+        return total + PADDING;
+    }
+
+    private void recalcPanelSize() {
+        // Fixed size across all tabs = the Inventory tab's footprint (the tallest layout), so
+        // switching tabs never resizes the window. On the Registry / Selected tabs the item grid
+        // grows to fill the height instead of shrinking the panel (see gridRows()).
+        int gridW = SLOT_SIZE * 9;
+        panelW = PADDING + gridW + PADDING + 8;
+        int topAreaH = 4 * SLOT_SIZE + 4;
+        panelH = PADDING + TAB_HEIGHT + 4
+                + topAreaH + 4
+                + 3 * SLOT_SIZE + 6
+                + SLOT_SIZE + 6
+                + ADD_BTN_H + PADDING;
+
+        int minW = calcMinTabWidth();
+        if (panelW < minW)
+            panelW = minW;
+
+        panelX = centerX - panelW / 2;
+        panelY = centerY - panelH / 2;
+        clampToScreen();
+    }
+
+    private void clampToScreen() {
+        int screenW = Minecraft.getInstance().getWindow().getGuiScaledWidth();
+        int screenH = Minecraft.getInstance().getWindow().getGuiScaledHeight();
+        if (panelX < 4)
+            panelX = 4;
+        if (panelY < 4)
+            panelY = 4;
+        if (panelX + panelW > screenW - 4)
+            panelX = screenW - panelW - 4;
+        if (panelY + panelH > screenH - 4)
+            panelY = screenH - panelH - 4;
+    }
+
+    public void hide() {
+        this.visible = false;
+    }
+
+    public boolean isVisible() {
+        return visible;
+    }
+
+    public void setModFilter(Set<String> modIds) {
+        this.modFilterSet = modIds;
+        applyFilter(searchBar.getText());
+    }
+
+    public void setFilter(String filter) {
+        searchBar.setText(filter);
+    }
+
+    private void applyFilter(String filter) {
+        this.scrollRow = 0;
+
+        filteredItems.clear();
+        List<ItemEntry> baseItems = allItems;
+        if (modFilterSet != null && !modFilterSet.isEmpty()) {
+            baseItems = new ArrayList<>();
+            for (ItemEntry entry : allItems) {
+                if (matchesModFilter(entry))
+                    baseItems.add(entry);
+            }
+        }
+        for (ItemEntry entry : baseItems) {
+            if (matchesFilter(entry, filter))
+                filteredItems.add(entry);
+        }
+
+        if (isSelectedTab()) {
+            applySelectedFilter();
+        }
+        updateMaxScroll();
+    }
+
+    private boolean matchesModFilter(ItemEntry entry) {
+        if (modFilterSet == null)
+            return true;
+        String modId = entry.id.contains(":") ? entry.id.substring(0, entry.id.indexOf(':')) : "";
+        return modFilterSet.contains(modId);
+    }
+
+    private boolean matchesFilter(ItemEntry entry, String f) {
+        if (!matchesDropdownFilters(entry.id))
+            return false;
+        if (f.isEmpty())
+            return true;
+        if (f.startsWith("@")) {
+            String modFilter = f.substring(1);
+            String modId = entry.id.contains(":") ? entry.id.substring(0, entry.id.indexOf(':')) : "";
+            return modId.contains(modFilter);
+        }
+        return entry.id.contains(f) || entry.searchName.contains(f);
+    }
+
+    private boolean matchesDropdownFilters(String id) {
+        if (!SearchPanelChrome.passesDefaultFilters(searchBar, id, alreadyAddedSupplier)) return false;
+        if (id == null) return true;
+        if (!SearchPanelChrome.passesRemovedFilter(searchBar, removedItems, id)) return false;
+        for (java.util.Map.Entry<String, java.util.function.Predicate<String>> exclusion
+                : exclusions.entrySet()) {
+            if (searchBar.filters().isActive(exclusion.getKey())
+                    && exclusion.getValue().test(id)) return false;
+        }
+        return true;
+    }
+
+    /**
+     * Registers a "Hide locked" filter (active by default) that excludes items whose id
+     * matches {@code isLocked.test(id)}. Used by the auto-trigger editor to hide items
+     * the current stage already locks.
+     */
+    public void setLockedFilter(String label, java.util.function.Predicate<String> isLocked) {
+        addExclusion("hide_locked", label, true, isLocked);
+    }
+
+    /**
+     * Adds a switch to the filter menu that hides every item {@code exclude} says yes to.
+     *
+     * <p>The escape hatch matters as much as the filter: a picker narrowed to a list somebody else
+     * computed will sooner or later be missing the one item the maintainer wants, and then the
+     * only thing worse than a long list is a short one that cannot be made long again. Which is
+     * why this is a switch in the menu and not a list the caller replaces.
+     *
+     * @param onByDefault whether the switch starts ticked
+     */
+    public void addExclusion(String optionKey, String label, boolean onByDefault,
+                             java.util.function.Predicate<String> exclude) {
+        exclusions.put(optionKey, exclude);
+        searchBar.filters().addOption(optionKey, label, null, onByDefault);
+        applyFilter(searchBar.getText() == null ? "" : searchBar.getText());
+    }
+
+    /** Captures the current selection sets as the frozen Selected-tab snapshot. */
+    private void rebuildSelectedSnapshot() {
+        selectedSnapshot.clear();
+        for (String id : selectedRegistryIds) {
+            for (ItemEntry entry : allItems) {
+                if (entry.id.equals(id)) {
+                    selectedSnapshot.add(new SelectedRef(entry, false, -1));
+                    break;
+                }
+            }
+        }
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (player != null) {
+            for (Integer slot : selectedInventorySlots) {
+                ItemStack stack = player.getInventory().getItem(slot);
+                if (!stack.isEmpty()) {
+                    ResourceLocation key = BuiltInRegistries.ITEM.getKey(stack.getItem());
+                    String id = key != null ? key.toString() : "?";
+                    String searchName = stack.getHoverName().getString().toLowerCase();
+                    ItemEntry entry = new ItemEntry(id, stack, searchName);
+                    selectedSnapshot.add(new SelectedRef(entry, true, slot));
+                }
+            }
+        }
+        applySelectedFilter();
+    }
+
+    /** Filters the snapshot by the current search filter into the rendered view. */
+    private void applySelectedFilter() {
+        selectedView.clear();
+        String f = searchBar.getText();
+        for (SelectedRef ref : selectedSnapshot) {
+            if (matchesFilter(ref.entry, f))
+                selectedView.add(ref);
+        }
+    }
+
+    private void updateMaxScroll() {
+        int total = isSelectedTab() ? selectedView.size() : filteredItems.size();
+        maxScrollRow = GridGeometry.maxScrollRow(total, GRID_COLS, gridRows());
+    }
+
+    private List<String> tabLabels() {
+        List<String> labels = new ArrayList<>(3);
+        labels.add("Registry");
+        labels.add("Inventory");
+        if (showSelectedTab()) {
+            labels.add("Selected (" + totalSelectionCount() + ")");
+        }
+        return labels;
+    }
+
+    private int getGridStartX(boolean withScrollbar) {
+        int blockW = GRID_COLS * SLOT_SIZE + (withScrollbar ? SCROLLBAR_GAP : 0);
+        return panelX + (panelW - blockW) / 2;
+    }
+
+    // --- Rendering ---
+
+    public void render(GuiGraphics guiGraphics, Font font, int mouseX, int mouseY) {
+        if (!visible)
+            return;
+
+        SearchPanelChrome.renderFrame(guiGraphics, panelX, panelY, panelW, panelH);
+
+        renderTabs(guiGraphics, font, mouseX, mouseY);
+
+        if (isInventoryTab()) {
+            renderInventoryMode(guiGraphics, font, mouseX, mouseY);
+        } else if (isSelectedTab()) {
+            renderSelectedMode(guiGraphics, font, mouseX, mouseY);
+        } else {
+            renderRegistryMode(guiGraphics, font, mouseX, mouseY);
+        }
+    }
+
+    private void renderTabs(GuiGraphics guiGraphics, Font font, int mouseX, int mouseY) {
+        int tabY = panelY + PADDING;
+        List<String> labels = tabLabels();
+        int n = labels.size();
+        int[] tabXs = new int[n];
+        int[] tabWs = new int[n];
+
+        int x = panelX + PADDING;
+        for (int i = 0; i < n; i++) {
+            tabWs[i] = font.width(labels.get(i)) + TAB_PAD * 2;
+            tabXs[i] = x;
+            x += tabWs[i] + 2;
+        }
+
+        int activeIdx = Math.min(currentTab, n - 1);
+        if (!tabIndicatorInit) {
+            tabIndicatorXAnim.set(tabXs[activeIdx]);
+            tabIndicatorWAnim.set(tabWs[activeIdx]);
+            tabIndicatorInit = true;
+        }
+
+        float targetX = tabXs[activeIdx];
+        float targetW = tabWs[activeIdx];
+        tabIndicatorXAnim.approach(targetX, Timing.SCROLL_HALF_LIFE_MS);
+        tabIndicatorWAnim.approach(targetW, Timing.SCROLL_HALF_LIFE_MS);
+        tabIndicatorXAnim.settle(targetX, 0.5f);
+        tabIndicatorWAnim.settle(targetW, 0.5f);
+
+        for (int i = 0; i < n; i++) {
+            boolean active = (i == activeIdx);
+            boolean hovered = mouseX >= tabXs[i] && mouseX < tabXs[i] + tabWs[i]
+                    && mouseY >= tabY && mouseY < tabY + TAB_HEIGHT;
+
+            int bg = active ? 0x40FFCC00 : (hovered ? 0x25FFFFFF : 0x15FFFFFF);
+            guiGraphics.fill(tabXs[i], tabY, tabXs[i] + tabWs[i], tabY + TAB_HEIGHT, bg);
+
+            int textColor = active ? 0xFFFFFF : (hovered ? 0xDDDDDD : 0x999999);
+            guiGraphics.drawString(font, labels.get(i), tabXs[i] + TAB_PAD, tabY + 3, textColor, false);
+        }
+
+        guiGraphics.fill(Math.round(tabIndicatorXAnim.value()), tabY + TAB_HEIGHT - 2,
+                Math.round(tabIndicatorXAnim.value() + tabIndicatorWAnim.value()), tabY + TAB_HEIGHT, 0xFFFFCC00);
+
+        guiGraphics.fill(panelX + PADDING, tabY + TAB_HEIGHT, panelX + panelW - PADDING, tabY + TAB_HEIGHT + 1,
+                0xFF555555);
+    }
+
+    private void renderRegistryMode(GuiGraphics guiGraphics, Font font, int mouseX, int mouseY) {
+        int topOffset = PADDING + TAB_HEIGHT + 4;
+
+        if (modFilterSet != null && modFilterSet.isEmpty()) {
+            renderEmptyState(guiGraphics, font, topOffset);
+            return;
+        }
+
+        int searchX = panelX + PADDING;
+        int searchY = panelY + topOffset;
+        searchBar.setPosition(searchX, searchY, panelW - PADDING * 2);
+        searchBar.render(guiGraphics, font, mouseX, mouseY);
+        if (selectAllButtonsVisible()) renderSelectAllRow(guiGraphics, font, mouseX, mouseY);
+
+        int gridX = getGridStartX(true);
+        int gridY = gridTopY();
+
+        boolean filterUiHovered = searchBar.isMouseOverFilterUi(mouseX, mouseY);
+        int startIndex = scrollRow * GRID_COLS;
+
+        ItemSlotGrid.render(guiGraphics, gridX, gridY, GRID_COLS, gridRows(), scrollRow,
+                filteredStacks, i -> selectedRegistryIds.contains(filteredItems.get(i).id),
+                mouseX, mouseY, filterUiHovered);
+
+        if (maxScrollRow > 0) {
+            renderScrollbar(guiGraphics, gridX, gridY);
+        }
+
+        renderAddButton(guiGraphics, font, mouseX, mouseY);
+
+        guiGraphics.pose().pushPose();
+        guiGraphics.pose().translate(0, 0, 300);
+        if (!filterUiHovered) {
+            for (int row = 0; row < gridRows(); row++) {
+                for (int col = 0; col < GRID_COLS; col++) {
+                    int index = startIndex + row * GRID_COLS + col;
+                    int slotX = gridX + col * SLOT_SIZE;
+                    int slotY = gridY + row * SLOT_SIZE;
+
+                    if (index < filteredItems.size() && mouseX >= slotX && mouseX < slotX + SLOT_SIZE
+                            && mouseY >= slotY && mouseY < slotY + SLOT_SIZE) {
+                        ItemEntry entry = filteredItems.get(index);
+                        renderTooltip(guiGraphics, font, mouseX, mouseY,
+                                entry.stack.getHoverName().getString() + " §7(" + entry.id + ")");
+                    }
+                }
+            }
+        }
+        guiGraphics.pose().popPose();
+    }
+
+    private void renderEmptyState(GuiGraphics guiGraphics, Font font, int topOffset) {
+        String msg = Component.translatable("editor.historystages.no_mods_locked").getString();
+        int maxW = panelW - PADDING * 4;
+        List<String> lines = wrapText(font, msg, maxW);
+        int totalH = lines.size() * 10;
+        int startY = panelY + topOffset + (panelH - topOffset - totalH) / 2;
+        for (int i = 0; i < lines.size(); i++) {
+            String l = lines.get(i);
+            int lw = font.width(l);
+            guiGraphics.drawString(font, l, panelX + (panelW - lw) / 2, startY + i * 10, 0xFF888888, false);
+        }
+    }
+
+    private List<String> wrapText(Font font, String msg, int maxW) {
+        List<String> lines = new ArrayList<>();
+        StringBuilder line = new StringBuilder();
+        for (String word : msg.split(" ")) {
+            if (line.length() > 0 && font.width(line + " " + word) > maxW) {
+                lines.add(line.toString());
+                line = new StringBuilder(word);
+            } else {
+                if (line.length() > 0)
+                    line.append(" ");
+                line.append(word);
+            }
+        }
+        if (line.length() > 0)
+            lines.add(line.toString());
+        return lines;
+    }
+
+    private void renderScrollbar(GuiGraphics guiGraphics, int gridX, int gridY) {
+        ItemSlotGrid.renderScrollbar(guiGraphics, gridX, gridY, GRID_COLS, gridRows(), scrollRow, maxScrollRow);
+    }
+
+    private void renderSelectAllRow(GuiGraphics g, Font font, int mouseX, int mouseY) {
+        int rowX = panelX + PADDING;
+        int rowW = panelW - PADDING * 2;
+        int btnW = (rowW - SELECTALL_BTN_GAP) / 2;
+        int leftX = rowX;
+        int rightX = rowX + btnW + SELECTALL_BTN_GAP;
+        int y = selectAllRowY();
+
+        int selCount = selectableFoundCount();
+        int deselCount = deselectableFoundCount();
+        boolean canSelect = selCount > 0;
+        boolean canDeselect = deselCount > 0;
+        boolean selHovered = canSelect && isInBtn(mouseX, mouseY, leftX, y, btnW);
+        boolean deselHovered = canDeselect && isInBtn(mouseX, mouseY, rightX, y, btnW);
+
+        String selLabel = Component.translatable("editor.historystages.search.selectall", selCount).getString();
+        String deselLabel = Component.translatable("editor.historystages.search.deselectall", deselCount).getString();
+        drawSmallButton(g, font, leftX, y, btnW, selLabel, true, canSelect, selHovered);
+        drawSmallButton(g, font, rightX, y, btnW, deselLabel, false, canDeselect, deselHovered);
+    }
+
+    private boolean isInBtn(double mouseX, double mouseY, int x, int y, int w) {
+        return mouseX >= x && mouseX < x + w && mouseY >= y && mouseY < y + SELECTALL_BTN_H;
+    }
+
+    private void drawSmallButton(GuiGraphics g, Font font, int x, int y, int w,
+                                 String label, boolean accentYellow, boolean enabled, boolean hovered) {
+        int border;
+        int bg;
+        int text;
+        if (!enabled) {
+            border = 0xFF333333; bg = 0xFF1E1E1E; text = 0xFF555555;
+        } else if (accentYellow) {
+            border = hovered ? 0xFFFFCC00 : 0xFFB38F00;
+            bg = hovered ? 0xFF553A10 : 0xFF2A2510;
+            text = hovered ? 0xFFFFFFFF : 0xFFDDCC88;
+        } else {
+            border = hovered ? 0xFF884444 : 0xFF663030;
+            bg = hovered ? 0xFF3A1A1A : 0xFF2A1010;
+            text = hovered ? 0xFFFFFFFF : 0xFFDDAAAA;
+        }
+        g.fill(x, y, x + w, y + SELECTALL_BTN_H, border);
+        g.fill(x + 1, y + 1, x + w - 1, y + SELECTALL_BTN_H - 1, bg);
+        g.drawString(font, label, x + (w - font.width(label)) / 2, y + (SELECTALL_BTN_H - 8) / 2, text, false);
+    }
+
+    private void renderAddButton(GuiGraphics guiGraphics, Font font, int mouseX, int mouseY) {
+        int addBtnX = panelX + (panelW - ADD_BTN_W) / 2;
+        int addBtnY = panelY + panelH - PADDING - ADD_BTN_H;
+
+        boolean canAdd = canConfirm();
+        boolean addHovered = canAdd && mouseX >= addBtnX && mouseX < addBtnX + ADD_BTN_W
+                && mouseY >= addBtnY && mouseY < addBtnY + ADD_BTN_H;
+        float addHoverProgressValue = Ease.outCubic(addHoverProgress.ramp(addHovered, Timing.HOVER_IN_MS, Timing.HOVER_OUT_MS));
+
+        if (canAdd) {
+            renderStyledButton(guiGraphics, font, addBtnX, addBtnY, ADD_BTN_W, ADD_BTN_H, addButtonLabel(),
+                    addHoverProgressValue);
+        } else {
+            guiGraphics.fill(addBtnX, addBtnY, addBtnX + ADD_BTN_W, addBtnY + ADD_BTN_H, 0x20FFFFFF);
+            guiGraphics.fill(addBtnX, addBtnY, addBtnX + ADD_BTN_W, addBtnY + 1, 0x10FFFFFF);
+            String addText = "Select an Item";
+            guiGraphics.drawString(font, addText, addBtnX + (ADD_BTN_W - font.width(addText)) / 2,
+                    addBtnY + (ADD_BTN_H - 8) / 2, 0xFF666666, false);
+        }
+    }
+
+    private boolean canConfirm() {
+        if (multiSelect)
+            return totalSelectionCount() > 0;
+        if (isInventoryTab()) {
+            if (selectedInventorySlots.isEmpty())
+                return false;
+            LocalPlayer player = Minecraft.getInstance().player;
+            if (player == null)
+                return false;
+            int slot = selectedInventorySlots.iterator().next();
+            return !player.getInventory().getItem(slot).isEmpty();
+        }
+        return !selectedRegistryIds.isEmpty();
+    }
+
+    private String addButtonLabel() {
+        return multiSelect ? "Add Items (" + totalSelectionCount() + ")" : "Add Item";
+    }
+
+    private int[] getInvLayout() {
+        int topOffset = PADDING + TAB_HEIGHT + 4;
+        int gridX = getGridStartX(false);
+        int topY = panelY + topOffset + 2;
+        int topAreaH = 4 * SLOT_SIZE + 4;
+        int mainY = topY + topAreaH + 4;
+        int hotbarY = mainY + 3 * SLOT_SIZE + 6;
+        return new int[] { gridX, topY, mainY, hotbarY };
+    }
+
+    private boolean isItemAllowedByModFilter(ItemStack stack) {
+        if (stack.isEmpty())
+            return false;
+        if (stackFilter != null && !stackFilter.test(stack))
+            return false;
+        ResourceLocation key = BuiltInRegistries.ITEM.getKey(stack.getItem());
+        if (key == null)
+            return false;
+        if (modFilterSet != null && !modFilterSet.contains(key.getNamespace()))
+            return false;
+        return matchesDropdownFilters(key.toString());
+    }
+
+    private void renderInventoryMode(GuiGraphics guiGraphics, Font font, int mouseX, int mouseY) {
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (player == null)
+            return;
+
+        if (modFilterSet != null && modFilterSet.isEmpty()) {
+            renderEmptyState(guiGraphics, font, PADDING + TAB_HEIGHT + 4);
+            return;
+        }
+
+        int[] layout = getInvLayout();
+        int gridX = layout[0];
+        int topY = layout[1];
+        int mainY = layout[2];
+        int hotbarY = layout[3];
+
+        int armorX = gridX;
+        int entityAreaX = gridX + SLOT_SIZE + 4;
+        int entityAreaW = 9 * SLOT_SIZE - 2 * (SLOT_SIZE + 4);
+        int entityAreaH = 4 * SLOT_SIZE;
+        int offhandX = gridX + 9 * SLOT_SIZE - SLOT_SIZE;
+
+        int[] armorSlots = { 39, 38, 37, 36 };
+        String[] armorLabels = { "H", "C", "L", "F" };
+        for (int i = 0; i < 4; i++) {
+            renderInventorySlot(guiGraphics, font, armorX, topY + i * SLOT_SIZE,
+                    player.getInventory().getItem(armorSlots[i]), armorSlots[i], mouseX, mouseY, armorLabels[i]);
+        }
+
+        guiGraphics.fill(entityAreaX, topY, entityAreaX + entityAreaW, topY + entityAreaH, 0xFF0D0D0D);
+        // Raw cursor position, exactly as InventoryScreen passes its own xMouse/yMouse. The
+        // method derives the look angle itself as atan((boxCentre - mouse) / 40); handing it a
+        // pre-computed offset made it subtract twice, which cancelled the box centre out and
+        // left the model staring at the raw screen coordinate — pinned aside and inverted.
+        InventoryScreen.renderEntityInInventoryFollowsMouse(guiGraphics,
+                entityAreaX, topY, entityAreaX + entityAreaW, topY + entityAreaH, 25,
+                0.0625f, (float) mouseX, (float) mouseY, player);
+
+        renderInventorySlot(guiGraphics, font, offhandX, topY + 3 * SLOT_SIZE,
+                player.getInventory().getItem(40), 40, mouseX, mouseY, "O");
+
+        for (int row = 0; row < 3; row++) {
+            for (int col = 0; col < 9; col++) {
+                int slotIndex = 9 + row * 9 + col;
+                renderInventorySlot(guiGraphics, font, gridX + col * SLOT_SIZE, mainY + row * SLOT_SIZE,
+                        player.getInventory().getItem(slotIndex), slotIndex, mouseX, mouseY, null);
+            }
+        }
+
+        guiGraphics.fill(gridX, hotbarY - 3, gridX + 9 * SLOT_SIZE, hotbarY - 2, 0xFF333333);
+
+        for (int col = 0; col < 9; col++) {
+            renderInventorySlot(guiGraphics, font, gridX + col * SLOT_SIZE, hotbarY,
+                    player.getInventory().getItem(col), col, mouseX, mouseY, null);
+        }
+
+        renderAddButton(guiGraphics, font, mouseX, mouseY);
+
+        guiGraphics.pose().pushPose();
+        guiGraphics.pose().translate(0, 0, 300);
+        int hoveredSlot = getInventorySlotAt(mouseX, mouseY);
+        if (hoveredSlot >= 0) {
+            ItemStack stack = player.getInventory().getItem(hoveredSlot);
+            if (!stack.isEmpty()) {
+                ResourceLocation key = BuiltInRegistries.ITEM.getKey(stack.getItem());
+                if (key != null) {
+                    renderTooltip(guiGraphics, font, mouseX, mouseY,
+                            stack.getHoverName().getString() + " §7(" + key + ")");
+                }
+            }
+        }
+        guiGraphics.pose().popPose();
+    }
+
+    private void renderSelectedMode(GuiGraphics guiGraphics, Font font, int mouseX, int mouseY) {
+        int topOffset = PADDING + TAB_HEIGHT + 4;
+        int searchX = panelX + PADDING;
+        int searchY = panelY + topOffset;
+        searchBar.setPosition(searchX, searchY, panelW - PADDING * 2);
+        searchBar.render(guiGraphics, font, mouseX, mouseY);
+        if (selectAllButtonsVisible()) renderSelectAllRow(guiGraphics, font, mouseX, mouseY);
+
+        int gridX = getGridStartX(true);
+        int gridY = gridTopY();
+
+        boolean filterUiHovered = searchBar.isMouseOverFilterUi(mouseX, mouseY);
+        int startIndex = scrollRow * GRID_COLS;
+        for (int row = 0; row < gridRows(); row++) {
+            for (int col = 0; col < GRID_COLS; col++) {
+                int index = startIndex + row * GRID_COLS + col;
+                int slotX = gridX + col * SLOT_SIZE;
+                int slotY = gridY + row * SLOT_SIZE;
+
+                if (index < selectedView.size()) {
+                    boolean slotHovered = !filterUiHovered && mouseX >= slotX && mouseX < slotX + SLOT_SIZE
+                            && mouseY >= slotY && mouseY < slotY + SLOT_SIZE;
+                    SelectedRef ref = selectedView.get(index);
+                    boolean active = isStillSelected(ref);
+                    boolean nbtFlagged = active && ref.fromInventory
+                            && nbtSelectedInventorySlots.contains(ref.inventorySlot);
+
+                    int borderColor;
+                    int bgColor;
+                    if (nbtFlagged) {
+                        borderColor = slotHovered ? 0xFF44AADD : 0xFF66CCFF;
+                        bgColor = slotHovered ? 0xFF1A3340 : 0xFF10222A;
+                    } else if (active) {
+                        borderColor = slotHovered ? 0xFFFF8800 : 0xFFFFCC00;
+                        bgColor = slotHovered ? 0xFF553A10 : 0xFF2A2510;
+                    } else {
+                        borderColor = slotHovered ? 0xFF884444 : 0xFF552020;
+                        bgColor = slotHovered ? 0xFF3A1A1A : 0xFF1A0D0D;
+                    }
+                    guiGraphics.fill(slotX, slotY, slotX + SLOT_SIZE, slotY + SLOT_SIZE, borderColor);
+                    guiGraphics.fill(slotX + 1, slotY + 1, slotX + SLOT_SIZE - 1, slotY + SLOT_SIZE - 1, bgColor);
+
+                    guiGraphics.renderItem(ref.entry.stack, slotX + 1, slotY + 1);
+                    if (nbtFlagged) {
+                        guiGraphics.fill(slotX + 1, slotY + 1, slotX + SLOT_SIZE - 1, slotY + SLOT_SIZE - 1,
+                                0x4066CCFF);
+                    } else if (active) {
+                        guiGraphics.fill(slotX + 1, slotY + 1, slotX + SLOT_SIZE - 1, slotY + SLOT_SIZE - 1,
+                                0x40FFCC00);
+                    } else {
+                        guiGraphics.fill(slotX + 1, slotY + 1, slotX + SLOT_SIZE - 1, slotY + SLOT_SIZE - 1,
+                                0xB0000000);
+                        guiGraphics.fill(slotX + 1, slotY + 1, slotX + SLOT_SIZE - 1, slotY + SLOT_SIZE - 1,
+                                0x40CC0000);
+                    }
+                } else {
+                    guiGraphics.fill(slotX, slotY, slotX + SLOT_SIZE, slotY + SLOT_SIZE, 0xFF252525);
+                    guiGraphics.fill(slotX + 1, slotY + 1, slotX + SLOT_SIZE - 1, slotY + SLOT_SIZE - 1, 0xFF1A1A1A);
+                }
+            }
+        }
+
+        // Nothing selected yet: hint in the middle rather than a blank grid.
+        if (selectedSnapshot.isEmpty()) {
+            String hint = Component.translatable("editor.historystages.search.selected.empty").getString();
+            int gridH = gridRows() * SLOT_SIZE;
+            int gridBlockW = GRID_COLS * SLOT_SIZE;
+            guiGraphics.drawString(font, hint, gridX + (gridBlockW - font.width(hint)) / 2,
+                    gridY + (gridH - 8) / 2, 0xFF888888, false);
+        }
+
+        if (maxScrollRow > 0) {
+            renderScrollbar(guiGraphics, gridX, gridY);
+        }
+
+        renderAddButton(guiGraphics, font, mouseX, mouseY);
+
+        guiGraphics.pose().pushPose();
+        guiGraphics.pose().translate(0, 0, 300);
+        if (!filterUiHovered) {
+            for (int row = 0; row < gridRows(); row++) {
+                for (int col = 0; col < GRID_COLS; col++) {
+                    int index = startIndex + row * GRID_COLS + col;
+                    int slotX = gridX + col * SLOT_SIZE;
+                    int slotY = gridY + row * SLOT_SIZE;
+
+                    if (index < selectedView.size() && mouseX >= slotX && mouseX < slotX + SLOT_SIZE
+                            && mouseY >= slotY && mouseY < slotY + SLOT_SIZE) {
+                        ItemEntry entry = selectedView.get(index).entry;
+                        renderTooltip(guiGraphics, font, mouseX, mouseY,
+                                entry.stack.getHoverName().getString() + " §7(" + entry.id + ")");
+                    }
+                }
+            }
+        }
+        guiGraphics.pose().popPose();
+    }
+
+    private void renderInventorySlot(GuiGraphics guiGraphics, Font font, int x, int y,
+            ItemStack stack, int slotIndex, int mouseX, int mouseY, String placeholder) {
+        boolean isEmpty = stack.isEmpty();
+        boolean isAllowed = isEmpty || isItemAllowedByModFilter(stack);
+        boolean isSelected = selectedInventorySlots.contains(slotIndex);
+        boolean isNbtSelected = nbtSelectedInventorySlots.contains(slotIndex);
+        boolean isHovered = !isEmpty && isAllowed && mouseX >= x && mouseX < x + SLOT_SIZE && mouseY >= y
+                && mouseY < y + SLOT_SIZE;
+
+        float hp = Ease.outCubic(slotHover.computeIfAbsent(slotIndex, k -> new Anim())
+                .ramp(isHovered, Timing.HOVER_IN_MS, Timing.HOVER_OUT_MS));
+        // Selection fades in on its own timer: in multi-select the grid is ticked slot by slot,
+        // and an instant repaint gives no sense of which one just took the click.
+        float sp = Ease.outCubic(slotSelect.computeIfAbsent(slotIndex, k -> new Anim())
+                .ramp(isSelected || isNbtSelected, Timing.HOVER_IN_MS, Timing.HOVER_OUT_MS));
+
+        // Cyan marks "will be added with NBT", gold a plain selection.
+        int selBorder = isNbtSelected ? 0xFF66CCFF : 0xFFFFCC00;
+        int selBg = isNbtSelected ? 0xFF10222A : 0xFF2A2510;
+
+        // Resting slot brightens under the cursor; the selection colour is layered on top of
+        // that, so a hovered selected slot still reacts instead of freezing on its accent.
+        int borderColor = Fade.mix(Fade.mix(0xFF252525, 0xFF4A4A4A, hp), selBorder, sp);
+        int bgColor = Fade.mix(Fade.mix(0xFF1A1A1A, 0xFF353535, hp), selBg, sp);
+
+        guiGraphics.fill(x, y, x + SLOT_SIZE, y + SLOT_SIZE, borderColor);
+        guiGraphics.fill(x + 1, y + 1, x + SLOT_SIZE - 1, y + SLOT_SIZE - 1, bgColor);
+
+        if (!isEmpty) {
+            guiGraphics.renderItem(stack, x + 1, y + 1);
+            if (stack.getCount() > 1) {
+                guiGraphics.pose().pushPose();
+                guiGraphics.pose().translate(0, 0, 200);
+                String count = String.valueOf(stack.getCount());
+                guiGraphics.drawString(font, count, x + SLOT_SIZE - 1 - font.width(count), y + SLOT_SIZE - 9, 0xFFFFFF,
+                        true);
+                guiGraphics.pose().popPose();
+            }
+            if (sp > 0.001f) {
+                guiGraphics.fill(x + 1, y + 1, x + SLOT_SIZE - 1, y + SLOT_SIZE - 1,
+                        Fade.rgba(isNbtSelected ? 0x66CCFF : 0xFFCC00, 0.25f * sp));
+            }
+            if (!isAllowed) {
+                guiGraphics.fill(x + 1, y + 1, x + SLOT_SIZE - 1, y + SLOT_SIZE - 1, 0xC0000000);
+            }
+        } else if (placeholder != null) {
+            guiGraphics.drawString(font, placeholder, x + (SLOT_SIZE - font.width(placeholder)) / 2, y + 5, 0xFF444444,
+                    false);
+        }
+    }
+
+    private void renderStyledButton(GuiGraphics guiGraphics, Font font, int x, int y, int w, int h,
+            String text, float hoverProgress) {
+        int bgAlpha = (int) (0x30 + hoverProgress * 0x20);
+        int bgR = 0xFF;
+        int bgG = (int) (0xFF - hoverProgress * 0x33);
+        int bgB = (int) (0xFF - hoverProgress * 0xFF);
+        guiGraphics.fill(x, y, x + w, y + h, (bgAlpha << 24) | (bgR << 16) | (bgG << 8) | bgB);
+
+        int accentAlpha = (int) (0x60 + hoverProgress * 0x9F);
+        guiGraphics.fill(x, y + h - 2, x + w, y + h, (accentAlpha << 24) | 0xFFCC00);
+
+        guiGraphics.fill(x, y, x + w, y + 1, 0x20FFFFFF);
+        guiGraphics.fill(x, y, x + 1, y + h, 0x15FFFFFF);
+        guiGraphics.fill(x + w - 1, y, x + w, y + h, 0x15FFFFFF);
+
+        int textGray = (int) (0xCC + hoverProgress * 0x33);
+        int textColor = (0xFF << 24) | (textGray << 16) | (textGray << 8) | textGray;
+        guiGraphics.drawString(font, text, x + (w - font.width(text)) / 2, y + (h - 8) / 2, textColor, false);
+    }
+
+    private void renderTooltip(GuiGraphics guiGraphics, Font font, int mouseX, int mouseY, String text) {
+        ItemSlotGrid.renderTooltip(guiGraphics, font, mouseX, mouseY, text,
+                Minecraft.getInstance().getWindow().getGuiScaledWidth(),
+                Minecraft.getInstance().getWindow().getGuiScaledHeight());
+    }
+
+    // --- Hit detection ---
+
+    private int getInventorySlotAt(double mouseX, double mouseY) {
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (player == null)
+            return -1;
+
+        int[] layout = getInvLayout();
+        int gridX = layout[0];
+        int topY = layout[1];
+        int mainY = layout[2];
+        int hotbarY = layout[3];
+
+        int armorX = gridX;
+        int offhandX = gridX + 9 * SLOT_SIZE - SLOT_SIZE;
+
+        int[] armorSlots = { 39, 38, 37, 36 };
+        for (int i = 0; i < 4; i++) {
+            int slotY = topY + i * SLOT_SIZE;
+            if (mouseX >= armorX && mouseX < armorX + SLOT_SIZE && mouseY >= slotY && mouseY < slotY + SLOT_SIZE) {
+                return armorSlots[i];
+            }
+        }
+
+        int offhandY = topY + 3 * SLOT_SIZE;
+        if (mouseX >= offhandX && mouseX < offhandX + SLOT_SIZE && mouseY >= offhandY
+                && mouseY < offhandY + SLOT_SIZE) {
+            return 40;
+        }
+
+        for (int row = 0; row < 3; row++) {
+            for (int col = 0; col < 9; col++) {
+                int slotIndex = 9 + row * 9 + col;
+                int slotX = gridX + col * SLOT_SIZE;
+                int slotY = mainY + row * SLOT_SIZE;
+                if (mouseX >= slotX && mouseX < slotX + SLOT_SIZE && mouseY >= slotY && mouseY < slotY + SLOT_SIZE) {
+                    return slotIndex;
+                }
+            }
+        }
+
+        for (int col = 0; col < 9; col++) {
+            int slotX = gridX + col * SLOT_SIZE;
+            if (mouseX >= slotX && mouseX < slotX + SLOT_SIZE && mouseY >= hotbarY && mouseY < hotbarY + SLOT_SIZE) {
+                return col;
+            }
+        }
+
+        return -1;
+    }
+
+    private int getTabAt(double mouseX, double mouseY) {
+        Font font = Minecraft.getInstance().font;
+        int tabY = panelY + PADDING;
+        List<String> labels = tabLabels();
+        int x = panelX + PADDING;
+        for (int i = 0; i < labels.size(); i++) {
+            int w = font.width(labels.get(i)) + TAB_PAD * 2;
+            if (mouseX >= x && mouseX < x + w && mouseY >= tabY && mouseY < tabY + TAB_HEIGHT) {
+                return i;
+            }
+            x += w + 2;
+        }
+        return -1;
+    }
+
+    // --- Input handling ---
+
+    public boolean mouseClicked(double mouseX, double mouseY) {
+        if (!visible)
+            return false;
+
+        // Funnel/popup gets first crack — the popup may extend outside the panel.
+        // Skipped on Inventory tab (no search bar there).
+        if (!isInventoryTab() && searchBar.mouseClicked(mouseX, mouseY)) {
+            return true;
+        }
+
+        if (mouseX < panelX || mouseX > panelX + panelW || mouseY < panelY || mouseY > panelY + panelH) {
+            hide();
+            return true;
+        }
+
+        int clickedTab = getTabAt(mouseX, mouseY);
+        if (clickedTab >= 0 && clickedTab != currentTab) {
+            int maxTab = showSelectedTab() ? TAB_SELECTED : TAB_INVENTORY;
+            if (clickedTab <= maxTab) {
+                switchTab(clickedTab);
+                return true;
+            }
+        }
+
+        if (isSelectedTab()) {
+            return handleSelectedClick(mouseX, mouseY);
+        }
+        if (isInventoryTab()) {
+            return handleInventoryClick(mouseX, mouseY);
+        }
+        return handleRegistryClick(mouseX, mouseY);
+    }
+
+    private void switchTab(int newTab) {
+        int oldTab = currentTab;
+        currentTab = newTab;
+        searchBar.filters().close();
+        searchBar.setFocused(currentTab != TAB_INVENTORY);
+        Minecraft.getInstance().getSoundManager()
+                .play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
+        scrollRow = 0;
+        if (oldTab == TAB_SELECTED && newTab != TAB_SELECTED) {
+            selectedSnapshot.clear();
+            selectedView.clear();
+        }
+        if (newTab == TAB_SELECTED) {
+            searchBar.setPlaceholder(Component.translatable(
+                    "editor.historystages.search.selected.placeholder", totalSelectionCount()).getString());
+        } else {
+            searchBar.setPlaceholder(Component.translatable("editor.historystages.search_items").getString());
+        }
+        searchBar.setText("");
+        if (currentTab == TAB_SELECTED) {
+            rebuildSelectedSnapshot();
+        }
+        updateMaxScroll();
+        recalcPanelSize();
+    }
+
+    private boolean confirmAndAdd() {
+        if (!canConfirm())
+            return false;
+        Minecraft.getInstance().getSoundManager()
+                .play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
+
+        LocalPlayer player = Minecraft.getInstance().player;
+
+        if (multiSelect) {
+            // Registry-tab selections never carry stack data, so they always go
+            // through onSelect — there's nothing to derive NBT from.
+            for (String id : selectedRegistryIds) {
+                onSelect.accept(id);
+            }
+            if (player != null) {
+                for (Integer slot : selectedInventorySlots) {
+                    ItemStack stack = player.getInventory().getItem(slot);
+                    if (stack.isEmpty()) continue;
+                    ResourceLocation key = BuiltInRegistries.ITEM.getKey(stack.getItem());
+                    if (key == null) continue;
+                    emitInventoryItem(key.toString(), stack, nbtSelectedInventorySlots.contains(slot));
+                }
+            }
+        } else if (!selectedRegistryIds.isEmpty()) {
+            onSelect.accept(selectedRegistryIds.iterator().next());
+        } else if (!selectedInventorySlots.isEmpty()) {
+            if (player != null) {
+                int slot = selectedInventorySlots.iterator().next();
+                ItemStack stack = player.getInventory().getItem(slot);
+                if (!stack.isEmpty()) {
+                    ResourceLocation key = BuiltInRegistries.ITEM.getKey(stack.getItem());
+                    if (key != null) {
+                        emitInventoryItem(key.toString(), stack, nbtSelectedInventorySlots.contains(slot));
+                    }
+                }
+            }
+        }
+        hide();
+        return true;
+    }
+
+    private void emitInventoryItem(String id, ItemStack stack, boolean withNbt) {
+        if (withNbt && onSelectWithNbt != null) {
+            JsonObject nbt = buildNbtCriteriaFromStack(stack);
+            onSelectWithNbt.accept(id, nbt.size() > 0 ? nbt : null);
+        } else {
+            onSelect.accept(id);
+        }
+    }
+
+    /**
+     * Builds an NBT-criteria JsonObject from an ItemStack that matches the
+     * shape the NbtItemEditScreen produces.
+     * <p>
+     * Three sources feed into the result:
+     * <ul>
+     *     <li>{@link DataComponents#CUSTOM_DATA} → top-level keys (custom NBT).</li>
+     *     <li>Well-known vanilla components (enchantments, lore, custom model
+     *         data, …) → top-level legacy keys ({@code Enchantments},
+     *         {@code display.Lore}, …) so the editor's Data Properties section
+     *         picks them up.</li>
+     *     <li>Every other patched data component (mod-defined or non-mapped
+     *         vanilla) → {@code components} sub-object, encoded via its codec.</li>
+     * </ul>
+     */
+    private static JsonObject buildNbtCriteriaFromStack(ItemStack stack) {
+        JsonObject result = new JsonObject();
+
+        // Top-level keys from CUSTOM_DATA (convert NBT → JSON).
+        CustomData customData = stack.get(DataComponents.CUSTOM_DATA);
+        if (customData != null) {
+            Tag tag = customData.copyTag();
+            if (tag instanceof net.minecraft.nbt.CompoundTag compound && !compound.isEmpty()) {
+                JsonElement asJson = NbtOps.INSTANCE.convertTo(JsonOps.INSTANCE, compound);
+                if (asJson != null && asJson.isJsonObject()) {
+                    for (Map.Entry<String, JsonElement> e : asJson.getAsJsonObject().entrySet()) {
+                        result.add(e.getKey(), e.getValue());
+                    }
+                }
+            }
+        }
+
+        // Components: only the patched (non-default) ones, so the criteria
+        // doesn't over-restrict to every default value the item ships with.
+        // Components that map to one of the editor's well-known "Data
+        // Properties" get emitted in legacy form at the top level instead, so
+        // the editor's checkboxes pre-populate naturally.
+        JsonObject components = new JsonObject();
+        DataComponentPatch patch = stack.getComponentsPatch();
+        for (Map.Entry<DataComponentType<?>, Optional<?>> entry : patch.entrySet()) {
+            DataComponentType<?> type = entry.getKey();
+            // CUSTOM_DATA is already represented at the top level.
+            if (type == DataComponents.CUSTOM_DATA) continue;
+            Optional<?> opt = entry.getValue();
+            if (opt.isEmpty()) continue; // patch removal — can't express as a match criterion
+            Object value = opt.get();
+
+            if (emitLegacyTopLevel(result, type, value)) continue;
+
+            if (type.codec() == null) continue;
+            ResourceLocation id = BuiltInRegistries.DATA_COMPONENT_TYPE.getKey(type);
+            if (id == null) continue;
+            JsonElement encoded = ComponentShapes.encode(stack, type);
+            if (encoded != null) components.add(id.toString(), encoded);
+        }
+        if (components.size() > 0) result.add("components", components);
+
+        return result;
+    }
+
+    /**
+     * Enchantments are the only components that belong at the top level: {@code NbtMatcher}
+     * synthesises {@code Enchantments} and {@code StoredEnchantments} from the stack's enchantment
+     * components, so criteria written that way match.
+     *
+     * <p>Everything else goes into the {@code components} object. Mapping it back to pre-1.20.5 key
+     * names — which this method used to do for unbreakable, custom_model_data, repair_cost,
+     * potion_contents, custom_name and lore, so the old editor's checkboxes would light up —
+     * produced criteria that are looked up in {@code custom_data} and can therefore never match a
+     * normal item.
+     */
+    private static boolean emitLegacyTopLevel(JsonObject result, DataComponentType<?> type, Object value) {
+        if (type == DataComponents.ENCHANTMENTS && value instanceof ItemEnchantments ench) {
+            if (!ench.isEmpty()) result.add("Enchantments", toEnchantmentJsonList(ench));
+            return true;
+        }
+        if (type == DataComponents.STORED_ENCHANTMENTS && value instanceof ItemEnchantments stored) {
+            if (!stored.isEmpty()) result.add("StoredEnchantments", toEnchantmentJsonList(stored));
+            return true;
+        }
+        return false;
+    }
+
+    private static JsonArray toEnchantmentJsonList(ItemEnchantments enchantments) {
+        JsonArray arr = new JsonArray();
+        for (var entry : enchantments.entrySet()) {
+            ResourceLocation id = entry.getKey().unwrapKey().map(ResourceKey::location).orElse(null);
+            if (id == null) continue;
+            JsonObject e = new JsonObject();
+            e.addProperty("id", id.toString());
+            e.addProperty("lvl", entry.getIntValue());
+            arr.add(e);
+        }
+        return arr;
+    }
+
+    private boolean isAddButtonAt(double mouseX, double mouseY) {
+        int addBtnX = panelX + (panelW - ADD_BTN_W) / 2;
+        int addBtnY = panelY + panelH - PADDING - ADD_BTN_H;
+        return mouseX >= addBtnX && mouseX < addBtnX + ADD_BTN_W && mouseY >= addBtnY && mouseY < addBtnY + ADD_BTN_H;
+    }
+
+    private void toggleRegistrySelection(String id) {
+        if (selectedRegistryIds.contains(id)) {
+            selectedRegistryIds.remove(id);
+        } else {
+            if (!multiSelect) {
+                selectedRegistryIds.clear();
+                selectedInventorySlots.clear();
+            }
+            selectedRegistryIds.add(id);
+        }
+    }
+
+    private void toggleInventorySelection(int slot, boolean withNbt) {
+        if (selectedInventorySlots.contains(slot)) {
+            selectedInventorySlots.remove(slot);
+            nbtSelectedInventorySlots.remove(slot);
+        } else {
+            if (!multiSelect) {
+                selectedRegistryIds.clear();
+                selectedInventorySlots.clear();
+                nbtSelectedInventorySlots.clear();
+            }
+            selectedInventorySlots.add(slot);
+            if ((withNbt || alwaysWithNbt) && onSelectWithNbt != null) {
+                nbtSelectedInventorySlots.add(slot);
+            }
+        }
+    }
+
+    private boolean handleInventoryClick(double mouseX, double mouseY) {
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (player == null)
+            return true;
+
+        if (isAddButtonAt(mouseX, mouseY)) {
+            confirmAndAdd();
+            return true;
+        }
+
+        int clickedSlot = getInventorySlotAt(mouseX, mouseY);
+        if (clickedSlot >= 0) {
+            ItemStack stack = player.getInventory().getItem(clickedSlot);
+            if (!stack.isEmpty() && isItemAllowedByModFilter(stack)) {
+                Minecraft.getInstance().getSoundManager()
+                        .play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
+                toggleInventorySelection(clickedSlot, Screen.hasControlDown());
+            }
+            return true;
+        }
+
+        return true;
+    }
+
+    private boolean handleRegistryClick(double mouseX, double mouseY) {
+        if (isAddButtonAt(mouseX, mouseY)) {
+            confirmAndAdd();
+            return true;
+        }
+
+        if (selectAllButtonsVisible()) {
+            int rowX = panelX + PADDING;
+            int rowW = panelW - PADDING * 2;
+            int btnW = (rowW - SELECTALL_BTN_GAP) / 2;
+            int leftX = rowX;
+            int rightX = rowX + btnW + SELECTALL_BTN_GAP;
+            int y = selectAllRowY();
+            if (isInBtn(mouseX, mouseY, leftX, y, btnW)) {
+                if (selectableFoundCount() > 0) {
+                    Minecraft.getInstance().getSoundManager()
+                            .play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
+                    selectAllFound();
+                }
+                return true;
+            }
+            if (isInBtn(mouseX, mouseY, rightX, y, btnW)) {
+                if (deselectableFoundCount() > 0) {
+                    Minecraft.getInstance().getSoundManager()
+                            .play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
+                    deselectAllFound();
+                }
+                return true;
+            }
+        }
+
+        int topOffset = PADDING + TAB_HEIGHT + 4;
+        int searchY = panelY + topOffset;
+        int gridX = getGridStartX(true);
+        int gridY = gridTopY();
+
+        if (maxScrollRow > 0) {
+            if (ItemSlotGrid.isOverScrollbar(gridX, gridY, GRID_COLS, gridRows(), mouseX, mouseY)) {
+                draggingScrollbar = true;
+                updateScrollFromMouse(mouseY, gridY);
+                return true;
+            }
+        }
+
+        int index = GridGeometry.indexAt(gridX, gridY, SLOT_SIZE, GRID_COLS, gridRows(),
+                scrollRow, mouseX, mouseY);
+        if (index >= 0 && index < filteredItems.size()) {
+            Minecraft.getInstance().getSoundManager()
+                    .play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
+            toggleRegistrySelection(filteredItems.get(index).id);
+            return true;
+        }
+
+        searchBar.setFocused(true);
+        return true;
+    }
+
+    private boolean handleSelectedClick(double mouseX, double mouseY) {
+        if (isAddButtonAt(mouseX, mouseY)) {
+            confirmAndAdd();
+            return true;
+        }
+
+        if (selectAllButtonsVisible()) {
+            int rowX = panelX + PADDING;
+            int rowW = panelW - PADDING * 2;
+            int btnW = (rowW - SELECTALL_BTN_GAP) / 2;
+            int leftX = rowX;
+            int rightX = rowX + btnW + SELECTALL_BTN_GAP;
+            int y = selectAllRowY();
+            if (isInBtn(mouseX, mouseY, leftX, y, btnW)) {
+                if (selectableFoundCount() > 0) {
+                    Minecraft.getInstance().getSoundManager()
+                            .play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
+                    selectAllFound();
+                }
+                return true;
+            }
+            if (isInBtn(mouseX, mouseY, rightX, y, btnW)) {
+                if (deselectableFoundCount() > 0) {
+                    Minecraft.getInstance().getSoundManager()
+                            .play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
+                    deselectAllFound();
+                }
+                return true;
+            }
+        }
+
+        int topOffset = PADDING + TAB_HEIGHT + 4;
+        int searchY = panelY + topOffset;
+        int gridX = getGridStartX(true);
+        int gridY = gridTopY();
+
+        if (maxScrollRow > 0) {
+            if (ItemSlotGrid.isOverScrollbar(gridX, gridY, GRID_COLS, gridRows(), mouseX, mouseY)) {
+                draggingScrollbar = true;
+                updateScrollFromMouse(mouseY, gridY);
+                return true;
+            }
+        }
+
+        int startIndex = scrollRow * GRID_COLS;
+        for (int row = 0; row < gridRows(); row++) {
+            for (int col = 0; col < GRID_COLS; col++) {
+                int index = startIndex + row * GRID_COLS + col;
+                int slotX = gridX + col * SLOT_SIZE;
+                int slotY = gridY + row * SLOT_SIZE;
+
+                if (index < selectedView.size() && mouseX >= slotX && mouseX < slotX + SLOT_SIZE
+                        && mouseY >= slotY && mouseY < slotY + SLOT_SIZE) {
+                    Minecraft.getInstance().getSoundManager()
+                            .play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
+                    toggleSnapshotEntry(selectedView.get(index));
+                    return true;
+                }
+            }
+        }
+        searchBar.setFocused(true);
+        return true;
+    }
+
+    /** How many currently-found items "Select all" would add. 0 when idle (no filter). */
+    private int selectableFoundCount() {
+        if (!selectAllContextActive()) return 0;
+        int n = 0;
+        if (isSelectedTab()) {
+            for (SelectedRef ref : selectedView) if (!isStillSelected(ref)) n++;
+        } else {
+            for (ItemEntry entry : filteredItems) if (!selectedRegistryIds.contains(entry.id)) n++;
+        }
+        return n;
+    }
+
+    /**
+     * How many currently-found items "Deselect all" would remove. Unlike selecting, this is
+     * available without a filter too — it only ever removes things already selected, so clearing
+     * the whole selection with no query is safe.
+     */
+    private int deselectableFoundCount() {
+        int n = 0;
+        if (isSelectedTab()) {
+            for (SelectedRef ref : selectedView) if (isStillSelected(ref)) n++;
+        } else {
+            for (ItemEntry entry : filteredItems) if (selectedRegistryIds.contains(entry.id)) n++;
+        }
+        return n;
+    }
+
+    private void selectAllFound() {
+        if (isSelectedTab()) {
+            for (SelectedRef ref : selectedView) {
+                if (ref.fromInventory) selectedInventorySlots.add(ref.inventorySlot);
+                else selectedRegistryIds.add(ref.entry.id);
+            }
+        } else {
+            for (ItemEntry entry : filteredItems) selectedRegistryIds.add(entry.id);
+        }
+        refreshSelectedPlaceholder();
+    }
+
+    private void deselectAllFound() {
+        if (isSelectedTab()) {
+            for (SelectedRef ref : selectedView) {
+                if (ref.fromInventory) {
+                    selectedInventorySlots.remove(ref.inventorySlot);
+                    nbtSelectedInventorySlots.remove(ref.inventorySlot);
+                } else {
+                    selectedRegistryIds.remove(ref.entry.id);
+                }
+            }
+        } else {
+            for (ItemEntry entry : filteredItems) selectedRegistryIds.remove(entry.id);
+        }
+        refreshSelectedPlaceholder();
+    }
+
+    private void refreshSelectedPlaceholder() {
+        if (isSelectedTab()) {
+            searchBar.setPlaceholder(Component.translatable(
+                    "editor.historystages.search.selected.placeholder", totalSelectionCount()).getString());
+        }
+    }
+
+    /**
+     * Toggles whether the snapshot entry is in the active selection sets, but
+     * leaves it in the snapshot/view so the grid doesn't shift under the
+     * cursor. Snapshot is purged on tab exit.
+     */
+    private void toggleSnapshotEntry(SelectedRef ref) {
+        if (ref.fromInventory) {
+            if (selectedInventorySlots.contains(ref.inventorySlot)) {
+                selectedInventorySlots.remove(ref.inventorySlot);
+                nbtSelectedInventorySlots.remove(ref.inventorySlot);
+            } else {
+                selectedInventorySlots.add(ref.inventorySlot);
+                if (Screen.hasControlDown() && onSelectWithNbt != null) {
+                    nbtSelectedInventorySlots.add(ref.inventorySlot);
+                }
+            }
+        } else {
+            if (selectedRegistryIds.contains(ref.entry.id)) {
+                selectedRegistryIds.remove(ref.entry.id);
+            } else {
+                selectedRegistryIds.add(ref.entry.id);
+            }
+        }
+    }
+
+    public boolean mouseDragged(double mouseX, double mouseY) {
+        if (!visible || !draggingScrollbar || isInventoryTab())
+            return false;
+        int gridY = gridTopY();
+        updateScrollFromMouse(mouseY, gridY);
+        return true;
+    }
+
+    public boolean mouseReleased() {
+        if (draggingScrollbar) {
+            draggingScrollbar = false;
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Snaps the thumb's <em>centre</em> to the cursor, which is this widget's long-standing feel.
+     * Deliberately not {@link GridGeometry#scrollFromThumbDrag}, which preserves the point you
+     * grabbed instead — that is the better behaviour and the new recipe picker uses it, but
+     * swapping it in here would change how an existing panel drags. The thumb height comes from
+     * the shared maths either way, so the drag cannot disagree with what is painted.
+     */
+    private void updateScrollFromMouse(double mouseY, int gridY) {
+        int gridH = gridRows() * SLOT_SIZE;
+        int thumbHeight = GridGeometry.thumbHeight(gridH, gridRows(), maxScrollRow);
+        float usableH = gridH - thumbHeight;
+        if (usableH > 0) {
+            float ratio = (float) (mouseY - gridY - thumbHeight / 2.0) / usableH;
+            ratio = Math.max(0, Math.min(1, ratio));
+            scrollRow = Math.round(ratio * maxScrollRow);
+            scrollRow = Math.max(0, Math.min(maxScrollRow, scrollRow));
+        }
+    }
+
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (!visible || isInventoryTab())
+            return false;
+
+        double delta = scrollY;
+        if (mouseX >= panelX && mouseX <= panelX + panelW && mouseY >= panelY && mouseY <= panelY + panelH) {
+            scrollRow = Math.max(0, Math.min(maxScrollRow, scrollRow - (int) delta));
+            return true;
+        }
+        return false;
+    }
+
+    public boolean keyPressed(int keyCode) {
+        if (!visible)
+            return false;
+
+        if (keyCode == 256) { // ESC
+            if (searchBar.keyPressed(keyCode))
+                return true;
+            hide();
+            return true;
+        }
+
+        if (keyCode == 257 && canConfirm()) { // Enter
+            confirmAndAdd();
+            return true;
+        }
+
+        if (isInventoryTab())
+            return true;
+
+        return searchBar.keyPressed(keyCode);
+    }
+
+    public boolean charTyped(char c) {
+        if (!visible || isInventoryTab())
+            return false;
+        return searchBar.charTyped(c);
+    }
+
+    private record ItemEntry(String id, ItemStack stack, String searchName) {
+    }
+
+    private record SelectedRef(ItemEntry entry, boolean fromInventory, int inventorySlot) {
+    }
+}
