@@ -14,6 +14,7 @@ import net.minecraft.world.level.block.entity.LecternBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.bananemdnsa.historystages.platform.bus.EventPriority;
 import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.fabricmc.fabric.api.util.TriState;
 import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
 import net.bananemdnsa.historystages.platform.event.entity.player.PlayerInteractEvent;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
@@ -64,11 +65,14 @@ public final class LecternScrollHandler {
         // own BlockLockHandler denies a locked block's GUI through exactly that TriState, so
         // reading only the sneak half would open the document on a lectern the player may not
         // touch. LOW priority makes sure that handler has already written it.
+        //
+        // The sneak half is vanilla's own condition here. NeoForge lets an item declare that
+        // sneaking should not bypass block use, and the gate asked both hands about it; this
+        // loader has no such hook, so a modded item cannot opt out and the term is gone.
         boolean holdingSomething = !player.getMainHandItem().isEmpty() || !player.getOffhandItem().isEmpty();
-        boolean bothHandsBypassSneak = player.getMainHandItem().doesSneakBypassUse(level, pos, player)
-                && player.getOffhandItem().doesSneakBypassUse(level, pos, player);
-        boolean sneakPlacing = player.isSecondaryUseActive() && holdingSomething && !bothHandsBypassSneak;
-        if (!(event.getUseBlock().isTrue() || (event.getUseBlock().isDefault() && !sneakPlacing))) return;
+        boolean sneakPlacing = player.isSecondaryUseActive() && holdingSomething;
+        if (!(event.getUseBlock() == TriState.TRUE
+                || (event.getUseBlock() == TriState.DEFAULT && !sneakPlacing))) return;
 
         // Without this, useWithoutItem reaches openScreen and the useless vanilla menu opens
         // behind our document.
