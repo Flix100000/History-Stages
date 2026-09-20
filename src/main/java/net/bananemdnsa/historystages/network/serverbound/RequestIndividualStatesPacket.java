@@ -8,8 +8,8 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.network.PacketDistributor;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.bananemdnsa.historystages.platform.IPayloadContext;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -40,7 +40,7 @@ public record RequestIndividualStatesPacket() implements CustomPacketPayload {
             for (ServerPlayer online : player.server.getPlayerList().getPlayers()) {
                 states.put(online.getUUID(), new HashSet<>(data.getUnlockedStages(online.getUUID())));
             }
-            PacketDistributor.sendToPlayer(player, new SyncIndividualStatesPacket(states));
+            ServerPlayNetworking.send(player, new SyncIndividualStatesPacket(states));
         });
     }
 

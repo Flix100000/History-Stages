@@ -7,10 +7,9 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
-import net.neoforged.api.distmarker.Dist;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.loader.api.FabricLoader;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.bananemdnsa.historystages.platform.IPayloadContext;
 
 import java.util.ArrayList;
 import java.util.List;

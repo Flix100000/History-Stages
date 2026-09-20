@@ -23,7 +23,7 @@ import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.data.graph.GraphLayoutData;
 import net.bananemdnsa.historystages.data.graph.GraphPos;
 import net.bananemdnsa.historystages.data.graph.GraphStageData;
-import net.bananemdnsa.historystages.network.PacketHandler;
+import net.bananemdnsa.historystages.client.ClientPacketHandler;
 import net.bananemdnsa.historystages.network.serverbound.RearrangeGraphPacket;
 import net.bananemdnsa.historystages.network.serverbound.SaveGraphPositionsPacket;
 import net.bananemdnsa.historystages.network.serverbound.SaveStageGraphStylePacket;
@@ -391,7 +391,7 @@ public class StageGraphScreen extends Screen {
     }
 
     private void applyPaste(StageGraphModel.Node node, GraphStageData.Entry clipboard) {
-        PacketHandler.sendToServer(new SaveStageGraphStylePacket(
+        ClientPacketHandler.sendToServer(new SaveStageGraphStylePacket(
                 node.stageId(), node.individual(), GraphStageData.entryToJson(clipboard)));
         // Same optimistic update the style screen does, and the same reason: on a dedicated
         // server the node would otherwise keep its old look until the broadcast returns.
@@ -527,7 +527,7 @@ public class StageGraphScreen extends Screen {
     }
 
     private void sendPositions(boolean individual, Map<String, GraphPos> positions) {
-        PacketHandler.sendToServer(new SaveGraphPositionsPacket(individual, positions));
+        ClientPacketHandler.sendToServer(new SaveGraphPositionsPacket(individual, positions));
         // Optimistic local update, mirroring GraphLayoutData.freeze's in-memory effect only —
         // saving graph_layout.json is the server's job (the packet handler already does it);
         // doing it here too would write an unwanted copy into this client's own settings folder.
@@ -548,8 +548,8 @@ public class StageGraphScreen extends Screen {
     }
 
     private void performRearrange() {
-        PacketHandler.sendToServer(new RearrangeGraphPacket(false));
-        PacketHandler.sendToServer(new RearrangeGraphPacket(true));
+        ClientPacketHandler.sendToServer(new RearrangeGraphPacket(false));
+        ClientPacketHandler.sendToServer(new RearrangeGraphPacket(true));
 
         // Optimistic local preview: GraphAutoLayout is pure, side-effect-free logic shared by
         // both sides, and StageManager.recomputeGraphLayout() deliberately never saves — calling

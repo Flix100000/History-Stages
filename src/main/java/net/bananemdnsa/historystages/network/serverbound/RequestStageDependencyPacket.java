@@ -13,8 +13,8 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.network.PacketDistributor;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.bananemdnsa.historystages.platform.IPayloadContext;
 
 /**
  * Client -> Server: Request dependency status for a stage without a Research Pedestal — used by
@@ -63,7 +63,7 @@ public record RequestStageDependencyPacket(String stageId, boolean individual) i
                     .checkAll(entry, player, player.level(),
                             packet.individual ? StageScope.INDIVIDUAL : StageScope.GLOBAL, null, 0.0)
                     .withoutCanDeposit();
-            PacketDistributor.sendToPlayer(player,
+            ServerPlayNetworking.send(player,
                     new SyncDependencyStatusPacket(packet.stageId, packet.individual, result));
         });
     }

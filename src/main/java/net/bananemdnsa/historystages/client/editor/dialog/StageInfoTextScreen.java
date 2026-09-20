@@ -2,7 +2,7 @@ package net.bananemdnsa.historystages.client.editor.dialog;
 
 import net.bananemdnsa.historystages.api.editor.widget.FormattedTextScreen;
 import net.bananemdnsa.historystages.data.graph.GraphStageData;
-import net.bananemdnsa.historystages.network.PacketHandler;
+import net.bananemdnsa.historystages.client.ClientPacketHandler;
 import net.bananemdnsa.historystages.network.serverbound.SaveStageGraphInfoPacket;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -43,7 +43,7 @@ public class StageInfoTextScreen extends FormattedTextScreen {
     }
 
     private static void save(String stageId, boolean individual, String description) {
-        PacketHandler.sendToServer(new SaveStageGraphInfoPacket(stageId, individual, description));
+        ClientPacketHandler.sendToServer(new SaveStageGraphInfoPacket(stageId, individual, description));
         // Optimistic local update: the detail panel reads GraphStageData directly on every
         // render, and on a dedicated server the just-typed text would otherwise stay invisible
         // until the broadcasted SyncStageDefinitionsPacket reply lands.

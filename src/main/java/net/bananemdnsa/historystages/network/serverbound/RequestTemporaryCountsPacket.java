@@ -11,8 +11,8 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.network.PacketDistributor;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.bananemdnsa.historystages.platform.IPayloadContext;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -75,7 +75,7 @@ public record RequestTemporaryCountsPacket(UUID individualTarget) implements Cus
                 }
             }
 
-            PacketDistributor.sendToPlayer(player, new SyncTemporaryCountsPacket(
+            ServerPlayNetworking.send(player, new SyncTemporaryCountsPacket(
                     counts, activeTicks, target, individualCounts, individualActiveTicks));
         });
     }

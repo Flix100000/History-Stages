@@ -5,7 +5,7 @@ import net.bananemdnsa.historystages.client.editor.toast.EditorToast;
 import net.bananemdnsa.historystages.client.editor.toast.EditorToastHandler;
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.StageJsonLimits;
-import net.bananemdnsa.historystages.network.PacketHandler;
+import net.bananemdnsa.historystages.client.ClientPacketHandler;
 import net.bananemdnsa.historystages.network.serverbound.SaveStagePacket;
 import net.minecraft.network.chat.Component;
 
@@ -28,7 +28,7 @@ public final class StageSaver {
                     Component.translatable("editor.historystages.toast.stage_too_large.message", stageId));
             return false;
         }
-        PacketHandler.sendToServer(new SaveStagePacket(stageId, json, individual, duplicate,
+        ClientPacketHandler.sendToServer(new SaveStagePacket(stageId, json, individual, duplicate,
                 folder == null ? "" : folder));
         // Everything the graph knows about requirements is now potentially out of date, so throw
         // it away and let it be asked for again. Without this the graph shows a stage's

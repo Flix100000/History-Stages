@@ -16,7 +16,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.LecternBlock;
 import net.minecraft.world.level.block.entity.LecternBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.bananemdnsa.historystages.platform.IPayloadContext;
 
 /**
  * Client asks for an open scroll back off a lectern. Everything is re-checked server-side; the

@@ -8,8 +8,8 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.network.PacketDistributor;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.bananemdnsa.historystages.platform.IPayloadContext;
 
 public record RequestEditorDataPacket() implements CustomPacketPayload {
 
@@ -31,7 +31,7 @@ public record RequestEditorDataPacket() implements CustomPacketPayload {
         ctx.enqueueWork(() -> {
             if (ctx.player() instanceof ServerPlayer player) {
                 if (!player.hasPermissions(2)) return;
-                PacketDistributor.sendToPlayer(player, new EditorSyncPacket(StageManager.getStages()));
+                ServerPlayNetworking.send(player, new EditorSyncPacket(StageManager.getStages()));
             }
         });
     }

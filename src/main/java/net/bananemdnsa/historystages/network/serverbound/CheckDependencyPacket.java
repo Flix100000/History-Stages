@@ -20,8 +20,8 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.neoforged.neoforge.network.PacketDistributor;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.bananemdnsa.historystages.platform.IPayloadContext;
 
 /**
  * Client -> Server: Request dependency status check for a specific stage.
@@ -78,7 +78,7 @@ public record CheckDependencyPacket(String stageId, boolean isIndividual, BlockP
             RequirementResult result = DependencyChecker.checkAll(entry, player, player.level(),
                     packet.isIndividual ? StageScope.INDIVIDUAL : StageScope.GLOBAL,
                     depositedTag, costReduction);
-            PacketDistributor.sendToPlayer(player,
+            ServerPlayNetworking.send(player,
                     new SyncDependencyStatusPacket(packet.stageId, packet.isIndividual, result));
         });
     }

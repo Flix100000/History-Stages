@@ -17,7 +17,7 @@ import net.bananemdnsa.historystages.api.dependency.RequirementDisplay;
 import net.bananemdnsa.historystages.api.dependency.Requirement;
 import net.bananemdnsa.historystages.data.dependency.RequirementTypes;
 import net.bananemdnsa.historystages.data.graph.GraphStageData;
-import net.bananemdnsa.historystages.network.PacketHandler;
+import net.bananemdnsa.historystages.client.ClientPacketHandler;
 import net.bananemdnsa.historystages.network.serverbound.RequestStageDependencyPacket;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -282,7 +282,7 @@ public final class GraphDetailScreen extends AbstractModalScreen {
         }
         requestAttempts++;
         ticksSinceRequest = 0;
-        PacketHandler.sendToServer(new RequestStageDependencyPacket(node.stageId(), node.individual()));
+        ClientPacketHandler.sendToServer(new RequestStageDependencyPacket(node.stageId(), node.individual()));
         return false;
     }
 

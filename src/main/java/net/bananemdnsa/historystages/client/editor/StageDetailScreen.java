@@ -38,7 +38,7 @@ import net.bananemdnsa.historystages.client.editor.widget.FluidIcon;
 import net.bananemdnsa.historystages.client.ClientFluidRecipeIndex;
 import net.bananemdnsa.historystages.data.lock.FluidRecipeIndex;
 import net.bananemdnsa.historystages.client.ClientTradeGoods;
-import net.bananemdnsa.historystages.network.PacketHandler;
+import net.bananemdnsa.historystages.client.ClientPacketHandler;
 import net.bananemdnsa.historystages.network.serverbound.RequestTradeGoodsPacket;
 import net.bananemdnsa.historystages.data.lock.FluidRecipeScanner;
 import net.bananemdnsa.historystages.client.editor.recipe.RecipeTypeMetas;
@@ -722,7 +722,7 @@ public class StageDetailScreen extends Screen {
         // to produce its offers on a client. Asked here so the answer is usually already back by
         // the time somebody reaches the trades tab and opens its picker.
         if (ClientTradeGoods.isEmpty()) {
-            PacketHandler.sendToServer(new RequestTradeGoodsPacket());
+            ClientPacketHandler.sendToServer(new RequestTradeGoodsPacket());
         }
         ClientFluidRecipeIndex.refresh();
 

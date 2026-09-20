@@ -20,7 +20,7 @@ import net.bananemdnsa.historystages.api.editor.widget.FormattedTextScreen;
 import net.bananemdnsa.historystages.data.display.HiddenDisplayConfig;
 import net.bananemdnsa.historystages.data.ScrollCompletion;
 import net.bananemdnsa.historystages.data.graph.GraphStageData;
-import net.bananemdnsa.historystages.network.PacketHandler;
+import net.bananemdnsa.historystages.client.ClientPacketHandler;
 import net.bananemdnsa.historystages.network.serverbound.SaveStageGraphInfoPacket;
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.StageMode;
@@ -1175,7 +1175,7 @@ public class StageSettingsScreen extends Screen {
         // packet. Keyed on the original id: a rename is the rename logic's business, and writing
         // the text under a fresh id here would leave the old entry behind.
         if (!editDescription.equals(origDescription)) {
-            PacketHandler.sendToServer(new SaveStageGraphInfoPacket(origStageId, isIndividual, editDescription));
+            ClientPacketHandler.sendToServer(new SaveStageGraphInfoPacket(origStageId, isIndividual, editDescription));
             // Optimistic local update, the same reason StageInfoTextScreen does it: the graph
             // reads GraphStageData directly and would otherwise show stale text until the
             // broadcast reply lands.

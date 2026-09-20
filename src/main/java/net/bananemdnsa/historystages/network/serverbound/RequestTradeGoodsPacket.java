@@ -8,8 +8,8 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.network.PacketDistributor;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.bananemdnsa.historystages.platform.IPayloadContext;
 
 /**
  * The editor asking which items merchants here deal in.
@@ -33,7 +33,7 @@ public record RequestTradeGoodsPacket() implements CustomPacketPayload {
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer player)) return;
             if (!player.hasPermissions(2)) return;
-            PacketDistributor.sendToPlayer(player,
+            ServerPlayNetworking.send(player,
                     new SyncTradeGoodsPacket(TradeGoodsScanner.cached(player.level())));
         });
     }

@@ -12,7 +12,7 @@ import net.bananemdnsa.historystages.api.dependency.RequirementResult;
 import net.bananemdnsa.historystages.init.ModItems;
 import net.bananemdnsa.historystages.network.serverbound.CheckDependencyPacket;
 import net.bananemdnsa.historystages.network.serverbound.DepositDependencyPacket;
-import net.bananemdnsa.historystages.network.PacketHandler;
+import net.bananemdnsa.historystages.client.ClientPacketHandler;
 import net.bananemdnsa.historystages.research.BoosterUtil;
 import net.bananemdnsa.historystages.research.TierMatcher;
 import net.bananemdnsa.historystages.client.cache.ClientStageCache;
@@ -605,7 +605,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
                                     int xpY = this.topPos + PedestalLayout.DEP_XP_BUTTON_Y;
                                     if (mouseX >= xpX && mouseX < xpX + PedestalLayout.ICON_SIZE
                                             && mouseY >= xpY && mouseY < xpY + PedestalLayout.ICON_SIZE) {
-                                        PacketHandler.sendToServer(new DepositDependencyPacket(
+                                        ClientPacketHandler.sendToServer(new DepositDependencyPacket(
                                                 menu.getBlockPos(), groupIdx, "XP", ""));
                                         return true;
                                     }
@@ -633,7 +633,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
         // Poll server once per second to keep dep status fresh
         long now = System.currentTimeMillis();
         if (now - lastDependencyCheck > 1000) {
-            PacketHandler.sendToServer(new CheckDependencyPacket(stageId, individual, menu.getBlockPos()));
+            ClientPacketHandler.sendToServer(new CheckDependencyPacket(stageId, individual, menu.getBlockPos()));
             lastDependencyCheck = now;
         }
 

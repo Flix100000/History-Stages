@@ -28,7 +28,7 @@ import net.bananemdnsa.historystages.data.graph.ResolvedStyle;
 import net.bananemdnsa.historystages.data.graph.StageStyle;
 import net.bananemdnsa.historystages.data.graph.StageStyleFields;
 import net.bananemdnsa.historystages.data.graph.StateStyles;
-import net.bananemdnsa.historystages.network.PacketHandler;
+import net.bananemdnsa.historystages.client.ClientPacketHandler;
 import net.bananemdnsa.historystages.network.serverbound.SaveStageGraphStylePacket;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -466,7 +466,7 @@ public class StageStyleScreen extends Screen {
         syncRowsIntoBuffer();
 
         String json = bufferJson();
-        PacketHandler.sendToServer(new SaveStageGraphStylePacket(stageId, individual, json));
+        ClientPacketHandler.sendToServer(new SaveStageGraphStylePacket(stageId, individual, json));
 
         // Optimistic local update, as StageInfoTextScreen does it: on a dedicated server the
         // change would otherwise stay invisible until the broadcast returns. The cache has to be

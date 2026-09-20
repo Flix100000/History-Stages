@@ -6,7 +6,7 @@ import com.mojang.serialization.DataResult;
 import com.mojang.serialization.DynamicOps;
 import com.mojang.serialization.JsonOps;
 import net.bananemdnsa.historystages.HistoryStages;
-import net.bananemdnsa.historystages.network.PacketHandler;
+import net.bananemdnsa.historystages.client.ClientPacketHandler;
 import net.bananemdnsa.historystages.network.serverbound.RequestClusterShapesPacket;
 import net.bananemdnsa.historystages.network.serverbound.RequestStructureDebugPacket;
 import net.bananemdnsa.historystages.network.serverbound.ToggleStructureVizPacket;
@@ -87,7 +87,7 @@ public final class ClientDebugCommand {
             source.sendFailure(Component.literal("This command can only be run by a player."));
             return 0;
         }
-        PacketHandler.sendToServer(new RequestStructureDebugPacket());
+        ClientPacketHandler.sendToServer(new RequestStructureDebugPacket());
         return 1;
     }
 
@@ -96,7 +96,7 @@ public final class ClientDebugCommand {
             source.sendFailure(Component.literal("This command can only be run by a player."));
             return 0;
         }
-        PacketHandler.sendToServer(new ToggleStructureVizPacket());
+        ClientPacketHandler.sendToServer(new ToggleStructureVizPacket());
         return 1;
     }
 
@@ -105,7 +105,7 @@ public final class ClientDebugCommand {
             source.sendFailure(Component.literal("This command can only be run by a player."));
             return 0;
         }
-        PacketHandler.sendToServer(new RequestClusterShapesPacket());
+        ClientPacketHandler.sendToServer(new RequestClusterShapesPacket());
         return 1;
     }
 

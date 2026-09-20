@@ -28,7 +28,7 @@ import net.bananemdnsa.historystages.data.config.LegacyConfigMigration;
 import net.bananemdnsa.historystages.client.editor.toast.EditorToast;
 import net.bananemdnsa.historystages.client.editor.toast.EditorToastHandler;
 import net.bananemdnsa.historystages.network.clientbound.SyncConfigPacket;
-import net.bananemdnsa.historystages.network.PacketHandler;
+import net.bananemdnsa.historystages.client.ClientPacketHandler;
 import net.bananemdnsa.historystages.network.serverbound.SaveConfigPacket;
 import net.bananemdnsa.historystages.client.editor.anim.Anim;
 import net.bananemdnsa.historystages.client.editor.anim.Ease;
@@ -1545,7 +1545,7 @@ public class ConfigEditorScreen extends Screen {
             if (!entry.value.equals(entry.initialValue)) visualChanged = true;
         }
         if (visualChanged) {
-            PacketHandler.sendToServer(new SaveConfigPacket(visualValues, true));
+            ClientPacketHandler.sendToServer(new SaveConfigPacket(visualValues, true));
         }
 
         // Send common config to server — but only if something in it actually changed. Each
@@ -1587,7 +1587,7 @@ public class ConfigEditorScreen extends Screen {
         }
 
         if (gameplayChanged) {
-            PacketHandler.sendToServer(new SaveConfigPacket(gameplayValues, false));
+            ClientPacketHandler.sendToServer(new SaveConfigPacket(gameplayValues, false));
         }
 
         // Send graph.toml to the server, keyed by toml path. The style rows come along here
@@ -1602,7 +1602,7 @@ public class ConfigEditorScreen extends Screen {
             if (!entry.value.equals(entry.initialValue)) graphChanged = true;
         }
         if (graphChanged) {
-            PacketHandler.sendToServer(new SaveGraphConfigPacket(graphValues));
+            ClientPacketHandler.sendToServer(new SaveGraphConfigPacket(graphValues));
         }
 
         // Update initial values so hasChanges() returns false

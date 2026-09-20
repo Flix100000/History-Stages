@@ -25,7 +25,7 @@ import net.bananemdnsa.historystages.network.serverbound.MoveFoldersPacket;
 import net.bananemdnsa.historystages.network.serverbound.MoveStagesPacket;
 import net.bananemdnsa.historystages.network.serverbound.RenameFolderPacket;
 import net.bananemdnsa.historystages.network.EditorDataCache;
-import net.bananemdnsa.historystages.network.PacketHandler;
+import net.bananemdnsa.historystages.client.ClientPacketHandler;
 import net.bananemdnsa.historystages.network.serverbound.ToggleStageLockPacket;
 import net.bananemdnsa.historystages.client.cache.ClientStageCache;
 import net.bananemdnsa.historystages.client.cache.ClientPlayerStageCache;
@@ -230,7 +230,7 @@ public class StageOverviewScreen extends Screen {
         if (++tempCountRefreshTimer >= 20) { // ~1s
             tempCountRefreshTimer = 0;
             requestTemporaryCounts();
-            PacketHandler.sendToServer(new RequestIndividualStatesPacket());
+            ClientPacketHandler.sendToServer(new RequestIndividualStatesPacket());
         }
     }
 
@@ -243,7 +243,7 @@ public class StageOverviewScreen extends Screen {
     private void requestTemporaryCounts() {
         UUID target = playerPicker == null ? null : playerPicker.getSelected();
         lastRequestedTarget = target;
-        PacketHandler.sendToServer(
+        ClientPacketHandler.sendToServer(
                 new net.bananemdnsa.historystages.network.serverbound.RequestTemporaryCountsPacket(target));
     }
 
@@ -254,7 +254,7 @@ public class StageOverviewScreen extends Screen {
 
         // Pull the live temporary-stage unlock counts from the server for display.
         requestTemporaryCounts();
-        PacketHandler.sendToServer(new RequestIndividualStatesPacket());
+        ClientPacketHandler.sendToServer(new RequestIndividualStatesPacket());
 
         searchFilter = "";
         int searchW = 120;
@@ -1237,7 +1237,7 @@ public class StageOverviewScreen extends Screen {
                 if (button == 0 && mouseX >= lockBtnX && mouseX <= lockBtnX + lockBtnWClick
                         && mouseY >= lockBtnY && mouseY <= lockBtnY + 16) {
                     Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
-                    PacketHandler.sendToServer(new ToggleStageLockPacket(stageId, !unlocked));
+                    ClientPacketHandler.sendToServer(new ToggleStageLockPacket(stageId, !unlocked));
                     return true;
                 }
 
@@ -1260,7 +1260,7 @@ public class StageOverviewScreen extends Screen {
                         this.minecraft.setScreen(new ConfirmDialog(this,
                                 Component.translatable("editor.historystages.confirm_delete_title"),
                                 Component.translatable("editor.historystages.confirm_delete", stageId),
-                                () -> { PacketHandler.sendToServer(new DeleteStagePacket(stageId, false)); stageOrder.remove(stageId); applyFilter(); Minecraft.getInstance().setScreen(self); }));
+                                () -> { ClientPacketHandler.sendToServer(new DeleteStagePacket(stageId, false)); stageOrder.remove(stageId); applyFilter(); Minecraft.getInstance().setScreen(self); }));
                     });
                     Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
                     contextMenu.show((int) mouseX, (int) mouseY, this.font);
@@ -1309,7 +1309,7 @@ public class StageOverviewScreen extends Screen {
                     if (button == 0 && mouseX >= lockBtnX && mouseX <= lockBtnX + lockBtnWClick
                             && mouseY >= lockBtnY && mouseY <= lockBtnY + 16) {
                         Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
-                        PacketHandler.sendToServer(new ToggleIndividualStageLockPacket(
+                        ClientPacketHandler.sendToServer(new ToggleIndividualStageLockPacket(
                                 stageId, Optional.ofNullable(playerPicker.getSelected()), state != 2));
                         return true;
                     }
@@ -1329,7 +1329,7 @@ public class StageOverviewScreen extends Screen {
                             this.minecraft.setScreen(new ConfirmDialog(this,
                                     Component.translatable("editor.historystages.confirm_delete_title"),
                                     Component.translatable("editor.historystages.confirm_delete", stageId),
-                                    () -> { PacketHandler.sendToServer(new DeleteStagePacket(stageId, true)); individualStageOrder.remove(stageId); applyFilter(); Minecraft.getInstance().setScreen(self); }));
+                                    () -> { ClientPacketHandler.sendToServer(new DeleteStagePacket(stageId, true)); individualStageOrder.remove(stageId); applyFilter(); Minecraft.getInstance().setScreen(self); }));
                         });
                         Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
                         contextMenu.show((int) mouseX, (int) mouseY, this.font);
@@ -1368,7 +1368,7 @@ public class StageOverviewScreen extends Screen {
                 this.minecraft.setScreen(new FolderNameScreen(this,
                         Component.translatable("editor.historystages.folder.rename_title"),
                         individual, StagePaths.parent(folder.path()), folder.name(),
-                        newName -> PacketHandler.sendToServer(
+                        newName -> ClientPacketHandler.sendToServer(
                                 new RenameFolderPacket(individual, folder.path(), newName))));
             });
             contextMenu.addEntry(Component.translatable("editor.historystages.delete").getString(), () -> {
@@ -1377,7 +1377,7 @@ public class StageOverviewScreen extends Screen {
                         Component.translatable("editor.historystages.folder.confirm_delete_title"),
                         Component.translatable("editor.historystages.folder.confirm_delete", folder.name()),
                         () -> {
-                            PacketHandler.sendToServer(new DeleteFolderPacket(individual, folder.path()));
+                            ClientPacketHandler.sendToServer(new DeleteFolderPacket(individual, folder.path()));
                             Minecraft.getInstance().setScreen(self);
                         }));
             });
@@ -1681,10 +1681,10 @@ public class StageOverviewScreen extends Screen {
         if (dragFolders.isEmpty() && dragStages.isEmpty()) return;
 
         if (!dragFolders.isEmpty()) {
-            PacketHandler.sendToServer(new MoveFoldersPacket(dragIndividual, new ArrayList<>(dragFolders), target.path()));
+            ClientPacketHandler.sendToServer(new MoveFoldersPacket(dragIndividual, new ArrayList<>(dragFolders), target.path()));
         }
         if (!dragStages.isEmpty()) {
-            PacketHandler.sendToServer(new MoveStagesPacket(dragIndividual, new ArrayList<>(dragStages), target.path()));
+            ClientPacketHandler.sendToServer(new MoveStagesPacket(dragIndividual, new ArrayList<>(dragStages), target.path()));
         }
         Minecraft.getInstance().getSoundManager().play(
                 SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
@@ -2374,7 +2374,7 @@ public class StageOverviewScreen extends Screen {
             String id = values.getString("id");
 
             if (creatingFolder) {
-                PacketHandler.sendToServer(new CreateFolderPacket(individual, StagePaths.join(targetFolder, id)));
+                ClientPacketHandler.sendToServer(new CreateFolderPacket(individual, StagePaths.join(targetFolder, id)));
                 this.minecraft.setScreen(parent);
                 return;
             }
