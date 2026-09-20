@@ -19,6 +19,8 @@ import net.bananemdnsa.historystages.platform.EventSources;
 import net.bananemdnsa.historystages.platform.Handlers;
 import net.bananemdnsa.historystages.platform.bus.EventBus;
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.transfer.v1.item.ItemStorage;
+import net.fabricmc.fabric.api.transfer.v1.item.InventoryStorage;
 import net.fabricmc.loader.api.FabricLoader;
 import org.slf4j.Logger;
 
@@ -59,6 +61,13 @@ public class HistoryStagesFabric implements ModInitializer {
         ConfigFiles.loadAll();
         ConfigHandler.setupConfig();
         StageManager.load();
+
+        // What a pipe or a tank sees of the pedestal. Vanilla hoppers reach it through the block
+        // entity being a Container; this is the other half, for everything that goes through the
+        // transfer API instead. After the block entity type exists, necessarily.
+        ItemStorage.SIDED.registerForBlockEntity(
+                (pedestal, direction) -> InventoryStorage.of(pedestal.getItemHandler(), direction),
+                ModBlockEntities.RESEARCH_PEDESTAL_BE.get());
 
         PacketHandler.register();
         EventSources.register();

@@ -23,7 +23,7 @@ import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
 import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
 import net.fabricmc.fabric.api.util.TriState;
 import net.bananemdnsa.historystages.platform.event.entity.player.PlayerInteractEvent;
-import net.neoforged.neoforge.fluids.CauldronFluidContent;
+import net.fabricmc.fabric.api.transfer.v1.fluid.CauldronFluidContent;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -132,7 +132,7 @@ public class FluidPickupLockHandler {
         return idOf(fluidState);
     }
 
-    /** A filled cauldron holds a fluid without being one; NeoForge keeps the mapping. */
+    /** A filled cauldron holds a fluid without being one; the transfer api keeps the mapping. */
     @Nullable
     private static String cauldronFluid(Level level, BlockPos pos) {
         BlockState state = level.getBlockState(pos);

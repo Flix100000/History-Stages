@@ -41,6 +41,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerFactory;
+import net.minecraft.world.Container;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -51,18 +52,19 @@ import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.neoforge.items.ItemStackHandler;
+import net.bananemdnsa.historystages.platform.bus.EventBus;
+import net.bananemdnsa.historystages.platform.SimpleItemHandler;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.UUID;
 
-public class ResearchPedestalBlockEntity extends BlockEntity implements ExtendedScreenHandlerFactory<BlockPos> {
+public class ResearchPedestalBlockEntity extends BlockEntity
+        implements ExtendedScreenHandlerFactory<BlockPos>, Container {
 
     // Slot 0: Research Scroll, Slot 1: Deposit item
-    private final ItemStackHandler itemHandler = new ItemStackHandler(2) {
+    private final SimpleItemHandler itemHandler = new SimpleItemHandler(2) {
         @Override
         public @NotNull ItemStack extractItem(int slot, int amount, boolean simulate) {
             if (slot == 0 && isScrollLocked()) return ItemStack.EMPTY;
@@ -164,8 +166,54 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements Extended
         };
     }
 
-    public ItemStackHandler getItemHandler() {
+    public SimpleItemHandler getItemHandler() {
         return itemHandler;
+    }
+
+    // --- Container, so vanilla hoppers can reach the two slots ---
+    //
+    // On the other loader that came from the item capability. Here a hopper only looks at the
+    // block entity itself, so the methods are forwarded to the handler — through it, not past it,
+    // which is what keeps the scroll lock from being walked around with a hopper.
+
+    @Override
+    public int getContainerSize() {
+        return itemHandler.getContainerSize();
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return itemHandler.isEmpty();
+    }
+
+    @Override
+    public ItemStack getItem(int slot) {
+        return itemHandler.getItem(slot);
+    }
+
+    @Override
+    public ItemStack removeItem(int slot, int amount) {
+        return itemHandler.removeItem(slot, amount);
+    }
+
+    @Override
+    public ItemStack removeItemNoUpdate(int slot) {
+        return itemHandler.removeItemNoUpdate(slot);
+    }
+
+    @Override
+    public void setItem(int slot, ItemStack stack) {
+        itemHandler.setItem(slot, stack);
+    }
+
+    @Override
+    public boolean stillValid(Player player) {
+        return Container.stillValidBlockEntity(this, player);
+    }
+
+    @Override
+    public void clearContent() {
+        itemHandler.clearContent();
     }
 
     /** Drop both inventory slots at the given position. Saves current research progress to the
@@ -819,7 +867,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements Extended
             data.setDirty();
 
             String eventDisplayName = (stageEntry != null) ? stageEntry.getDisplayName() : stageId;
-            NeoForge.EVENT_BUS.post(
+            EventBus.post(
                     new net.bananemdnsa.historystages.api.stage.StageEvent.Unlocked(stageId, eventDisplayName));
 
             if (level.getServer() != null) {
@@ -864,7 +912,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements Extended
             data.setDirty();
 
             String eventDisplayName = (stageEntry != null) ? stageEntry.getDisplayName() : stageId;
-            NeoForge.EVENT_BUS.post(
+            EventBus.post(
                     new net.bananemdnsa.historystages.api.stage.StageEvent.IndividualUnlocked(stageId, eventDisplayName,
                             ownerUUID));
 
@@ -1144,7 +1192,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements Extended
         if (invTag.contains("Size", 3)) {
             int savedSize = invTag.getInt("Size");
             if (savedSize != itemHandler.getSlots()) {
-                ItemStackHandler temp = new ItemStackHandler(savedSize);
+                SimpleItemHandler temp = new SimpleItemHandler(savedSize);
                 temp.deserializeNBT(registries, invTag);
                 for (int i = 0; i < Math.min(savedSize, itemHandler.getSlots()); i++) {
                     itemHandler.setStackInSlot(i, temp.getStackInSlot(i));

@@ -26,7 +26,7 @@ import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
-import net.neoforged.neoforge.common.NeoForge;
+import net.bananemdnsa.historystages.platform.bus.EventBus;
 
 public class HistoryStageReward extends Reward {
     private String stage = "";
@@ -110,7 +110,7 @@ public class HistoryStageReward extends Reward {
             if (!data.hasStage(stage)) return;
             data.removeStage(stage);
             data.setDirty();
-            NeoForge.EVENT_BUS.post(new StageEvent.Locked(stage, displayName));
+            EventBus.post(new StageEvent.Locked(stage, displayName));
 
             if (player.server != null) {
                 player.server.getCommands().performPrefixedCommand(
@@ -123,7 +123,7 @@ public class HistoryStageReward extends Reward {
             if (data.hasStage(stage)) return;
             data.addStage(stage);
             data.setDirty();
-            NeoForge.EVENT_BUS.post(new StageEvent.Unlocked(stage, displayName));
+            EventBus.post(new StageEvent.Unlocked(stage, displayName));
 
             if (player.server != null) {
                 player.server.getCommands().performPrefixedCommand(
@@ -147,7 +147,7 @@ public class HistoryStageReward extends Reward {
             if (!data.hasStage(player.getUUID(), stage)) return;
             data.removeStage(player.getUUID(), stage);
             data.setDirty();
-            NeoForge.EVENT_BUS.post(new StageEvent.IndividualLocked(stage, displayName, player.getUUID()));
+            EventBus.post(new StageEvent.IndividualLocked(stage, displayName, player.getUUID()));
 
             // Drop locked items from inventory
             if (Config.GAMEPLAY.individualDropOnRevoke.get()) {
@@ -168,7 +168,7 @@ public class HistoryStageReward extends Reward {
             if (data.hasStage(player.getUUID(), stage)) return;
             data.addStage(player.getUUID(), stage);
             data.setDirty();
-            NeoForge.EVENT_BUS.post(new StageEvent.IndividualUnlocked(stage, displayName, player.getUUID()));
+            EventBus.post(new StageEvent.IndividualUnlocked(stage, displayName, player.getUUID()));
 
             // Notify only this player
             if (Config.VISUAL.individualBroadcastChat.get()) {

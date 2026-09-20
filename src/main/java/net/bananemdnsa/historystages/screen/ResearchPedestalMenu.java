@@ -16,7 +16,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.neoforged.neoforge.items.SlotItemHandler;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.UUID;
@@ -45,7 +44,7 @@ public class ResearchPedestalMenu extends AbstractContainerMenu {
         addPlayerHotbar(inv);
 
         // Internal Slot 0: Scroll
-        this.addSlot(new SlotItemHandler(this.blockEntity.getItemHandler(), 0,
+        this.addSlot(new Slot(this.blockEntity.getItemHandler(), 0,
                 PedestalLayout.SCROLL_SLOT_X, PedestalLayout.SCROLL_SLOT_Y) {
             @Override
             public boolean mayPickup(@NotNull Player player) {
@@ -57,7 +56,7 @@ public class ResearchPedestalMenu extends AbstractContainerMenu {
         });
 
         // Internal Slot 1: Deposit (Inside the dependency panel)
-        this.addSlot(new SlotItemHandler(this.blockEntity.getItemHandler(), 1,
+        this.addSlot(new Slot(this.blockEntity.getItemHandler(), 1,
                 PedestalLayout.WIDTH + PedestalLayout.DEP_GAP + PedestalLayout.DEP_SLOT_X,
                 PedestalLayout.DEP_SLOT_Y) {
             @Override

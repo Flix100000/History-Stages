@@ -18,7 +18,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
-import net.neoforged.neoforge.common.NeoForge;
+import net.bananemdnsa.historystages.platform.bus.EventBus;
 import net.bananemdnsa.historystages.platform.event.entity.living.MobEffectEvent;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
@@ -109,7 +109,7 @@ public final class AutoTriggerTests {
             // sends the client a sync packet, and the test player has no connection to send it
             // over. What is under examination is the listener, not vanilla's effect plumbing.
             MobEffectInstance blindnessEffect = new MobEffectInstance(MobEffects.BLINDNESS, 100);
-            NeoForge.EVENT_BUS.post(new MobEffectEvent.Added(player, null, blindnessEffect, null));
+            EventBus.post(new MobEffectEvent.Added(player, null, blindnessEffect, null));
 
             if (!data.hasStage(id)) {
                 helper.fail("the effect was applied and the stage did not open — the "
