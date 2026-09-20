@@ -57,6 +57,17 @@ loom {
 			server()
 			runDir = "run-server"
 		}
+
+		// The gametests, run headless. Its own directory again, and its own world, which the
+		// test framework throws away afterwards.
+		gametest {
+			server()
+			name = "Game Test"
+			runDir = "run-gametest"
+			vmArg "-Dfabric-api.gametest"
+			vmArg "-Dfabric-api.gametest.report-file=${project.buildDir}/junit.xml"
+			ideConfigGenerated = true
+		}
 	}
 
 }
