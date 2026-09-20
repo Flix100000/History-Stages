@@ -21,6 +21,7 @@
     "event.ExplosionDetonateMixin",
     "event.DimensionTravelMixin",
     "event.AnvilUpdateMixin",
+    "ItemCombinerMenuAccessor",
     "event.BabyEntitySpawnMixin",
     "event.PotentialSpawnsMixin",
     "event.EquipmentChangeMixin",

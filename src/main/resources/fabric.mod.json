@@ -39,8 +39,6 @@
 			"net.bananemdnsa.historystages.gametest.ContainerLockTests",
 			"net.bananemdnsa.historystages.gametest.DependencyCheckerTests",
 			"net.bananemdnsa.historystages.gametest.FluidLockTests",
-			"net.bananemdnsa.historystages.gametest.GameTestPlayers",
-			"net.bananemdnsa.historystages.gametest.GameTestStages",
 			"net.bananemdnsa.historystages.gametest.GraphReachabilityTests",
 			"net.bananemdnsa.historystages.gametest.HarnessTests",
 			"net.bananemdnsa.historystages.gametest.ItemTagDepositTests",

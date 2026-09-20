@@ -48,6 +48,17 @@ loom {
 		}
 	}
 
+	runs {
+		// Its own directory, so a server run never shares a world or a config with a client run.
+		// This is the run that matters most for this port: collapsing the source sets took away
+		// the compile-time guarantee that no client class reaches a dedicated server, and this is
+		// where that would show.
+		server {
+			server()
+			runDir = "run-server"
+		}
+	}
+
 }
 
 dependencies {
@@ -67,6 +78,9 @@ dependencies {
 	modCompileOnly "curse.maven:ftb-quests-fabric-438496:7878288"
 	//Lootr
 	modImplementation "curse.maven:lootr-fabric-615106:8041235"
+	// Lootr wants this at runtime and will not load without it. Nothing in this mod reads it —
+	// the config layer replaced it in R3 — so it is runtime only and stays out of the jar.
+	modLocalRuntime "maven.modrinth:cloth-config:15.0.140+fabric"
 
 	// ---- Optional integrations ----
 	// The accessories adapter only loads when the mod is present. This is the loader accessories
