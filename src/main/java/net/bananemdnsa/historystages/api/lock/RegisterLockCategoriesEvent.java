@@ -5,7 +5,7 @@ import net.bananemdnsa.historystages.data.lock.category.LockCategories;
 import net.bananemdnsa.historystages.api.lock.LockCategory;
 
 import net.bananemdnsa.historystages.platform.bus.Event;
-import net.neoforged.fml.event.IModBusEvent;
+import net.bananemdnsa.historystages.platform.bus.IModBusEvent;
 
 /**
  * Fired once so other mods can add their own lock categories.
@@ -16,12 +16,16 @@ import net.neoforged.fml.event.IModBusEvent;
  * a server and a client disagree about which categories exist.
  *
  * <pre>{@code
- * modEventBus.addListener(RegisterLockCategoriesEvent.class, event -> event.register(
- *         AddonLockCategory.<Trade>builder("mymod:villagertrades")
- *                 .tabLangKey("editor.mymod.tab.villagertrades")
- *                 .tooltipLangKey("editor.mymod.tooltip.villagertrades")
- *                 .storage(CategoryStorage.gson(Trade.class))
- *                 .build()));
+ * public class MyPlugin implements HistoryStagesPlugin {
+ *     public void registerLockCategories(RegisterLockCategoriesEvent event) {
+ *         event.register(
+ *             AddonLockCategory.<Trade>builder("mymod:villagertrades")
+ *                     .tabLangKey("editor.mymod.tab.villagertrades")
+ *                     .tooltipLangKey("editor.mymod.tooltip.villagertrades")
+ *                     .storage(CategoryStorage.gson(Trade.class))
+ *                     .build());
+ *     }
+ * }
  * }</pre>
  */
 public class RegisterLockCategoriesEvent extends Event implements IModBusEvent {

@@ -5,7 +5,7 @@ import net.bananemdnsa.historystages.client.editor.dep.RequirementEditors;
 import net.bananemdnsa.historystages.api.editor.RequirementEditor;
 
 import net.bananemdnsa.historystages.platform.bus.Event;
-import net.neoforged.fml.event.IModBusEvent;
+import net.bananemdnsa.historystages.platform.bus.IModBusEvent;
 
 /**
  * Fired once on the client so an addon can give its requirement type a tab in the dependency
@@ -17,11 +17,15 @@ import net.neoforged.fml.event.IModBusEvent;
  * edited in game.
  *
  * <pre>{@code
- * modEventBus.addListener(RegisterRequirementEditorsEvent.class, event -> event.register(
- *         RequirementEditor.ofIdCount("mymod:relic",
- *                 "editor.mymod.search.relics",
- *                 "editor.mymod.dep.dialog.relic_count",
- *                 MyRelics::allKnownRelicIds)));
+ * public class MyPlugin implements HistoryStagesClientPlugin {
+ *     public void registerRequirementEditors(RegisterRequirementEditorsEvent event) {
+ *         event.register(
+ *             RequirementEditor.ofIdCount("mymod:relic",
+ *                     "editor.mymod.search.relics",
+ *                     "editor.mymod.dep.dialog.relic_count",
+ *                     MyRelics::allKnownRelicIds));
+ *     }
+ * }
  * }</pre>
  */
 public class RegisterRequirementEditorsEvent extends Event implements IModBusEvent {

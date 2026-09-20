@@ -17,7 +17,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
-import net.neoforged.neoforge.common.NeoForge;
+import net.bananemdnsa.historystages.platform.bus.EventBus;
 
 import java.util.ArrayList;
 
@@ -41,7 +41,7 @@ import java.util.ArrayList;
  * keep their own command-specific extras — source feedback, debug logging, resource-pack reloads
  * — in the command layer.
  *
- * <p>One of two places under {@code api/} that names NeoForge, and deliberately: firing
+ * <p>One of two places under {@code api/} that names the event bus, and deliberately: firing
  * {@link StageEvent} onto the bus <em>is</em> the loader bridge. See the Phase 9 design §5.
  */
 public final class StageStates {
@@ -63,7 +63,7 @@ public final class StageStates {
         StageEntry entry = StageManager.getStages().get(stageId);
         String displayName = entry != null ? entry.getDisplayName() : stageId;
 
-        NeoForge.EVENT_BUS.post(new StageEvent.Unlocked(stageId, displayName));
+        EventBus.post(new StageEvent.Unlocked(stageId, displayName));
 
         // Sync the unlocked-stages list to all players
         PacketHandler.sendToAll(new SyncStagesPacket(new ArrayList<>(data.getUnlockedStages())));
@@ -114,7 +114,7 @@ public final class StageStates {
         StageEntry entry = StageManager.getIndividualStages().get(stageId);
         String displayName = entry != null ? entry.getDisplayName() : stageId;
 
-        NeoForge.EVENT_BUS.post(new StageEvent.IndividualUnlocked(stageId, displayName, player.getUUID()));
+        EventBus.post(new StageEvent.IndividualUnlocked(stageId, displayName, player.getUUID()));
 
         // Sync the unlocked-stages set to the player
         PacketHandler.sendIndividualStagesToPlayer(
@@ -150,7 +150,7 @@ public final class StageStates {
         StageEntry entry = StageManager.getStages().get(stageId);
         String displayName = entry != null ? entry.getDisplayName() : stageId;
 
-        NeoForge.EVENT_BUS.post(new StageEvent.Locked(stageId, displayName));
+        EventBus.post(new StageEvent.Locked(stageId, displayName));
 
         PacketHandler.sendToAll(new SyncStagesPacket(new ArrayList<>(data.getUnlockedStages())));
 
@@ -186,7 +186,7 @@ public final class StageStates {
         StageEntry entry = StageManager.getIndividualStages().get(stageId);
         String displayName = entry != null ? entry.getDisplayName() : stageId;
 
-        NeoForge.EVENT_BUS.post(new StageEvent.IndividualLocked(stageId, displayName, player.getUUID()));
+        EventBus.post(new StageEvent.IndividualLocked(stageId, displayName, player.getUUID()));
 
         PacketHandler.sendIndividualStagesToPlayer(
                 SyncIndividualStagesPacket.of(data, player.getUUID()),

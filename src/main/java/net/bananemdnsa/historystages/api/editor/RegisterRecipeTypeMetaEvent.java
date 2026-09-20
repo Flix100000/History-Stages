@@ -3,7 +3,7 @@ package net.bananemdnsa.historystages.api.editor;
 import net.bananemdnsa.historystages.client.editor.recipe.RecipeTypeMetas;
 
 import net.bananemdnsa.historystages.platform.bus.Event;
-import net.neoforged.fml.event.IModBusEvent;
+import net.bananemdnsa.historystages.platform.bus.IModBusEvent;
 
 /**
  * Fired once so other mods can say what their recipe types look like in the editor.
@@ -20,9 +20,13 @@ import net.neoforged.fml.event.IModBusEvent;
  * for it, and a listener registered on a dedicated server will never be called.
  *
  * <pre>{@code
- * modEventBus.addListener(RegisterRecipeTypeMetaEvent.class, event -> event.register(
- *         new RecipeTypeMeta("create:mixing", "create:basin", 0xFF3399FF,
- *                 "recipe_type.create.mixing")));
+ * public class MyPlugin implements HistoryStagesClientPlugin {
+ *     public void registerRecipeTypeMeta(RegisterRecipeTypeMetaEvent event) {
+ *         event.register(
+ *             new RecipeTypeMeta("create:mixing", "create:basin", 0xFF3399FF,
+ *                     "recipe_type.create.mixing"));
+ *     }
+ * }
  * }</pre>
  */
 public class RegisterRecipeTypeMetaEvent extends Event implements IModBusEvent {

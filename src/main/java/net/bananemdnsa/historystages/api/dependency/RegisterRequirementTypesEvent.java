@@ -5,7 +5,7 @@ import net.bananemdnsa.historystages.data.dependency.RequirementTypes;
 import net.bananemdnsa.historystages.api.dependency.Requirement;
 
 import net.bananemdnsa.historystages.platform.bus.Event;
-import net.neoforged.fml.event.IModBusEvent;
+import net.bananemdnsa.historystages.platform.bus.IModBusEvent;
 
 /**
  * Fired once so other mods can add their own kinds of dependency requirement.
@@ -19,15 +19,19 @@ import net.neoforged.fml.event.IModBusEvent;
  * guess what a relic is nor which ones exist. See {@code RegisterRequirementEditorsEvent}.
  *
  * <pre>{@code
- * modEventBus.addListener(RegisterRequirementTypesEvent.class, event -> event.register(
- *         AddonRequirement.<RelicDep>builder("mymod:relic")
- *                 .tabLangKey("editor.mymod.dep.tab.relics")
- *                 .tooltipLangKey("editor.mymod.dep.tooltip.relics")
- *                 .sectionLangKey("editor.mymod.graph.section.relics")
- *                 .storage(RequirementStorage.gson(RelicDep.class))
- *                 .displayKind(RequirementDisplay.Kind.COUNTED)
- *                 .evaluator(MyMod::checkRelic)
- *                 .build()));
+ * public class MyPlugin implements HistoryStagesPlugin {
+ *     public void registerRequirementTypes(RegisterRequirementTypesEvent event) {
+ *         event.register(
+ *             AddonRequirement.<RelicDep>builder("mymod:relic")
+ *                     .tabLangKey("editor.mymod.dep.tab.relics")
+ *                     .tooltipLangKey("editor.mymod.dep.tooltip.relics")
+ *                     .sectionLangKey("editor.mymod.graph.section.relics")
+ *                     .storage(RequirementStorage.gson(RelicDep.class))
+ *                     .displayKind(RequirementDisplay.Kind.COUNTED)
+ *                     .evaluator(MyMod::checkRelic)
+ *                     .build());
+ *     }
+ * }
  * }</pre>
  */
 public class RegisterRequirementTypesEvent extends Event implements IModBusEvent {

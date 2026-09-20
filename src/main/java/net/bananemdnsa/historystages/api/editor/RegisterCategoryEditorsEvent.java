@@ -5,7 +5,7 @@ import net.bananemdnsa.historystages.client.editor.tab.CategoryEditors;
 import net.bananemdnsa.historystages.api.editor.CategoryEditor;
 
 import net.bananemdnsa.historystages.platform.bus.Event;
-import net.neoforged.fml.event.IModBusEvent;
+import net.bananemdnsa.historystages.platform.bus.IModBusEvent;
 
 /**
  * Fired once on the client so an addon can give its lock category a tab in the stage editor.
@@ -16,10 +16,14 @@ import net.neoforged.fml.event.IModBusEvent;
  * game.
  *
  * <pre>{@code
- * modEventBus.addListener(RegisterCategoryEditorsEvent.class, event -> event.register(
- *         CategoryEditor.ofIdList("mymod:villagertrades",
- *                 "editor.mymod.search.villagertrades",
- *                 MyTrades::allKnownTradeIds)));
+ * public class MyPlugin implements HistoryStagesClientPlugin {
+ *     public void registerCategoryEditors(RegisterCategoryEditorsEvent event) {
+ *         event.register(
+ *             CategoryEditor.ofIdList("mymod:villagertrades",
+ *                     "editor.mymod.search.villagertrades",
+ *                     MyTrades::allKnownTradeIds));
+ *     }
+ * }
  * }</pre>
  */
 public class RegisterCategoryEditorsEvent extends Event implements IModBusEvent {

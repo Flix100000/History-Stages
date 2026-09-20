@@ -3,7 +3,7 @@ package net.bananemdnsa.historystages.api.lock;
 import net.bananemdnsa.historystages.data.lock.IndividualRecipeSupport;
 
 import net.bananemdnsa.historystages.platform.bus.Event;
-import net.neoforged.fml.event.IModBusEvent;
+import net.bananemdnsa.historystages.platform.bus.IModBusEvent;
 
 /**
  * Fired once so other mods can declare that one of their recipe types can be gated per player.
@@ -20,8 +20,11 @@ import net.neoforged.fml.event.IModBusEvent;
  * both readers — the editor's picker and the load-time audit — may then treat it as constant.
  *
  * <pre>{@code
- * modEventBus.addListener(RegisterIndividualRecipeSupportEvent.class,
- *         event -> event.register("mymod:assembler"));
+ * public class MyPlugin implements HistoryStagesPlugin {
+ *     public void registerIndividualRecipeSupport(RegisterIndividualRecipeSupportEvent event) {
+ *         event.register("mymod:assembler");
+ *     }
+ * }
  * }</pre>
  */
 public class RegisterIndividualRecipeSupportEvent extends Event implements IModBusEvent {

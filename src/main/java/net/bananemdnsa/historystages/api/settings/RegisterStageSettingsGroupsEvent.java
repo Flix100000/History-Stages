@@ -5,7 +5,7 @@ import net.bananemdnsa.historystages.data.settings.StageSettingsGroups;
 import net.bananemdnsa.historystages.api.settings.StageSettingsGroup;
 
 import net.bananemdnsa.historystages.platform.bus.Event;
-import net.neoforged.fml.event.IModBusEvent;
+import net.bananemdnsa.historystages.platform.bus.IModBusEvent;
 
 /**
  * Fired once so other mods can add their own per-stage settings groups.
@@ -16,11 +16,15 @@ import net.neoforged.fml.event.IModBusEvent;
  * client disagree about which groups exist.
  *
  * <pre>{@code
- * modEventBus.addListener(RegisterStageSettingsGroupsEvent.class, event -> event.register(
- *         StageSettingsGroup.builder("mymod:trades")
- *                 .titleLangKey("settings.mymod.trades.title")
- *                 .field(HIDE_TRADES)
- *                 .build()));
+ * public class MyPlugin implements HistoryStagesPlugin {
+ *     public void registerStageSettingsGroups(RegisterStageSettingsGroupsEvent event) {
+ *         event.register(
+ *             StageSettingsGroup.builder("mymod:trades")
+ *                     .titleLangKey("settings.mymod.trades.title")
+ *                     .field(HIDE_TRADES)
+ *                     .build());
+ *     }
+ * }
  * }</pre>
  */
 public class RegisterStageSettingsGroupsEvent extends Event implements IModBusEvent {

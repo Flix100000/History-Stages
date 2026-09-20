@@ -5,7 +5,7 @@ import net.bananemdnsa.historystages.data.config.AddonConfigSections;
 import net.bananemdnsa.historystages.api.config.AddonConfigSection;
 
 import net.bananemdnsa.historystages.platform.bus.Event;
-import net.neoforged.fml.event.IModBusEvent;
+import net.bananemdnsa.historystages.platform.bus.IModBusEvent;
 
 /**
  * Fired once so other mods can add their own config sections to the HistoryStages config screen.
@@ -16,12 +16,16 @@ import net.neoforged.fml.event.IModBusEvent;
  * disagree about which sections exist.
  *
  * <pre>{@code
- * modEventBus.addListener(RegisterConfigSectionsEvent.class, event -> event.register(
- *         AddonConfigSection.builder("mymod:trades")
- *                 .titleLangKey("config.mymod.trades.title")
- *                 .side(ConfigSide.COMMON)
- *                 .field(HIDE_TRADES)
- *                 .build()));
+ * public class MyPlugin implements HistoryStagesPlugin {
+ *     public void registerConfigSections(RegisterConfigSectionsEvent event) {
+ *         event.register(
+ *             AddonConfigSection.builder("mymod:trades")
+ *                     .titleLangKey("config.mymod.trades.title")
+ *                     .side(ConfigSide.COMMON)
+ *                     .field(HIDE_TRADES)
+ *                     .build());
+ *     }
+ * }
  * }</pre>
  */
 public class RegisterConfigSectionsEvent extends Event implements IModBusEvent {

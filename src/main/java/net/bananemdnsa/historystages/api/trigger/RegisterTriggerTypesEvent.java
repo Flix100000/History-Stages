@@ -5,7 +5,7 @@ import net.bananemdnsa.historystages.data.auto.TriggerTypes;
 import net.bananemdnsa.historystages.api.trigger.TriggerCondition;
 import net.bananemdnsa.historystages.api.stage.StageScope;
 import net.bananemdnsa.historystages.platform.bus.Event;
-import net.neoforged.fml.event.IModBusEvent;
+import net.bananemdnsa.historystages.platform.bus.IModBusEvent;
 
 /**
  * Fired once so another mod can add its own auto-trigger type.
@@ -15,8 +15,11 @@ import net.neoforged.fml.event.IModBusEvent;
  * adds it here and fires it through the same path.
  *
  * <pre>{@code
- * modEventBus.addListener(RegisterTriggerTypesEvent.class, event ->
- *         event.register("mymod:relic_found", RelicFoundTrigger.class, StageScope.GLOBAL));
+ * public class MyPlugin implements HistoryStagesPlugin {
+ *     public void registerTriggerTypes(RegisterTriggerTypesEvent event) {
+ *         event.register("mymod:relic_found", RelicFoundTrigger.class, StageScope.GLOBAL);
+ *     }
+ * }
  * }</pre>
  */
 public class RegisterTriggerTypesEvent extends Event implements IModBusEvent {
