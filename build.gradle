@@ -30,8 +30,9 @@ repositories {
 }
 
 loom {
-	splitEnvironmentSourceSets()
-
+	// One source set, so the package layout matches neoforge-1.21.X file for file. Loom no longer
+	// enforces the client/server split at compile time; client-only code is kept off the dedicated
+	// server by the entrypoints in fabric.mod.json and by FabricLoader environment checks.
 	mixin {
 		useLegacyMixinAp = true
 		defaultRefmapName = "historystages.refmap.json"
@@ -40,7 +41,6 @@ loom {
 	mods {
 		"historystages" {
 			sourceSet sourceSets.main
-			sourceSet sourceSets.client
 		}
 	}
 
@@ -63,7 +63,21 @@ dependencies {
 	modCompileOnly "curse.maven:ftb-quests-fabric-438496:7878288"
 	//Lootr
 	modImplementation "curse.maven:lootr-fabric-615106:8041235"
+	// Replaced by the mod's own TOML config layer in R3, see the port plan.
 	modImplementation "curse.maven:cloth-config-348521:5729125"
+
+	// ---- Unit tests ----
+	// Loader-neutral tests, shared with neoforge-1.21.X. They must never import net.minecraft:
+	// Minecraft is not on this source set's test classpath.
+	testImplementation platform('org.junit:junit-bom:5.10.2')
+	testImplementation 'org.junit.jupiter:junit-jupiter'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+	// The tests work with Gson directly and do not get it from the Minecraft runtime classpath.
+	testImplementation 'com.google.code.gson:gson:2.10.1'
+}
+
+tasks.named('test', Test) {
+	useJUnitPlatform()
 }
 
 processResources {
@@ -88,11 +102,14 @@ processResources {
 
 tasks.withType(JavaCompile).configureEach {
 	it.options.release = 21
+	// The imported neoforge sources carry umlauts in comments and language keys.
+	it.options.encoding = 'UTF-8'
 }
 
 java {
 	withSourcesJar()
 
+	toolchain.languageVersion = JavaLanguageVersion.of(21)
 	sourceCompatibility = JavaVersion.VERSION_21
 	targetCompatibility = JavaVersion.VERSION_21
 }
