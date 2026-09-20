@@ -37,8 +37,7 @@
     "EnchantmentMenuMixin",
     "MerchantOffersMixin",
     "MerchantContainerMixin",
-    "jei.RecipeLayoutMixin",
-    "fastsuite.AuxRecipeManagerMixin"
+    "jei.RecipeLayoutMixin"
   ],
   "client": [
     "client.ItemDecorationsMixin",

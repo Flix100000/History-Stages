@@ -31,7 +31,7 @@ class HandlerCoverageTest {
      */
     private static final Set<String> REGISTERED_ELSEWHERE = Set.of(
             // Registered only when the mod it integrates with is present.
-            "CuriosEquipLockHandler", "AccessoriesEquipLockHandler",
+            "AccessoriesEquipLockHandler",
             // An instance handler: it keeps state, so the initializer registers the object.
             "AutoTriggerEventBridge", "HistoryStages",
             // The demo addon is not part of the port yet; it comes with its own round.

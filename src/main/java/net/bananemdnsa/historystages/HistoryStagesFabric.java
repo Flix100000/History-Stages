@@ -97,12 +97,10 @@ public class HistoryStagesFabric implements ModInitializer {
                 net.bananemdnsa.historystages.compat.ftbquests.FTBQuestsIntegration::init);
         integrate("accessories", "Accessories",
                 net.bananemdnsa.historystages.events.lock.AccessoriesEquipLockHandler::register);
-        integrate("curios", "Curios",
-                () -> EventBus.register(net.bananemdnsa.historystages.events.lock.CuriosEquipLockHandler.class));
-        // KubeJS finds its own entry point through kubejs.plugins.txt; all that is needed here is
-        // the wiring that turns a StageEvent into something scripts hear.
-        integrate("kubejs", "KubeJS",
-                net.bananemdnsa.historystages.compat.kubejs.StageEventForwarder::register);
+        // No scripting integration on this loader. KubeJS ships no fabric build for 1.21.1 and
+        // CraftTweaker none at all, so there is nothing for a script bridge to talk to; both, and
+        // the shared facade behind them, are on neoforge-1.21.X when one of them arrives.
+        // Curios is likewise neoforge-only here — Accessories above is what fabric packs use.
     }
 
     private static void integrate(String modId, String name, Runnable setup) {

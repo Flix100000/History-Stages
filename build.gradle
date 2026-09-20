@@ -27,6 +27,10 @@ repositories {
 		name = "Terraformers"
 		url = "https://maven.terraformersmc.com/releases"
 	}
+	maven {
+		name = "Wisp Forest"
+		url = "https://maven.wispforest.io/releases"
+	}
 }
 
 loom {
@@ -63,6 +67,13 @@ dependencies {
 	modCompileOnly "curse.maven:ftb-quests-fabric-438496:7878288"
 	//Lootr
 	modImplementation "curse.maven:lootr-fabric-615106:8041235"
+
+	// ---- Optional integrations ----
+	// The accessories adapter only loads when the mod is present. This is the loader accessories
+	// was written for, so unlike on forge it is the real thing being compiled against.
+	modCompileOnly "io.wispforest:accessories-fabric:1.1.0-beta.53+1.21.1"
+	// Spell Engine and Better Combat are fabric-first; the forge port could only guess at these.
+	modCompileOnly "maven.modrinth:spell-engine:1.10.7+1.21.1-fabric"
 
 	// NightConfig is what NeoForge builds its config specs on, and five files in this tree already
 	// read it directly. Using the same library is what keeps the TOML files byte-compatible
