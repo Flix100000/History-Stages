@@ -28,6 +28,9 @@
 		"emi": [
 			"net.bananemdnsa.historystages.compat.emi.EMIPlugin"
 		],
+		"jade": [
+			"net.bananemdnsa.historystages.compat.jade.JadePlugin"
+		],
 		"historystages": [
 			"net.bananemdnsa.historystages.demo.DemoPlugin"
 		],

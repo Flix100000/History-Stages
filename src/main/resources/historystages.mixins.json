@@ -41,6 +41,7 @@
     "jei.RecipeLayoutMixin"
   ],
   "client": [
+    "client.ClientUseItemOnMixin",
     "client.ItemDecorationsMixin",
     "client.ContainerScreenAccessor",
     "client.RecipesUpdatedMixin",
