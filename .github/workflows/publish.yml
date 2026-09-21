@@ -20,12 +20,19 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
+          # Every compat dependency (Jade, Lootr, the FTB mods, Architectury) comes from
+          # cursemaven.com, which rate-limits the shared runner IPs — an uncached run asks for
+          # all of them and regularly gets HTTP 429 back. A cache hit never asks at all.
+          cache: 'gradle'
 
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
       - name: Build with Gradle
-        run: ./gradlew build
+        run: |
+          # One retry: publishing is a one-shot event, so a transient dependency-resolution
+          # failure would otherwise mean re-running the release by hand.
+          ./gradlew build || { echo "Build failed, retrying once after 60s"; sleep 60; ./gradlew build; }
 
       - name: Publish to CurseForge & Modrinth
         uses: Kir-Antipov/mc-publish@v3.3
@@ -46,6 +53,9 @@ jobs:
             1.21
             1.21.1
           loaders: fabric
+          # Taken from the release rather than fixed here: a release marked as a prerelease on
+          # GitHub was still landing on the Release channel on both platforms, so a beta reached
+          # everyone who tracks the mod as if it were finished.
           version-type: ${{ github.event.release.prerelease && 'beta' || 'release' }}
           dependencies: |
             fabric-api(required)
@@ -53,6 +63,7 @@ jobs:
             jei(optional)
             emi(optional)
             jade(optional)
+            ftb-quests(optional)
           java: 21
           files: build/libs/!(*-sources).jar
 
