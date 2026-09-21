@@ -1,44 +1,62 @@
 package net.bananemdnsa.historystages.init;
 
 import net.bananemdnsa.historystages.HistoryStages;
+import net.bananemdnsa.historystages.compat.ScrollVariants;
 import net.bananemdnsa.historystages.data.StageManager;
-import net.minecraft.core.Registry;
+import net.bananemdnsa.historystages.data.StageMode;
 import net.minecraft.core.component.DataComponents;
-import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.fabricmc.fabric.api.itemgroup.v1.FabricItemGroup;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
+import net.bananemdnsa.historystages.platform.DeferredRegister;
+import net.bananemdnsa.historystages.platform.DeferredHolder;
 
-public final class ModCreativeTabs {
-    public static final CreativeModeTab HISTORY_TAB = CreativeModeTab.builder(CreativeModeTab.Row.TOP, 0)
-            .title(Component.translatable("creativetab.history_tab"))
-            .icon(ModItems::createCreativeScrollStack)
-            .displayItems((parameters, output) -> {
-                output.accept(ModItems.RESEARCH_PEDESTAL_ITEM);
-                output.accept(ModItems.createCreativeScrollStack());
+public class ModCreativeTabs {
+    public static final DeferredRegister<CreativeModeTab> CREATIVE_MODE_TABS =
+            DeferredRegister.create(Registries.CREATIVE_MODE_TAB, HistoryStages.MOD_ID);
 
-                for (String stageId : StageManager.getStages().keySet()) {
-                    output.accept(createResearchScroll(stageId));
-                }
-                for (String stageId : StageManager.getIndividualStages().keySet()) {
-                    output.accept(createResearchScroll(stageId));
-                }
-            })
-            .build();
+    public static final DeferredHolder<CreativeModeTab, CreativeModeTab> HISTORY_TAB = CREATIVE_MODE_TABS.register("history_tab",
+            () -> FabricItemGroup.builder()
+                    .icon(() -> new ItemStack(ModItems.RESEARCH_SCROLL.get()))
+                    .title(Component.translatable("creativetab.history_tab"))
+                    .displayItems((parameters, output) -> {
+                        // 1. Research pedestal and creative scroll
+                        output.accept(ModItems.RESEARCH_PEDESTAL_ITEM.get());
+                        output.accept(ModItems.RESEARCH_PEDESTAL_TIER_2_ITEM.get());
+                        output.accept(ModItems.RESEARCH_PEDESTAL_TIER_3_ITEM.get());
+                        output.accept(ModItems.RESEARCH_PEDESTAL_TIER_4_ITEM.get());
 
-    private ModCreativeTabs() {
-    }
+                        ItemStack creativeScroll = new ItemStack(ModItems.CREATIVE_SCROLL.get());
+                        CompoundTag creativeNbt = new CompoundTag();
+                        creativeNbt.putString("StageResearch", ModItems.CREATIVE_STAGE_ID);
+                        creativeScroll.set(DataComponents.CUSTOM_DATA, CustomData.of(creativeNbt));
+                        output.accept(creativeScroll);
+
+                        // One blank open scroll, not one per stage: the tab already carries a
+                        // closed scroll for every stage, and doubling that list would bury the
+                        // pedestals. An untagged copy opens to the "no known research" page,
+                        // which is exactly what a blank keepsake should say.
+                        output.accept(new ItemStack(ModItems.RESEARCH_SCROLL_OPEN.get()));
+
+                        // 2. Global stage scrolls (skip AUTO/TEMPORARY: those have no scroll)
+                        for (var stageEntry : StageManager.getStages().entrySet()) {
+                            if (stageEntry.getValue().getMode().usesAutoTrigger()) continue;
+                            output.accept(ScrollVariants.createScroll(stageEntry.getKey()));
+                        }
+
+                        // 3. Individual stage scrolls (skip AUTO/TEMPORARY)
+                        for (var stageEntry : StageManager.getIndividualStages().entrySet()) {
+                            if (stageEntry.getValue().getMode().usesAutoTrigger()) continue;
+                            output.accept(ScrollVariants.createScroll(stageEntry.getKey()));
+                        }
+                    })
+                    .build());
 
     public static void register() {
-        Registry.register(BuiltInRegistries.CREATIVE_MODE_TAB, HistoryStages.id("history_tab"), HISTORY_TAB);
-    }
-
-    private static ItemStack createResearchScroll(String stageId) {
-        ItemStack stack = new ItemStack(ModItems.RESEARCH_SCROLL);
-        net.minecraft.nbt.CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
-        tag.putString("StageResearch", stageId);
-        stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
-        return stack;
+        CREATIVE_MODE_TABS.register();
     }
 }

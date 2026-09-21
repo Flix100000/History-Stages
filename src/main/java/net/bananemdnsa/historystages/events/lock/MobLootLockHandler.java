@@ -1,0 +1,62 @@
+package net.bananemdnsa.historystages.events.lock;
+
+import net.bananemdnsa.historystages.Config;
+import net.bananemdnsa.historystages.HistoryStages;
+import net.bananemdnsa.historystages.data.StageManager;
+import net.bananemdnsa.historystages.util.DebugLogger;
+import net.bananemdnsa.historystages.util.lock.LootLocks;
+import net.bananemdnsa.historystages.data.saveddata.StageData;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.bananemdnsa.historystages.platform.event.entity.living.LivingDropsEvent;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
+
+import java.util.Collection;
+import java.util.UUID;
+
+@EventBusSubscriber(modid = HistoryStages.MOD_ID)
+public class MobLootLockHandler {
+
+    @SubscribeEvent
+    public static void onMobDrops(LivingDropsEvent event) {
+        if (!Config.GAMEPLAY.lockMobLoot.get()) return;
+        if (event.getEntity().level().isClientSide()) return;
+
+        if (StageData.SERVER_CACHE.isEmpty()) {
+            StageData.get(event.getEntity().level());
+        }
+
+        // Mob drops are a single set of world items shared by everyone, so there is no per-player
+        // view to strip. The killing player is the closest stand-in: their individual stages decide.
+        // Without a player killer (fall damage, mob-on-mob, …) only global stages apply.
+        UUID killerUuid = event.getSource().getEntity() instanceof Player player ? player.getUUID() : null;
+
+        Collection<ItemEntity> drops = event.getDrops();
+        int replacedCount = 0;
+
+        for (ItemEntity itemEntity : drops) {
+            ItemStack stack = itemEntity.getItem();
+            if (stack.isEmpty()) continue;
+
+            if (LootLocks.isLocked(stack, killerUuid)) {
+                ItemStack replacement = LootLocks.replacementFor(stack.getCount());
+                // ItemEntity refuses an empty stack, and an air one is what the sweep below looks for.
+                itemEntity.setItem(replacement.isEmpty() ? new ItemStack(Items.AIR) : replacement);
+                replacedCount++;
+            }
+        }
+
+        drops.removeIf(itemEntity -> itemEntity.getItem().isEmpty() || itemEntity.getItem().is(Items.AIR));
+
+        if (replacedCount > 0) {
+            ResourceLocation entityType = BuiltInRegistries.ENTITY_TYPE.getKey(event.getEntity().getType());
+            DebugLogger.runtimeThrottled("Mob Loot Lock", "mobloot_" + entityType,
+                    "Replaced " + replacedCount + " locked drop(s) from '" + entityType + "' [action: loot]");
+        }
+    }
+}

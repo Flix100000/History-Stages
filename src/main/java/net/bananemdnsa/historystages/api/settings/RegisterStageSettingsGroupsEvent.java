@@ -1,0 +1,34 @@
+package net.bananemdnsa.historystages.api.settings;
+
+import net.bananemdnsa.historystages.data.settings.StageSettingsGroups;
+
+import net.bananemdnsa.historystages.api.settings.StageSettingsGroup;
+
+import net.bananemdnsa.historystages.platform.bus.Event;
+
+/**
+ * Fired once so other mods can add their own per-stage settings groups.
+ *
+ * <p>Registration is legal only during dispatch: when it ends the registry freezes, and
+ * everything that walks it — the settings screen's card layout, the lang parity check, sync —
+ * may then assume the list never changes. An always-open registry would let a server and a
+ * client disagree about which groups exist.
+ *
+ * <pre>{@code
+ * public class MyPlugin implements HistoryStagesPlugin {
+ *     public void registerStageSettingsGroups(RegisterStageSettingsGroupsEvent event) {
+ *         event.register(
+ *             StageSettingsGroup.builder("mymod:trades")
+ *                     .titleLangKey("settings.mymod.trades.title")
+ *                     .field(HIDE_TRADES)
+ *                     .build());
+ *     }
+ * }
+ * }</pre>
+ */
+public class RegisterStageSettingsGroupsEvent extends Event {
+
+    public void register(StageSettingsGroup group) {
+        StageSettingsGroups.register(group);
+    }
+}

@@ -1,6 +1,9 @@
-# Linux start script should use lf
-/gradlew        text eol=lf
+# Line endings are stored as LF no matter what a contributor's core.autocrlf says.
+* text=auto eol=lf
 
-# These are Windows script files and should use crlf
-*.bat           text eol=crlf
+# cmd.exe misreads batch files with LF endings.
+*.bat text eol=crlf
 
+*.jar binary
+*.png binary
+*.nbt binary

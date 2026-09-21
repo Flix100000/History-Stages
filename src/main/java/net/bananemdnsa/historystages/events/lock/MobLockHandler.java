@@ -1,0 +1,76 @@
+package net.bananemdnsa.historystages.events.lock;
+
+import net.bananemdnsa.historystages.HistoryStages;
+import net.bananemdnsa.historystages.data.StageEntry;
+import net.bananemdnsa.historystages.data.StageManager;
+import net.bananemdnsa.historystages.data.lock.engine.LockResolution;
+import net.bananemdnsa.historystages.data.lock.engine.StageLocks;
+import net.bananemdnsa.historystages.api.stage.StageScope;
+import net.bananemdnsa.historystages.network.clientbound.LockFeedbackPacket;
+import net.bananemdnsa.historystages.network.PacketHandler;
+import net.bananemdnsa.historystages.util.DebugLogger;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
+import net.bananemdnsa.historystages.platform.event.entity.living.LivingIncomingDamageEvent;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+@EventBusSubscriber(modid = HistoryStages.MOD_ID)
+public class MobLockHandler {
+
+    private static final Map<UUID, Long> MESSAGE_COOLDOWNS = new HashMap<>();
+    private static final long COOLDOWN_MS = 2000;
+
+    @SubscribeEvent
+    public static void onMobAttacked(LivingIncomingDamageEvent event) {
+        if (event.getEntity().level().isClientSide()) return;
+
+        if (!(event.getSource().getEntity() instanceof ServerPlayer player)) return;
+
+        ResourceLocation entityType = BuiltInRegistries.ENTITY_TYPE.getKey(event.getEntity().getType());
+        if (entityType == null) return;
+
+        String entityId = entityType.toString();
+
+        List<String> requiredStageIds =
+                StageLocks.engine().gatingStagesForEntityAttack(entityId, StageScope.GLOBAL);
+        List<String> individualStageIds =
+                StageLocks.engine().gatingStagesForEntityAttack(entityId, StageScope.INDIVIDUAL);
+
+        List<String> lockedStages =
+                new ArrayList<>(LockResolution.missingStages(requiredStageIds, StageLocks.serverGlobal()));
+        lockedStages.addAll(LockResolution.missingStages(
+                individualStageIds, StageLocks.serverIndividual(player.getUUID())));
+
+        if (lockedStages.isEmpty() && requiredStageIds.isEmpty() && individualStageIds.isEmpty()) return;
+
+        if (!lockedStages.isEmpty()) {
+            event.setCanceled(true);
+            DebugLogger.runtimeThrottled("Mob Attack Lock", "mob_attack_" + player.getUUID() + "_" + entityId,
+                    "<" + player.getName().getString() + "> Attack on '" + entityId + "' blocked — missing stages: " + lockedStages);
+
+            long now = System.currentTimeMillis();
+            Long lastMessage = MESSAGE_COOLDOWNS.get(player.getUUID());
+            if (lastMessage != null && (now - lastMessage) < COOLDOWN_MS) return;
+            MESSAGE_COOLDOWNS.put(player.getUUID(), now);
+
+            List<String> displayNames = new ArrayList<>(lockedStages.size());
+            for (String stageId : lockedStages) {
+                StageEntry stageEntry = StageManager.getStages().get(stageId);
+                displayNames.add(stageEntry != null ? stageEntry.getDisplayName() : stageId);
+            }
+
+            PacketHandler.sendLockFeedbackToPlayer(
+                    new LockFeedbackPacket(LockFeedbackPacket.KIND_MOB, displayNames),
+                    player
+            );
+        }
+    }
+}

@@ -1,87 +1,178 @@
 package net.bananemdnsa.historystages.screen;
 
 import net.bananemdnsa.historystages.block.entity.ResearchPedestalBlockEntity;
+import net.bananemdnsa.historystages.data.StageEntry;
+import net.bananemdnsa.historystages.data.StageManager;
+import net.bananemdnsa.historystages.data.StageMode;
 import net.bananemdnsa.historystages.init.ModBlocks;
 import net.bananemdnsa.historystages.init.ModMenuTypes;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraft.world.inventory.ContainerData;
-import net.minecraft.world.inventory.SimpleContainerData;
-import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.inventory.*;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import org.jetbrains.annotations.NotNull;
+
+import java.util.UUID;
 
 public class ResearchPedestalMenu extends AbstractContainerMenu {
     private final ResearchPedestalBlockEntity blockEntity;
     private final Level level;
     public final ContainerData data;
 
-    public ResearchPedestalMenu(int containerId, Inventory inventory, BlockPos blockPos) {
-        this(containerId, inventory, (ResearchPedestalBlockEntity) inventory.player.level().getBlockEntity(blockPos), new SimpleContainerData(6));
+    // Client-Konstruktor
+    public ResearchPedestalMenu(int pContainerId, Inventory inv, BlockPos pos) {
+        // Slots 0..10: progress, max, finishDelay, individualMode, depsMet, depositDelay,
+        // speedPercent, tierMismatch, requiredTier, requiredTierMode, running
+        this(pContainerId, inv, inv.player.level().getBlockEntity(pos), new SimpleContainerData(11));
     }
 
-    public ResearchPedestalMenu(int containerId, Inventory inventory, ResearchPedestalBlockEntity blockEntity, ContainerData data) {
-        super(ModMenuTypes.RESEARCH_MENU, containerId);
-        this.blockEntity = blockEntity;
-        this.level = inventory.player.level();
+    // Server-Konstruktor
+    public ResearchPedestalMenu(int pContainerId, Inventory inv, BlockEntity entity, ContainerData data) {
+        super(ModMenuTypes.RESEARCH_MENU.get(), pContainerId);
+        checkContainerSize(inv, 1);
+        this.blockEntity = ((ResearchPedestalBlockEntity) entity);
+        this.level = inv.player.level();
         this.data = data;
 
-        addPlayerInventory(inventory);
-        addPlayerHotbar(inventory);
-        this.addSlot(new Slot(blockEntity, 0, 26, 35) {
+        addPlayerInventory(inv);
+        addPlayerHotbar(inv);
+
+        // Internal Slot 0: Scroll
+        this.addSlot(new Slot(this.blockEntity.getItemHandler(), 0,
+                PedestalLayout.SCROLL_SLOT_X, PedestalLayout.SCROLL_SLOT_Y) {
             @Override
-            public boolean mayPlace(ItemStack stack) {
-                return stack.is(net.bananemdnsa.historystages.init.ModItems.RESEARCH_SCROLL)
-                        || stack.is(net.bananemdnsa.historystages.init.ModItems.CREATIVE_SCROLL);
+            public boolean mayPickup(@NotNull Player player) {
+                // Read the synced data slot, not the block entity field: the client's copy of
+                // the block entity never learns about `running`, so it would let the player
+                // lift the scroll and only snap it back once the server disagrees.
+                return !ResearchPedestalMenu.this.isRunning() && super.mayPickup(player);
             }
         });
-        this.addSlot(new Slot(blockEntity, 1, 246, 142) {
+
+        // Internal Slot 1: Deposit (Inside the dependency panel)
+        this.addSlot(new Slot(this.blockEntity.getItemHandler(), 1,
+                PedestalLayout.WIDTH + PedestalLayout.DEP_GAP + PedestalLayout.DEP_SLOT_X,
+                PedestalLayout.DEP_SLOT_Y) {
             @Override
-            public boolean mayPlace(ItemStack stack) {
-                return blockEntity.hasScrollWithDependencies();
+            public boolean mayPlace(@NotNull ItemStack stack) {
+                if (ResearchPedestalMenu.this.blockEntity == null)
+                    return false;
+
+                // Read stage info from the scroll
+                ItemStack scroll = ResearchPedestalMenu.this.blockEntity.getScrollStack();
+                if (scroll.isEmpty())
+                    return false;
+                CompoundTag scrollTag = scroll.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+                if (!scrollTag.contains("StageResearch"))
+                    return false;
+                String stageId = scrollTag.getString("StageResearch");
+
+                // Only DEFAULT-mode stages accept deposits. AUTO/EXTERNAL scrolls
+                // never legitimately enter research, so block dependency deposits too.
+                StageEntry modeEntry = StageManager.isIndividualStage(stageId)
+                        ? StageManager.getIndividualStages().get(stageId)
+                        : StageManager.getStages().get(stageId);
+                if (modeEntry != null && modeEntry.getMode() != StageMode.DEFAULT) {
+                    return false;
+                }
+
+                // Block placement if the stage is already unlocked
+                if (ResearchPedestalMenu.this.blockEntity.isCurrentScrollIndividual()) {
+                    UUID owner = scrollTag.hasUUID("OwnerUUID") ? scrollTag.getUUID("OwnerUUID") : null;
+                    if (owner != null
+                            && net.bananemdnsa.historystages.data.saveddata.IndividualStageData.hasStageCached(owner, stageId)) {
+                        return false;
+                    }
+                } else {
+                    if (net.bananemdnsa.historystages.data.saveddata.StageData.SERVER_CACHE.contains(stageId)) {
+                        return false;
+                    }
+                }
+
+                return super.mayPlace(stack);
             }
 
             @Override
             public boolean isActive() {
-                return blockEntity.hasScrollWithDependencies();
+                return ResearchPedestalMenu.this.blockEntity != null
+                        && ResearchPedestalMenu.this.blockEntity.hasScrollWithDependencies();
             }
         });
+
+        // Synchronisiert die Daten (Progress, Max, Delay, IndividualMode, DepsMet, DepositDelay)
         addDataSlots(data);
     }
 
-    public int getScaledProgress() {
-        int progress = data.get(0);
-        int max = data.get(1);
-        return max != 0 && progress != 0 ? progress * 61 / max : 0;
-    }
-
     public ResearchPedestalBlockEntity getBlockEntity() {
-        return blockEntity;
+        return this.blockEntity;
     }
 
-    public BlockPos getBlockPos() {
-        return blockEntity.getBlockPos();
+    public net.minecraft.core.BlockPos getBlockPos() {
+        return this.blockEntity.getBlockPos();
+    }
+
+    public int getScaledProgress() {
+        int progress = this.data.get(0);
+        int maxProgress = this.data.get(1);
+        int progressArrowSize = 61;
+
+        return maxProgress != 0 && progress != 0 ? progress * progressArrowSize / maxProgress : 0;
     }
 
     @Override
-    public boolean stillValid(Player player) {
-        return stillValid(net.minecraft.world.inventory.ContainerLevelAccess.create(level, blockEntity.getBlockPos()), player, ModBlocks.RESEARCH_PEDESTAL);
+    public boolean stillValid(Player pPlayer) {
+        net.minecraft.core.BlockPos pos = blockEntity.getBlockPos();
+        if (level.getBlockEntity(pos) != blockEntity) return false;
+        return pPlayer.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5) <= 64.0;
+    }
+
+    private void addPlayerInventory(Inventory playerInventory) {
+        for (int i = 0; i < 3; ++i) {
+            for (int l = 0; l < 9; ++l) {
+                this.addSlot(new Slot(playerInventory, l + i * 9 + 9,
+                        PedestalLayout.INV_X + l * PedestalLayout.SLOT_PITCH,
+                        PedestalLayout.INV_Y + i * PedestalLayout.SLOT_PITCH));
+            }
+        }
+    }
+
+    private void addPlayerHotbar(Inventory playerInventory) {
+        for (int i = 0; i < 9; ++i) {
+            this.addSlot(new Slot(playerInventory, i,
+                    PedestalLayout.INV_X + i * PedestalLayout.SLOT_PITCH,
+                    PedestalLayout.HOTBAR_Y));
+        }
     }
 
     @Override
-    public ItemStack quickMoveStack(Player player, int index) {
+    public ItemStack quickMoveStack(Player playerIn, int index) {
         Slot slot = this.slots.get(index);
         if (slot != null && slot.hasItem()) {
             ItemStack stack = slot.getItem();
             ItemStack copy = stack.copy();
+
+            // If item comes from player inventory/hotbar (0-35)
             if (index < 36) {
-                if (!this.moveItemStackTo(stack, 36, 38, false)) {
+                // First try scroll slot, then deposit slot
+                if (this.moveItemStackTo(stack, 36, 37, false)) {
+                    // moved to scroll slot
+                } else if (this.moveItemStackTo(stack, 37, 38, false)) {
+                    // moved to deposit slot
+                } else {
                     return ItemStack.EMPTY;
                 }
-            } else if (!this.moveItemStackTo(stack, 0, 36, false)) {
-                return ItemStack.EMPTY;
+            }
+            // If item comes from pedestal slots (36-37)
+            else {
+                if (!this.moveItemStackTo(stack, 0, 36, false)) {
+                    return ItemStack.EMPTY;
+                }
             }
 
             if (stack.isEmpty()) {
@@ -95,6 +186,7 @@ public class ResearchPedestalMenu extends AbstractContainerMenu {
     }
 
     public boolean isCrafting() {
+        // Show bar even when in finishDelay (data index 2)
         return data.get(0) > 0 || data.get(2) > 0;
     }
 
@@ -106,17 +198,25 @@ public class ResearchPedestalMenu extends AbstractContainerMenu {
         return data.get(4) == 1;
     }
 
-    private void addPlayerInventory(Inventory inventory) {
-        for (int row = 0; row < 3; ++row) {
-            for (int col = 0; col < 9; ++col) {
-                this.addSlot(new Slot(inventory, col + row * 9 + 9, 8 + col * 18, 84 + row * 18));
-            }
-        }
+    /** @return the current speed reduction (0..90) from the booster under the pedestal, live. */
+    public int getCurrentSpeedPercent() {
+        return data.get(6);
     }
 
-    private void addPlayerHotbar(Inventory inventory) {
-        for (int i = 0; i < 9; ++i) {
-            this.addSlot(new Slot(inventory, i, 8 + i * 18, 142));
-        }
+    public boolean isTierMismatch() {
+        return data.get(7) == 1;
+    }
+
+    public int getRequiredTier() {
+        return data.get(8);
+    }
+
+    /** @return 0 = MIN, 1 = EXACT. */
+    public int getRequiredTierMode() {
+        return data.get(9);
+    }
+
+    public boolean isRunning() {
+        return this.data.get(10) == 1;
     }
 }

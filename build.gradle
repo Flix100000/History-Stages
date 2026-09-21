@@ -27,11 +27,16 @@ repositories {
 		name = "Terraformers"
 		url = "https://maven.terraformersmc.com/releases"
 	}
+	maven {
+		name = "Wisp Forest"
+		url = "https://maven.wispforest.io/releases"
+	}
 }
 
 loom {
-	splitEnvironmentSourceSets()
-
+	// One source set, so the package layout matches neoforge-1.21.X file for file. Loom no longer
+	// enforces the client/server split at compile time; client-only code is kept off the dedicated
+	// server by the entrypoints in fabric.mod.json and by FabricLoader environment checks.
 	mixin {
 		useLegacyMixinAp = true
 		defaultRefmapName = "historystages.refmap.json"
@@ -40,7 +45,28 @@ loom {
 	mods {
 		"historystages" {
 			sourceSet sourceSets.main
-			sourceSet sourceSets.client
+		}
+	}
+
+	runs {
+		// Its own directory, so a server run never shares a world or a config with a client run.
+		// This is the run that matters most for this port: collapsing the source sets took away
+		// the compile-time guarantee that no client class reaches a dedicated server, and this is
+		// where that would show.
+		server {
+			server()
+			runDir = "run-server"
+		}
+
+		// The gametests, run headless. Its own directory again, and its own world, which the
+		// test framework throws away afterwards.
+		gametest {
+			server()
+			name = "Game Test"
+			runDir = "run-gametest"
+			vmArg "-Dfabric-api.gametest"
+			vmArg "-Dfabric-api.gametest.report-file=${project.buildDir}/junit.xml"
+			ideConfigGenerated = true
 		}
 	}
 
@@ -63,7 +89,38 @@ dependencies {
 	modCompileOnly "curse.maven:ftb-quests-fabric-438496:7878288"
 	//Lootr
 	modImplementation "curse.maven:lootr-fabric-615106:8041235"
-	modImplementation "curse.maven:cloth-config-348521:5729125"
+	// Lootr wants this at runtime and will not load without it. Nothing in this mod reads it —
+	// the config layer replaced it in R3 — so it is runtime only and stays out of the jar.
+	modLocalRuntime "maven.modrinth:cloth-config:15.0.140+fabric"
+
+	// ---- Optional integrations ----
+	// The accessories adapter only loads when the mod is present. This is the loader accessories
+	// was written for, so unlike on forge it is the real thing being compiled against.
+	modCompileOnly "io.wispforest:accessories-fabric:1.1.0-beta.53+1.21.1"
+	// Spell Engine and Better Combat are fabric-first; the forge port could only guess at these.
+	modCompileOnly "maven.modrinth:spell-engine:1.10.7+1.21.1-fabric"
+
+	// NightConfig is what NeoForge builds its config specs on, and five files in this tree already
+	// read it directly. Using the same library is what keeps the TOML files byte-compatible
+	// between the two loaders. Fabric ships nothing like it, so it travels inside the jar.
+	implementation include("com.electronwill.night-config:core:3.6.7")
+	implementation include("com.electronwill.night-config:toml:3.6.7")
+
+	// ---- Unit tests ----
+	// Loader-neutral tests, shared with neoforge-1.21.X. They must never import net.minecraft:
+	// Minecraft is not on this source set's test classpath.
+	testImplementation platform('org.junit:junit-bom:5.10.2')
+	testImplementation 'org.junit.jupiter:junit-jupiter'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+	// The tests work with Gson directly and do not get it from the Minecraft runtime classpath.
+	testImplementation 'com.google.code.gson:gson:2.10.1'
+	// The config layer hands back a commons-lang3 Pair, which reaches the main source set through
+	// Minecraft but not the test one.
+	testImplementation 'org.apache.commons:commons-lang3:3.14.0'
+}
+
+tasks.named('test', Test) {
+	useJUnitPlatform()
 }
 
 processResources {
@@ -88,11 +145,14 @@ processResources {
 
 tasks.withType(JavaCompile).configureEach {
 	it.options.release = 21
+	// The imported neoforge sources carry umlauts in comments and language keys.
+	it.options.encoding = 'UTF-8'
 }
 
 java {
 	withSourcesJar()
 
+	toolchain.languageVersion = JavaLanguageVersion.of(21)
 	sourceCompatibility = JavaVersion.VERSION_21
 	targetCompatibility = JavaVersion.VERSION_21
 }

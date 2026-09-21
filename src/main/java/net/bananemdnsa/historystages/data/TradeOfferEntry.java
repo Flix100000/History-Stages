@@ -1,0 +1,97 @@
+package net.bananemdnsa.historystages.data;
+
+import com.google.gson.JsonObject;
+
+/**
+ * One gated merchant offer: who makes it, at what level, what it hands over and what it costs.
+ *
+ * <p>The surgical half of the trade category. Its sibling — the item action {@code trade} on an
+ * ordinary item entry — says "nobody trades with this at all, anywhere"; this says "not
+ * <em>that</em> trade". A pack that wants the librarian's bookshelf trade held back without
+ * touching bookshelves anywhere else in the game has no other way to say so.
+ *
+ * <p><strong>Counts are not part of what makes a trade this trade.</strong> Several vanilla
+ * recipes roll their price per villager — the same bookshelf trade is nine emeralds for one
+ * merchant and twelve for the next — so a lock that remembered the number would match one villager
+ * in five. What does count is the merchant, the level and which items change hands.
+ *
+ * <p>The prices are part of the identity even so, because dropping them would go too far the other
+ * way: a farmer at level one has four separate recipes that all hand over an emerald, and telling
+ * them apart is exactly what the price is for. The cost is a known fragility — if a mod changes
+ * which item one of its trades asks for, a lock naming the old one stops matching, quietly. That
+ * is the price of being able to name one trade out of four, and the broad item rule is what a pack
+ * reaches for when it would rather not pay it.
+ *
+ * @param merchantKey who offers it: a villager profession id, or the stand-in for a merchant that
+ *                    has no profession — see {@code TradeLockHelper}
+ * @param level       the merchant level the offer belongs to, 1 for anything that has no levels
+ * @param givesId     what the merchant hands over
+ * @param takesAId    the first price
+ * @param takesBId    the second price, or null. Most offers have one
+ * @param nbt         an optional criterion the handed-over stack must satisfy, or null. What tells
+ *                    one enchanted book from another inside a single recipe
+ */
+public record TradeOfferEntry(String merchantKey, int level, String givesId,
+                              String takesAId, String takesBId, JsonObject nbt) {
+
+    public TradeOfferEntry(String merchantKey, int level, String givesId,
+                           String takesAId, String takesBId) {
+        this(merchantKey, level, givesId, takesAId, takesBId, null);
+    }
+
+    /** An object with no fields constrains nothing, so it does not count as a criterion. */
+    public boolean hasNbt() {
+        return nbt != null && nbt.size() > 0;
+    }
+
+    /**
+     * Whether this entry names the offer described, ignoring any criterion.
+     *
+     * <p>The decision a reader of a stage file is reasoning about, and it needs no Minecraft — so
+     * the whole table can be proven by a plain unit test. The criterion is the remaining half and
+     * needs a live stack.
+     */
+    public boolean gates(String merchantKey, int level, String givesId,
+                         String takesAId, String takesBId) {
+        return this.level == level
+                && java.util.Objects.equals(this.merchantKey, merchantKey)
+                && java.util.Objects.equals(this.givesId, givesId)
+                && java.util.Objects.equals(this.takesAId, takesAId)
+                && java.util.Objects.equals(this.takesBId, takesBId);
+    }
+
+    public TradeOfferEntry copy() {
+        return new TradeOfferEntry(merchantKey, level, givesId, takesAId, takesBId,
+                nbt == null ? null : nbt.deepCopy());
+    }
+
+    /**
+     * The trade this entry names, as one string.
+     *
+     * <p>Three jobs at once, which is why it is exact rather than pretty: it says whether two
+     * entries are the same trade, it is what the picker hands back when a row is clicked, and it
+     * is what "already added" compares against. The criterion is left out — an entry narrowed to
+     * one enchantment is still the same trade as the one that is not.
+     *
+     * <p>Joined with a character no id can contain, so {@link #decode} can take it apart again
+     * without a format to get wrong. Never shown to anybody.
+     */
+    public String identity() {
+        return String.join("\0", merchantKey, String.valueOf(level), givesId,
+                takesAId == null ? "" : takesAId, takesBId == null ? "" : takesBId);
+    }
+
+    /** Rebuilds an entry from {@link #identity}, or null when the string is not one. */
+    public static TradeOfferEntry decode(String identity) {
+        if (identity == null) return null;
+        String[] parts = identity.split("\0", -1);
+        if (parts.length != 5 || parts[0].isEmpty() || parts[2].isEmpty()) return null;
+        try {
+            return new TradeOfferEntry(parts[0], Integer.parseInt(parts[1]), parts[2],
+                    parts[3].isEmpty() ? null : parts[3],
+                    parts[4].isEmpty() ? null : parts[4]);
+        } catch (NumberFormatException notALevel) {
+            return null;
+        }
+    }
+}

@@ -5,7 +5,7 @@
 	"name": "${mod_name}",
 	"description": "${mod_description}",
 	"authors": [
-		"Flix100000",
+		"Bananemdnsa",
 		"PixlStudios"
 	],
 	"contact": {
@@ -13,6 +13,7 @@
 		"sources": "https://github.com/Flix100000/History-Stages"
 	},
 	"license": "${mod_license}",
+	"icon": "assets/historystages/icon.png",
 	"environment": "*",
 	"entrypoints": {
 		"main": [
@@ -22,13 +23,38 @@
 			"net.bananemdnsa.historystages.client.HistoryStagesFabricClient"
 		],
 		"jei_mod_plugin": [
-			"net.bananemdnsa.historystages.jei.JEIPlugin"
+			"net.bananemdnsa.historystages.compat.jei.JEIPlugin"
 		],
 		"emi": [
-			"net.bananemdnsa.historystages.emi.EMIPlugin"
+			"net.bananemdnsa.historystages.compat.emi.EMIPlugin"
+		],
+		"historystages": [
+			"net.bananemdnsa.historystages.demo.DemoPlugin"
+		],
+		"historystages:client": [
+			"net.bananemdnsa.historystages.demo.DemoClientPlugin"
+		],
+		"fabric-gametest": [
+			"net.bananemdnsa.historystages.gametest.AutoTriggerTests",
+			"net.bananemdnsa.historystages.gametest.ConfigCodecTests",
+			"net.bananemdnsa.historystages.gametest.ContainerLockTests",
+			"net.bananemdnsa.historystages.gametest.DependencyCheckerTests",
+			"net.bananemdnsa.historystages.gametest.FluidLockTests",
+			"net.bananemdnsa.historystages.gametest.GraphReachabilityTests",
+			"net.bananemdnsa.historystages.gametest.HarnessTests",
+			"net.bananemdnsa.historystages.gametest.ItemTagDepositTests",
+			"net.bananemdnsa.historystages.gametest.LockTests",
+			"net.bananemdnsa.historystages.gametest.LootrLootFilterTests",
+			"net.bananemdnsa.historystages.gametest.PacketTests",
+			"net.bananemdnsa.historystages.gametest.PersistenceTests",
+			"net.bananemdnsa.historystages.gametest.ReachTests",
+			"net.bananemdnsa.historystages.gametest.RecipeLockTests",
+			"net.bananemdnsa.historystages.gametest.SpawnControlTests",
+			"net.bananemdnsa.historystages.gametest.TradeLockTests",
+			"net.bananemdnsa.historystages.gametest.ZoneLockTests"
 		],
 		"ftbquests": [
-			"net.bananemdnsa.historystages.ftbquests.FTBQuestsIntegration"
+			"net.bananemdnsa.historystages.compat.ftbquests.FTBQuestsIntegration"
 		]
 	},
 	"mixins": [
@@ -39,12 +65,15 @@
 		"minecraft": ">=1.21 <1.21.2",
 		"java": ">=21",
 		"fabric-api": "*",
-		"lootr": "*"
+		"lootr": ">=0.4"
 	},
 	"suggests": {
-		"jade": "*",
-		"emi": "*",
-		"jei": "*",
-		"ftbquests": "*"
+		"jade": ">=15",
+		"emi": ">=1.1",
+		"jei": ">=15",
+		"ftbquests": ">=2101",
+		"accessories": ">=1.1.0-beta",
+		"spell_engine": ">=1.9",
+		"bettercombat": ">=1"
 	}
 }

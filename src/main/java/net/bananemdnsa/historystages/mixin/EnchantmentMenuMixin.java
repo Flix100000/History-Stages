@@ -2,12 +2,14 @@ package net.bananemdnsa.historystages.mixin;
 
 import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.util.DebugLogger;
-import net.bananemdnsa.historystages.util.StageLockHelper;
-import net.minecraft.ChatFormatting;
-import net.minecraft.core.Registry;
+import net.bananemdnsa.historystages.util.lock.LockFeedback;
+import net.bananemdnsa.historystages.util.lock.LockMessages;
+import net.bananemdnsa.historystages.util.lock.StageLockHelper;
+import net.minecraft.core.Holder;
+import net.minecraft.core.IdMap;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.EnchantmentMenu;
@@ -19,52 +21,46 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
-
 @Mixin(EnchantmentMenu.class)
 public class EnchantmentMenuMixin {
+
     @Shadow @Final public int[] enchantClue;
     @Shadow @Final public int[] levelClue;
 
-    private static final Map<UUID, Long> MESSAGE_COOLDOWNS = new HashMap<>();
-    private static final long COOLDOWN_MS = 2000L;
+    private static final String FEEDBACK_CATEGORY = "enchant_table";
 
     @Inject(method = "clickMenuButton", at = @At("HEAD"), cancellable = true)
-    private void historystages$clickMenuButton(Player player, int buttonId, CallbackInfoReturnable<Boolean> cir) {
-        if (!(player instanceof ServerPlayer serverPlayer) || player.level().isClientSide()
-                || (!Config.COMMON.lockEnchanting && !Config.COMMON.individualLockEnchanting) || buttonId < 0 || buttonId > 2) {
-            return;
-        }
+    private void onClickMenuButton(Player player, int buttonId, CallbackInfoReturnable<Boolean> cir) {
+        if (!Config.GAMEPLAY.lockEnchanting.get() && !Config.GAMEPLAY.individualLockEnchanting.get()) return;
+        if (player.level().isClientSide()) return;
+        if (!(player instanceof ServerPlayer serverPlayer)) return;
+        if (buttonId < 0 || buttonId > 2) return;
 
         int enchantId = enchantClue[buttonId];
         int level = levelClue[buttonId];
-        if (enchantId < 0) {
-            return;
-        }
 
-        Registry<Enchantment> registry = serverPlayer.level().registryAccess().registryOrThrow(Registries.ENCHANTMENT);
-        Enchantment enchantment = registry.byId(enchantId);
-        if (enchantment == null) {
-            return;
-        }
-        ResourceLocation enchantmentId = registry.getKey(enchantment);
-        if (enchantmentId == null) {
-            return;
-        }
+        if (enchantId < 0) return;
 
-        if (StageLockHelper.isEnchantmentLockedForPlayer(enchantmentId.toString(), level, serverPlayer.getUUID())) {
+        // In MC 1.21, enchantments are data-driven. enchantClue stores the id from
+        // registryAccess().registryOrThrow(Registries.ENCHANTMENT).asHolderIdMap()
+        var enchantRegistry = serverPlayer.level().registryAccess().registryOrThrow(Registries.ENCHANTMENT);
+        IdMap<Holder<Enchantment>> idmap = enchantRegistry.asHolderIdMap();
+        Holder<Enchantment> holder = idmap.byId(enchantId);
+        if (holder == null) return;
+
+        ResourceKey<Enchantment> key = holder.unwrapKey().orElse(null);
+        if (key == null) return;
+
+        ResourceLocation enchantRL = key.location();
+
+        if (StageLockHelper.isEnchantmentLockedForPlayer(enchantRL.toString(), level, serverPlayer.getUUID())) {
             cir.setReturnValue(false);
-            DebugLogger.runtimeThrottled("Enchantment Lock", "enchant_" + serverPlayer.getUUID(),
-                    "<" + serverPlayer.getName().getString() + "> Enchantment '" + enchantmentId + "' blocked");
-            long now = System.currentTimeMillis();
-            Long last = MESSAGE_COOLDOWNS.get(serverPlayer.getUUID());
-            if (last == null || now - last >= COOLDOWN_MS) {
-                MESSAGE_COOLDOWNS.put(serverPlayer.getUUID(), now);
-                serverPlayer.displayClientMessage(Component.translatable("message.historystages.enchantment_locked")
-                        .withStyle(ChatFormatting.DARK_RED, ChatFormatting.ITALIC), true);
-            }
+
+            DebugLogger.runtimeThrottled("Enchantment Lock", "enchant_table_" + serverPlayer.getUUID(),
+                    "<" + serverPlayer.getName().getString() + "> Enchanting table blocked: enchantment '"
+                            + enchantRL + "' level " + level + " is locked");
+
+            LockFeedback.sendActionbar(serverPlayer, FEEDBACK_CATEGORY, LockMessages.enchantmentLocked());
         }
     }
 }

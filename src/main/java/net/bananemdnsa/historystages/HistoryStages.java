@@ -1,17 +1,325 @@
 package net.bananemdnsa.historystages;
 
+import com.mojang.logging.LogUtils;
+import net.bananemdnsa.historystages.Config;
+import net.bananemdnsa.historystages.commands.StageCommand;
+import net.bananemdnsa.historystages.compat.ScrollVariants;
+import net.bananemdnsa.historystages.data.StageManager;
+import net.bananemdnsa.historystages.data.StageMode;
+import net.bananemdnsa.historystages.data.auto.AutoTriggerManager;
+import net.bananemdnsa.historystages.init.*;
+import net.bananemdnsa.historystages.network.PacketHandler;
+import net.bananemdnsa.historystages.network.clientbound.SyncConfigPacket;
+import net.bananemdnsa.historystages.network.clientbound.SyncIndividualStagesPacket;
+import net.bananemdnsa.historystages.network.clientbound.SyncStageDefinitionsPacket;
+import net.bananemdnsa.historystages.network.clientbound.SyncStagesPacket;
+import net.bananemdnsa.historystages.screen.ResearchPedestalScreen;
+import net.bananemdnsa.historystages.util.DebugLogger;
+import net.bananemdnsa.historystages.data.saveddata.IndividualStageData;
+import net.bananemdnsa.historystages.data.saveddata.StageData;
+import net.bananemdnsa.historystages.util.lock.StageLockHelper;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.CreativeModeTabs;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.fabricmc.loader.api.FabricLoader;
+import net.fabricmc.fabric.api.util.TriState;
+import net.bananemdnsa.historystages.platform.event.BuildCreativeModeTabContentsEvent;
+import net.bananemdnsa.historystages.platform.event.RegisterCommandsEvent;
+import net.bananemdnsa.historystages.platform.event.entity.player.ItemEntityPickupEvent;
+import net.bananemdnsa.historystages.platform.event.entity.player.PlayerEvent;
+import net.bananemdnsa.historystages.platform.event.level.LevelEvent;
+import net.bananemdnsa.historystages.platform.event.server.ServerStoppingEvent;
+import net.bananemdnsa.historystages.platform.event.tick.ServerTickEvent;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-public final class HistoryStages {
+import java.util.List;
+
+public class HistoryStages {
     public static final String MOD_ID = "historystages";
-    public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
+    private static final Logger LOGGER = LogUtils.getLogger();
 
-    private HistoryStages() {
+    public static net.minecraft.resources.ResourceLocation location(String path) {
+        return net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(MOD_ID, path);
     }
 
-    public static ResourceLocation id(String path) {
-        return ResourceLocation.fromNamespaceAndPath(MOD_ID, path);
+    /**
+     * Holds the handler methods below. Everything the NeoForge constructor did — registries,
+     * config, integrations — is in HistoryStagesFabric now, where the order is visible.
+     */
+    public HistoryStages() {
+    }
+
+
+
+
+
+
+    @SubscribeEvent
+    public void addCreative(BuildCreativeModeTabContentsEvent event) {
+        // Wir fügen die Maschine bei den Funktions-Blöcken hinzu
+        if (event.getTabKey() == CreativeModeTabs.FUNCTIONAL_BLOCKS) {
+            event.accept(ModItems.RESEARCH_PEDESTAL_ITEM.get());
+        }
+
+        // Generate a research scroll for every stage (global + individual).
+        // AUTO/TEMPORARY stages have no scroll (they're unlocked via auto_trigger events).
+        if (event.getTabKey() == CreativeModeTabs.INGREDIENTS) {
+            for (var stageEntry : StageManager.getStages().entrySet()) {
+                if (stageEntry.getValue().getMode().usesAutoTrigger()) continue;
+                event.accept(ScrollVariants.createScroll(stageEntry.getKey()));
+            }
+            for (var stageEntry : StageManager.getIndividualStages().entrySet()) {
+                if (stageEntry.getValue().getMode().usesAutoTrigger()) continue;
+                event.accept(ScrollVariants.createScroll(stageEntry.getKey()));
+            }
+        }
+    }
+
+    @SubscribeEvent
+    public void onRegisterCommands(RegisterCommandsEvent event) {
+        StageCommand.register(event.getDispatcher());
+    }
+
+    @SubscribeEvent
+    public void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            // Send stage definitions, unlocked stages, and server config to client
+            PacketHandler.sendDefinitionsToPlayer(new SyncStageDefinitionsPacket(StageManager.getStages()), player);
+            StageData data = StageData.get(player.serverLevel());
+            PacketHandler.sendToPlayer(new SyncStagesPacket(data.getUnlockedStages()), player);
+            PacketHandler.sendConfigToPlayer(SyncConfigPacket.fromServerConfig(), player);
+            PacketHandler.sendGraphConfigToPlayer(
+                    net.bananemdnsa.historystages.network.clientbound.SyncGraphConfigPacket
+                            .fromServerConfig(), player);
+            PacketHandler.sendVisualConfigToPlayer(
+                    net.bananemdnsa.historystages.network.clientbound.SyncVisualConfigPacket
+                            .fromServerConfig(), player);
+
+            // Sync individual stages for this player
+            IndividualStageData individualData = IndividualStageData.get(player.serverLevel());
+            PacketHandler.sendIndividualStagesToPlayer(
+                    SyncIndividualStagesPacket.of(individualData, player.getUUID()),
+                    player
+            );
+
+            // Sync structure registry so editor UI can populate the searchable list
+            PacketHandler.sendStructureRegistryToPlayer(
+                    net.bananemdnsa.historystages.network.clientbound.SyncStructureRegistryPacket.fromServer(player),
+                    player);
+
+            DebugLogger.runtime("Player Login", player.getName().getString(),
+                    "Synced " + StageManager.getStages().size() + " stage definitions, "
+                    + data.getUnlockedStages().size() + " unlocked stages, "
+                    + individualData.getUnlockedStages(player.getUUID()).size() + " individual stages");
+
+            // Log locked items in player inventory
+            logLockedInventoryItems(player);
+
+            // Welcome message
+            if (Config.VISUAL.showWelcomeMessage.get()) {
+                int stageCount = StageManager.getStages().size();
+                player.sendSystemMessage(Component.literal("§8§m                                                §r"));
+                player.sendSystemMessage(Component.literal("  §b§lHistory Stages §7— §fWelcome!"));
+                player.sendSystemMessage(Component.literal("  §7Loaded §f" + stageCount + " §7stage" + (stageCount != 1 ? "s" : "") + " from §fconfig/historystages/"));
+                player.sendSystemMessage(Component.translatable("message.historystages.welcome.settings"));
+                player.sendSystemMessage(Component.translatable("message.historystages.welcome.disable"));
+                player.sendSystemMessage(Component.literal("§8§m                                                §r"));
+            }
+
+            // Debug error/warning messages (INFO only in log file, not in chat)
+            if (Config.GAMEPLAY.showDebugErrors.get()) {
+                List<StageManager.LoadingMessage> messages = StageManager.getLoadingMessages();
+                List<StageManager.LoadingMessage> chatMessages = messages.stream()
+                        .filter(m -> m.level() != StageManager.MessageLevel.INFO)
+                        .toList();
+                long infoCount = messages.size() - chatMessages.size();
+
+                if (!chatMessages.isEmpty()) {
+                    long errorCount = chatMessages.stream().filter(m -> m.level() == StageManager.MessageLevel.ERROR).count();
+                    long warnCount = chatMessages.stream().filter(m -> m.level() == StageManager.MessageLevel.WARN).count();
+
+                    // Summary header
+                    StringBuilder summary = new StringBuilder("§7[HistoryStages] §fFound ");
+                    if (errorCount > 0) summary.append("§c").append(errorCount).append(" error").append(errorCount != 1 ? "s" : "");
+                    if (errorCount > 0 && warnCount > 0) summary.append("§f, ");
+                    if (warnCount > 0) summary.append("§e").append(warnCount).append(" warning").append(warnCount != 1 ? "s" : "");
+                    if (infoCount > 0) summary.append("§f (+ §b").append(infoCount).append(" info §fin log file)");
+                    summary.append("§f:");
+                    player.sendSystemMessage(Component.literal(summary.toString()));
+
+                    // Show individual messages (max 10, then truncate)
+                    int shown = 0;
+                    for (StageManager.LoadingMessage msg : chatMessages) {
+                        if (shown >= 10) {
+                            player.sendSystemMessage(Component.literal("  §8... and " + (chatMessages.size() - 10) + " more (see log file)"));
+                            break;
+                        }
+                        String prefix = switch (msg.level()) {
+                            case ERROR -> "  §c[ERROR] §f";
+                            case WARN ->  "  §e[WARN]  §f";
+                            case INFO ->  "  §b[INFO]  §7";
+                        };
+                        player.sendSystemMessage(Component.literal(prefix + msg.message()));
+                        shown++;
+                    }
+
+                    player.sendSystemMessage(Component.literal("  §8Full report: config/historystages/logs/"));
+                    player.sendSystemMessage(Component.literal("  §8(Disable debug messages in the common config)"));
+                }
+            }
+        }
+    }
+
+    private static boolean serverInitialized = false;
+
+    @SubscribeEvent
+    public void onWorldLoad(LevelEvent.Load event) {
+        if (!event.getLevel().isClientSide() && event.getLevel() instanceof ServerLevel sl) {
+            StageData data = StageData.get(sl);
+            StageData.refreshCache(data.getUnlockedStages());
+
+            // Initialize individual stage cache
+            IndividualStageData individualData = IndividualStageData.get(sl);
+            individualData.refreshCache();
+
+            // Drop AUTO-progress entries for stages that no longer exist or are no longer AUTO
+            AutoTriggerManager.pruneOrphans(sl);
+
+            // Only run once per server session (onWorldLoad fires for each dimension)
+            if (!serverInitialized) {
+                serverInitialized = true;
+                LOGGER.info("[HistoryStages] Server cache initialized.");
+
+                // Registry validation (registries are now fully loaded)
+                StageManager.validateAgainstRegistries();
+                DebugLogger.writeLogFile(StageManager.getStages(), StageManager.getIndividualStages());
+
+                DebugLogger.initRuntimeSession();
+                DebugLogger.runtime("Server", "Server started — cache initialized with "
+                        + data.getUnlockedStages().size() + " unlocked stages, "
+                        + StageManager.getStages().size() + " stages loaded");
+            }
+        }
+    }
+
+    @SubscribeEvent
+    public void onServerStopping(ServerStoppingEvent event) {
+        serverInitialized = false;
+        // Rolled from the trade hooks this server registered; the next one may register others.
+        net.bananemdnsa.historystages.data.lock.TradeGoodsScanner.clearCache();
+        DebugLogger.runtime("Server", "Server stopping — flushing runtime log");
+        DebugLogger.flushRuntimeBuffer();
+    }
+
+    private static int tickCounter = 0;
+    private static final int FLUSH_INTERVAL = 600; // every 30 seconds (20 ticks/s * 30s)
+    private static final int CLEANUP_INTERVAL = 6000; // every 5 minutes
+
+    @SubscribeEvent
+    public void onServerTick(ServerTickEvent.Post event) {
+        tickCounter++;
+
+        if (tickCounter % FLUSH_INTERVAL == 0) {
+            DebugLogger.flushRuntimeBuffer();
+        }
+        if (tickCounter % CLEANUP_INTERVAL == 0) {
+            DebugLogger.cleanupThrottleMap();
+        }
+
+        // Before anything below can unlock a stage, or the change would already be part of the
+        // baseline it is about to be compared against.
+        if (event.getServer() != null
+                && net.bananemdnsa.historystages.data.lock.VisibleRecipes.gatedSetNeedsSeeding()) {
+            net.bananemdnsa.historystages.data.lock.VisibleRecipes.seedGatedSet(
+                    event.getServer().getRecipeManager().getOrderedRecipes());
+        }
+
+        net.bananemdnsa.historystages.events.AutoTriggerEventBridge.pollPlayers(event.getServer(), tickCounter);
+
+        // Deliberately here and not in RecipeManager.apply: a mod may rewrite recipes after
+        // that call, and an index built there would miss everything it added. A tick has, by
+        // definition, waited for all of them. Costs one boolean read when clean.
+        //
+        // getOrderedRecipes rather than getRecipes: the latter is gated on the server now, and a
+        // fluid-gated recipe is exactly one of the recipes it leaves out — building the index from
+        // it would drop that recipe from the index, which would ungate it, which would put it back
+        // in the list. This one has to see every recipe there is.
+        if (event.getServer() != null) {
+            net.bananemdnsa.historystages.data.lock.FluidRecipeIndex.rebuildIfDirty(
+                    event.getServer().getRecipeManager().getOrderedRecipes(),
+                    event.getServer().registryAccess());
+        }
+
+        // Advance temporary-mode re-lock timers / cooldowns.
+        var server = event.getServer();
+        if (server != null && server.overworld() != null && tickCounter % 20 == 0) {
+            net.bananemdnsa.historystages.data.saveddata.TemporaryStageData.get(server.overworld())
+                    .tick(server, tickCounter, HistoryStages::resolveTemporaryConfig);
+        }
+
+        // Last in the tick on purpose: a stage unlocked anywhere above asks for a resend, and in
+        // the case that needs it for a datapack reload, which blocks until it is finished. Running
+        // it here rather than where it was asked for turns a bundle of unlocks into one piece of
+        // work, and keeps it out of the middle of whatever else was ticking.
+        if (server != null) {
+            net.bananemdnsa.historystages.network.PacketHandler.runRequestedLockReload(server);
+        }
+    }
+
+    /** Resolves a stage id to its temporary config, checking global then individual stages. */
+    public static net.bananemdnsa.historystages.data.temporary.TemporaryConfig resolveTemporaryConfig(String stageId) {
+        var entry = net.bananemdnsa.historystages.data.StageManager.getStages().get(stageId);
+        if (entry == null) {
+            entry = net.bananemdnsa.historystages.data.StageManager.getIndividualStages().get(stageId);
+        }
+        return entry != null ? entry.getTemporary() : null;
+    }
+
+    @SubscribeEvent
+    public void onItemPickup(ItemEntityPickupEvent.Pre event) {
+        if (event.getPlayer().level().isClientSide()) return;
+        if (!(event.getPlayer() instanceof ServerPlayer player)) return;
+
+        ItemStack stack = event.getItemEntity().getItem();
+        if (stack.isEmpty()) return;
+
+        // Individual stages: prevent pickup of individually-locked items (respects lock_actions)
+        if (Config.GAMEPLAY.individualLockItemPickup.get()
+                && StageLockHelper.isActionLockedByIndividualStage(stack, player.getUUID(), "pickup")) {
+            event.setCanPickup(TriState.FALSE);
+            ResourceLocation itemRL = BuiltInRegistries.ITEM.getKey(stack.getItem());
+            DebugLogger.runtimeThrottled("Inventory", "pickup_blocked_" + player.getUUID() + "_" + itemRL,
+                    "<" + player.getName().getString() + "> Pickup of '" + itemRL + "' blocked [action: pickup]");
+            return;
+        }
+
+        // Global stages: log only (existing behavior)
+        if (StageLockHelper.isItemLockedForServer(stack)) {
+            ResourceLocation itemRL = BuiltInRegistries.ITEM.getKey(stack.getItem());
+            DebugLogger.runtimeThrottled("Inventory", "pickup_" + player.getUUID() + "_" + itemRL,
+                    "<" + player.getName().getString() + "> Picked up locked '" + itemRL + "' x" + stack.getCount() + " [action: pickup]");
+        }
+    }
+
+    private static void logLockedInventoryItems(ServerPlayer player) {
+        java.util.List<String> lockedItems = new java.util.ArrayList<>();
+        for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
+            ItemStack stack = player.getInventory().getItem(i);
+            if (stack.isEmpty()) continue;
+            if (StageLockHelper.isItemLockedForServer(stack)) {
+                ResourceLocation itemRL = BuiltInRegistries.ITEM.getKey(stack.getItem());
+                lockedItems.add(itemRL + " x" + stack.getCount());
+            }
+        }
+        if (!lockedItems.isEmpty()) {
+            DebugLogger.runtime("Inventory", player.getName().getString(),
+                    "Has " + lockedItems.size() + " locked item stack(s) in inventory: " + String.join(", ", lockedItems));
+        }
     }
 }
