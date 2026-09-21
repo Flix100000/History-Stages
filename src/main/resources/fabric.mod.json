@@ -5,7 +5,7 @@
 	"name": "${mod_name}",
 	"description": "${mod_description}",
 	"authors": [
-		"Flix100000",
+		"Bananemdnsa",
 		"PixlStudios"
 	],
 	"contact": {
@@ -13,6 +13,7 @@
 		"sources": "https://github.com/Flix100000/History-Stages"
 	},
 	"license": "${mod_license}",
+	"icon": "assets/historystages/icon.png",
 	"environment": "*",
 	"entrypoints": {
 		"main": [
@@ -64,12 +65,15 @@
 		"minecraft": ">=1.21 <1.21.2",
 		"java": ">=21",
 		"fabric-api": "*",
-		"lootr": "*"
+		"lootr": ">=0.4"
 	},
 	"suggests": {
-		"jade": "*",
-		"emi": "*",
-		"jei": "*",
-		"ftbquests": "*"
+		"jade": ">=15",
+		"emi": ">=1.1",
+		"jei": ">=15",
+		"ftbquests": ">=2101",
+		"accessories": ">=1.1.0-beta",
+		"spell_engine": ">=1.9",
+		"bettercombat": ">=1"
 	}
 }

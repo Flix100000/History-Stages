@@ -20,7 +20,9 @@ import net.minecraft.world.level.Level;
  * to ask for the same two answers from the outside. Asking through here keeps the verdict and the
  * iteration order in one place rather than growing a second copy to drift away from it.
  *
- * <p>FastSuite is the case this exists for; see {@code mixin/fastsuite/AuxRecipeManagerMixin}.
+ * <p>Nothing on this loader swaps the recipe manager out, so nothing asks through here yet. The
+ * mod this was written for, FastSuite, is neoforge-only, and the hook that uses this lives on that
+ * branch.
  */
 public interface RecipeResolutionFilter {
 

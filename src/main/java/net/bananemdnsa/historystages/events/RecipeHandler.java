@@ -130,11 +130,11 @@ public class RecipeHandler {
      * whose lock covers {@code recipe}. Unlike {@link #isLockedForEveryone} it reads the
      * {@link RecipeCraftContext}, so an individual stage counts wherever a station named a player.
      *
-     * <p>One method rather than two calls at every hook, because there is now more than one place
-     * the resolution gate has to be applied from — {@code RecipeManagerMixin} for the vanilla
-     * manager, {@code mixin/fastsuite/AuxRecipeManagerMixin} for the one FastSuite puts in its
-     * place — and two hooks disagreeing about what counts as gated is exactly what produced the
-     * duplication bug the FastSuite hook exists to fix.
+     * <p>One method rather than the checks spelled out at the hook, because the resolution gate
+     * may have to be applied from more than one place: {@code RecipeManagerMixin} covers the
+     * vanilla manager, and a mod that swaps in its own subclass needs its own hook. Two hooks
+     * disagreeing about what counts as gated is what produced the duplication bug that lesson
+     * came from.
      */
     public static boolean isLockedForResolution(RecipeHolder<?> holder, boolean isClientSide) {
         if (holder == null) return false;

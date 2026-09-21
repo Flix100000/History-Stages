@@ -2,9 +2,9 @@
 
 # History Stages
 
-**History Stages** is a progression and gatekeeping mod built for modpack creators. Lock items, recipes, dimensions, structures, mobs, and loot behind custom research-based eras — and let players work together or individually to unlock them through the Research Pedestal.
+**History Stages** is a progression and gatekeeping mod built for modpack creators. Lock items, recipes, fluids, villager trades, dimensions, structures, biomes, mobs, and loot behind custom research-based eras, and let players work together or individually to unlock them.
 
-Stages can unlock **server-wide** (global), **per player** (individual), or use a **dual-phase** approach that combines both. With a built-in in-game editor, FTB Quests integration, and a flexible dependency system, you have full control over how progression works in your pack.
+Stages can unlock **server-wide** (global), **per player** (individual), or use a **dual-phase** approach that combines both. Players research them at the Research Pedestal, or a stage opens by itself once someone has earned an advancement, reached a biome, or put in the playtime you asked for. With a built-in in-game editor, FTB Quests integration, an API for addon mods, and a flexible dependency system, you have full control over how progression works in your pack.
 
 ## Supported Versions
 
@@ -22,7 +22,7 @@ Stages can unlock **server-wide** (global), **per player** (individual), or use 
 
 ## Documentation
 
-Full documentation, configuration details, and usage examples are available on the [Wiki](https://github.com/Flix100000/History-Stages/wiki).
+Full documentation, configuration details, and usage examples are available on the [Wiki](https://historystages.github.io/).
 
 ## Community
 
@@ -41,7 +41,7 @@ Found a bug or have a feature request? Please open an issue on the [Issue Tracke
 
 Contributions are very welcome — bug fixes, features, translations, docs, testing, anything. Start with [CONTRIBUTING.md](CONTRIBUTING.md): it covers which branch to target, how to set up the development environment, and what a good pull request looks like. For anything beyond a small fix, open a [Contribution Offer issue](https://github.com/Flix100000/History-Stages/issues/new?template=contribution_offer.yml) first so we can coordinate before you put in the work.
 
-See [CONTRIBUTORS.md](CONTRIBUTORS.md) for everyone who has helped improve History Stages so far.
+See [CONTRIBUTORS.md](https://github.com/Flix100000/History-Stages/blob/neoforge-1.21.X/CONTRIBUTORS.md) for everyone who has helped improve History Stages so far.
 
 ## License
 

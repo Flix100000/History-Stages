@@ -420,8 +420,8 @@ public class SearchableRecipeList implements PickerOverlay {
 
     /**
      * Whether one recipe survives the namespace filters. The id checked is the recipe's, not its
-     * output item's — the recipe id is what gets locked, and a KubeJS recipe almost always
-     * outputs a vanilla item, so filtering by the item hid precisely the pack's own recipes.
+     * output item's — the recipe id is what gets locked, and a pack's own recipe almost always
+     * outputs a vanilla item, so filtering by the item hid precisely those.
      */
     private boolean recipePassesFilters(RecipeInfo info) {
         String namespace = info.recipeId().contains(":")

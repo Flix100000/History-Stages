@@ -57,10 +57,10 @@ import java.util.*;
  * need every recipe there is.
  *
  * <p>The gate lives inside these method bodies, which means a mod that puts its own subclass of
- * the recipe manager in place and overrides them is not gated at all. That is not hypothetical —
- * FastSuite does it, and {@code mixin/fastsuite/AuxRecipeManagerMixin} hooks the overrides. The
- * two answers such a hook needs are reached through {@link RecipeResolutionFilter} rather than
- * copied, so there is still only one gate.
+ * the recipe manager in place and overrides them is not gated at all. No mod on this loader does,
+ * so nothing hooks such an override here; the two answers a hook would need are reachable through
+ * {@link RecipeResolutionFilter} rather than worth copying, so adding one stays a matter of naming
+ * the subclass. The mod that made this necessary, FastSuite, has no fabric build.
  */
 @Mixin(RecipeManager.class)
 public class RecipeManagerMixin implements RecipeResolutionFilter {
@@ -69,8 +69,8 @@ public class RecipeManagerMixin implements RecipeResolutionFilter {
 
     /**
      * Only refresh stage cache and populate AllRecipesCache on apply().
-     * Recipe filtering is now done at query time, not load time.
-     * This ensures compatibility with KubeJS/CraftTweaker which modify recipes after apply().
+     * Recipe filtering is now done at query time, not load time, so a mod that rewrites recipes
+     * after apply() is still gated by what it left behind.
      */
     @Inject(
             method = "apply(Ljava/util/Map;Lnet/minecraft/server/packs/resources/ResourceManager;Lnet/minecraft/util/profiling/ProfilerFiller;)V",

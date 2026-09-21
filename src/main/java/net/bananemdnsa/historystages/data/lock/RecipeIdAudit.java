@@ -14,9 +14,10 @@ import java.util.Set;
  * ResourceLocations and nothing else, so a lock on a recipe that is not loaded simply gated
  * nothing — silently, with no line anywhere saying so.
  *
- * <p>Script-generated recipes turn that from an odd case into the normal one. KubeJS derives ids
- * such as {@code kubejs:crafting_shaped_7} from the order things appear in the script, so
- * reordering the script renumbers them and every lock pointing into it goes dead.
+ * <p>Generated recipes turn that from an odd case into the normal one. Ids such as
+ * {@code somepack:crafting_shaped_7} are derived from the order the recipes were written in, so
+ * reordering renumbers them and every lock pointing into them goes dead. Script mods are the worst
+ * case for this and none of them build for fabric, but a data pack generator numbers the same way.
  *
  * <p>Minecraft-free by construction: the caller supplies both sets, so the comparison itself can
  * be tested on a classpath that has no game on it.

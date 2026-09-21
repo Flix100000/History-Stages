@@ -1611,8 +1611,8 @@ public class StageDetailScreen extends Screen {
         }
         // A recipe lock pointing at a recipe that is not loaded gates nothing. Red plus a
         // tooltip rather than removal: the entry is still what the author wrote, and a recipe
-        // comes back when its mod or its script does. Script-generated ids land here most often,
-        // because KubeJS renumbers them whenever the script is reordered.
+        // comes back when its mod or its data pack does. Generated ids land here most often,
+        // because they are numbered by the order they were written in.
         boolean missingRecipe = isTab(activeTab, CAT_RECIPES)
                 && net.bananemdnsa.historystages.data.lock.MissingRecipeIds.isMissing(entry);
         if (missingRecipe && row.isHovered()) {

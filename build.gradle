@@ -147,9 +147,6 @@ tasks.withType(JavaCompile).configureEach {
 	it.options.release = 21
 	// The imported neoforge sources carry umlauts in comments and language keys.
 	it.options.encoding = 'UTF-8'
-	// javac stops reporting after 100 errors, which hides how much of the loader seam is left
-	// while the port runs. Drop this line once the tree compiles again.
-	it.options.compilerArgs << '-Xmaxerrs' << '100000'
 }
 
 java {

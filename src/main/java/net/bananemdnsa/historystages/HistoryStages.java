@@ -242,9 +242,9 @@ public class HistoryStages {
 
         net.bananemdnsa.historystages.events.AutoTriggerEventBridge.pollPlayers(event.getServer(), tickCounter);
 
-        // Deliberately here and not in RecipeManager.apply: KubeJS and CraftTweaker rewrite
-        // recipes after that call, so an index built there would miss a script pack entirely.
-        // A tick has, by definition, waited for all of them. Costs one boolean read when clean.
+        // Deliberately here and not in RecipeManager.apply: a mod may rewrite recipes after
+        // that call, and an index built there would miss everything it added. A tick has, by
+        // definition, waited for all of them. Costs one boolean read when clean.
         //
         // getOrderedRecipes rather than getRecipes: the latter is gated on the server now, and a
         // fluid-gated recipe is exactly one of the recipes it leaves out — building the index from

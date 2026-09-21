@@ -3,15 +3,16 @@ package net.bananemdnsa.historystages.api.stage;
 import net.bananemdnsa.historystages.platform.bus.Event;
 
 /**
- * Custom Forge events fired when stages are unlocked or locked.
- * These can be listened to by other mods, KubeJS, or CraftTweaker.
+ * Fired when stages are unlocked or locked, for other mods to listen to.
  *
- * <p>Example usage with KubeJS:</p>
+ * <p>There is no scripting language to reach these from on this loader, so a listener is Java:</p>
  * <pre>
- * ForgeEvents.onEvent('net.bananemdnsa.historystages.api.stage.StageEvent$Unlocked', event => {
- *     console.log('Stage unlocked: ' + event.getStageId());
- * });
+ * EventBus.addListener(StageEvent.Unlocked.class,
+ *         event -> LOGGER.info("Stage unlocked: {}", event.getStageId()));
  * </pre>
+ *
+ * <p>The place to register one is a {@code historystages} entrypoint, which runs once this mod is
+ * far enough along to have something to announce.</p>
  */
 public abstract class StageEvent extends Event {
     private final String stageId;

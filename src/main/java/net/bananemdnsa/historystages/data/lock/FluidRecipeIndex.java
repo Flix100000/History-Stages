@@ -133,9 +133,9 @@ public final class FluidRecipeIndex {
      * Rebuilds when stale, and does nothing otherwise.
      *
      * <p>Driven from the server tick and from the client's stage sync rather than from the
-     * recipe reload itself: KubeJS and CraftTweaker change recipes <em>after</em>
-     * {@code RecipeManager.apply}, so an index built there would miss exactly the recipes a
-     * script pack cares about.
+     * recipe reload itself: a mod is free to change recipes <em>after</em>
+     * {@code RecipeManager.apply}, and an index built there would miss whatever it added. A tick
+     * has waited for all of them.
      */
     public static void rebuildIfDirty(Iterable<RecipeHolder<?>> recipes,
                                       HolderLookup.Provider registries) {
