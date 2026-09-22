@@ -38,8 +38,12 @@ public final class ClientEventSources {
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) ->
                 EventBus.post(new ClientPlayerNetworkEvent.LoggingOut(client.player)));
 
-        ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) ->
-                EventBus.post(new RegisterClientCommandsEvent(dispatcher)));
+        ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
+            EventBus.post(new RegisterClientCommandsEvent(dispatcher));
+            // Kept so the command tree can be repaired once the server's own arrives; see
+            // ClientCommandTree for what the loader's copy leaves behind.
+            ClientCommandTree.remember(dispatcher);
+        });
 
         // After the translucent pass, which is the only stage this mod draws in: a wall you can
         // see through has to come after the blocks it is drawn over.
@@ -52,6 +56,7 @@ public final class ClientEventSources {
                 EventBus.post(new RenderGuiEvent.Post(graphics)));
 
         screens();
+
     }
 
     /**

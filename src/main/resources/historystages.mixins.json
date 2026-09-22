@@ -42,6 +42,7 @@
   ],
   "client": [
     "client.ClientUseItemOnMixin",
+    "client.ClientCommandTreeMixin",
     "client.ItemDecorationsMixin",
     "client.ContainerScreenAccessor",
     "client.RecipesUpdatedMixin",
