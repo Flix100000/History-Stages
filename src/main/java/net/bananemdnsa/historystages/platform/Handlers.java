@@ -10,6 +10,7 @@ import net.bananemdnsa.historystages.events.lock.DimensionLockHandler;
 import net.bananemdnsa.historystages.events.lock.EnchantmentLockHandler;
 import net.bananemdnsa.historystages.events.lock.EntityItemLockHandler;
 import net.bananemdnsa.historystages.events.lock.FluidPickupLockHandler;
+import net.bananemdnsa.historystages.events.lock.FluidPlaceLockHandler;
 import net.bananemdnsa.historystages.events.lock.InteractionLockHandler;
 import net.bananemdnsa.historystages.events.lock.ItemUseLockHandler;
 import net.bananemdnsa.historystages.events.lock.MobLockHandler;
@@ -50,6 +51,7 @@ public final class Handlers {
             EnchantmentLockHandler.class,
             EntityItemLockHandler.class,
             FluidPickupLockHandler.class,
+            FluidPlaceLockHandler.class,
             InteractionLockHandler.class,
             ItemUseLockHandler.class,
             MobLockHandler.class,
