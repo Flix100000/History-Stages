@@ -38,6 +38,7 @@
 			"net.bananemdnsa.historystages.demo.DemoClientPlugin"
 		],
 		"fabric-gametest": [
+			"net.bananemdnsa.historystages.gametest.AnvilLockTests",
 			"net.bananemdnsa.historystages.gametest.AutoTriggerTests",
 			"net.bananemdnsa.historystages.gametest.ConfigCodecTests",
 			"net.bananemdnsa.historystages.gametest.ContainerLockTests",
