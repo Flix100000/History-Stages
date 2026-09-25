@@ -94,6 +94,11 @@ public record SyncStagesPacket(List<String> unlockedStages, Map<String, Long> un
                             net.bananemdnsa.historystages.compat.jei.JEIPlugin.tryApplyDiff();
                         } catch (Throwable ignored) {}
                     }
+                    if (net.neoforged.fml.ModList.get().isLoaded("emi")) {
+                        try {
+                            net.bananemdnsa.historystages.compat.emi.EmiReloadBridge.reloadIfPresent();
+                        } catch (Throwable ignored) {}
+                    }
 
                     System.out.println("[HistoryStages] Hard-Reset & Mod-Sync completed.");
                 } catch (Exception e) {
