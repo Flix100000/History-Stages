@@ -21,8 +21,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import org.slf4j.Logger;
 
-import java.util.*;
-import java.util.function.Predicate;
+import java.util.List;
 
 @EmiEntrypoint
 public class EMIPlugin implements EmiPlugin {
@@ -75,47 +74,26 @@ public class EMIPlugin implements EmiPlugin {
         // Pedestal opens the category too (parity with JEI registerRecipeCatalysts)
         registry.addWorkstation(category, EmiStack.of(new ItemStack(ModBlocks.RESEARCH_PEDESTAL.get())));
 
-        // Fortunately, as long as actually reload EMI, we don't have to calculate diffs and can always recalculate
-        // everything from scratch! Actually, EMI errors if we try to manually re-insert the diffs.
+        // EMI only removes entries while plugins register, so a stage change has to reload EMI
+        // (EmiReloadBridge) and this pass runs again from scratch. Nothing to diff, nothing to undo.
         try {
             boolean hideItems = Config.VISUAL.hideLockedItemsInJei.get();
             boolean hideRecipes = Config.VISUAL.hideLockedRecipesInJei.get();
-            applyItemHiding(hideItems, registry);
-            applyRecipeHiding(hideRecipes, registry);
-            LOGGER.info("[HistoryStages/EMI] Initial hide pass complete (items={}, recipes={}).", hideItems, hideRecipes);
+            if (hideItems) registry.removeEmiStacks(stack -> isItemLocked(stack.getItemStack()));
+            if (hideRecipes) registry.removeRecipes(recipe ->
+                    LockedEmiRecipeDecorator.isRecipeLocked(recipe, EMIPlugin::isItemLocked));
+            LOGGER.info("[HistoryStages/EMI] Hide pass complete (items={}, recipes={}).", hideItems, hideRecipes);
         } catch (Exception e) {
             LOGGER.warn("[HistoryStages/EMI] Initial hide pass failed", e);
         }
     }
 
-    private static boolean isItemLocked(EmiStack emiStack) {
-        Predicate<ItemStack> isLocked = switch (Config.VISUAL.lockedItemMultiStagePolicy.get()) {
-            case STRICT  -> stack -> StageLockHelper.isItemActionLockedForClient(stack, "recipe");
-            case LENIENT -> stack -> StageLockHelper.isItemActionLockedForClientLenient(stack, "recipe");
+    private static boolean isItemLocked(ItemStack stack) {
+        // Fluids and other non-item entries come through as an empty stack
+        if (stack.isEmpty()) return false;
+        return switch (Config.VISUAL.lockedItemMultiStagePolicy.get()) {
+            case STRICT  -> StageLockHelper.isItemActionLockedForClient(stack, "recipe");
+            case LENIENT -> StageLockHelper.isItemActionLockedForClientLenient(stack, "recipe");
         };
-        return isLocked.test(emiStack.getItemStack());
-    }
-
-    /**
-     * Hides/un-hides locked items.
-     */
-    public static synchronized void applyItemHiding(boolean enabled, EmiRegistry registry) {
-        if (!enabled) return;
-        registry.removeEmiStacks(EMIPlugin::isItemLocked);
-    }
-
-    /**
-     * Hides/un-hides recipes whose outputs contain a locked item.
-     */
-    private static synchronized void applyRecipeHiding(boolean enabled, EmiRegistry registry) {
-        if (!enabled) return;
-        registry.removeRecipes(recipe -> {
-            for (EmiStack stack : recipe.getOutputs()) {
-                if (isItemLocked(stack)) {
-                    return true;
-                }
-            }
-            return false;
-        });
     }
 }

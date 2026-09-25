@@ -66,7 +66,7 @@ public record SyncIndividualStagesPacket(Set<String> unlockedStages, Map<String,
             }
             if (net.neoforged.fml.ModList.get().isLoaded("emi")) {
                 try {
-                    net.bananemdnsa.historystages.compat.emi.EmiReloadBridge.reloadIfPresent();
+                    net.bananemdnsa.historystages.compat.emi.EmiReloadBridge.reloadIfHiding();
                 } catch (Throwable ignored) {}
             }
         });
