@@ -1,0 +1,50 @@
+files:
+  - source: /src/main/resources/assets/historystages/lang/en_us.json
+    translation: /src/main/resources/assets/historystages/lang/%locale_with_underscore%.json
+    # Leave missing keys out so Minecraft falls back to en_us per key.
+    skip_untranslated_strings: true
+    # Minecraft only finds lowercase lang files, Crowdin would write zh_CN.json.
+    # A language missing here comes out with the wrong case, so add it before enabling it.
+    languages_mapping:
+      locale_with_underscore:
+        zh-CN: zh_cn
+        zh-TW: zh_tw
+        ru: ru_ru
+        uk: uk_ua
+        ja: ja_jp
+        ko: ko_kr
+        fr: fr_fr
+        es-ES: es_es
+        pt-BR: pt_br
+        pt-PT: pt_pt
+        it: it_it
+        pl: pl_pl
+        nl: nl_nl
+        cs: cs_cz
+        tr: tr_tr
+        sv-SE: sv_se
+        hu: hu_hu
+        vi: vi_vn
+        ar: ar_sa
+        da: da_dk
+        "no": no_no
+        fi: fi_fi
+        ro: ro_ro
+        el: el_gr
+        he: he_il
+        th: th_th
+        id: id_id
+        hi: hi_in
+        ca: ca_es
+        bg: bg_bg
+        sk: sk_sk
+        hr: hr_hr
+        sr: sr_sp
+        lt: lt_lt
+        lv: lv_lv
+        et: et_ee
+        sl: sl_si
+        ms: ms_my
+        fa: fa_ir
+        es-MX: es_mx
+        es-AR: es_ar
