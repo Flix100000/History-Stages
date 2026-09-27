@@ -14,6 +14,9 @@ body:
         Worth reading before you start: [CONTRIBUTING.md](https://github.com/Flix100000/History-Stages/blob/neoforge-1.21.X/CONTRIBUTING.md)
         covers branches, development setup, code style, and translations.
 
+        **Translating?** Most languages are translated on [Crowdin](https://crowdin.com/project/history-stages), you can start there right away without opening this issue.
+        Use this form if your language is not on Crowdin yet, or if you already have a finished translation file you want added.
+
         ---
 
         **A note on the license:**

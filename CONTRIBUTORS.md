@@ -20,6 +20,8 @@ When someone contributes, add them here in the format:
 
 ## Translations
 
+_Want to help? Translations happen on [Crowdin](https://crowdin.com/project/history-stages), see [CONTRIBUTING.md](CONTRIBUTING.md#translations)._
+
 - **kuki2008** ([@kuki2008](https://github.com/kuki2008)) — Russian
 - **FunnyCarbendazim** ([@FunnyCarbendazim](https://github.com/FunnyCarbendazim)) — Simplified Chinese
 

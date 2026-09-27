@@ -4,6 +4,11 @@ Sections marked (required) should stay.
 
 New here? ../CONTRIBUTING.md explains which branch to target, how to build the mod,
 and what we look for in a review.
+
+Translating? Languages that are on Crowdin (https://crowdin.com/project/history-stages)
+are translated there, not through a pull request. Crowdin overwrites those files on every
+sync, so a PR for them would get lost. A pull request is only the right way for a
+language that is not on Crowdin yet.
 -->
 
 ## Related Issue

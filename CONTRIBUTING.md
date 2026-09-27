@@ -103,6 +103,24 @@ make sure `./gradlew build` passes locally before you open one.
 
 New languages are one of the most useful contributions, and they don't require any Java knowledge.
 
+### On Crowdin
+
+Translations are done on **[Crowdin](https://crowdin.com/project/history-stages)**. You translate in the
+browser, no JSON editing and no pull request needed. Crowdin collects the translations and sends them to this
+repository on its own, and new keys show up there automatically after every change to `en_us.json`.
+
+**Please don't open a pull request for a language that is on Crowdin.** Crowdin rewrites those files on every
+sync, so changes made directly in the repository get lost. If you already translated a file offline, attach it
+to a [Contribution Offer issue](https://github.com/Flix100000/History-Stages/issues/new?template=contribution_offer.yml)
+and it will be uploaded to Crowdin for you.
+
+German is not on Crowdin, the maintainer keeps `de_de.json` up to date by hand.
+
+### Languages that are not on Crowdin yet
+
+Crowdin only lists the languages that are enabled there. If yours is missing, you can either ask for it in a
+Contribution Offer issue, or translate it the usual way and open a pull request:
+
 1. Copy `src/main/resources/assets/historystages/lang/en_us.json` to a new file named after the Minecraft locale
    code, for example `fr_fr.json` or `pt_br.json`.
 2. Translate the **values** only. Never translate or rename the keys.
@@ -110,6 +128,8 @@ New languages are one of the most useful contributions, and they don't require a
    language — dropping one causes a crash at runtime.
 4. Keep the key order of `en_us.json` so future diffs stay readable.
 5. Leave keys you are unsure about untranslated rather than guessing — English is the fallback.
+
+If that language is added to Crowdin later, your file is uploaded there first, so nothing gets lost.
 
 The maintainer only speaks German and English and can therefore only verify `de_de.json` and `en_us.json`. Every
 other language file lives entirely on its contributors. If you add a language, it helps enormously if you keep
