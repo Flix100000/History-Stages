@@ -133,6 +133,17 @@ public class ItemUseLockHandler {
         String action = heldItem.getItem() instanceof BlockItem ? "place" : "use";
         if (isActionLocked(heldItem, event.getEntity(), action)) {
             event.setUseItem(TriState.FALSE);
+            // Say so. The refusal above is silent otherwise, and a block that simply refuses to
+            // go down with no word for it reads as the game being broken rather than gated. The
+            // actionbar keeps its own cooldown, so holding the button does not spam it.
+            if (!event.getEntity().level().isClientSide()) {
+                ResourceLocation itemRL = BuiltInRegistries.ITEM.getKey(heldItem.getItem());
+                DebugLogger.runtimeThrottled("Item Use Lock",
+                        action + "_" + event.getEntity().getUUID() + "_" + itemRL,
+                        "<" + event.getEntity().getName().getString() + "> '" + itemRL
+                                + "' blocked [action: " + action + "]");
+                showMessage(event.getEntity());
+            }
         }
     }
 

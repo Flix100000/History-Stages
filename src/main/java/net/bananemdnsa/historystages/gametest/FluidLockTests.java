@@ -11,8 +11,18 @@ import net.bananemdnsa.historystages.events.RecipeHandler;
 import net.bananemdnsa.historystages.util.lock.StageLockHelper;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.common.CommonHooks;
+import net.neoforged.neoforge.common.util.TriState;
+import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
@@ -44,6 +54,14 @@ public final class FluidLockTests {
     private static void stageGating(String name, String fluidId) {
         GameTestStages.global(name, stage -> stage.setFluidEntries(
                 new ArrayList<>(List.of(new FluidEntry(fluidId)))));
+    }
+
+    /** A right click on a block, through the same hook the server's own click handling calls. */
+    private static PlayerInteractEvent.RightClickBlock rightClick(GameTestHelper helper,
+                                                                  ServerPlayer player, BlockPos relative) {
+        BlockPos pos = helper.absolutePos(relative);
+        return CommonHooks.onRightClickBlock(player, InteractionHand.MAIN_HAND, pos,
+                new BlockHitResult(Vec3.atCenterOf(pos), Direction.UP, pos, false));
     }
 
     /** The claim itself: the stage names lava, and a bucket it never mentions is locked. */
@@ -288,6 +306,66 @@ public final class FluidLockTests {
             helper.succeed();
         } finally {
             FluidRecipeIndex.clear();
+        }
+    }
+
+    /**
+     * A cauldron takes the bucket through its own block interaction, on a path that refusing the
+     * held item never reaches. Refuse only the item and the fluid goes in anyway - which is what
+     * happened until the place handler existed.
+     */
+    @GameTest(template = "empty")
+    public static void aGatedFluidCannotBeTippedIntoACauldron(GameTestHelper helper) {
+        try {
+            stageGating("fluid_cauldron", LOCKED_FLUID);
+
+            BlockPos cauldron = new BlockPos(1, 1, 1);
+            helper.setBlock(cauldron, Blocks.CAULDRON);
+            // Connected: the refusal answers with an actionbar line.
+            ServerPlayer player = GameTestPlayers.createConnected(helper);
+            player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.LAVA_BUCKET));
+
+            PlayerInteractEvent.RightClickBlock event = rightClick(helper, player, cauldron);
+
+            if (event.getUseItem() != TriState.FALSE) {
+                helper.fail("a stage gates " + LOCKED_FLUID + ", but emptying a lava bucket was "
+                        + "still allowed as an item use");
+                return;
+            }
+            if (event.getUseBlock() != TriState.FALSE) {
+                helper.fail("a stage gates " + LOCKED_FLUID + ", but the cauldron was still "
+                        + "allowed to take the bucket - the block half of the interaction is the "
+                        + "one that fills it");
+                return;
+            }
+            helper.succeed();
+        } finally {
+            GameTestStages.removeAll();
+        }
+    }
+
+    /** The other side of the same coin: a gated bucket must not shut every block it points at. */
+    @GameTest(template = "empty")
+    public static void aGatedBucketStillLetsAPlainBlockBeUsed(GameTestHelper helper) {
+        try {
+            stageGating("fluid_chest", LOCKED_FLUID);
+
+            BlockPos chest = new BlockPos(1, 1, 1);
+            helper.setBlock(chest, Blocks.CHEST);
+            ServerPlayer player = GameTestPlayers.createConnected(helper);
+            player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.LAVA_BUCKET));
+
+            PlayerInteractEvent.RightClickBlock event = rightClick(helper, player, chest);
+
+            if (event.getUseBlock() == TriState.FALSE) {
+                helper.fail("a gated bucket in hand shut a chest that has nothing to do with the "
+                        + "fluid - the block half must only be refused where the block would take "
+                        + "the fluid");
+                return;
+            }
+            helper.succeed();
+        } finally {
+            GameTestStages.removeAll();
         }
     }
 }
