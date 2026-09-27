@@ -21,6 +21,7 @@ When someone contributes, add them here in the format:
 ## Translations
 
 - **kuki2008** ([@kuki2008](https://github.com/kuki2008)) — Russian
+- **FunnyCarbendazim** ([@FunnyCarbendazim](https://github.com/FunnyCarbendazim)) — Simplified Chinese
 
 <!--
 - **Name** ([@github-handle](https://github.com/github-handle)) — Language
