@@ -72,6 +72,15 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
     /** Breathing room between two labels sharing a line. */
     private static final int LINE_GAP = 6;
 
+    /**
+     * Depth for a wash laid over a slot's item. A container screen stacks two lifts before the
+     * icon is drawn — {@code renderSlot} pushes +100 and {@code renderItem} another +150, with
+     * the stack count another +200 above that — and the depth test is back on by the time a
+     * screen paints over {@code super.render}. Anything below ~300 loses to the item it covers,
+     * which is how a grey plane ends up behind the thing it is meant to hide.
+     */
+    private static final int SLOT_OVERLAY_Z = 350;
+
     private boolean hasDependencies = false;
     private Component pendingTooltip = null;
 
@@ -552,7 +561,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
                     int slotX = this.leftPos + PedestalLayout.SCROLL_SLOT_X;
                     int slotY = this.topPos + PedestalLayout.SCROLL_SLOT_Y;
                     guiGraphics.pose().pushPose();
-                    guiGraphics.pose().translate(0, 0, 200);
+                    guiGraphics.pose().translate(0, 0, SLOT_OVERLAY_Z);
                     guiGraphics.fill(slotX, slotY, slotX + 16, slotY + 16, 0x80808080);
                     guiGraphics.pose().popPose();
                 }
@@ -605,8 +614,13 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
                                     int xpY = this.topPos + PedestalLayout.DEP_XP_BUTTON_Y;
                                     if (mouseX >= xpX && mouseX < xpX + PedestalLayout.ICON_SIZE
                                             && mouseY >= xpY && mouseY < xpY + PedestalLayout.ICON_SIZE) {
-                                        PacketHandler.sendToServer(new DepositDependencyPacket(
-                                                menu.getBlockPos(), groupIdx, "XP", ""));
+                                        // The server would refuse this silently. The button is
+                                        // already drawn pressed in and says why on hover, so the
+                                        // click is swallowed rather than sent into nothing.
+                                        if (canAfford(entry)) {
+                                            PacketHandler.sendToServer(new DepositDependencyPacket(
+                                                    menu.getBlockPos(), groupIdx, "XP", ""));
+                                        }
                                         return true;
                                     }
                                 }
@@ -618,6 +632,17 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
             }
         }
         return super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    /**
+     * Whether the player can actually pay for a depositable requirement. {@code canDeposit} only
+     * says the requirement takes a deposit at all — the pedestal's XP branch additionally refuses
+     * anything the player cannot cover, and returns without a word when it does. A creative
+     * player sits at level 0 with the XP bar hidden, which is exactly how a button that looks
+     * live ends up doing nothing.
+     */
+    private static boolean canAfford(RequirementResult.EntryResult entry) {
+        return entry.getCurrent() >= entry.getRequired();
     }
 
     private void renderDependencyPanel(GuiGraphics guiGraphics, int x, int y, int mouseX, int mouseY) {
@@ -794,14 +819,24 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
                     int xpY = this.topPos + PedestalLayout.DEP_XP_BUTTON_Y;
                     boolean xpHovered = mouseX >= xpX && mouseX < xpX + PedestalLayout.ICON_SIZE
                             && mouseY >= xpY && mouseY < xpY + PedestalLayout.ICON_SIZE;
+                    // The server drops a deposit the player cannot pay for without a word, so
+                    // the button has to say so itself. For an unpaid consume-XP requirement
+                    // `current` is the player's own level and `required` the price, both kept
+                    // fresh by the once-a-second poll above.
+                    boolean affordable = canAfford(entry);
+                    // Same convention as PedestalIconButton: a button that would do nothing
+                    // sits pressed in, which is also the hover face.
                     guiGraphics.blit(TEXTURE_BUTTONS, xpX, xpY,
                             PedestalLayout.ICON_COL_XP * PedestalLayout.ICON_SIZE,
-                            xpHovered ? PedestalLayout.ICON_SIZE : 0,
+                            (xpHovered || !affordable) ? PedestalLayout.ICON_SIZE : 0,
                             PedestalLayout.ICON_SIZE, PedestalLayout.ICON_SIZE, 54, 36);
                     // Replaces the old "Deposit:" caption: the button says what it does only
                     // when the player asks it to.
                     if (xpHovered) {
-                        pendingTooltip = Component.translatable("gui.historystages.pedestal.pay_xp");
+                        pendingTooltip = affordable
+                                ? Component.translatable("gui.historystages.pedestal.pay_xp")
+                                : Component.translatable("gui.historystages.pedestal.pay_xp_missing",
+                                        entry.getRequired(), entry.getCurrent());
                     }
                     return; // Only show one button
                 }
