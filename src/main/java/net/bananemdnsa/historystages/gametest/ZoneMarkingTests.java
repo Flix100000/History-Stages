@@ -13,13 +13,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.Connection;
-import net.minecraft.network.PacketSendListener;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import net.minecraft.server.players.ServerOpListEntry;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
@@ -32,7 +27,6 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.gametest.GameTestHolder;
 import net.minecraftforge.gametest.PrefixGameTestTemplate;
-import org.jetbrains.annotations.Nullable;
 
 /**
  * Marking zone corners with the configured item, driven the way the server drives it.
@@ -48,20 +42,10 @@ public final class ZoneMarkingTests {
 
     private ZoneMarkingTests() {}
 
-    /** Swallows what marking sends back — the actionbar line and the selection sync. */
-    private static final class SilentConnection extends Connection {
-        SilentConnection() {
-            super(PacketFlow.CLIENTBOUND);
-        }
-
-        @Override
-        public void send(Packet<?> packet, @Nullable PacketSendListener listener) {}
-    }
-
     /** An operator, sneaking, with the default marker item in hand. */
     private static ServerPlayer marker(GameTestHelper helper) {
-        ServerPlayer player = GameTestPlayers.create(helper);
-        new ServerGamePacketListenerImpl(helper.getLevel().getServer(), new SilentConnection(), player);
+        // Connected: marking answers with an actionbar line and a selection sync.
+        ServerPlayer player = GameTestPlayers.createConnected(helper);
         // Not PlayerList.op: the game test server hands out operator level 0, which is below the
         // bar marking sits behind. Level 4 is what a singleplayer host with cheats gets.
         helper.getLevel().getServer().getPlayerList().getOps()
