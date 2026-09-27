@@ -258,6 +258,12 @@ tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
 
+// The jar ships the root license rather than a copy under resources. A copy there went stale
+// once already: the port exception landed in the root file and never reached the jar.
+tasks.named('jar', Jar) {
+    from('LICENSE.txt')
+}
+
 // IDEA stopped fetching sources and javadoc for dependencies on its own.
 idea {
     module {
