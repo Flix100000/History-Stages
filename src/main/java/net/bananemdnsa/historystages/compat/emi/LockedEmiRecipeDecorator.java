@@ -11,6 +11,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 
+import java.util.function.Predicate;
+
 /**
  * Draws a "locked" overlay on EMI recipes whose output items or recipe IDs are stage-locked.
  * Registered globally for all EMI recipe categories.
@@ -51,6 +53,15 @@ public class LockedEmiRecipeDecorator implements EmiRecipeDecorator {
     }
 
     public static boolean isRecipeLocked(EmiRecipe recipe) {
+        return isRecipeLocked(recipe, stack -> StageLockHelper.isActionLockedForClient(stack, "recipe")
+                || StageLockHelper.isActionLockedByIndividualStageClient(stack, "recipe"));
+    }
+
+    /**
+     * Same question with the output check swapped out. The recipe hiding passes one that follows
+     * {@code lockedItemMultiStagePolicy}; the overlay has always been strict.
+     */
+    public static boolean isRecipeLocked(EmiRecipe recipe, Predicate<ItemStack> outputLocked) {
         // JER pages come through EMI's JEI bridge under JER's own category ids; see JerCategories
         if (recipe.getCategory() != null
                 && "jeresources".equals(recipe.getCategory().getId().getNamespace())) {
@@ -69,9 +80,7 @@ public class LockedEmiRecipeDecorator implements EmiRecipeDecorator {
         // 2. Check by output items
         for (EmiStack output : recipe.getOutputs()) {
             ItemStack stack = output.getItemStack();
-            if (!stack.isEmpty()
-                    && (StageLockHelper.isActionLockedForClient(stack, "recipe")
-                        || StageLockHelper.isActionLockedByIndividualStageClient(stack, "recipe"))) {
+            if (!stack.isEmpty() && outputLocked.test(stack)) {
                 return true;
             }
         }

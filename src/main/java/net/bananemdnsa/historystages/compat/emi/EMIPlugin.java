@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.compat.emi;
 
+import com.mojang.logging.LogUtils;
 import dev.emi.emi.api.EmiEntrypoint;
 import dev.emi.emi.api.EmiPlugin;
 import dev.emi.emi.api.EmiRegistry;
@@ -14,14 +15,18 @@ import net.bananemdnsa.historystages.init.ModBlocks;
 import net.bananemdnsa.historystages.init.ModItems;
 import net.bananemdnsa.historystages.research.BoosterUtil;
 import net.bananemdnsa.historystages.research.ResearchBoosterRegistry;
+import net.bananemdnsa.historystages.util.lock.StageLockHelper;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import org.slf4j.Logger;
 
 import java.util.List;
 
 @EmiEntrypoint
 public class EMIPlugin implements EmiPlugin {
+    private static final Logger LOGGER = LogUtils.getLogger();
+
     @Override
     public void register(EmiRegistry registry) {
         // Register the locked recipe decorator globally for all categories
@@ -68,5 +73,27 @@ public class EMIPlugin implements EmiPlugin {
 
         // Pedestal opens the category too (parity with JEI registerRecipeCatalysts)
         registry.addWorkstation(category, EmiStack.of(new ItemStack(ModBlocks.RESEARCH_PEDESTAL.get())));
+
+        // EMI only removes entries while plugins register, so a stage change has to reload EMI
+        // (EmiReloadBridge) and this pass runs again from scratch. Nothing to diff, nothing to undo.
+        try {
+            boolean hideItems = Config.VISUAL.hideLockedItemsInJei.get();
+            boolean hideRecipes = Config.VISUAL.hideLockedRecipesInJei.get();
+            if (hideItems) registry.removeEmiStacks(stack -> isItemLocked(stack.getItemStack()));
+            if (hideRecipes) registry.removeRecipes(recipe ->
+                    LockedEmiRecipeDecorator.isRecipeLocked(recipe, EMIPlugin::isItemLocked));
+            LOGGER.info("[HistoryStages/EMI] Hide pass complete (items={}, recipes={}).", hideItems, hideRecipes);
+        } catch (Exception e) {
+            LOGGER.warn("[HistoryStages/EMI] Initial hide pass failed", e);
+        }
+    }
+
+    private static boolean isItemLocked(ItemStack stack) {
+        // Fluids and other non-item entries come through as an empty stack
+        if (stack.isEmpty()) return false;
+        return switch (Config.VISUAL.lockedItemMultiStagePolicy.get()) {
+            case STRICT  -> StageLockHelper.isItemActionLockedForClient(stack, "recipe");
+            case LENIENT -> StageLockHelper.isItemActionLockedForClientLenient(stack, "recipe");
+        };
     }
 }

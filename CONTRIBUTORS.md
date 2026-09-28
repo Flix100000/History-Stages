@@ -11,6 +11,7 @@ Thanks to everyone who has helped improve History Stages!
 
 - **angusbarnes** ([@angusbarnes](https://github.com/angusbarnes)) — API design and StageManager performance rework
 - **Unsupported-File** ([@Unsupported-File](https://github.com/Unsupported-File)) — Fabric port
+- **jwright159** ([@jwright159](https://github.com/jwright159)) — hiding locked items and recipes in EMI
 
 <!--
 When someone contributes, add them here in the format:
@@ -19,7 +20,10 @@ When someone contributes, add them here in the format:
 
 ## Translations
 
-_No translation contributors yet._
+_Want to help? Translations happen on [Crowdin](https://crowdin.com/project/history-stages), see [CONTRIBUTING.md](CONTRIBUTING.md#translations)._
+
+- **kuki2008** ([@kuki2008](https://github.com/kuki2008)) — Russian
+- **FunnyCarbendazim** ([@FunnyCarbendazim](https://github.com/FunnyCarbendazim)) — Simplified Chinese
 
 <!--
 - **Name** ([@github-handle](https://github.com/github-handle)) — Language

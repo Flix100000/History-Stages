@@ -298,15 +298,16 @@ public class Config {
 
             builder.pop();
 
-            builder.comment("JEI integration — fully hide locked items/recipes instead of using the lock overlay")
+            builder.comment("JEI and EMI integration — fully hide locked items/recipes instead of using the lock overlay")
                     .push("jei_hiding");
 
             hideLockedItemsInJei = builder
-                    .comment("Remove locked items from the JEI ingredient panel entirely. [Default: false]")
+                    .comment("Remove locked items from the JEI and EMI ingredient panels entirely. [Default: false]")
                     .define("hideLockedItemsInJei", false);
 
             hideLockedRecipesInJei = builder
-                    .comment("Hide recipes whose OUTPUT is a locked item in JEI. [Default: false]")
+                    .comment("Hide locked recipes in JEI and EMI. JEI only catches vanilla recipe types by their OUTPUT;",
+                            "EMI hides every recipe the lock overlay would mark. [Default: false]")
                     .define("hideLockedRecipesInJei", false);
 
             lockedItemMultiStagePolicy = builder

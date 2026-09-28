@@ -223,8 +223,15 @@ tasks.named('jar', Jar).configure {
     finalizedBy 'reobfJar'
 }
 
+// Both jars ship the root license rather than a copy under resources. A copy there went stale
+// once already: the port exception landed in the root file and never reached the jar.
+tasks.named('jar', Jar).configure {
+    from('LICENSE.txt')
+}
+
 tasks.named('jarJar').configure {
     archiveClassifier = ''
+    from('LICENSE.txt')
     manifest.from(tasks.jar.manifest)
     finalizedBy 'reobfJarJar'
 }

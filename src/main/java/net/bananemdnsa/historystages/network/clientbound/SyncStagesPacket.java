@@ -95,16 +95,16 @@ public class SyncStagesPacket {
                         net.bananemdnsa.historystages.client.ClientRecipeBookRefresh.rebuild();
                         net.bananemdnsa.historystages.client.ClientFluidRecipeIndex.refresh();
 
-                        // EMI extra reload (hat eigenen Reload-Mechanismus)
-                        if (net.minecraftforge.fml.ModList.get().isLoaded("emi")) {
-                            ExternalMods.refreshEMI();
-                        }
-
                         // JEI hiding (Issue #64): refresh visibility after stage cache updated.
                         // Null-safe — no-op if JEI is not installed.
                         if (net.minecraftforge.fml.ModList.get().isLoaded("jei")) {
                             try {
                                 net.bananemdnsa.historystages.compat.jei.JEIPlugin.tryApplyDiff();
+                            } catch (Throwable ignored) {}
+                        }
+                        if (net.minecraftforge.fml.ModList.get().isLoaded("emi")) {
+                            try {
+                                net.bananemdnsa.historystages.compat.emi.EmiReloadBridge.reloadIfHiding();
                             } catch (Throwable ignored) {}
                         }
                     } catch (Exception e) {
@@ -114,14 +114,5 @@ public class SyncStagesPacket {
             }
         });
         ctx.get().setPacketHandled(true);
-    }
-
-    private static class ExternalMods {
-        private static void refreshEMI() {
-            try {
-                Class<?> reloadManager = Class.forName("dev.emi.emi.runtime.EmiReloadManager");
-                reloadManager.getMethod("reload").invoke(null);
-            } catch (Throwable ignored) {}
-        }
     }
 }

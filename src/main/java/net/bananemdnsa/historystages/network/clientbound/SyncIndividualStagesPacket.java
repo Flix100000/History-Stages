@@ -83,6 +83,11 @@ public class SyncIndividualStagesPacket {
                     }
                 });
             }
+            if (net.minecraftforge.fml.ModList.get().isLoaded("emi")) {
+                try {
+                    net.bananemdnsa.historystages.compat.emi.EmiReloadBridge.reloadIfHiding();
+                } catch (Throwable ignored) {}
+            }
         });
         ctx.get().setPacketHandled(true);
     }
