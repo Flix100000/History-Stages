@@ -87,8 +87,8 @@ public class JEIPlugin implements IModPlugin {
         RUNTIME = jeiRuntime;
         REFRESHER = new LockedJeiRefresher(new RuntimeOps(jeiRuntime));
         try {
-            boolean hideItems = Config.VISUAL.hideLockedItemsInJei.get();
-            boolean hideRecipes = Config.VISUAL.hideLockedRecipesInJei.get();
+            boolean hideItems = Config.VISUAL.hideLockedItemsInViewers.get();
+            boolean hideRecipes = Config.VISUAL.hideLockedRecipesInViewers.get();
             // The count, not just the switches. A pass that reports items=true and then hides
             // nothing looks identical in the log to one that worked, and telling those two apart
             // is the whole question when items come back after a stage unlock.
@@ -119,8 +119,8 @@ public class JEIPlugin implements IModPlugin {
         if (r == null || runtime == null) return;
 
         try {
-            boolean hideItems = Config.VISUAL.hideLockedItemsInJei.get();
-            boolean hideRecipes = Config.VISUAL.hideLockedRecipesInJei.get();
+            boolean hideItems = Config.VISUAL.hideLockedItemsInViewers.get();
+            boolean hideRecipes = Config.VISUAL.hideLockedRecipesInViewers.get();
             r.applyDiff(hideItems, () -> computeLockedItems(runtime.getIngredientManager()));
             applyRecipeHiding(hideRecipes, runtime);
             // Re-read items whose hidden-display name just changed (e.g. a stage unlocked),

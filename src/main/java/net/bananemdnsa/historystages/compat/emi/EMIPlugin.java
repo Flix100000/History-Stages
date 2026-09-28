@@ -77,8 +77,8 @@ public class EMIPlugin implements EmiPlugin {
         // EMI only removes entries while plugins register, so a stage change has to reload EMI
         // (EmiReloadBridge) and this pass runs again from scratch. Nothing to diff, nothing to undo.
         try {
-            boolean hideItems = Config.VISUAL.hideLockedItemsInJei.get();
-            boolean hideRecipes = Config.VISUAL.hideLockedRecipesInJei.get();
+            boolean hideItems = Config.VISUAL.hideLockedItemsInViewers.get();
+            boolean hideRecipes = Config.VISUAL.hideLockedRecipesInViewers.get();
             if (hideItems) registry.removeEmiStacks(stack -> isItemLocked(stack.getItemStack()));
             if (hideRecipes) registry.removeRecipes(recipe ->
                     LockedEmiRecipeDecorator.isRecipeLocked(recipe, EMIPlugin::isItemLocked));

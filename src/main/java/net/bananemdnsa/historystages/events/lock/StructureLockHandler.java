@@ -4,6 +4,8 @@ import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.StageManager;
+import net.bananemdnsa.historystages.api.stage.StageScope;
+import net.bananemdnsa.historystages.data.lock.engine.LockResolution;
 import net.bananemdnsa.historystages.data.lock.engine.StageLocks;
 import net.bananemdnsa.historystages.network.PacketHandler;
 import net.bananemdnsa.historystages.network.clientbound.SyncLockBordersPacket;
@@ -13,7 +15,6 @@ import net.bananemdnsa.historystages.structure.StructureCluster;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.bananemdnsa.historystages.util.DebugLogger;
 import net.bananemdnsa.historystages.data.saveddata.IndividualStageData;
-import net.bananemdnsa.historystages.data.saveddata.StageData;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.network.chat.Component;
@@ -144,87 +145,33 @@ public class StructureLockHandler {
             return;
         }
 
-        // Collect structure IDs/tags from ALL nearby clusters so we can match locked
-        // entries even when the player is just close to (not inside) a structure.
-        Set<String> presentIds = new HashSet<>();
-        Set<String> presentTags = new HashSet<>();
-        for (StructureCluster c : nearby) {
-            Holder.Reference<Structure> h = c.structure();
-            h.unwrapKey().ifPresent(k -> presentIds.add(k.location().toString()));
-            h.tags().forEach(t -> presentTags.add(t.location().toString()));
-        }
-
         Set<String> playerStages = IndividualStageData.SERVER_CACHE.getOrDefault(
                 player.getUUID(), Collections.emptySet());
 
-        LinkedHashSet<String> lockedStructures = new LinkedHashSet<>();
-        LinkedHashSet<String> lockedStages = new LinkedHashSet<>();
-
-        for (Map.Entry<String, StageEntry> e : StageManager.getStages().entrySet()) {
-            String stageId = e.getKey();
-            if (StageData.SERVER_CACHE.contains(stageId)) continue;
-            List<String> entries = e.getValue().getStructures();
-            if (entries == null || entries.isEmpty()) continue;
-            for (String entry : entries) {
-                String matched = matchEntry(entry, presentIds, presentTags);
-                if (matched != null) {
-                    lockedStructures.add(matched);
-                    lockedStages.add(stageId);
-                }
-            }
-        }
-
-        for (Map.Entry<String, StageEntry> e : StageManager.getIndividualStages().entrySet()) {
-            String stageId = e.getKey();
-            if (playerStages.contains(stageId)) continue;
-            List<String> entries = e.getValue().getStructures();
-            if (entries == null || entries.isEmpty()) continue;
-            for (String entry : entries) {
-                String matched = matchEntry(entry, presentIds, presentTags);
-                if (matched != null) {
-                    lockedStructures.add(matched);
-                    lockedStages.add(stageId);
-                }
-            }
-        }
-
-        // Locked clusters near the player + their per-cluster stage contribution. We compute
-        // (cluster -> stages) here once and cache it so the per-tick fast containment update
-        // can derive activeStageIds without re-iterating every stage entry.
+        // Decided per cluster, because each structure is its own subject: the stages gating a
+        // village form their own group, and with interchangeable stages one unlocked stage can
+        // free it while a neighbouring ruin stays locked. We compute (cluster -> stages) here once
+        // and cache it so the per-tick fast containment update can derive activeStageIds without
+        // re-iterating every stage entry.
         List<StructureCluster> lockedNearby = new ArrayList<>();
         Map<StructureCluster, Set<String>> clusterStages = new HashMap<>();
         for (StructureCluster c : nearby) {
-            if (!structureMatchesLocked(c, lockedStructures)) continue;
-            lockedNearby.add(c);
-
             Set<String> idView = new HashSet<>();
             c.structure().unwrapKey().ifPresent(k -> idView.add(k.location().toString()));
             Set<String> tagView = new HashSet<>();
             c.structure().tags().forEach(t -> tagView.add(t.location().toString()));
 
-            Set<String> stages = new LinkedHashSet<>();
-            for (Map.Entry<String, StageEntry> e : StageManager.getStages().entrySet()) {
-                if (!lockedStages.contains(e.getKey())) continue;
-                List<String> entries = e.getValue().getStructures();
-                if (entries == null) continue;
-                for (String entry : entries) {
-                    if (matchEntry(entry, idView, tagView) != null) {
-                        stages.add(e.getKey());
-                        break;
-                    }
-                }
-            }
-            for (Map.Entry<String, StageEntry> e : StageManager.getIndividualStages().entrySet()) {
-                if (!lockedStages.contains(e.getKey())) continue;
-                List<String> entries = e.getValue().getStructures();
-                if (entries == null) continue;
-                for (String entry : entries) {
-                    if (matchEntry(entry, idView, tagView) != null) {
-                        stages.add(e.getKey());
-                        break;
-                    }
-                }
-            }
+            List<String> globalGating = stagesGating(StageManager.getStages(), idView, tagView);
+            List<String> individualGating = stagesGating(StageManager.getIndividualStages(), idView, tagView);
+            if (globalGating.isEmpty() && individualGating.isEmpty()) continue;
+
+            Set<String> stages = new LinkedHashSet<>(LockResolution.missingStages(
+                    StageScope.GLOBAL, globalGating, StageLocks.serverGlobal()));
+            stages.addAll(LockResolution.missingStages(
+                    StageScope.INDIVIDUAL, individualGating, StageLocks.serverIndividual(playerStages)));
+            if (stages.isEmpty()) continue;
+
+            lockedNearby.add(c);
             clusterStages.put(c, stages);
         }
 
@@ -286,10 +233,21 @@ public class StructureLockHandler {
         state.cachedLockedStageIds = new ArrayList<>(activeStageIds);
     }
 
-    private static boolean structureMatchesLocked(StructureCluster c, Set<String> lockedStructures) {
-        String id = c.structure().unwrapKey().map(k -> k.location().toString()).orElse(null);
-        if (id != null && lockedStructures.contains(id)) return true;
-        return c.structure().tags().anyMatch(t -> lockedStructures.contains("#" + t.location()));
+    /** Every stage in {@code stages} listing this structure by id or tag, locked or not. */
+    private static List<String> stagesGating(Map<String, StageEntry> stages, Set<String> idView,
+                                             Set<String> tagView) {
+        List<String> found = new ArrayList<>();
+        for (Map.Entry<String, StageEntry> e : stages.entrySet()) {
+            List<String> entries = e.getValue().getStructures();
+            if (entries == null) continue;
+            for (String entry : entries) {
+                if (matchEntry(entry, idView, tagView) != null) {
+                    found.add(e.getKey());
+                    break;
+                }
+            }
+        }
+        return found;
     }
 
     private static void syncBordersIfChanged(ServerPlayer player, PlayerState state, List<BoundingBox> shapes) {

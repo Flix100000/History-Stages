@@ -75,10 +75,10 @@ public class StringStageLockEngine implements StageLockEngine {
         CategoryLockIndexes.ItemGating gating = CategoryLockIndexes.rememberedItemGating(itemId, scope);
         if (gating == null) gating = computeItemGating(itemId, modId, stack, scope);
 
-        if (unlocked != null && gating.mask() != StageMask.EMPTY) {
-            return unlocked.missesAnyOf(gating.mask());
+        if (unlocked != null && gating.hasBits()) {
+            return gating.isLockedFor(unlocked);
         }
-        return LockResolution.isLocked(gating.stages(), state);
+        return LockResolution.isLocked(scope, gating.stages(), state);
     }
 
     /**
@@ -105,14 +105,34 @@ public class StringStageLockEngine implements StageLockEngine {
                         new LockSubjects.ItemSubject(itemId, modId, stack, item, fluidId),
                         candidates, stages);
 
-        CategoryLockIndexes.ItemGating answer = new CategoryLockIndexes.ItemGating(gating,
-                gating.isEmpty() ? StageMask.EMPTY
-                        : StageMask.of(CategoryLockIndexes.stageIndex(), gating));
+        CategoryLockIndexes.ItemGating answer = gatingMasks(gating, scope);
 
         if (!dependsOnTheStack(candidates, stages, itemId, fluidId)) {
             CategoryLockIndexes.rememberItemGating(itemId, scope, answer);
         }
         return answer;
+    }
+
+    /**
+     * The gating list with its two masks. Split at build time so the per-frame check stays a few
+     * AND operations; the flagged set is read once here, not per question.
+     */
+    private static CategoryLockIndexes.ItemGating gatingMasks(List<String> gating, StageScope scope) {
+        if (gating.isEmpty()) {
+            return new CategoryLockIndexes.ItemGating(gating, StageMask.EMPTY, StageMask.EMPTY);
+        }
+        StageIndex index = CategoryLockIndexes.stageIndex();
+        Set<String> flagged = InterchangeableStages.of(scope);
+        if (flagged.isEmpty()) {
+            return new CategoryLockIndexes.ItemGating(gating, StageMask.of(index, gating), StageMask.EMPTY);
+        }
+        List<String> required = new ArrayList<>(gating.size());
+        List<String> anyOf = new ArrayList<>(2);
+        for (String stage : gating) {
+            (flagged.contains(stage) ? anyOf : required).add(stage);
+        }
+        return new CategoryLockIndexes.ItemGating(gating,
+                StageMask.of(index, required), StageMask.of(index, anyOf));
     }
 
     /**
@@ -229,13 +249,7 @@ public class StringStageLockEngine implements StageLockEngine {
         LockSubjects.ItemSubject subject =
                 new LockSubjects.ItemSubject(itemId, modId, stack, stack.getItem(), fluidId);
 
-        for (String stageId : candidates) {
-            if (state.isUnlocked(stageId)) continue;
-            StageEntry entry = stages.get(stageId);
-            if (entry == null) continue;
-            if (ItemActionLocks.isBlockedBy(entry, subject, action)) return true;
-        }
-        return false;
+        return LockResolution.isLocked(scope, actionGating(candidates, stages, subject, action), state);
     }
 
     @Override
@@ -257,13 +271,26 @@ public class StringStageLockEngine implements StageLockEngine {
         LockSubjects.ItemSubject subject =
                 new LockSubjects.ItemSubject("", "", null, null, fluidId);
 
+        return LockResolution.isLocked(scope, actionGating(candidates, stages, subject, action), state);
+    }
+
+    /**
+     * The candidates that really block this action. Collected in full rather than stopping at the
+     * first locked one: with interchangeable stages an unlocked stage can still settle the answer,
+     * so the whole group has to be known before {@link LockResolution} decides.
+     */
+    private static List<String> actionGating(Collection<String> candidates, Map<String, StageEntry> stages,
+                                             LockSubjects.ItemSubject subject, String action) {
+        List<String> found = null;
         for (String stageId : candidates) {
-            if (state.isUnlocked(stageId)) continue;
             StageEntry entry = stages.get(stageId);
             if (entry == null) continue;
-            if (ItemActionLocks.isBlockedBy(entry, subject, action)) return true;
+            if (ItemActionLocks.isBlockedBy(entry, subject, action)) {
+                if (found == null) found = new ArrayList<>(1);
+                found.add(stageId);
+            }
         }
-        return false;
+        return found == null ? List.of() : found;
     }
 
     @Override
@@ -344,9 +371,14 @@ public class StringStageLockEngine implements StageLockEngine {
         return CategoryLockIndexes.anyStageUses("historystages:zones");
     }
 
+    public StringStageLockEngine() {
+        InterchangeableStages.source(StringStageLockEngine::stagesOf);
+    }
+
     @Override
     public void stagesChanged() {
         CategoryLockIndexes.markRelevanceDirty();
+        InterchangeableStages.markDirty();
         // Stages do not change what a recipe contains, only whether the fluid recipe index is
         // worth having — so this is a relevance signal, not a re-scan. A pack adding its first
         // fluid entry still gets one built; the editor no longer re-encodes the pack per save.

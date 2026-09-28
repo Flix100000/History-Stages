@@ -26,8 +26,8 @@ public final class EmiReloadBridge {
      * fresh every time a recipe opens and needs no reload; the hiding only happens during one.
      */
     public static void reloadIfHiding() {
-        if (net.bananemdnsa.historystages.Config.VISUAL.hideLockedItemsInJei.get()
-                || net.bananemdnsa.historystages.Config.VISUAL.hideLockedRecipesInJei.get()) {
+        if (net.bananemdnsa.historystages.Config.VISUAL.hideLockedItemsInViewers.get()
+                || net.bananemdnsa.historystages.Config.VISUAL.hideLockedRecipesInViewers.get()) {
             reloadIfPresent();
         }
     }

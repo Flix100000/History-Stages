@@ -12,8 +12,11 @@ import net.bananemdnsa.historystages.research.BoosterUtil;
 import net.bananemdnsa.historystages.research.ResearchBooster;
 import net.bananemdnsa.historystages.research.ResearchBoosterRegistry;
 import net.bananemdnsa.historystages.client.display.HiddenDisplayResolver;
-import net.bananemdnsa.historystages.client.cache.ClientIndividualStageCache;
-import net.bananemdnsa.historystages.client.cache.ClientStageCache;
+import net.bananemdnsa.historystages.api.stage.StageScope;
+import net.bananemdnsa.historystages.api.stage.StageStateView;
+import net.bananemdnsa.historystages.client.cache.ClientStageStates;
+import net.bananemdnsa.historystages.client.display.RequiredStageLines;
+import net.bananemdnsa.historystages.data.lock.engine.LockResolution;
 import net.bananemdnsa.historystages.util.lock.StageLockHelper;
 import net.bananemdnsa.historystages.util.SearchHiddenContents;
 import net.minecraft.world.item.BlockItem;
@@ -33,9 +36,9 @@ import net.neoforged.fml.common.EventBusSubscriber;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Predicate;
 
 @EventBusSubscriber(modid = HistoryStages.MOD_ID, value = Dist.CLIENT)
 public class TooltipEventHandler {
@@ -145,7 +148,7 @@ public class TooltipEventHandler {
         List<GatingStage> totalRequiredStages = gatingStages(
                 CategoryLockIndexes.globalCandidates(itemID, modID, item),
                 StageManager.getStages(), itemID, modID, stack);
-        boolean isCurrentlyLocked = anyLocked(totalRequiredStages, ClientStageCache::isStageUnlocked);
+        boolean isCurrentlyLocked = isLocked(StageScope.GLOBAL, totalRequiredStages, ClientStageStates.global());
 
         // Dual-phase phase-1 indicator
         if (isCurrentlyLocked && StageLockHelper.isDualPhaseGloballyLockedClient(stack)) {
@@ -156,8 +159,8 @@ public class TooltipEventHandler {
         }
 
         if (isCurrentlyLocked) {
-            appendStageLines(event.getToolTip(), totalRequiredStages,
-                    ClientStageCache::isStageUnlocked, ChatFormatting.GOLD,
+            appendStageLines(event.getToolTip(), StageScope.GLOBAL, totalRequiredStages,
+                    ClientStageStates.global(), ChatFormatting.GOLD,
                     "tooltip.historystages.required_progress",
                     "tooltip.historystages.item_locked");
         }
@@ -166,12 +169,12 @@ public class TooltipEventHandler {
         List<GatingStage> individualRequiredStages = gatingStages(
                 CategoryLockIndexes.individualCandidates(itemID, modID, item),
                 StageManager.getIndividualStages(), itemID, modID, stack);
-        boolean isIndividuallyLocked =
-                anyLocked(individualRequiredStages, ClientIndividualStageCache::isStageUnlocked);
+        boolean isIndividuallyLocked = isLocked(StageScope.INDIVIDUAL, individualRequiredStages,
+                ClientStageStates.individual());
 
         if (isIndividuallyLocked && Config.VISUAL.showIndividualTooltips.get()) {
-            appendStageLines(event.getToolTip(), individualRequiredStages,
-                    ClientIndividualStageCache::isStageUnlocked, ChatFormatting.GRAY,
+            appendStageLines(event.getToolTip(), StageScope.INDIVIDUAL, individualRequiredStages,
+                    ClientStageStates.individual(), ChatFormatting.GRAY,
                     "tooltip.historystages.required_individual_progress",
                     "tooltip.historystages.item_individually_locked");
         }
@@ -211,22 +214,26 @@ public class TooltipEventHandler {
                 || matchesNbtTag(stage, stack);
     }
 
-    private static boolean anyLocked(List<GatingStage> gating, Predicate<String> isUnlocked) {
-        for (GatingStage entry : gating) {
-            if (!isUnlocked.test(entry.id())) return true;
-        }
-        return false;
+    private static boolean isLocked(StageScope scope, List<GatingStage> gating, StageStateView state) {
+        if (gating.isEmpty()) return false;
+        return LockResolution.isLocked(scope, ids(gating), state);
+    }
+
+    private static List<String> ids(List<GatingStage> gating) {
+        List<String> ids = new ArrayList<>(gating.size());
+        for (GatingStage entry : gating) ids.add(entry.id());
+        return ids;
     }
 
     /**
-     * The "you still need" block: a header, then one line per gating stage.
+     * The "you still need" block: a header, then the lines {@link RequiredStageLines} builds.
      *
      * <p>One method for both scopes. They differ only in which cache answers, which colour the
      * bullet takes and which two lang keys are used - keeping two copies is how the global and
      * individual halves drifted apart in the first place.
      */
-    private static void appendStageLines(List<Component> tooltip, List<GatingStage> gating,
-                                         Predicate<String> isUnlocked, ChatFormatting bulletColor,
+    private static void appendStageLines(List<Component> tooltip, StageScope scope, List<GatingStage> gating,
+                                         StageStateView state, ChatFormatting bulletColor,
                                          String headerKey, String shortKey) {
         if (!Config.VISUAL.showStageName.get()) {
             tooltip.add(Component.translatable(shortKey)
@@ -236,25 +243,12 @@ public class TooltipEventHandler {
 
         tooltip.add(Component.translatable(headerKey).withStyle(ChatFormatting.DARK_RED));
 
-        boolean showAll = Config.VISUAL.showAllUntilComplete.get();
-        for (GatingStage entry : gating) {
-            boolean unlocked = isUnlocked.test(entry.id());
-
-            if (gating.size() > 1 && showAll) {
-                ChatFormatting statusColor = unlocked ? ChatFormatting.GREEN : ChatFormatting.RED;
-                String statusKey = unlocked
-                        ? "tooltip.historystages.status.unlocked"
-                        : "tooltip.historystages.status.locked";
-                tooltip.add(Component.literal(" • ")
-                        .append(MutableComponent.create(new SearchHiddenContents(entry.stage().getDisplayName()))
-                                .withStyle(bulletColor))
-                        .append(Component.translatable(statusKey).withStyle(statusColor)));
-            } else if (!unlocked) {
-                tooltip.add(Component.literal(" • ")
-                        .append(MutableComponent.create(new SearchHiddenContents(entry.stage().getDisplayName()))
-                                .withStyle(bulletColor)));
-            }
-        }
+        Map<String, StageEntry> byId = new HashMap<>();
+        for (GatingStage entry : gating) byId.put(entry.id(), entry.stage());
+        tooltip.addAll(RequiredStageLines.lines(scope, ids(gating), state,
+                Config.VISUAL.showAllUntilComplete.get(),
+                Config.VISUAL.groupInterchangeableStages.get(), bulletColor,
+                id -> MutableComponent.create(new SearchHiddenContents(byId.get(id).getDisplayName()))));
     }
 
     /**

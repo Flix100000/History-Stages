@@ -300,6 +300,7 @@ public class DebugLogger {
         pw.println("  Research time: " + (s.getResearchTime() > 0 ? s.getResearchTime() + "s (custom)" : "global default"));
         if (!s.getIcon().isEmpty()) pw.println("  Icon: " + s.getIcon());
         if (s.isLoseOnDeath()) pw.println("  Lose on death: yes");
+        if (s.isInterchangeable()) pw.println("  Interchangeable: yes");
         pw.println("  Total entries: " + entryCount);
 
         printItemEntries(pw, "Items", s.getItemEntries());

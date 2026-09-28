@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.data.lock.engine;
 
+import net.bananemdnsa.historystages.api.stage.StageScope;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashSet;
@@ -146,7 +147,7 @@ class StageIndexDeterminismTest {
                 if (random.nextInt(10) == 0) required.add(id);
             }
 
-            boolean byStrings = LockResolution.isLocked(required, StageStateView.of(unlocked));
+            boolean byStrings = LockResolution.isLocked(StageScope.GLOBAL, required, StageStateView.of(unlocked));
             boolean byMask = StageMask.of(index, unlocked).missesAnyOf(StageMask.of(index, required));
 
             assertEquals(byStrings, byMask,

@@ -83,7 +83,10 @@ public final class LegacyConfigMap {
             "VISUAL|zone_overlay.zoneLockOverlayOpacity",
             "VISUAL|zone_overlay.zoneBorderFullView",
             "VISUAL|zone_overlay.zoneBorderOutline",
-            "VISUAL|zone_overlay.zoneBorderColor");
+            "VISUAL|zone_overlay.zoneBorderColor",
+            // Interchangeable stages arrived in 6.1, so there was no "One of:" group to show.
+            "VISUAL|visuals.groupInterchangeableStages",
+            "VISUAL|jade.groupInterchangeableStages");
 
     private LegacyConfigMap() {}
 

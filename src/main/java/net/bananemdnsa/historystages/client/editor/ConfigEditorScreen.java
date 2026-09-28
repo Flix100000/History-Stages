@@ -276,6 +276,8 @@ public class ConfigEditorScreen extends Screen {
                 Config.VISUAL.showStageName.get().toString(), true, "true"));
         visuals.add(new ConfigEntry("visuals.showAllUntilComplete", "showAllUntilComplete", ConfigType.BOOLEAN,
                 Config.VISUAL.showAllUntilComplete.get().toString(), true, "true"));
+        visuals.add(new ConfigEntry("visuals.groupInterchangeableStages", "groupInterchangeableStages", ConfigType.BOOLEAN,
+                Config.VISUAL.groupInterchangeableStages.get().toString(), true, "true"));
         visuals.add(new ConfigEntry("visuals.showLockIcons", "showLockIcons", ConfigType.BOOLEAN,
                 Config.VISUAL.showLockIcons.get().toString(), true, "true"));
         visuals.add(new ConfigEntry("visuals.showBoosterTooltips", "showBoosterTooltips", ConfigType.BOOLEAN,
@@ -299,6 +301,8 @@ public class ConfigEditorScreen extends Screen {
                 Config.VISUAL.jadeStageName.get().toString(), true, "true"));
         jade.add(new ConfigEntry("jade.showAllUntilComplete", "jadeShowAllUntilComplete", ConfigType.BOOLEAN,
                 Config.VISUAL.jadeShowAllUntilComplete.get().toString(), true, "true"));
+        jade.add(new ConfigEntry("jade.groupInterchangeableStages", "jadeGroupInterchangeableStages", ConfigType.BOOLEAN,
+                Config.VISUAL.jadeGroupInterchangeableStages.get().toString(), true, "true"));
         visualSections.add(jade);
 
         ConfigSection individualClient = new ConfigSection("editor.historystages.config.individual_stages");
@@ -367,21 +371,21 @@ public class ConfigEditorScreen extends Screen {
                 Config.VISUAL.hideLockedRecipesInBook.get().toString(), true, "true"));
         visualSections.add(recipeBook);
 
-        ConfigSection jeiHiding = new ConfigSection("editor.historystages.config.jei_hiding");
-        jeiHiding.add(new ConfigEntry("jei_hiding.hideLockedItemsInJei", "hideLockedItemsInJei", ConfigType.BOOLEAN,
-                Config.VISUAL.hideLockedItemsInJei.get().toString(), true, "false"));
-        jeiHiding.add(new ConfigEntry("jei_hiding.hideLockedRecipesInJei", "hideLockedRecipesInJei", ConfigType.BOOLEAN,
-                Config.VISUAL.hideLockedRecipesInJei.get().toString(), true, "false"));
+        ConfigSection viewerHiding = new ConfigSection("editor.historystages.config.recipe_viewer_hiding");
+        viewerHiding.add(new ConfigEntry("jei_hiding.hideLockedItemsInJei", "hideLockedItemsInViewers", ConfigType.BOOLEAN,
+                Config.VISUAL.hideLockedItemsInViewers.get().toString(), true, "false"));
+        viewerHiding.add(new ConfigEntry("jei_hiding.hideLockedRecipesInJei", "hideLockedRecipesInViewers", ConfigType.BOOLEAN,
+                Config.VISUAL.hideLockedRecipesInViewers.get().toString(), true, "false"));
         // An ENUM row rather than a toggle: STRICT and LENIENT are two named policies, and
         // cycling through them one click at a time says nothing about what the other one is.
-        jeiHiding.add(new ConfigEntry("jei_hiding.lockedItemMultiStagePolicy", ConfigType.ENUM,
+        viewerHiding.add(new ConfigEntry("jei_hiding.lockedItemMultiStagePolicy", ConfigType.ENUM,
                 Config.VISUAL.lockedItemMultiStagePolicy.get().name(), true, "STRICT",
                 "editor.historystages.config.lockedItemMultiStagePolicy",
                 "editor.historystages.config.lockedItemMultiStagePolicy.desc",
                 Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, null,
                 java.util.Arrays.stream(Config.Visual.MultiStagePolicy.values()).map(Enum::name).toList(),
                 Config.Visual.MultiStagePolicy.class.getSimpleName()));
-        visualSections.add(jeiHiding);
+        visualSections.add(viewerHiding);
 
         ConfigSection notifications = new ConfigSection("editor.historystages.config.notifications");
         notifications.add(new ConfigEntry("notifications.broadcastChat", "broadcastChat", ConfigType.BOOLEAN,

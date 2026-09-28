@@ -140,6 +140,7 @@ public class StageDetailScreen extends Screen {
     private String editScrollCompletion = "";
     private net.bananemdnsa.historystages.data.display.HiddenDisplayConfig editHiddenDisplay;
     private boolean editLoseOnDeath;
+    private boolean editInterchangeable;
     /** Addon settings for this stage, keyed by group id. Only ever holds installed groups. */
     private Map<String, SettingsValues> editAddonSettings = new LinkedHashMap<>();
     // Per-entry REPLACE text overrides (entry index → text); absent = follow stage default.
@@ -410,6 +411,7 @@ public class StageDetailScreen extends Screen {
         this.editTemporary = e.getTemporary() != null ? e.getTemporary().copy() : null;
         this.editHiddenDisplay = e.getHiddenDisplay().copy();
         this.editLoseOnDeath = e.isLoseOnDeath();
+        this.editInterchangeable = e.isInterchangeable();
         // Safe cast: the built-in items category stores ItemEntry.
         @SuppressWarnings("unchecked")
         LockCategory<net.bananemdnsa.historystages.data.ItemEntry> itemCategory =
@@ -3326,10 +3328,11 @@ public class StageDetailScreen extends Screen {
         this.minecraft.setScreen(new StageSettingsScreen(this,
                 editStageId, editDisplayName, editResearchTime,
                 editMinPedestalTier, editPedestalTierMode, editMode, editAutoTrigger, editTemporary,
-                editHiddenDisplay.copy(), editLoseOnDeath, editScrollCompletion, editAddonSettings,
-                isNewStage, isIndividual,
+                editHiddenDisplay.copy(), editLoseOnDeath, editInterchangeable, editScrollCompletion,
+                editAddonSettings, isNewStage, isIndividual,
                 (newId, newName, newTime, newTier, newTierMode, newStageMode, newAutoTrigger,
-                 newTemporary, newHidden, newLoseOnDeath, newScrollCompletion, newAddonSettings) -> {
+                 newTemporary, newHidden, newLoseOnDeath, newInterchangeable, newScrollCompletion,
+                 newAddonSettings) -> {
                     editStageId = newId;
                     editDisplayName = newName;
                     editResearchTime = newTime;
@@ -3340,6 +3343,7 @@ public class StageDetailScreen extends Screen {
                     editTemporary = newTemporary;
                     editHiddenDisplay = newHidden != null ? newHidden : new net.bananemdnsa.historystages.data.display.HiddenDisplayConfig();
                     editLoseOnDeath = newLoseOnDeath;
+                    editInterchangeable = newInterchangeable;
                     editScrollCompletion = newScrollCompletion == null ? "" : newScrollCompletion;
                     editAddonSettings = newAddonSettings;
                     hasChanges = true;
@@ -3538,6 +3542,7 @@ public class StageDetailScreen extends Screen {
         newEntry.setTemporary(editTemporary);
         newEntry.setHiddenDisplay(editHiddenDisplay);
         newEntry.setLoseOnDeath(editLoseOnDeath);
+        newEntry.setInterchangeable(editInterchangeable);
         newEntry.setIcon(editIcon);
         newEntry.setScrollCompletion(editScrollCompletion);
         newEntry.setDependencies(editDependencies);

@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.Set;
 
 import net.bananemdnsa.historystages.api.lock.LockCategory;
+import net.bananemdnsa.historystages.api.stage.StageScope;
 import net.bananemdnsa.historystages.api.stage.StageStateView;
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.lock.category.CategoryLockResolver;
@@ -109,18 +110,18 @@ public final class TradeOfferFilter {
      * "this player may not deal with librarians yet" case not a single offer is examined.
      */
     public static Result filter(List<Offer> offers, MerchantView merchant,
-                                Map<String, StageEntry> stages, StageStateView state,
+                                Map<String, StageEntry> stages, StageScope scope, StageStateView state,
                                 ItemActionGate itemActionGate) {
         Set<String> gating = new LinkedHashSet<>();
 
-        List<String> hidesTheMerchant = merchantWide(merchant, stages, state);
+        List<String> hidesTheMerchant = merchantWide(merchant, stages, scope, state);
         if (!hidesTheMerchant.isEmpty()) {
             return new Result(List.of(), List.copyOf(hidesTheMerchant), offers.size());
         }
 
         List<Integer> kept = new ArrayList<>(offers.size());
         for (int i = 0; i < offers.size(); i++) {
-            List<String> gatingThisOffer = gatingThisOffer(offers.get(i), merchant, stages, state,
+            List<String> gatingThisOffer = gatingThisOffer(offers.get(i), merchant, stages, scope, state,
                     itemActionGate);
             if (gatingThisOffer.isEmpty()) {
                 kept.add(i);
@@ -134,11 +135,11 @@ public final class TradeOfferFilter {
     /** Whether one offer is gated at all, for the seam that only ever asks about one. */
     public static List<String> gatingStagesFor(Offer offer, MerchantView merchant,
                                                Map<String, StageEntry> stages,
-                                               StageStateView state,
+                                               StageScope scope, StageStateView state,
                                                ItemActionGate itemActionGate) {
-        List<String> hidesTheMerchant = merchantWide(merchant, stages, state);
+        List<String> hidesTheMerchant = merchantWide(merchant, stages, scope, state);
         if (!hidesTheMerchant.isEmpty()) return hidesTheMerchant;
-        return gatingThisOffer(offer, merchant, stages, state, itemActionGate);
+        return gatingThisOffer(offer, merchant, stages, scope, state, itemActionGate);
     }
 
     /**
@@ -152,17 +153,17 @@ public final class TradeOfferFilter {
      */
     private static List<String> merchantWide(MerchantView merchant,
                                              Map<String, StageEntry> stages,
-                                             StageStateView state) {
+                                             StageScope scope, StageStateView state) {
         Set<String> gating = new LinkedHashSet<>();
         if (merchant.professionId() != null) {
             gating.addAll(CategoryLockResolver.missingStages(
                     category("historystages:trade_professions"),
                     new MerchantSubject(merchant.professionId(), merchant.level()),
-                    stages, state));
+                    stages, scope, state));
         }
         gating.addAll(CategoryLockResolver.missingStages(
                 category("historystages:trade_levels"), String.valueOf(merchant.level()),
-                stages, state));
+                stages, scope, state));
         return List.copyOf(gating);
     }
 
@@ -177,10 +178,10 @@ public final class TradeOfferFilter {
      */
     private static List<String> gatingThisOffer(Offer offer, MerchantView merchant,
                                                 Map<String, StageEntry> stages,
-                                                StageStateView state,
+                                                StageScope scope, StageStateView state,
                                                 ItemActionGate itemActionGate) {
         Set<String> gating = new LinkedHashSet<>(CategoryLockResolver.missingStages(
-                category("historystages:trades"), subjectOf(offer, merchant), stages, state));
+                category("historystages:trades"), subjectOf(offer, merchant), stages, scope, state));
 
         collectItemAction(gating, offer.result(), itemActionGate);
         collectItemAction(gating, offer.costA(), itemActionGate);

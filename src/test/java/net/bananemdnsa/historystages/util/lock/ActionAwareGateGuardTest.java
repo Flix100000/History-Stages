@@ -41,7 +41,8 @@ class ActionAwareGateGuardTest {
             "StageLockHelper.java",   // defines them
             "HistoryStages.java",     // inventory logging
             "LockTests.java",         // GameTest: asserts an item is gated at all
-            "FluidLockTests.java");   // GameTest: same
+            "FluidLockTests.java",    // GameTest: same
+            "InterchangeableStageTests.java"); // GameTest: same
 
     @Test
     void gatesAskWhichActionIsLockedRatherThanWhetherTheItemIsMentioned() throws IOException {

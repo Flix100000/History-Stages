@@ -113,6 +113,12 @@ public class StageEntry {
     private Boolean loseOnDeath;
 
     /**
+     * Stages carrying this flag that gate the same subject stand in for each other: one of them
+     * unlocked is enough. Stages without it still all have to be unlocked. Absent = off.
+     */
+    private Boolean interchangeable;
+
+    /**
      * Raw storage for lock categories registered by other mods, keyed by category id.
      *
      * <p>Deliberately {@link JsonElement} and not a parsed type: a stage file must survive being
@@ -371,6 +377,16 @@ public class StageEntry {
     /** Stores null when off so the key stays out of stages that don't use it. */
     public void setLoseOnDeath(boolean lose) {
         this.loseOnDeath = lose ? Boolean.TRUE : null;
+    }
+
+    /** True if this stage forms an OR group with the other flagged stages gating the same thing. */
+    public boolean isInterchangeable() {
+        return interchangeable != null && interchangeable;
+    }
+
+    /** Stores null when off so the key stays out of stages that don't use it. */
+    public void setInterchangeable(boolean value) {
+        this.interchangeable = value ? Boolean.TRUE : null;
     }
 
     public boolean hasDependencies() {
@@ -666,6 +682,7 @@ public class StageEntry {
         copy.temporary = (this.temporary != null) ? this.temporary.copy() : null;
         copy.hiddenDisplay = (this.hiddenDisplay != null) ? this.hiddenDisplay.copy() : null;
         copy.loseOnDeath = this.loseOnDeath;
+        copy.interchangeable = this.interchangeable;
         if (this.addons != null) {
             Map<String, JsonElement> addonsCopy = new LinkedHashMap<>();
             for (Map.Entry<String, JsonElement> e : this.addons.entrySet()) {

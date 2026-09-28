@@ -92,8 +92,8 @@ public class InteractionLockHandler {
                 : StageLocks.serverIndividual(interactor.getUUID());
 
         List<String> lockedStages =
-                new ArrayList<>(LockResolution.missingStages(globalStageIds, globalState));
-        lockedStages.addAll(LockResolution.missingStages(individualStageIds, individualState));
+                new ArrayList<>(LockResolution.missingStages(StageScope.GLOBAL, globalStageIds, globalState));
+        lockedStages.addAll(LockResolution.missingStages(StageScope.INDIVIDUAL, individualStageIds, individualState));
 
         if (lockedStages.isEmpty()) return;
 

@@ -92,7 +92,7 @@ public class StageManager {
             "mod_exceptions", "recipes", "dimensions", "structures", "biomes", "zones", "entities", "trades",
             "dependencies", "icon",
             "min_pedestal_tier", "pedestal_tier_mode",
-            "mode", "auto_trigger", "temporary", "hidden_display", "lose_on_death",
+            "mode", "auto_trigger", "temporary", "hidden_display", "lose_on_death", "interchangeable",
             "scroll_completion", "addons", "addon_settings"
     );
 

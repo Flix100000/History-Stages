@@ -268,7 +268,7 @@ public class StageLockHelper {
         ResourceLocation res = itemKey(stack);
         if (res == null) return false;
 
-        return LockResolution.isLocked(
+        return LockResolution.isLocked(StageScope.INDIVIDUAL,
                 StageLocks.engine().gatingStagesForItem(res.toString(), res.getNamespace(),
                         stack, StageScope.INDIVIDUAL),
                 ClientStageStates.individual());
@@ -283,7 +283,7 @@ public class StageLockHelper {
         ResourceLocation res = itemKey(stack);
         if (res == null) return false;
 
-        return LockResolution.isLocked(
+        return LockResolution.isLocked(StageScope.GLOBAL,
                 StageLocks.engine().globalDualPhaseStagesForItem(
                         res.toString(), res.getNamespace(), stack.getItem()),
                 ClientStageStates.global());
@@ -295,7 +295,7 @@ public class StageLockHelper {
 
     /** Global-scope recipe check against the server's unlocked set. */
     public static boolean isRecipeLockedForServer(String recipeId) {
-        return LockResolution.isLocked(
+        return LockResolution.isLocked(StageScope.GLOBAL,
                 StageLocks.engine().gatingStagesForRecipe(recipeId, StageScope.GLOBAL),
                 StageLocks.serverGlobal());
     }
@@ -325,7 +325,7 @@ public class StageLockHelper {
      *      player standing at it gets.
      */
     public static boolean isRecipeLockedForClientGlobalOnly(String recipeId) {
-        return LockResolution.isLocked(
+        return LockResolution.isLocked(StageScope.GLOBAL,
                 StageLocks.engine().gatingStagesForRecipe(recipeId, StageScope.GLOBAL),
                 ClientStageStates.global());
     }

@@ -34,8 +34,8 @@ public class DimensionLockHandler {
                 StageLocks.engine().gatingStagesForDimension(dimId, StageScope.INDIVIDUAL);
 
         List<String> lockedStages =
-                new ArrayList<>(LockResolution.missingStages(requiredStageIds, StageLocks.serverGlobal()));
-        lockedStages.addAll(LockResolution.missingStages(
+                new ArrayList<>(LockResolution.missingStages(StageScope.GLOBAL, requiredStageIds, StageLocks.serverGlobal()));
+        lockedStages.addAll(LockResolution.missingStages(StageScope.INDIVIDUAL,
                 individualStageIds, StageLocks.serverIndividual(player.getUUID())));
 
         if (requiredStageIds.isEmpty() && individualStageIds.isEmpty()) return;

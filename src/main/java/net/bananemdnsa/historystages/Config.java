@@ -14,10 +14,12 @@ public class Config {
         public final ModConfigSpec.BooleanValue showTooltips;
         public final ModConfigSpec.BooleanValue showStageName;
         public final ModConfigSpec.BooleanValue showAllUntilComplete;
+        public final ModConfigSpec.BooleanValue groupInterchangeableStages;
         // Jade integration
         public final ModConfigSpec.BooleanValue jadeShowInfo;
         public final ModConfigSpec.BooleanValue jadeStageName;
         public final ModConfigSpec.BooleanValue jadeShowAllUntilComplete;
+        public final ModConfigSpec.BooleanValue jadeGroupInterchangeableStages;
         public final ModConfigSpec.BooleanValue dimUseActionbar;
         public final ModConfigSpec.BooleanValue dimShowChat;
         public final ModConfigSpec.BooleanValue dimShowStagesInChat;
@@ -49,8 +51,8 @@ public class Config {
         public final ModConfigSpec.BooleanValue hideLockedRecipesInBook;
 
         // JEI Hiding (Issue #64)
-        public final ModConfigSpec.BooleanValue hideLockedItemsInJei;
-        public final ModConfigSpec.BooleanValue hideLockedRecipesInJei;
+        public final ModConfigSpec.BooleanValue hideLockedItemsInViewers;
+        public final ModConfigSpec.BooleanValue hideLockedRecipesInViewers;
         public final ModConfigSpec.EnumValue<MultiStagePolicy> lockedItemMultiStagePolicy;
 
         // Central notifications (chat, actionbar, sounds, texts)
@@ -118,6 +120,11 @@ public class Config {
             showAllUntilComplete = builder
                     .comment("If an item is in multiple stages, show all of them until all are unlocked? [Default: true]")
                     .define("showAllUntilComplete", true);
+
+            groupInterchangeableStages = builder
+                    .comment("List interchangeable stages under a \"One of:\" line in the tooltip?",
+                            "Off, they are listed like any other stage. [Default: true]")
+                    .define("groupInterchangeableStages", true);
 
             showLockIcons = builder
                     .comment("Show a lock icon overlay on locked items in JEI/EMI and Inventories? [Default: true]")
@@ -227,6 +234,11 @@ public class Config {
                     .comment("If a block is in multiple stages, show all of them until all are unlocked? [Default: true]")
                     .define("showAllUntilComplete", true);
 
+            jadeGroupInterchangeableStages = builder
+                    .comment("List interchangeable stages under a \"One of:\" line in the Jade overlay?",
+                            "Off, they are listed like any other stage. [Default: true]")
+                    .define("groupInterchangeableStages", true);
+
             builder.pop();
 
             builder.comment("Settings for dimension access feedback").push("dimension_lock");
@@ -301,11 +313,13 @@ public class Config {
             builder.comment("JEI and EMI integration — fully hide locked items/recipes instead of using the lock overlay")
                     .push("jei_hiding");
 
-            hideLockedItemsInJei = builder
+            // The toml keys still say Jei from before EMI was covered. Renaming them would reset
+            // the switch in every pack that has it on, so only the field names moved on.
+            hideLockedItemsInViewers = builder
                     .comment("Remove locked items from the JEI and EMI ingredient panels entirely. [Default: false]")
                     .define("hideLockedItemsInJei", false);
 
-            hideLockedRecipesInJei = builder
+            hideLockedRecipesInViewers = builder
                     .comment("Hide locked recipes in JEI and EMI. JEI only catches vanilla recipe types by their OUTPUT;",
                             "EMI hides every recipe the lock overlay would mark. [Default: false]")
                     .define("hideLockedRecipesInJei", false);

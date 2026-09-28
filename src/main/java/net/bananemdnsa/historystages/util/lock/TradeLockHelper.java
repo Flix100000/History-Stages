@@ -68,10 +68,10 @@ public final class TradeLockHelper {
 
         UUID uuid = player.getUUID();
         TradeOfferFilter.Result global = TradeOfferFilter.filter(view, merchantView,
-                StageManager.getStages(), StageLocks.serverGlobal(),
+                StageManager.getStages(), StageScope.GLOBAL, StageLocks.serverGlobal(),
                 itemActionGate(StageScope.GLOBAL, StageLocks.serverGlobal()));
         TradeOfferFilter.Result individual = TradeOfferFilter.filter(view, merchantView,
-                StageManager.getIndividualStages(), StageLocks.serverIndividual(uuid),
+                StageManager.getIndividualStages(), StageScope.INDIVIDUAL, StageLocks.serverIndividual(uuid),
                 itemActionGate(StageScope.INDIVIDUAL, StageLocks.serverIndividual(uuid)));
 
         List<Integer> kept = new ArrayList<>(global.keptIndices());
@@ -97,11 +97,11 @@ public final class TradeLockHelper {
         UUID uuid = player.getUUID();
 
         Set<String> gating = new LinkedHashSet<>(TradeOfferFilter.gatingStagesFor(
-                view, merchantView, StageManager.getStages(), StageLocks.serverGlobal(),
+                view, merchantView, StageManager.getStages(), StageScope.GLOBAL, StageLocks.serverGlobal(),
                 itemActionGate(StageScope.GLOBAL, StageLocks.serverGlobal())));
         gating.addAll(TradeOfferFilter.gatingStagesFor(
                 view, merchantView, StageManager.getIndividualStages(),
-                StageLocks.serverIndividual(uuid),
+                StageScope.INDIVIDUAL, StageLocks.serverIndividual(uuid),
                 itemActionGate(StageScope.INDIVIDUAL, StageLocks.serverIndividual(uuid))));
 
         return List.copyOf(gating);
@@ -223,7 +223,7 @@ public final class TradeLockHelper {
             if (!(item.stack() instanceof ItemStack stack) || stack.isEmpty()) return List.of();
             ResourceLocation key = BuiltInRegistries.ITEM.getKey(stack.getItem());
             if (key == null) return List.of();
-            return LockResolution.missingStages(
+            return LockResolution.missingStages(scope,
                     StageLocks.engine().gatingStagesForItemAction(
                             key.toString(), key.getNamespace(), stack, "trade", scope),
                     state);
