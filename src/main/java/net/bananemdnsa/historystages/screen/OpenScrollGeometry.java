@@ -69,13 +69,36 @@ public final class OpenScrollGeometry {
     public static final int TABS_HEIGHT = 9;
     /** Gap between two chapter words. */
     public static final int TAB_GAP = 6;
+    /**
+     * Chapter icons: the 8px artwork at 1.5x. 16px was tried and read too heavy, and left no room
+     * for the underline. 12px is exact at even GUI scales; at scale 3 a few pixel rows come out
+     * one screen pixel wider than their neighbours, which is the price of the in-between size.
+     */
+    public static final int TAB_ICON_SIZE = 12;
+    /** Three pixels under the paper's top edge; the icons use part of the margin words leave empty. */
+    public static final int TAB_ICON_Y = PARCHMENT_Y + 3;
+    /** Underline of the active icon, one pixel under it and one above the rule. */
+    public static final int TAB_ICON_UNDERLINE_Y = TAB_ICON_Y + TAB_ICON_SIZE + 1;
 
-    /** Ink rule under the chapter words; 2px below the underline so the two do not read as one. */
-    public static final int RULE_TOP_Y = 51;
+    /**
+     * Ink rule under the chapter marks, one pixel below the icon underline. Moved down 3px for it, which
+     * the words simply get as extra air. It costs no row on any sheet, because every content
+     * height had at least 3px of slack left over (pinned in {@code OpenScrollGeometryTest}).
+     */
+    public static final int RULE_TOP_Y = 54;
 
     /** The search line: a chevron and a writing rule, not a box. Hidden by config. */
-    public static final int SEARCH_Y = 54;
+    public static final int SEARCH_Y = 57;
     public static final int SEARCH_HEIGHT = 11;
+
+    /** Top of the clickable chapter band for the given style. */
+    public static int tabsTop(boolean icons) {
+        return icons ? TAB_ICON_Y : TABS_Y;
+    }
+
+    public static int tabsHeight(boolean icons) {
+        return icons ? TAB_ICON_UNDERLINE_Y + 1 - TAB_ICON_Y : TABS_HEIGHT;
+    }
 
     /**
      * Ink rule above the sheet counter, and the counter itself. Both drop on a single sheet.

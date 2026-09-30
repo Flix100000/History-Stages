@@ -61,8 +61,8 @@ class OpenScrollGeometryTest {
 
     @Test
     void theSearchLineCostsTwelvePixelsOfContent() {
-        assertEquals(66, OpenScrollGeometry.contentY(true));
-        assertEquals(54, OpenScrollGeometry.contentY(false));
+        assertEquals(69, OpenScrollGeometry.contentY(true));
+        assertEquals(57, OpenScrollGeometry.contentY(false));
     }
 
     @Test
@@ -73,10 +73,10 @@ class OpenScrollGeometryTest {
 
     @Test
     void theFourContentHeightsMatchTheSpec() {
-        assertEquals(95, OpenScrollGeometry.contentHeight(true, true));
-        assertEquals(107, OpenScrollGeometry.contentHeight(false, true));
-        assertEquals(113, OpenScrollGeometry.contentHeight(true, false));
-        assertEquals(125, OpenScrollGeometry.contentHeight(false, false));
+        assertEquals(92, OpenScrollGeometry.contentHeight(true, true));
+        assertEquals(104, OpenScrollGeometry.contentHeight(false, true));
+        assertEquals(110, OpenScrollGeometry.contentHeight(true, false));
+        assertEquals(122, OpenScrollGeometry.contentHeight(false, false));
     }
 
     @Test

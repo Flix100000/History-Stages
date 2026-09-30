@@ -15,6 +15,7 @@ import net.bananemdnsa.historystages.data.ScrollCompletion;
 import net.bananemdnsa.historystages.data.scroll.OpenScrollChapters;
 import net.bananemdnsa.historystages.data.scroll.OpenScrollOverviewBlocks;
 import net.bananemdnsa.historystages.data.scroll.OpenScrollSort;
+import net.bananemdnsa.historystages.data.scroll.OpenScrollTabStyle;
 import net.bananemdnsa.historystages.data.scroll.OpenScrollVisibility;
 import net.bananemdnsa.historystages.data.tooltip.ScrollTooltipLayout;
 import net.bananemdnsa.historystages.network.serverbound.SaveGraphConfigPacket;
@@ -512,6 +513,15 @@ public class ConfigEditorScreen extends Screen {
                 java.util.Arrays.stream(OpenScrollSort.values())
                         .map(OpenScrollSort::serialize).toList(),
                 OpenScrollSort.class.getSimpleName()));
+        openScroll.add(new ConfigEntry("open_scroll.tabStyle", ConfigType.ENUM,
+                Config.VISUAL.openScrollTabStyle.get(), true,
+                OpenScrollTabStyle.ICONS.serialize(),
+                "editor.historystages.config.openScrollTabStyle",
+                "editor.historystages.config.openScrollTabStyle.desc",
+                Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, null,
+                java.util.Arrays.stream(OpenScrollTabStyle.values())
+                        .map(OpenScrollTabStyle::serialize).toList(),
+                OpenScrollTabStyle.class.getSimpleName()));
         openScroll.add(new ConfigEntry("open_scroll.showSearch", "openScrollShowSearch", ConfigType.BOOLEAN,
                 Config.VISUAL.openScrollShowSearch.get().toString(), true, "true"));
         openScroll.add(new ConfigEntry("open_scroll.showEntryIds", "openScrollShowEntryIds", ConfigType.BOOLEAN,

@@ -87,6 +87,8 @@ public final class LegacyConfigMap {
             // Interchangeable stages arrived in 6.1, so there was no "One of:" group to show.
             "VISUAL|visuals.groupInterchangeableStages",
             "VISUAL|jade.groupInterchangeableStages",
+            // The chapter icons arrived in 6.1; before that the chapters were always words.
+            "VISUAL|open_scroll.tabStyle",
             // Stage logic arrived in 6.1; before it nothing could block a stage.
             "VISUAL|lock_messages.stageBlocked",
             "VISUAL|lock_messages.stageRevoked",

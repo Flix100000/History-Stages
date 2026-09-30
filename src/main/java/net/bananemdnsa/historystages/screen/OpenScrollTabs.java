@@ -40,6 +40,28 @@ public final class OpenScrollTabs {
         return out;
     }
 
+    /**
+     * Splits the content width into one equal slot per chapter. The slot is the click target; the
+     * icon is drawn centred in it via {@link #iconX(Tab)}. The label stays empty, the screen knows
+     * the chapter names.
+     */
+    public static List<Tab> layoutIcons(int count) {
+        List<Tab> out = new ArrayList<>();
+        int width = OpenScrollGeometry.CONTENT_WIDTH;
+        for (int i = 0; i < count; i++) {
+            // Edges from the running product so rounding never leaves a pixel over at the end.
+            int left = width * i / count;
+            int right = width * (i + 1) / count;
+            out.add(new Tab("", left, right - left));
+        }
+        return out;
+    }
+
+    /** Where the icon sits inside its slot, panel-relative like the slot itself. */
+    public static int iconX(Tab slot) {
+        return slot.x() + (slot.width() - OpenScrollGeometry.TAB_ICON_SIZE) / 2;
+    }
+
     private static int totalWidth(List<String> labels, ToIntFunction<String> width) {
         if (labels.isEmpty()) return 0;
         int total = OpenScrollGeometry.TAB_GAP * (labels.size() - 1);
