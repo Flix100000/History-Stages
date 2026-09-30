@@ -6,6 +6,7 @@ build
 run
 run-server
 run-gametest
+run-gametest-forge
 
 # eclipse / vscode
 bin
