@@ -9,12 +9,21 @@ public final class BoosterUtil {
     private BoosterUtil() {}
 
     /**
-     * Compute the reduced item count for a dependency. Always rounds up,
-     * minimum 1 if the original was at least 1.
+     * Compute the item count for a dependency under a cost reduction. Always rounds up, minimum 1
+     * if the original was at least 1.
+     *
+     * <p>The reduction is the booster's combined with any "cheaper/costlier while" logic block, so
+     * it is no longer confined to the booster's 0–0.9: negative means costlier, and exactly 1.0
+     * means free — the only way to reach 0, and only when an author asked for 0 % on purpose.
      */
     public static int effectiveCount(int original, double costReduction) {
-        if (costReduction <= 0.0 || original <= 0) return original;
-        return Math.max(1, (int) Math.ceil(original * (1.0 - costReduction)));
+        if (costReduction == 0.0 || original <= 0) return original;
+        return net.bananemdnsa.historystages.data.logic.LogicBlockParams.scale(original, 1.0 - costReduction);
+    }
+
+    /** Combines a booster reduction with a logic cost factor into one reduction. */
+    public static double combineReduction(double boosterReduction, double logicFactor) {
+        return 1.0 - (1.0 - Math.max(0.0, boosterReduction)) * logicFactor;
     }
 
     /** Speed multiplier shown to the player, e.g. 1/(1-0.25) = 1.333. */

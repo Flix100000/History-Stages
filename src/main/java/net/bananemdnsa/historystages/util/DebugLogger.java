@@ -301,6 +301,7 @@ public class DebugLogger {
         if (!s.getIcon().isEmpty()) pw.println("  Icon: " + s.getIcon());
         if (s.isLoseOnDeath()) pw.println("  Lose on death: yes");
         if (s.isInterchangeable()) pw.println("  Interchangeable: yes");
+        if (s.hasLogic()) pw.println("  Logic: " + s.getLogic());
         pw.println("  Total entries: " + entryCount);
 
         printItemEntries(pw, "Items", s.getItemEntries());

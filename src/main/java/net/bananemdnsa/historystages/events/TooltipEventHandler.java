@@ -15,6 +15,7 @@ import net.bananemdnsa.historystages.client.display.HiddenDisplayResolver;
 import net.bananemdnsa.historystages.api.stage.StageScope;
 import net.bananemdnsa.historystages.api.stage.StageStateView;
 import net.bananemdnsa.historystages.client.cache.ClientStageStates;
+import net.bananemdnsa.historystages.client.display.BlockedLines;
 import net.bananemdnsa.historystages.client.display.RequiredStageLines;
 import net.bananemdnsa.historystages.data.lock.engine.LockResolution;
 import net.bananemdnsa.historystages.util.lock.StageLockHelper;
@@ -248,7 +249,8 @@ public class TooltipEventHandler {
         tooltip.addAll(RequiredStageLines.lines(scope, ids(gating), state,
                 Config.VISUAL.showAllUntilComplete.get(),
                 Config.VISUAL.groupInterchangeableStages.get(), bulletColor,
-                id -> MutableComponent.create(new SearchHiddenContents(byId.get(id).getDisplayName()))));
+                id -> MutableComponent.create(new SearchHiddenContents(
+                        BlockedLines.displayName(id, scope == StageScope.INDIVIDUAL)))));
     }
 
     /**

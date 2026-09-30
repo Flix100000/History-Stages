@@ -141,6 +141,8 @@ public class StageDetailScreen extends Screen {
     private net.bananemdnsa.historystages.data.display.HiddenDisplayConfig editHiddenDisplay;
     private boolean editLoseOnDeath;
     private boolean editInterchangeable;
+    /** Logic blocks as the raw array; the logic screen edits it, unknown blocks pass through. */
+    private com.google.gson.JsonArray editLogic;
     /** Addon settings for this stage, keyed by group id. Only ever holds installed groups. */
     private Map<String, SettingsValues> editAddonSettings = new LinkedHashMap<>();
     // Per-entry REPLACE text overrides (entry index → text); absent = follow stage default.
@@ -412,6 +414,7 @@ public class StageDetailScreen extends Screen {
         this.editHiddenDisplay = e.getHiddenDisplay().copy();
         this.editLoseOnDeath = e.isLoseOnDeath();
         this.editInterchangeable = e.isInterchangeable();
+        this.editLogic = e.getLogic() != null ? e.getLogic().deepCopy() : null;
         // Safe cast: the built-in items category stores ItemEntry.
         @SuppressWarnings("unchecked")
         LockCategory<net.bananemdnsa.historystages.data.ItemEntry> itemCategory =
@@ -799,7 +802,13 @@ public class StageDetailScreen extends Screen {
                 Component.translatable("editor.historystages.dep.title"),
                 btn -> openDependencyEditor(), depBtnX, 22, depBtnW, FIELD_HEIGHT));
 
-        int iconBtnX = depBtnX + depBtnW + 6;
+        Component logicLabel = logicButtonLabel();
+        int logicBtnW = this.font.width(logicLabel) + 12;
+        int logicBtnX = depBtnX + depBtnW + 6;
+        this.addRenderableWidget(StyledButton.of(logicLabel, btn -> openLogicEditor(),
+                logicBtnX, 22, logicBtnW, FIELD_HEIGHT));
+
+        int iconBtnX = logicBtnX + logicBtnW + 6;
         iconPickerBtn = new IconPickerButton(iconBtnX, 22, FIELD_HEIGHT, FIELD_HEIGHT, () -> {
             iconSearch = createIconSearch();
             iconSearch.show(this.width / 2, this.height / 2, this.width - 60);
@@ -3543,6 +3552,7 @@ public class StageDetailScreen extends Screen {
         newEntry.setHiddenDisplay(editHiddenDisplay);
         newEntry.setLoseOnDeath(editLoseOnDeath);
         newEntry.setInterchangeable(editInterchangeable);
+        newEntry.setLogic(editLogic != null ? editLogic.deepCopy() : null);
         newEntry.setIcon(editIcon);
         newEntry.setScrollCompletion(editScrollCompletion);
         newEntry.setDependencies(editDependencies);
@@ -3566,6 +3576,23 @@ public class StageDetailScreen extends Screen {
         if (StageSaver.send(id, buildEntrySnapshot(), isIndividual, false, targetFolder)) {
             hasChanges = false;
         }
+    }
+
+    /** "Logic", with the number of blocks when there are any, so a rule is visible from here. */
+    private Component logicButtonLabel() {
+        int count = editLogic == null ? 0 : editLogic.size();
+        return count == 0
+                ? Component.translatable("editor.historystages.logic.button")
+                : Component.translatable("editor.historystages.logic.button_count", count);
+    }
+
+    private void openLogicEditor() {
+        this.minecraft.setScreen(new StageLogicScreen(this, editStageId, editDisplayName, isIndividual,
+                editLogic, logic -> {
+                    this.editLogic = logic;
+                    this.hasChanges = true;
+                    saveStage();
+                }));
     }
 
     private void openDependencyEditor() {

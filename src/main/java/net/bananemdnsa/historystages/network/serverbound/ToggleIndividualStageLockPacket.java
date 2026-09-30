@@ -67,12 +67,29 @@ public record ToggleIndividualStageLockPacket(String stageId, Optional<UUID> tar
             }
             if (targets.isEmpty()) return;
 
-            int changed = 0;
-            for (ServerPlayer target : targets) {
-                boolean applied = msg.unlock
-                        ? StageStates.unlockIndividual(msg.stageId, target)
-                        : StageStates.relockIndividual(msg.stageId, target);
-                if (applied) changed++;
+            int[] counts = new int[2]; // changed, forced
+            net.bananemdnsa.historystages.events.StageLogicRevocationHandler.reportTo(sender, () -> {
+                for (ServerPlayer target : targets) {
+                    boolean applied;
+                    if (msg.unlock) {
+                        // Admin override, like the global toggle: blocked stages unlock anyway.
+                        StageStates.UnlockOutcome outcome = StageStates.forceUnlockIndividual(msg.stageId, target);
+                        applied = outcome.unlocked();
+                        if (applied && outcome.wasBlocked()) counts[1]++;
+                    } else {
+                        applied = StageStates.relockIndividual(msg.stageId, target);
+                    }
+                    if (applied) counts[0]++;
+                }
+                return null;
+            });
+            int changed = counts[0];
+            int forced = counts[1];
+
+            if (forced > 0 && net.bananemdnsa.historystages.Config.GAMEPLAY.warnOnForcedUnlock.get()) {
+                PacketHandler.sendEditorFeedback(EditorFeedbackPacket.info(
+                        "editor.historystages.toast.forced_unlock.title",
+                        "editor.historystages.toast.forced_unlock.message", displayName), sender);
             }
 
             String titleKey = msg.unlock

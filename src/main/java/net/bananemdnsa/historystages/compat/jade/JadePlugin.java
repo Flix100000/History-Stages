@@ -18,6 +18,7 @@ import net.bananemdnsa.historystages.research.ResearchBooster;
 import net.bananemdnsa.historystages.research.ResearchBoosterRegistry;
 import net.bananemdnsa.historystages.api.stage.StageScope;
 import net.bananemdnsa.historystages.client.cache.ClientStageStates;
+import net.bananemdnsa.historystages.client.display.BlockedLines;
 import net.bananemdnsa.historystages.client.display.RequiredStageLines;
 import net.bananemdnsa.historystages.data.lock.engine.LockResolution;
 import net.bananemdnsa.historystages.util.lock.StageLockHelper;
@@ -290,26 +291,18 @@ public class JadePlugin implements IWailaPlugin {
             String header = individual ? "Required Individual Progress:" : "Required Progress:";
             tooltip.add(Component.literal(header).withStyle(ChatFormatting.DARK_RED));
 
-            Map<String, StageEntry> stageMap = individual
-                    ? StageManager.getIndividualStages()
-                    : StageManager.getStages();
             for (Component line : RequiredStageLines.lines(
                     individual ? StageScope.INDIVIDUAL : StageScope.GLOBAL, totalRequiredStages,
                     individual ? ClientStageStates.individual() : ClientStageStates.global(),
                     Config.VISUAL.jadeShowAllUntilComplete.get(),
                     Config.VISUAL.jadeGroupInterchangeableStages.get(), ChatFormatting.GOLD,
-                    id -> Component.literal(displayName(stageMap, id)))) {
+                    id -> Component.literal(BlockedLines.displayName(id, individual)))) {
                 tooltip.add(line);
             }
         } else {
             tooltip.add(Component.translatable("tooltip.historystages.contains_locked_items")
                     .withStyle(ChatFormatting.RED, ChatFormatting.ITALIC));
         }
-    }
-
-    private static String displayName(Map<String, StageEntry> stages, String id) {
-        StageEntry stage = stages.get(id);
-        return stage != null ? stage.getDisplayName() : id;
     }
 
     private static boolean matchesNbtItem(StageEntry stage, String itemID, ItemStack stack) {

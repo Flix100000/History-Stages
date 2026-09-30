@@ -83,6 +83,8 @@ public class JEIPlugin implements IModPlugin {
             LOGGER.info("[HistoryStages] Added {} research scroll variants to JEI.", scrolls.size());
         }
 
+        applyHiddenScrolls(jeiRuntime);
+
         // --- Issue #64: initial hide pass ---
         RUNTIME = jeiRuntime;
         REFRESHER = new LockedJeiRefresher(new RuntimeOps(jeiRuntime));
@@ -117,6 +119,7 @@ public class JEIPlugin implements IModPlugin {
         LockedJeiRefresher r = REFRESHER;
         IJeiRuntime runtime = RUNTIME;
         if (r == null || runtime == null) return;
+        applyHiddenScrolls(runtime);
 
         try {
             boolean hideItems = Config.VISUAL.hideLockedItemsInViewers.get();
@@ -132,6 +135,37 @@ public class JEIPlugin implements IModPlugin {
                     hideItems, r.currentlyHiddenItems().size());
         } catch (Exception e) {
             LOGGER.warn("[HistoryStages/JEI] applyDiff failed", e);
+        }
+    }
+
+    /** Stage ids whose scrolls are currently taken out of JEI because the stage is hidden. */
+    private static Set<String> hiddenScrollIds = Set.of();
+
+    /**
+     * Takes the scrolls of hidden stages out of the item list and puts them back once the stage
+     * shows. Always on, unlike the locked-item hiding: a listed scroll would name a secret stage.
+     * Diffed by stage id, since a scroll stack built afresh is never the same object twice.
+     */
+    private static synchronized void applyHiddenScrolls(IJeiRuntime runtime) {
+        try {
+            Set<String> listed = new java.util.HashSet<>();
+            for (ItemStack scroll : ScrollVariants.buildAllStageScrolls()) {
+                String id = ScrollVariants.readStageResearch(scroll);
+                if (id != null) listed.add(id);
+            }
+            Set<String> now = new java.util.HashSet<>(net.bananemdnsa.historystages.compat.HiddenScrolls.hiddenStageIds());
+            now.retainAll(listed);
+
+            List<ItemStack> toShow = new ArrayList<>();
+            for (String id : hiddenScrollIds) if (!now.contains(id)) toShow.add(ScrollVariants.createScroll(id));
+            List<ItemStack> toHide = new ArrayList<>();
+            for (String id : now) if (!hiddenScrollIds.contains(id)) toHide.add(ScrollVariants.createScroll(id));
+
+            if (!toShow.isEmpty()) runtime.getIngredientManager().addIngredientsAtRuntime(VanillaTypes.ITEM_STACK, toShow);
+            if (!toHide.isEmpty()) runtime.getIngredientManager().removeIngredientsAtRuntime(VanillaTypes.ITEM_STACK, toHide);
+            hiddenScrollIds = Set.copyOf(now);
+        } catch (Exception e) {
+            LOGGER.warn("[HistoryStages/JEI] hidden scroll pass failed", e);
         }
     }
 

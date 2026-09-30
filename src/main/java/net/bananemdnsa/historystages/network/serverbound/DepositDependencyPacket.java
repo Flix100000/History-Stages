@@ -1,5 +1,7 @@
 package net.bananemdnsa.historystages.network.serverbound;
 
+import net.bananemdnsa.historystages.research.BoosterUtil;
+import net.bananemdnsa.historystages.data.dependency.requirements.XpLevelRequirement;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.block.entity.ResearchPedestalBlockEntity;
 import net.bananemdnsa.historystages.network.PacketReach;
@@ -94,7 +96,9 @@ public record DepositDependencyPacket(BlockPos pos, int groupIndex, String depos
                     }
                 }
                 if (matched == null) return;
-                int required = matched.getCount();
+                // Same count the slot deposit and the checklist use: booster and cost blocks
+                // applied. This path used to take the full count and ignore the booster.
+                int required = BoosterUtil.effectiveCount(matched.getCount(), pedestal.itemCostReduction(tag));
 
                 String key = DependencyProgress.key(groupKey,
                         DependencyProgress.itemSuffix(packet.data));
@@ -122,8 +126,9 @@ public record DepositDependencyPacket(BlockPos pos, int groupIndex, String depos
                 XpLevelDep xpLevel = group.getXpLevel();
                 if (xpLevel != null && xpLevel.isConsume() && xpLevel.getLevel() > 0) {
                     String key = DependencyProgress.key(groupKey, DependencyProgress.XP_SUFFIX);
-                    if (!deposited.getBoolean(key) && player.experienceLevel >= xpLevel.getLevel()) {
-                        player.giveExperienceLevels(-xpLevel.getLevel());
+                    int cost = XpLevelRequirement.effectiveLevel(xpLevel.getLevel(), pedestal.xpCostFactor(tag));
+                    if (!deposited.getBoolean(key) && player.experienceLevel >= cost) {
+                        player.giveExperienceLevels(-cost);
                         deposited.putBoolean(key, true);
                         changed = true;
                     }
@@ -131,6 +136,8 @@ public record DepositDependencyPacket(BlockPos pos, int groupIndex, String depos
             }
 
             if (changed) {
+                // First deposit of any kind freezes what the scroll costs, as the slot path does.
+                pedestal.lockCostFactors(tag);
                 tag.put("DepositedDependencies", deposited);
                 scroll.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
                 pedestal.setChanged();

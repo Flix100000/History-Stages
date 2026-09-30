@@ -64,7 +64,7 @@ public class MobLockHandler {
             List<String> displayNames = new ArrayList<>(lockedStages.size());
             for (String stageId : lockedStages) {
                 StageEntry stageEntry = StageManager.getStages().get(stageId);
-                displayNames.add(stageEntry != null ? stageEntry.getDisplayName() : stageId);
+                displayNames.add(net.bananemdnsa.historystages.data.logic.StageLogicGate.nameForAnyScope(stageId, player.getUUID()));
             }
 
             PacketHandler.sendLockFeedbackToPlayer(

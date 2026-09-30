@@ -97,6 +97,8 @@ class AddonBlockSurvivesEditingTest {
         List<String> unset = new ArrayList<>();
         for (Field field : StageEntry.class.getDeclaredFields()) {
             if (Modifier.isStatic(field.getModifiers())) continue;
+            // Transient fields are caches, never on disk and never edited.
+            if (Modifier.isTransient(field.getModifiers())) continue;
             String name = field.getName();
             String setter = setterAliases.getOrDefault(name,
                     "set" + Character.toUpperCase(name.charAt(0)) + name.substring(1));

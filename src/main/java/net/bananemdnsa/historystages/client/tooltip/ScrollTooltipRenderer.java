@@ -138,7 +138,39 @@ public final class ScrollTooltipRenderer {
             groups = stageEntry.getDependencies();
         }
 
-        return new ScrollTooltipContext(stageName, individual, ownerName, minTier, tierMode, groups, result);
+        boolean blocked = false;
+        List<net.bananemdnsa.historystages.client.display.BlockedLines.Line> reason = List.of();
+        List<ScrollTooltipContext.CostEntry> cost = new ArrayList<>();
+        if (stageId != null && stageEntry != null && stageEntry.hasLogic()) {
+            var verdict = net.bananemdnsa.historystages.client.display.BlockedLines.forLocalPlayer(stageId, individual);
+            blocked = verdict.isBlocked();
+            reason = net.bananemdnsa.historystages.client.display.BlockedLines.reasonLines(verdict, individual);
+            var factors = net.bananemdnsa.historystages.client.display.BlockedLines.costForLocalPlayer(stageId, individual);
+            for (var block : factors.active()) {
+                cost.add(new ScrollTooltipContext.CostEntry(
+                        net.bananemdnsa.historystages.client.display.BlockedLines.costHeader(block, true), true,
+                        net.bananemdnsa.historystages.client.display.BlockedLines.conditionLines(block, individual)));
+            }
+            if (net.bananemdnsa.historystages.client.display.BlockedLines.showInactiveCostHints()) {
+                for (var block : factors.inactive()) {
+                    cost.add(new ScrollTooltipContext.CostEntry(
+                            net.bananemdnsa.historystages.client.display.BlockedLines.costHeader(block, false), false,
+                            net.bananemdnsa.historystages.client.display.BlockedLines.conditionLines(block, individual)));
+                }
+            }
+        }
+
+        List<List<net.bananemdnsa.historystages.client.display.BlockedLines.Line>> revokeWarnings = new ArrayList<>();
+        List<String> revokedByUnlocking = List.of();
+        if (stageId != null && stageEntry != null) {
+            for (var block : net.bananemdnsa.historystages.client.display.BlockedLines.revokeBlocks(stageId, individual)) {
+                revokeWarnings.add(net.bananemdnsa.historystages.client.display.BlockedLines.conditionLines(block, individual));
+            }
+            revokedByUnlocking = net.bananemdnsa.historystages.client.display.BlockedLines.revokedByUnlocking(stageId, individual);
+        }
+
+        return new ScrollTooltipContext(stageName, individual, ownerName, minTier, tierMode, groups, result,
+                blocked, reason, cost, revokeWarnings, revokedByUnlocking);
     }
 
     // --- shared builder ---
@@ -165,6 +197,10 @@ public final class ScrollTooltipRenderer {
                 case "info2" -> simple(line, "tooltip.historystages.research_scroll.info2",
                         Map.of("stage", ctx.stageName()), ChatFormatting.GRAY, ChatFormatting.ITALIC);
                 case "tier" -> tierSection(line, ctx);
+                case "blocked" -> blockedSection(line, byId, ctx);
+                case "cost" -> costSection(line, byId, ctx);
+                case "revoke" -> revokeSection(line, byId, ctx);
+                case "revoke_trigger" -> revokeTriggerSection(line, ctx);
                 case "dependencies" -> dependencySection(byId, ctx);
                 default -> List.<Component>of();
             };
@@ -190,6 +226,110 @@ public final class ScrollTooltipRenderer {
         if (!ctx.individual() || owner == null || owner.isEmpty()) return List.of();
         Map<String, String> vars = Map.of("owner", owner, "stage", ctx.stageName());
         return withArg(line, "tooltip.historystages.scroll.owner", vars, owner, ChatFormatting.GRAY);
+    }
+
+    /**
+     * "⛔ Blocked while:" and one line per condition. The heading row is this block type's own;
+     * the conditions are worded by the rows every logic block type shares, "logic.unlocked" and
+     * "logic.locked", with {@code %stage%} as the stage's name. The same wording shows on the
+     * pedestal and in the graph.
+     */
+    private static List<Component> blockedSection(ScrollTooltipLine header, Map<String, ScrollTooltipLine> byId,
+                                                  ScrollTooltipContext ctx) {
+        if (!ctx.blocked()) return List.of();
+        List<Component> out = new ArrayList<>();
+        if (header.text().isEmpty()) {
+            out.add(applyStyle(net.bananemdnsa.historystages.client.display.BlockedLines.header(),
+                    header.style(), ChatFormatting.RED));
+        } else {
+            out.addAll(styledLines(header.text(), header.style(), ChatFormatting.RED));
+        }
+        for (var reason : ctx.blockedReason()) {
+            String indent = reason.indent() > 0 ? "   " : " ";
+            if (reason.anyOfHeader()) {
+                out.add(applyStyle(Component.literal(indent).append(reason.text()), header.style(), ChatFormatting.GRAY));
+                continue;
+            }
+            ScrollTooltipLine termLine = byId.get(reason.templateId());
+            if (termLine == null || !termLine.enabled()) continue;
+            if (termLine.text().isEmpty()) {
+                out.add(applyStyle(Component.literal(indent + "\u2022 ").append(reason.text()),
+                        termLine.style(), ChatFormatting.GRAY));
+            } else {
+                out.addAll(styledLines(indent + ScrollTooltipLayout.fill(termLine.text(),
+                        Map.of("stage", reason.stageName())), termLine.style(), ChatFormatting.GRAY));
+            }
+        }
+        return out;
+    }
+
+    /**
+     * One heading per cost block, then its conditions through the shared logic rows. A block that
+     * does not hold yet is a hint and drawn dimmer; the heading row's colour applies to both.
+     */
+    private static List<Component> costSection(ScrollTooltipLine header, Map<String, ScrollTooltipLine> byId,
+                                               ScrollTooltipContext ctx) {
+        if (ctx.cost().isEmpty()) return List.of();
+        List<Component> out = new ArrayList<>();
+        for (ScrollTooltipContext.CostEntry entry : ctx.cost()) {
+            Component heading = applyStyle(entry.heading().copy(), header.style(), ChatFormatting.AQUA);
+            out.add(entry.active() ? heading : heading.copy().withStyle(ChatFormatting.ITALIC));
+            for (var reason : entry.reason()) {
+                String indent = reason.indent() > 0 ? "   " : " ";
+                if (reason.anyOfHeader()) {
+                    out.add(applyStyle(Component.literal(indent).append(reason.text()), header.style(), ChatFormatting.GRAY));
+                    continue;
+                }
+                ScrollTooltipLine termLine = byId.get(reason.templateId());
+                if (termLine == null || !termLine.enabled()) continue;
+                if (termLine.text().isEmpty()) {
+                    out.add(applyStyle(Component.literal(indent + "\u2022 ").append(reason.text()),
+                            termLine.style(), ChatFormatting.GRAY));
+                } else {
+                    out.addAll(styledLines(indent + ScrollTooltipLayout.fill(termLine.text(),
+                            Map.of("stage", reason.stageName())), termLine.style(), ChatFormatting.GRAY));
+                }
+            }
+        }
+        return out;
+    }
+
+    /** "⚠ Revoked when:" per revoke block of this stage, with its conditions in the shared rows. */
+    private static List<Component> revokeSection(ScrollTooltipLine header, Map<String, ScrollTooltipLine> byId,
+                                                 ScrollTooltipContext ctx) {
+        if (ctx.revokeWarnings().isEmpty()) return List.of();
+        List<Component> out = new ArrayList<>();
+        for (var lines : ctx.revokeWarnings()) {
+            out.add(applyStyle(net.bananemdnsa.historystages.client.display.BlockedLines.revokeHeader(), header.style(), ChatFormatting.GOLD));
+            for (var reason : lines) {
+                String indent = reason.indent() > 0 ? "   " : " ";
+                if (reason.anyOfHeader()) {
+                    out.add(applyStyle(Component.literal(indent).append(reason.text()), header.style(), ChatFormatting.GRAY));
+                    continue;
+                }
+                ScrollTooltipLine termLine = byId.get(reason.templateId());
+                if (termLine == null || !termLine.enabled()) continue;
+                if (termLine.text().isEmpty()) {
+                    out.add(applyStyle(Component.literal(indent + "\u2022 ").append(reason.text()),
+                            termLine.style(), ChatFormatting.GRAY));
+                } else {
+                    out.addAll(styledLines(indent + ScrollTooltipLayout.fill(termLine.text(),
+                            Map.of("stage", reason.stageName())), termLine.style(), ChatFormatting.GRAY));
+                }
+            }
+        }
+        return out;
+    }
+
+    /** "⚠ Unlocking takes away:" and the stages the player would lose. */
+    private static List<Component> revokeTriggerSection(ScrollTooltipLine header, ScrollTooltipContext ctx) {
+        if (ctx.revokedByUnlocking().isEmpty()) return List.of();
+        List<Component> out = new ArrayList<>();
+        out.add(applyStyle(net.bananemdnsa.historystages.client.display.BlockedLines.revokeTriggerHeader(), header.style(), ChatFormatting.GOLD));
+        for (String name : ctx.revokedByUnlocking()) {
+            out.add(Component.literal(" \u2022 " + name).withStyle(ChatFormatting.GRAY));
+        }
+        return out;
     }
 
     private static List<Component> tierSection(ScrollTooltipLine line, ScrollTooltipContext ctx) {
@@ -361,8 +501,7 @@ public final class ScrollTooltipRenderer {
                                              Icons icons, Colors colors) {
         boolean fulfilled = er != null && er.isFulfilled();
         String icon = er != null ? (fulfilled ? icons.fulfilled() : icons.open()) : icons.unknown();
-        StageEntry se = StageManager.getStages().get(sid);
-        String name = se != null ? se.getDisplayName() : sid;
+        String name = net.bananemdnsa.historystages.client.display.BlockedLines.displayName(sid, false);
 
         String colour = fulfilled ? colors.fulfilled() : colors.open();
         ChatFormatting fallback = fulfilled ? ChatFormatting.GREEN : ChatFormatting.GRAY;
@@ -379,8 +518,7 @@ public final class ScrollTooltipRenderer {
                                                    Icons icons, Colors colors) {
         boolean fulfilled = er != null && er.isFulfilled();
         String icon = er != null ? (fulfilled ? icons.fulfilled() : icons.open()) : icons.unknown();
-        StageEntry se = StageManager.getIndividualStages().get(dep.getStageId());
-        String name = se != null ? se.getDisplayName() : dep.getStageId();
+        String name = net.bananemdnsa.historystages.client.display.BlockedLines.displayName(dep.getStageId(), true);
         String mode = Component.translatable(modeKey(dep)).getString();
 
         String template = line.text().isEmpty()

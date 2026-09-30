@@ -69,7 +69,7 @@ public class StageStyleScreen extends Screen {
      */
     private static final String TAB_BACKGROUND = "background";
 
-    private static final List<String> TABS = List.of(TAB_ALL, "unlocked", "reachable", "locked", TAB_BACKGROUND);
+    private static final List<String> TABS = List.of(TAB_ALL, "unlocked", "reachable", "locked", "blocked", TAB_BACKGROUND);
 
     /** Extra space before the background tab, so it does not read as a fifth state. */
     private static final int BACKGROUND_TAB_GAP = 10;
@@ -246,7 +246,7 @@ public class StageStyleScreen extends Screen {
         if (onBackgroundTab()) return graphValues.get("canvas." + leaf);
         if (TAB_ALL.equals(tab)) {
             String first = null;
-            for (String state : List.of("unlocked", "reachable", "locked")) {
+            for (String state : List.of("unlocked", "reachable", "locked", "blocked")) {
                 String value = graphValues.get(stylePath(state, leaf));
                 if (first == null) {
                     first = value;
@@ -651,7 +651,7 @@ public class StageStyleScreen extends Screen {
         }
 
         List<NodeState> shown = TAB_ALL.equals(tab)
-                ? List.of(NodeState.UNLOCKED, NodeState.REACHABLE, NodeState.LOCKED)
+                ? List.of(NodeState.UNLOCKED, NodeState.REACHABLE, NodeState.LOCKED, NodeState.BLOCKED)
                 : List.of(NodeState.valueOf(tab.toUpperCase(Locale.ROOT)));
 
         int cellH = h / shown.size();
@@ -714,7 +714,7 @@ public class StageStyleScreen extends Screen {
         NodeShapes.draw(g, style.shape(), cx, cy, r,
                 style.fillArgb(), style.border(), Math.max(0, style.borderWidth()));
         if (style.checkmark()) {
-            NodeShapes.checkmark(g, cx, cy, r, style.border());
+            NodeShapes.statusBadge(g, state, cx, cy, r, style.border());
         }
 
         if (!"NONE".equals(style.label())) {

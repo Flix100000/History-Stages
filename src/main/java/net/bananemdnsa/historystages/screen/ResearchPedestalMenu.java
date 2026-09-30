@@ -31,7 +31,7 @@ public class ResearchPedestalMenu extends AbstractContainerMenu {
         // Slots 0..10: progress, max, finishDelay, individualMode, depsMet, depositDelay,
         // speedPercent, tierMismatch, requiredTier, requiredTierMode, running
         this(pContainerId, inv, inv.player.level().getBlockEntity(extraData.readBlockPos()),
-                new SimpleContainerData(11));
+                new SimpleContainerData(13));
     }
 
     // Server-Konstruktor
@@ -220,5 +220,15 @@ public class ResearchPedestalMenu extends AbstractContainerMenu {
 
     public boolean isRunning() {
         return this.data.get(10) == 1;
+    }
+
+    /** Whether the scroll's stage is blocked by its logic right now (server verdict). */
+    public boolean isLogicBlocked() {
+        return this.data.get(11) == 1;
+    }
+
+    /** The live research-time factor from the stage's cost blocks, in percent (100 = unchanged). */
+    public int getTimeFactorPercent() {
+        return this.data.get(12);
     }
 }

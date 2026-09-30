@@ -331,7 +331,7 @@ public class StructureLockHandler {
         String structureId = state.cachedLockedStructureIds.get(0);
         String stageName = state.cachedLockedStageIds.isEmpty()
                 ? structureId
-                : resolveStageDisplayName(state.cachedLockedStageIds.get(0));
+                : net.bananemdnsa.historystages.data.logic.StageLogicGate.nameForAnyScope(state.cachedLockedStageIds.get(0), player.getUUID());
 
         String formatted = format
                 .replace("{structure}", structureId)
@@ -348,12 +348,6 @@ public class StructureLockHandler {
 
         DebugLogger.runtime("Structure Lock", player.getName().getString(),
                 "Inside locked structure '" + structureId + "' — missing stages: " + state.cachedLockedStageIds);
-    }
-
-    private static String resolveStageDisplayName(String stageId) {
-        StageEntry entry = StageManager.getStages().get(stageId);
-        if (entry == null) entry = StageManager.getIndividualStages().get(stageId);
-        return entry != null ? entry.getDisplayName() : stageId;
     }
 
     public static boolean isInsideLockedStructure(Player player) {

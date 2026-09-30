@@ -49,8 +49,8 @@ public class IndividualStageRequirement implements Requirement {
         List<RequirementResult.EntryResult> results = new ArrayList<>();
         for (IndividualStageDep dep : group.getIndividualStages()) {
             boolean met = checkIndividualStageDep(dep, ctx);
-            StageEntry stageEntry = StageManager.getIndividualStages().get(dep.getStageId());
-            String name = stageEntry != null ? stageEntry.getDisplayName() : dep.getStageId();
+            String name = net.bananemdnsa.historystages.data.logic.StageLogicGate.nameFor(dep.getStageId(), true,
+                    ctx.player() != null ? ctx.player().getUUID() : null);
             String modeLabel = modeLabel(dep);
             results.add(new RequirementResult.EntryResult("individual_stage", dep.getStageId(),
                     name + modeLabel, met, met ? 1 : 0, 1));

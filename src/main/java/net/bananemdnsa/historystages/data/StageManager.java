@@ -92,7 +92,7 @@ public class StageManager {
             "mod_exceptions", "recipes", "dimensions", "structures", "biomes", "zones", "entities", "trades",
             "dependencies", "icon",
             "min_pedestal_tier", "pedestal_tier_mode",
-            "mode", "auto_trigger", "temporary", "hidden_display", "lose_on_death", "interchangeable",
+            "mode", "auto_trigger", "temporary", "hidden_display", "lose_on_death", "interchangeable", "logic",
             "scroll_completion", "addons", "addon_settings"
     );
 
@@ -185,6 +185,7 @@ public class StageManager {
         loadIndividual();
 
         net.bananemdnsa.historystages.data.auto.AutoTriggerManager.rebuildIndex();
+        warnAboutLogicReferences();
 
         // reloadStages() funnels through here, so both the initial load and every editor-driven
         // reload get their graph positions refreshed from this one place.
@@ -351,6 +352,39 @@ public class StageManager {
                     + " counts for the first group.";
             addMessage(MessageLevel.WARN, msg);
             DebugLogger.warn("Dependency Groups", msg);
+        }
+    }
+
+    /**
+     * Reports logic blocks that cannot do what they say: a stage that does not exist, a global
+     * stage asking about an individual one, a stage referring to itself, or a block type this
+     * version does not know. Runs after both trees are loaded, since a reference may point into
+     * either.
+     *
+     * <p>Reports only, like the dependency checks: each case already evaluates to "false" at
+     * runtime and the file stays as written.
+     */
+    private static void warnAboutLogicReferences() {
+        warnAboutLogicReferences(STAGES, StageScope.GLOBAL);
+        warnAboutLogicReferences(INDIVIDUAL_STAGES, StageScope.INDIVIDUAL);
+    }
+
+    private static void warnAboutLogicReferences(Map<String, StageEntry> stages, StageScope scope) {
+        for (Map.Entry<String, StageEntry> e : stages.entrySet()) {
+            if (!e.getValue().hasLogic()) continue;
+            for (var problem : net.bananemdnsa.historystages.data.logic.LogicReferences.problems(
+                    e.getKey(), scope, e.getValue().getLogicBlocks(), STAGES.keySet(), INDIVIDUAL_STAGES.keySet())) {
+                String what = switch (problem.kind()) {
+                    case MISSING -> "refers to stage '" + problem.stageId() + "', which does not exist. The term counts as not unlocked.";
+                    case SCOPE -> "is global but refers to individual stage '" + problem.stageId() + "'. Global stages can only look at global stages; the term counts as not unlocked.";
+                    case SELF -> "refers to itself. That term can never change the outcome.";
+                    case UNKNOWN_TYPE -> "has a logic block of unknown type '" + problem.stageId() + "'. It is kept in the file but does nothing in this version.";
+                    case UNKNOWN_NODE -> "has a logic block with a condition this version cannot read. The block is kept but does nothing.";
+                };
+                String msg = "Stage '" + e.getKey() + "' (logic block " + (problem.blockIndex() + 1) + ") " + what;
+                addMessage(MessageLevel.WARN, msg);
+                DebugLogger.warn("Stage Logic", msg);
+            }
         }
     }
 

@@ -238,7 +238,7 @@ public class BiomeLockHandler {
         String biomeId = state.currentLockedBiomeIds.isEmpty() ? "?" : state.currentLockedBiomeIds.get(0);
         String stageName = state.currentLockedStageIds.isEmpty()
                 ? biomeId
-                : resolveStageDisplayName(state.currentLockedStageIds.get(0));
+                : net.bananemdnsa.historystages.data.logic.StageLogicGate.nameForAnyScope(state.currentLockedStageIds.get(0), player.getUUID());
 
         String formatted = format
                 .replace("{biome}", biomeId)
@@ -255,12 +255,6 @@ public class BiomeLockHandler {
 
         DebugLogger.runtime("Biome Lock", player.getName().getString(),
                 "Inside locked biome '" + biomeId + "' — missing stages: " + state.currentLockedStageIds);
-    }
-
-    private static String resolveStageDisplayName(String stageId) {
-        StageEntry entry = StageManager.getStages().get(stageId);
-        if (entry == null) entry = StageManager.getIndividualStages().get(stageId);
-        return entry != null ? entry.getDisplayName() : stageId;
     }
 
     // --- Queries used by the interaction handlers ---

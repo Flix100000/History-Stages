@@ -135,6 +135,7 @@ public final class GraphLegend {
         y = stateRow(g, font, sx1, sx2, tx, y, NodeState.UNLOCKED);
         y = stateRow(g, font, sx1, sx2, tx, y, NodeState.REACHABLE);
         y = stateRow(g, font, sx1, sx2, tx, y, NodeState.LOCKED);
+        y = stateRow(g, font, sx1, sx2, tx, y, NodeState.BLOCKED);
 
         g.fill(lx + 6, y + 1, lx + curW - 6, y + 2, SEPARATOR_COLOR);
         y += 4;
@@ -223,7 +224,8 @@ public final class GraphLegend {
      */
     private int bodyWidth(Font font) {
         int nodeLabelW = Math.max(font.width(stateLabel(NodeState.UNLOCKED)),
-                Math.max(font.width(stateLabel(NodeState.REACHABLE)), font.width(stateLabel(NodeState.LOCKED))));
+                Math.max(font.width(stateLabel(NodeState.REACHABLE)),
+                        Math.max(font.width(stateLabel(NodeState.LOCKED)), font.width(stateLabel(NodeState.BLOCKED)))));
         int edgeLabelW = Math.max(font.width(tr("and")), font.width(tr("or")));
         int nodeRowW = LABEL_DX + nodeLabelW + PAD;
         int edgeRowW = EDGE_LABEL_DX + edgeLabelW + PAD;
@@ -267,6 +269,7 @@ public final class GraphLegend {
             case UNLOCKED -> "editor.historystages.graph.state.unlocked";
             case REACHABLE -> "editor.historystages.graph.state.reachable";
             case LOCKED -> "editor.historystages.graph.state.locked";
+            case BLOCKED -> "editor.historystages.graph.state.blocked";
         };
         return Component.translatable(key).getString();
     }

@@ -61,20 +61,30 @@ public class XpLevelRequirement implements Requirement {
         List<RequirementResult.EntryResult> results = new ArrayList<>();
         XpLevelDep xpLevel = group.getXpLevel();
         if (xpLevel != null && xpLevel.getLevel() > 0) {
+            // The level a "cheaper/costlier while" block leaves; 0 only when it asked for free.
+            int required = effectiveLevel(xpLevel.getLevel(), ctx.xpFactor());
             boolean met;
             int currentLevel = ctx.player() != null ? ctx.player().experienceLevel : 0;
-            if (xpLevel.isConsume()) {
+            if (required == 0) {
+                met = true;
+                currentLevel = 0;
+            } else if (xpLevel.isConsume()) {
                 met = ctx.depositedData() != null
                         && ctx.depositedData().getBoolean(ctx.progressKey(DependencyProgress.XP_SUFFIX));
-                currentLevel = met ? xpLevel.getLevel() : currentLevel;
+                currentLevel = met ? required : currentLevel;
             } else {
-                met = currentLevel >= xpLevel.getLevel();
+                met = currentLevel >= required;
             }
             boolean needsDeposit = xpLevel.isConsume() && !met;
-            String desc = "Level " + xpLevel.getLevel() + (xpLevel.isConsume() ? " (consumed)" : "");
+            String desc = "Level " + required + (xpLevel.isConsume() ? " (consumed)" : "");
             results.add(new RequirementResult.EntryResult("xp_level", "xp", desc, met,
-                    currentLevel, xpLevel.getLevel(), needsDeposit));
+                    currentLevel, required, needsDeposit));
         }
         return results;
+    }
+
+    /** The XP level a requirement asks for once a cost factor is applied. */
+    public static int effectiveLevel(int level, double xpFactor) {
+        return net.bananemdnsa.historystages.data.logic.LogicBlockParams.scale(level, xpFactor);
     }
 }

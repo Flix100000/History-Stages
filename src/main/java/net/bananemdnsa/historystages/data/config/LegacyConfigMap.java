@@ -86,7 +86,16 @@ public final class LegacyConfigMap {
             "VISUAL|zone_overlay.zoneBorderColor",
             // Interchangeable stages arrived in 6.1, so there was no "One of:" group to show.
             "VISUAL|visuals.groupInterchangeableStages",
-            "VISUAL|jade.groupInterchangeableStages");
+            "VISUAL|jade.groupInterchangeableStages",
+            // Stage logic arrived in 6.1; before it nothing could block a stage.
+            "VISUAL|lock_messages.stageBlocked",
+            "VISUAL|lock_messages.stageRevoked",
+            "VISUAL|stage_logic.blockedDisplay",
+            "VISUAL|stage_logic.showInactiveCostHints",
+            "VISUAL|stage_logic.showRevokeWarningOnStage",
+            "VISUAL|stage_logic.showRevokeWarningOnTrigger",
+            "GAMEPLAY|stage_logic.researchWhenBlocked",
+            "GAMEPLAY|stage_logic.warnOnForcedUnlock");
 
     private LegacyConfigMap() {}
 

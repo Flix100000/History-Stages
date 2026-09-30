@@ -5,6 +5,7 @@ import net.bananemdnsa.historystages.block.ResearchPedestalBlock;
 import net.bananemdnsa.historystages.compat.ScrollVariants;
 import net.bananemdnsa.historystages.data.ScrollCompletion;
 import net.bananemdnsa.historystages.data.StageEntry;
+import net.bananemdnsa.historystages.data.logic.StageLogicGate;
 import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.data.StageMode;
 import net.bananemdnsa.historystages.data.NbtMatcher;
@@ -115,6 +116,14 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
     private double progressAccumulator = 0.0;
     private int currentSpeedPercent = 0;
     private boolean tierMismatch = false;
+    /**
+     * Whether the scroll's stage is blocked by its logic for whoever this research belongs to.
+     * Folded into the requirement verdict like a tier mismatch, so a blocked stage cannot start and
+     * a running one pauses; synced separately so the screen can say why.
+     */
+    private boolean logicBlocked = false;
+    /** The live time factor from cost blocks, in percent, synced so the screen's countdown agrees. */
+    private int timeFactorPercent = 100;
     private int requiredTier = 1;
     private TierMode requiredTierMode = TierMode.MIN;
     private int lastComparatorOutput = -1;
@@ -136,6 +145,8 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
                     case 8 -> ResearchPedestalBlockEntity.this.requiredTier;
                     case 9 -> ResearchPedestalBlockEntity.this.requiredTierMode.ordinal();
                     case 10 -> ResearchPedestalBlockEntity.this.running ? 1 : 0;
+                    case 11 -> ResearchPedestalBlockEntity.this.logicBlocked ? 1 : 0;
+                    case 12 -> ResearchPedestalBlockEntity.this.timeFactorPercent;
                     default -> 0;
                 };
             }
@@ -153,12 +164,14 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
                     case 9 -> ResearchPedestalBlockEntity.this.requiredTierMode =
                             pValue == TierMode.EXACT.ordinal() ? TierMode.EXACT : TierMode.MIN;
                     case 10 -> ResearchPedestalBlockEntity.this.running = pValue == 1;
+                    case 11 -> ResearchPedestalBlockEntity.this.logicBlocked = pValue == 1;
+                    case 12 -> ResearchPedestalBlockEntity.this.timeFactorPercent = pValue;
                 }
             }
 
             @Override
             public int getCount() {
-                return 11;
+                return 13;
             }
         };
     }
@@ -231,6 +244,45 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
     }
 
     /**
+     * The item cost reduction for this scroll: the one frozen on it at the first deposit, or — before
+     * that — this pedestal's booster combined with the stage's "cheaper/costlier while" blocks as
+     * they stand now. One value, so every reader of {@code LockedCostReduction} stays right.
+     */
+    public double itemCostReduction(CompoundTag scrollTag) {
+        if (scrollTag.contains("LockedCostReduction")) return scrollTag.getDouble("LockedCostReduction");
+        return BoosterUtil.combineReduction(getActiveBooster().costReduction(), logicCost(scrollTag).items());
+    }
+
+    /** The XP factor for this scroll, frozen at the first deposit like the item reduction. */
+    public double xpCostFactor(CompoundTag scrollTag) {
+        if (scrollTag.contains("LockedXpFactor")) return scrollTag.getDouble("LockedXpFactor");
+        return logicCost(scrollTag).xp();
+    }
+
+    /**
+     * Freezes both cost values on the scroll if they are not yet. Called on the first deposit of
+     * any kind: after that, a condition changing mid-way must not change what is owed.
+     */
+    public void lockCostFactors(CompoundTag scrollTag) {
+        if (!scrollTag.contains("LockedCostReduction")) {
+            scrollTag.putDouble("LockedCostReduction", itemCostReduction(scrollTag));
+        }
+        if (!scrollTag.contains("LockedXpFactor")) {
+            scrollTag.putDouble("LockedXpFactor", xpCostFactor(scrollTag));
+        }
+    }
+
+    /** What the stage's cost blocks say for whoever this research is for. */
+    private net.bananemdnsa.historystages.data.logic.StageLogic.CostFactors logicCost(CompoundTag scrollTag) {
+        if (!scrollTag.contains("StageResearch")) return net.bananemdnsa.historystages.data.logic.StageLogic.CostFactors.NONE;
+        String stageId = scrollTag.getString("StageResearch");
+        boolean individual = StageManager.isIndividualStage(stageId);
+        UUID who = scrollTag.hasUUID("OwnerUUID") ? scrollTag.getUUID("OwnerUUID")
+                : (this.ownerUUID != null ? this.ownerUUID : this.lastInteractingPlayer);
+        return StageLogicGate.cost(stageId, individual, who);
+    }
+
+    /**
      * Booster effect for this pedestal. Scans all positions under the pedestal
      * (1 for single-block tiers, 2 for multiblock Tier 3/4), drops any booster
      * whose tier gating rejects this pedestal, and returns the strongest of
@@ -275,6 +327,8 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
         this.progress = 0;
         this.progressAccumulator = 0.0;
         this.tierMismatch = false;
+        this.logicBlocked = false;
+        this.timeFactorPercent = 100;
         this.requiredTier = 1;
         this.requiredTierMode = TierMode.MIN;
         this.running = false;
@@ -363,11 +417,8 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
                 : new CompoundTag();
         boolean changed = false;
 
-        // Use locked cost reduction if present, else preview using the current pedestal's booster.
-        boolean alreadyLocked = scrollTag.contains("LockedCostReduction");
-        double costReduction = alreadyLocked
-                ? getLockedCostReduction(scrollTag)
-                : getActiveBooster().costReduction();
+        // Frozen value if present, else booster and cost blocks as they stand now.
+        double costReduction = itemCostReduction(scrollTag);
 
         outer:
         for (DepositPass pass : DepositPass.values()) {
@@ -429,10 +480,8 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
 
         if (changed) {
             scrollTag.put("DepositedDependencies", deposited);
-            // First deposit ever for this scroll: lock the cost reduction value.
-            if (!alreadyLocked) {
-                scrollTag.putDouble("LockedCostReduction", costReduction);
-            }
+            // First deposit ever for this scroll: freeze what it costs.
+            lockCostFactors(scrollTag);
             scroll.set(DataComponents.CUSTOM_DATA, CustomData.of(scrollTag));
             setChanged();
 
@@ -448,11 +497,9 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
                     if (player != null) {
                         CompoundTag updatedDeposited = scrollTag.contains("DepositedDependencies")
                                 ? scrollTag.getCompound("DepositedDependencies") : null;
-                        double scrollCost = scrollTag.contains("LockedCostReduction")
-                                ? scrollTag.getDouble("LockedCostReduction") : 0.0;
                         var result = DependencyChecker.checkAll(entry, player, level,
                                 isCurrentScrollIndividual() ? StageScope.INDIVIDUAL : StageScope.GLOBAL,
-                                updatedDeposited, scrollCost);
+                                updatedDeposited, itemCostReduction(scrollTag), xpCostFactor(scrollTag));
                         PacketDistributor_sendToPlayer(player,
                                 new SyncDependencyStatusPacket(stageId, isCurrentScrollIndividual(), result));
                     }
@@ -486,9 +533,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
         CompoundTag depositedData = scrollTag.contains("DepositedDependencies")
                 ? scrollTag.getCompound("DepositedDependencies") : new CompoundTag();
 
-        double costReduction = scrollTag.contains("LockedCostReduction")
-                ? getLockedCostReduction(scrollTag)
-                : getActiveBooster().costReduction();
+        double costReduction = itemCostReduction(scrollTag);
 
         for (int i = 0; i < entry.getDependencies().size(); i++) {
             var group = entry.getDependencies().get(i);
@@ -651,6 +696,19 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
                     metTotal = false;
                 }
 
+                // So does a logic block. Asked every tick rather than on the dependency cooldown:
+                // it is a few set lookups, and a stage that just became blocked must not finish on
+                // a verdict from half a second ago. That is exactly the race two pedestals
+                // researching both ends of an either-or would otherwise win together.
+                entity.logicBlocked = !isCreative && entity.isLogicBlocked(stageId, isIndividual);
+                if (entity.logicBlocked) {
+                    metTotal = false;
+                    if (entity.running && Config.GAMEPLAY.researchWhenBlocked.get()
+                            == Config.Gameplay.ResearchWhenBlocked.CANCEL) {
+                        entity.cancelBlockedResearch(stack);
+                    }
+                }
+
                 // What the screen shows and what the start button tests: the requirements
                 // themselves, deliberately independent of whether anyone pressed start.
                 // Folding `running` into this would report "requirements not met" for every
@@ -664,7 +722,14 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
                 if (metTotal && entity.running) {
                     isResearching = true;
                     if (entity.progress < maxProgress) {
-                        entity.progressAccumulator += BoosterUtil.speedMultiplier(activeBooster.speedReduction());
+                        // The stage's cost blocks scale the time live, on top of the booster:
+                        // a block becoming true mid-research speeds up the rest of it.
+                        double timeFactor = entity.logicTimeFactor(stageId, isIndividual, isCreative);
+                        if (timeFactor <= 0.0) {
+                            entity.progress = maxProgress;
+                        }
+                        entity.progressAccumulator += timeFactor <= 0.0 ? 0.0
+                                : BoosterUtil.speedMultiplier(activeBooster.speedReduction()) / timeFactor;
                         int wholeTicks = (int) entity.progressAccumulator;
                         if (wholeTicks > 0) {
                             entity.progress = Math.min(maxProgress, entity.progress + wholeTicks);
@@ -679,7 +744,15 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
                     } else {
                         entity.finishDelay++;
                         if (entity.finishDelay >= 20) {
-                            entity.finishResearch(stack);
+                            // One more look right before the unlock. The per-tick check above ran
+                            // before this tick's other pedestals did, and one of them may have just
+                            // unlocked the stage that blocks this one.
+                            if (!isCreative && entity.isLogicBlocked(stageId, isIndividual)) {
+                                entity.logicBlocked = true;
+                                entity.finishDelay = 0;
+                            } else {
+                                entity.finishResearch(stack);
+                            }
                         }
                     }
                 }
@@ -720,6 +793,41 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
      * waiting for the next scheduled check — a player who deposits the last item and presses
      * start in the same moment must not be turned away by a verdict from nine ticks ago.
      */
+    /**
+     * Whether the stage is blocked for whoever this research is for: the owner of an individual
+     * scroll, or, before anyone claimed it, the player at the pedestal. The same fallback the
+     * requirement check uses.
+     */
+    /** The live research-time factor from the stage's cost blocks; 1.0 without any. */
+    private double logicTimeFactor(String stageId, boolean isIndividual, boolean isCreative) {
+        if (isCreative) return 1.0;
+        UUID subject = this.ownerUUID != null ? this.ownerUUID : this.lastInteractingPlayer;
+        double f = StageLogicGate.cost(stageId, isIndividual, subject).time();
+        this.timeFactorPercent = (int) Math.round(f * 100);
+        return f;
+    }
+
+    private boolean isLogicBlocked(String stageId, boolean isIndividual) {
+        if (!isIndividual) return StageLogicGate.global(stageId).isBlocked();
+        UUID subject = this.ownerUUID != null ? this.ownerUUID : this.lastInteractingPlayer;
+        return StageLogicGate.individual(stageId, subject).isBlocked();
+    }
+
+    /**
+     * The CANCEL answer to a stage becoming blocked mid-research: progress goes, the scroll stays
+     * in the slot, and the owner has to press start again once the block clears.
+     */
+    private void cancelBlockedResearch(ItemStack stack) {
+        CompoundTag nbt = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        nbt.remove("ResearchProgress");
+        stack.set(DataComponents.CUSTOM_DATA, CustomData.of(nbt));
+        this.progress = 0;
+        this.progressAccumulator = 0.0;
+        this.finishDelay = 0;
+        this.running = false;
+        setChanged();
+    }
+
     private boolean checkDependencies(StageEntry stageEntry, boolean isIndividual, CompoundTag stackTag) {
         if (level == null) return false;
 
@@ -739,12 +847,9 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
         CompoundTag depositedTag = stackTag.contains("DepositedDependencies")
                 ? stackTag.getCompound("DepositedDependencies")
                 : null;
-        double tickCost = stackTag.contains("LockedCostReduction")
-                ? stackTag.getDouble("LockedCostReduction") : 0.0;
-
         RequirementResult result = DependencyChecker.checkAll(stageEntry, researchPlayer, level,
                 isIndividual ? StageScope.INDIVIDUAL : StageScope.GLOBAL,
-                depositedTag, tickCost);
+                depositedTag, itemCostReduction(stackTag), xpCostFactor(stackTag));
         return result.isFulfilled();
     }
 
@@ -1045,6 +1150,17 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
             // item, press start, get refused. So this asks again rather than reading the field,
             // and stores what it learns so the screen agrees with what just happened.
             if (this.tierMismatch) return false;
+            // Asked fresh, like the requirements below. The owner is only decided further down, so
+            // for an unclaimed individual scroll this asks about the player pressing start.
+            UUID blockSubject = individual
+                    ? (tag.hasUUID("OwnerUUID") ? tag.getUUID("OwnerUUID") : player.getUUID())
+                    : null;
+            this.logicBlocked = StageLogicGate.of(stageId, individual, blockSubject).isBlocked();
+            if (this.logicBlocked) {
+                player.displayClientMessage(net.bananemdnsa.historystages.util.lock.LockMessages
+                        .stageBlocked(entry.getDisplayName()).withStyle(ChatFormatting.RED), true);
+                return false;
+            }
             if (entry.hasDependencies()) {
                 this.lastDependencyVerdict = checkDependencies(entry, individual, tag);
                 this.dependencyCheckCooldown = DEPENDENCY_CHECK_INTERVAL;

@@ -63,7 +63,8 @@ public class GraphConfig {
                     .defineEnum("label", LabelMode.DISPLAY_NAME);
             labelColor = builder.comment("Label colour, #RRGGBB.")
                     .define("labelColor", "#DDDDDD");
-            checkmark = builder.comment("Draw a status tick on the node?")
+            checkmark = builder.comment("Draw the status badge on the node? A tick on unlocked stages,",
+                            "a red no-entry sign on stages blocked by their logic.")
                     .define("checkmark", defCheckmark);
         }
     }
@@ -105,6 +106,7 @@ public class GraphConfig {
         public final ModConfigSpec.BooleanValue showTriggers;
         public final ModConfigSpec.BooleanValue showUnlocks;
         public final ModConfigSpec.BooleanValue showDescription;
+        public final ModConfigSpec.BooleanValue showBlockedReason;
 
         // [edges]
         public final ModConfigSpec.ConfigValue<String> edgeColorMet;
@@ -120,9 +122,11 @@ public class GraphConfig {
         public final StyleBlock globalUnlocked;
         public final StyleBlock globalReachable;
         public final StyleBlock globalLocked;
+        public final StyleBlock globalBlocked;
         public final StyleBlock individualUnlocked;
         public final StyleBlock individualReachable;
         public final StyleBlock individualLocked;
+        public final StyleBlock individualBlocked;
 
         Graph(ModConfigSpec.Builder builder) {
             builder.comment(
@@ -217,6 +221,9 @@ public class GraphConfig {
                     .define("showUnlocks", true);
             showDescription = builder.comment("Show the per-stage info text from graph_stages.json?")
                     .define("showDescription", true);
+            showBlockedReason = builder.comment("Show why a blocked stage is blocked ('Blocked while ...')?",
+                            "Under blockedDisplay = PLAIN in visual.toml only the heading shows. [Default: true]")
+                    .define("showBlockedReason", true);
             builder.pop();
 
             builder.comment("Dependency lines.").push("edges");
@@ -250,21 +257,24 @@ public class GraphConfig {
                             "A stage may override any of these individually in",
                             "settings/graph_stages.json.",
                             "",
-                            "The status tick is on for UNLOCKED only. A tick means 'you have this';",
-                            "putting one on a reachable stage claims something is done when it is",
-                            "merely available next. Reachable is already distinguished by its colour.")
+                            "The status badge (checkmark) is on for UNLOCKED and BLOCKED only. A tick",
+                            "means 'you have this'; putting one on a reachable stage claims something is",
+                            "done when it is merely available next. On a blocked stage the badge is a",
+                            "no-entry sign instead, which says why it cannot be researched.")
                     .push("style");
 
             builder.push("global");
             globalUnlocked = styleBlock(builder, "unlocked", NodeShape.ROUNDED, "#44CC99", "#2E8B62", true);
             globalReachable = styleBlock(builder, "reachable", NodeShape.ROUNDED, "#DDBB44", "#8A7220", false);
             globalLocked = styleBlock(builder, "locked", NodeShape.ROUNDED, "#555555", "#787878", false);
+            globalBlocked = styleBlock(builder, "blocked", NodeShape.ROUNDED, "#CC4444", "#5A1E1E", true);
             builder.pop();
 
             builder.push("individual");
             individualUnlocked = styleBlock(builder, "unlocked", NodeShape.DIAMOND, "#44CC99", "#2E8B62", true);
             individualReachable = styleBlock(builder, "reachable", NodeShape.DIAMOND, "#DDBB44", "#8A7220", false);
             individualLocked = styleBlock(builder, "locked", NodeShape.DIAMOND, "#555555", "#787878", false);
+            individualBlocked = styleBlock(builder, "blocked", NodeShape.DIAMOND, "#CC4444", "#5A1E1E", true);
             builder.pop();
 
             builder.pop(); // style

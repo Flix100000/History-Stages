@@ -62,6 +62,7 @@ public final class StageGraphConfig {
             case UNLOCKED -> individual ? graph.individualUnlocked : graph.globalUnlocked;
             case REACHABLE -> individual ? graph.individualReachable : graph.globalReachable;
             case LOCKED -> individual ? graph.individualLocked : graph.globalLocked;
+            case BLOCKED -> individual ? graph.individualBlocked : graph.globalBlocked;
         };
     }
 

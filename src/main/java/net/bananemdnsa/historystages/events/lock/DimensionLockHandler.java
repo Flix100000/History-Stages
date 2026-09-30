@@ -51,7 +51,7 @@ public class DimensionLockHandler {
                 if (stageEntry == null) {
                     stageEntry = StageManager.getIndividualStages().get(stageId);
                 }
-                displayNames.add(stageEntry != null ? stageEntry.getDisplayName() : stageId);
+                displayNames.add(net.bananemdnsa.historystages.data.logic.StageLogicGate.nameForAnyScope(stageId, player.getUUID()));
             }
 
             PacketHandler.sendLockFeedbackToPlayer(

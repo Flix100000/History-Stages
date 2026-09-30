@@ -127,12 +127,10 @@ public final class TradeLockHelper {
      * screen is what the pack author called the stage — and when a stage has since been deleted
      * the id is still better than nothing, so it falls back to it rather than dropping the entry.
      */
-    public static List<String> displayNamesOf(List<String> stageIds) {
+    public static List<String> displayNamesOf(List<String> stageIds, java.util.UUID viewer) {
         List<String> names = new ArrayList<>(stageIds.size());
         for (String stageId : stageIds) {
-            StageEntry stage = StageManager.getStages().get(stageId);
-            if (stage == null) stage = StageManager.getIndividualStages().get(stageId);
-            names.add(stage != null ? stage.getDisplayName() : stageId);
+            names.add(net.bananemdnsa.historystages.data.logic.StageLogicGate.nameForAnyScope(stageId, viewer));
         }
         return names;
     }

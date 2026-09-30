@@ -27,7 +27,8 @@ public final class EmiReloadBridge {
      */
     public static void reloadIfHiding() {
         if (net.bananemdnsa.historystages.Config.VISUAL.hideLockedItemsInViewers.get()
-                || net.bananemdnsa.historystages.Config.VISUAL.hideLockedRecipesInViewers.get()) {
+                || net.bananemdnsa.historystages.Config.VISUAL.hideLockedRecipesInViewers.get()
+                || net.bananemdnsa.historystages.compat.HiddenScrolls.anyHiddenBlocks()) {
             reloadIfPresent();
         }
     }

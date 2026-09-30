@@ -121,6 +121,12 @@ public class HistoryStageReward extends Reward {
             broadcastLockEffects(player, displayName);
         } else {
             if (data.hasStage(stage)) return;
+            // A quest reward is pack logic, not an admin action, so a logic block stops it.
+            if (net.bananemdnsa.historystages.data.logic.StageLogicGate.global(stage).isBlocked()) {
+                net.bananemdnsa.historystages.util.DebugLogger.runtime("Stage Logic", player.getName().getString(),
+                        "FTB Quests reward for '" + stage + "' refused: blocked by its logic.");
+                return;
+            }
             data.addStage(stage);
             data.setDirty();
             NeoForge.EVENT_BUS.post(new StageEvent.Unlocked(stage, displayName));
@@ -166,6 +172,11 @@ public class HistoryStageReward extends Reward {
             }
         } else {
             if (data.hasStage(player.getUUID(), stage)) return;
+            if (net.bananemdnsa.historystages.data.logic.StageLogicGate.individual(stage, player.getUUID()).isBlocked()) {
+                net.bananemdnsa.historystages.util.DebugLogger.runtime("Stage Logic", player.getName().getString(),
+                        "FTB Quests reward for '" + stage + "' refused: blocked by its logic.");
+                return;
+            }
             data.addStage(player.getUUID(), stage);
             data.setDirty();
             NeoForge.EVENT_BUS.post(new StageEvent.IndividualUnlocked(stage, displayName, player.getUUID()));

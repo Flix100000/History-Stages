@@ -18,12 +18,24 @@ import net.minecraft.world.level.Level;
  * @param groupKey      this group's identity, which stored progress is keyed by. Not its
  *                      position: the editor can delete and reorder groups, and progress filed by
  *                      position moves to whichever requirement lands on that number next
- * @param costReduction booster reduction in [0,0.9], shrinking item requirements
+ * @param costReduction reduction shrinking item requirements: the booster's, combined with any
+ *                      "cheaper/costlier while" block — negative means costlier, 1.0 free
  * @param scope         whether this check is about a global stage or an individual one; decides
  *                      which requirement kinds are asked at all
+ * @param xpFactor      multiplier on XP level requirements from "cheaper/costlier while" blocks;
+ *                      1.0 unchanged, 0 free
  */
 public record RequirementContext(ServerPlayer player, Level level, CompoundTag depositedData,
-        String groupKey, double costReduction, StageScope scope) {
+        String groupKey, double costReduction, StageScope scope, double xpFactor) {
+
+    /**
+     * Without an XP factor, i.e. XP costs unchanged. Kept so views and addons built against the
+     * six-field form keep compiling.
+     */
+    public RequirementContext(ServerPlayer player, Level level, CompoundTag depositedData,
+                              String groupKey, double costReduction, StageScope scope) {
+        this(player, level, depositedData, groupKey, costReduction, scope, 1.0);
+    }
 
     /**
      * The NBT key this requirement's stored progress belongs under, inside {@link #depositedData}.

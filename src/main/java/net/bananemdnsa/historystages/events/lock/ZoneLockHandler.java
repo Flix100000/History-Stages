@@ -559,7 +559,7 @@ public class ZoneLockHandler {
     private static void sendLockMessage(ServerPlayer player, PlayerState state,
                                         ZoneVerdict verdict) {
         String zoneName = verdict.messageZoneName();
-        String stageName = stageNameForMessage(state, verdict);
+        String stageName = stageNameForMessage(state, verdict, player.getUUID());
 
         String formatted = verdict.messageText()
                 .replace("{zone}", zoneName)
@@ -583,14 +583,12 @@ public class ZoneLockHandler {
      * <p>Found by the index the verdict reports rather than by matching names: nothing stops two
      * zones being called the same thing, and a name match would then credit the wrong stage.
      */
-    private static String stageNameForMessage(PlayerState state, ZoneVerdict verdict) {
+    private static String stageNameForMessage(PlayerState state, ZoneVerdict verdict, java.util.UUID viewer) {
         int index = verdict.messageZoneIndex();
         if (index < 0 || index >= state.zonesHere.size()) return "";
 
         String stageId = state.zonesHere.get(index).stageId();
-        StageEntry entry = StageManager.getStages().get(stageId);
-        if (entry == null) entry = StageManager.getIndividualStages().get(stageId);
-        return entry != null ? entry.getDisplayName() : stageId;
+        return net.bananemdnsa.historystages.data.logic.StageLogicGate.nameForAnyScope(stageId, viewer);
     }
 
     /**

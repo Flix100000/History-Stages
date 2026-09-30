@@ -445,7 +445,27 @@ public class ConfigEditorScreen extends Screen {
                 Config.VISUAL.msgEnchantmentLocked.get(), true, ""));
         lockMessages.add(new ConfigEntry("lock_messages.recipeLocked", "msgRecipeLocked", ConfigType.RICH_TEXT,
                 Config.VISUAL.msgRecipeLocked.get(), true, ""));
+        lockMessages.add(new ConfigEntry("lock_messages.stageBlocked", "msgStageBlocked", ConfigType.RICH_TEXT,
+                Config.VISUAL.msgStageBlocked.get(), true, ""));
+        lockMessages.add(new ConfigEntry("lock_messages.stageRevoked", "msgStageRevoked", ConfigType.RICH_TEXT,
+                Config.VISUAL.msgStageRevoked.get(), true, ""));
         visualSections.add(lockMessages);
+
+        ConfigSection stageLogicVisual = new ConfigSection("editor.historystages.config.stage_logic");
+        stageLogicVisual.add(new ConfigEntry("stage_logic.blockedDisplay", ConfigType.ENUM,
+                Config.VISUAL.blockedDisplay.get().name(), true, "REASON",
+                "editor.historystages.config.blockedDisplay",
+                "editor.historystages.config.blockedDisplay.desc",
+                Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, null,
+                java.util.Arrays.stream(Config.Visual.BlockedDisplay.values()).map(Enum::name).toList(),
+                Config.Visual.BlockedDisplay.class.getSimpleName()));
+        stageLogicVisual.add(new ConfigEntry("stage_logic.showInactiveCostHints", "showInactiveCostHints", ConfigType.BOOLEAN,
+                Config.VISUAL.showInactiveCostHints.get().toString(), true, "true"));
+        stageLogicVisual.add(new ConfigEntry("stage_logic.showRevokeWarningOnStage", "showRevokeWarningOnStage", ConfigType.BOOLEAN,
+                Config.VISUAL.showRevokeWarningOnStage.get().toString(), true, "true"));
+        stageLogicVisual.add(new ConfigEntry("stage_logic.showRevokeWarningOnTrigger", "showRevokeWarningOnTrigger", ConfigType.BOOLEAN,
+                Config.VISUAL.showRevokeWarningOnTrigger.get().toString(), true, "true"));
+        visualSections.add(stageLogicVisual);
 
         ConfigSection scrollTooltip = new ConfigSection("editor.historystages.config.scroll_tooltip");
         scrollTooltip.add(new ConfigEntry("scroll_tooltip.lines", ConfigType.SUBSCREEN,
@@ -577,6 +597,18 @@ public class ConfigEditorScreen extends Screen {
                 encodeBoosterList(Config.GAMEPLAY.researchBoosters.get()), false, ""));
         gameplaySections.add(research);
 
+        ConfigSection stageLogic = new ConfigSection("editor.historystages.config.stage_logic");
+        stageLogic.add(new ConfigEntry("stage_logic.researchWhenBlocked", ConfigType.ENUM,
+                Config.GAMEPLAY.researchWhenBlocked.get().name(), false, "PAUSE",
+                "editor.historystages.config.researchWhenBlocked",
+                "editor.historystages.config.researchWhenBlocked.desc",
+                Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, null,
+                java.util.Arrays.stream(Config.Gameplay.ResearchWhenBlocked.values()).map(Enum::name).toList(),
+                Config.Gameplay.ResearchWhenBlocked.class.getSimpleName()));
+        stageLogic.add(new ConfigEntry("stage_logic.warnOnForcedUnlock", "warnOnForcedUnlock", ConfigType.BOOLEAN,
+                Config.GAMEPLAY.warnOnForcedUnlock.get().toString(), false, "true"));
+        gameplaySections.add(stageLogic);
+
         ConfigSection lootReplace = new ConfigSection("editor.historystages.config.loot_replacements");
         lootReplace.add(new ConfigEntry("loot_replacements.useReplacements", "useReplacements", ConfigType.BOOLEAN,
                 Config.GAMEPLAY.useReplacements.get().toString(), false, "false"));
@@ -678,7 +710,7 @@ public class ConfigEditorScreen extends Screen {
         }
 
         for (String collection : List.of("global", "individual")) {
-            for (String state : List.of("unlocked", "reachable", "locked")) {
+            for (String state : List.of("unlocked", "reachable", "locked", "blocked")) {
                 List<ConfigEntry> block = new ArrayList<>();
                 for (GraphKey gk : GraphConfigEntries.styleKeys(collection, state)) {
                     // Keyed by leaf, so all six blocks share ten labels instead of sixty.

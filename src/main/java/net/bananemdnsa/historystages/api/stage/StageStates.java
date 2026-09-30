@@ -19,6 +19,9 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.neoforged.neoforge.common.NeoForge;
 
+import net.bananemdnsa.historystages.data.logic.StageLogicGate;
+import net.bananemdnsa.historystages.util.DebugLogger;
+
 import java.util.ArrayList;
 
 /**
@@ -49,10 +52,37 @@ public final class StageStates {
     private StageStates() {}
 
     /**
-     * Unlocks a global stage. No-op if already unlocked.
-     * Returns true if the stage was newly unlocked.
+     * What a forced unlock did, for the admin paths that are allowed past a logic block and
+     * should say so.
+     *
+     * @param unlocked   true if the stage was newly unlocked
+     * @param wasBlocked true if its logic would have stopped a normal unlock
+     */
+    public record UnlockOutcome(boolean unlocked, boolean wasBlocked) {}
+
+    /**
+     * Unlocks a global stage. No-op if already unlocked, and refused while the stage is blocked
+     * by its logic (see {@link StageLogicGate}). Returns true if the stage was newly unlocked.
+     *
+     * <p>Auto-triggers, scripts and addons come through here and are stopped by a block. Admin
+     * paths use {@link #forceUnlockGlobal}.
      */
     public static boolean unlockGlobal(String stageId, ServerLevel level) {
+        if (StageData.get(level).hasStage(stageId)) return false;
+        if (StageLogicGate.global(stageId).isBlocked()) {
+            DebugLogger.runtime("Stage Logic", "Unlock of '" + stageId + "' refused: blocked by its logic.");
+            return false;
+        }
+        return applyUnlockGlobal(stageId, level);
+    }
+
+    /** Unlocks a global stage even while it is blocked. For commands and the editor. */
+    public static UnlockOutcome forceUnlockGlobal(String stageId, ServerLevel level) {
+        boolean blocked = StageLogicGate.global(stageId).isBlocked();
+        return new UnlockOutcome(applyUnlockGlobal(stageId, level), blocked);
+    }
+
+    private static boolean applyUnlockGlobal(String stageId, ServerLevel level) {
         StageData data = StageData.get(level);
         if (data.hasStage(stageId)) return false;
 
@@ -100,10 +130,26 @@ public final class StageStates {
     }
 
     /**
-     * Unlocks an individual stage for the given player. No-op if already unlocked.
-     * Returns true if the stage was newly unlocked.
+     * Unlocks an individual stage for the given player. No-op if already unlocked, and refused
+     * while the stage is blocked for that player. Returns true if the stage was newly unlocked.
      */
     public static boolean unlockIndividual(String stageId, ServerPlayer player) {
+        if (IndividualStageData.get(player.serverLevel()).hasStage(player.getUUID(), stageId)) return false;
+        if (StageLogicGate.individual(stageId, player.getUUID()).isBlocked()) {
+            DebugLogger.runtime("Stage Logic", player.getName().getString(),
+                    "Unlock of '" + stageId + "' refused: blocked by its logic.");
+            return false;
+        }
+        return applyUnlockIndividual(stageId, player);
+    }
+
+    /** Unlocks an individual stage even while it is blocked. For commands and the editor. */
+    public static UnlockOutcome forceUnlockIndividual(String stageId, ServerPlayer player) {
+        boolean blocked = StageLogicGate.individual(stageId, player.getUUID()).isBlocked();
+        return new UnlockOutcome(applyUnlockIndividual(stageId, player), blocked);
+    }
+
+    private static boolean applyUnlockIndividual(String stageId, ServerPlayer player) {
         ServerLevel level = player.serverLevel();
         IndividualStageData data = IndividualStageData.get(level);
         if (data.hasStage(player.getUUID(), stageId)) return false;
@@ -114,7 +160,10 @@ public final class StageStates {
         StageEntry entry = StageManager.getIndividualStages().get(stageId);
         String displayName = entry != null ? entry.getDisplayName() : stageId;
 
-        NeoForge.EVENT_BUS.post(new StageEvent.IndividualUnlocked(stageId, displayName, player.getUUID()));
+        // Posted with the player at hand, so a "revoke when" reacting to it reaches this very
+        // player object rather than having to look it up by UUID.
+        net.bananemdnsa.historystages.events.StageLogicRevocationHandler.withActor(player, () ->
+                NeoForge.EVENT_BUS.post(new StageEvent.IndividualUnlocked(stageId, displayName, player.getUUID())));
 
         // Sync the unlocked-stages set to the player
         PacketHandler.sendIndividualStagesToPlayer(
@@ -186,7 +235,8 @@ public final class StageStates {
         StageEntry entry = StageManager.getIndividualStages().get(stageId);
         String displayName = entry != null ? entry.getDisplayName() : stageId;
 
-        NeoForge.EVENT_BUS.post(new StageEvent.IndividualLocked(stageId, displayName, player.getUUID()));
+        net.bananemdnsa.historystages.events.StageLogicRevocationHandler.withActor(player, () ->
+                NeoForge.EVENT_BUS.post(new StageEvent.IndividualLocked(stageId, displayName, player.getUUID())));
 
         PacketHandler.sendIndividualStagesToPlayer(
                 SyncIndividualStagesPacket.of(data, player.getUUID()),

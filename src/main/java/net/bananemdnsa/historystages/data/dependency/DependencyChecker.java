@@ -35,6 +35,12 @@ public class DependencyChecker {
 
     public static RequirementResult checkAll(StageEntry entry, ServerPlayer player, Level level,
             StageScope scope, CompoundTag depositedData, double costReduction) {
+        return checkAll(entry, player, level, scope, depositedData, costReduction, 1.0);
+    }
+
+    /** With the XP factor from "cheaper/costlier while" blocks as well. */
+    public static RequirementResult checkAll(StageEntry entry, ServerPlayer player, Level level,
+            StageScope scope, CompoundTag depositedData, double costReduction, double xpFactor) {
         List<DependencyGroup> groups = entry.getDependencies();
         if (groups == null || groups.isEmpty()) {
             return RequirementResult.noDependencies();
@@ -45,7 +51,7 @@ public class DependencyChecker {
 
         for (int i = 0; i < groups.size(); i++) {
             RequirementResult.GroupResult result = checkGroup(groups.get(i), i, player, level,
-                    scope, depositedData, costReduction);
+                    scope, depositedData, costReduction, xpFactor);
             groupResults.add(result);
             if (!result.isFulfilled()) {
                 allFulfilled = false;
@@ -71,11 +77,17 @@ public class DependencyChecker {
     public static RequirementResult.GroupResult checkGroup(DependencyGroup group, int groupIndex,
             ServerPlayer player, Level level, StageScope scope, CompoundTag depositedData,
             double costReduction) {
+        return checkGroup(group, groupIndex, player, level, scope, depositedData, costReduction, 1.0);
+    }
+
+    public static RequirementResult.GroupResult checkGroup(DependencyGroup group, int groupIndex,
+            ServerPlayer player, Level level, StageScope scope, CompoundTag depositedData,
+            double costReduction, double xpFactor) {
         List<RequirementResult.EntryResult> entries = new ArrayList<>();
         boolean isActuallyOr = "OR".equalsIgnoreCase(group.getLogic());
 
         RequirementContext ctx = new RequirementContext(player, level, depositedData,
-                DependencyProgress.groupKey(group, groupIndex), costReduction, scope);
+                DependencyProgress.groupKey(group, groupIndex), costReduction, scope, xpFactor);
         for (Requirement requirement : RequirementTypes.forScope(scope)) {
             entries.addAll(requirement.evaluate(group, ctx));
         }

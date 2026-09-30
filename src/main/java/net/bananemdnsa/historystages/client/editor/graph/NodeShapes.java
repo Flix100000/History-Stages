@@ -50,6 +50,34 @@ public final class NodeShapes {
                 NodeTextures.SIZE, NodeTextures.SIZE, 0xFFFFFFFF);
     }
 
+    /**
+     * The status badge a style's {@code checkmark} switch turns on: a tick in general, the
+     * no-entry sign for a blocked stage. One switch, so the node style screens need no second one.
+     */
+    public static void statusBadge(GuiGraphics g, net.bananemdnsa.historystages.data.graph.NodeState state,
+                                   int cx, int cy, int r, int badgeColor) {
+        if (state == net.bananemdnsa.historystages.data.graph.NodeState.BLOCKED) {
+            blockedBadge(g, cx, cy, r);
+        } else {
+            checkmark(g, cx, cy, r, badgeColor);
+        }
+    }
+
+    /**
+     * The "blocked" badge: a red disc with a white bar, top right, where the tick sits bottom
+     * right. Drawn from shapes rather than a font glyph, which the default font may not have.
+     */
+    public static void blockedBadge(GuiGraphics g, int cx, int cy, int r) {
+        int br = Math.max(4, Math.round(r * 0.45f));
+        int bx = cx + r - br / 2;
+        int by = cy - r + br / 2;
+        int ringW = Math.max(1, Math.round(br * 0.22f));
+        circle(g, bx, by, br, 0xFFCC2222, CHECKMARK_RING_COLOR, ringW);
+        int half = Math.max(2, Math.round(br * 0.55f));
+        int barH = Math.max(1, Math.round(br * 0.28f));
+        g.fill(bx - half, by - barH / 2 - barH % 2 + 1, bx + half, by + barH / 2 + 1, 0xFFFFFFFF);
+    }
+
     public static void circle(GuiGraphics g, int cx, int cy, int r, int fill, int border, int bw) {
         ring(g, NodeTextures.circle(), cx, cy, r, fill, border, bw);
     }

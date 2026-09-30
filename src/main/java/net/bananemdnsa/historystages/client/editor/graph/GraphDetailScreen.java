@@ -122,6 +122,7 @@ public final class GraphDetailScreen extends AbstractModalScreen {
     private static final int STATE_UNLOCKED_COLOR = 0xFF44CC99;
     private static final int STATE_REACHABLE_COLOR = 0xFFDDBB44;
     private static final int STATE_LOCKED_COLOR = 0xFF999999;
+    private static final int STATE_BLOCKED_COLOR = 0xFFFF5555;
     /** Global vs. individual is a fact about the stage, not a status, so it stays neutral. */
     private static final int TYPE_PILL_COLOR = 0xFFBBBBBB;
     private static final int STAGE_ID_COLOR = 0xFF888888;
@@ -299,6 +300,10 @@ public final class GraphDetailScreen extends AbstractModalScreen {
 
         if (cfg.showDescription.get()) {
             String raw = GraphStageData.get().description(node.stageId(), node.individual());
+            // An anonymous node gives nothing away: its text would name what the "???" hides.
+            if (node.anonymous() && raw != null && !raw.isBlank()) {
+                raw = net.bananemdnsa.historystages.data.logic.StageLogicGate.HIDDEN_NAME;
+            }
             if (raw != null && !raw.isBlank()) {
                 List<FormattedCharSequence> lines =
                         font.split(describe(raw), Math.max(1, width - ENTRY_INDENT * 2));
@@ -309,6 +314,13 @@ public final class GraphDetailScreen extends AbstractModalScreen {
                 }
             }
         }
+
+        if (node.state() == net.bananemdnsa.historystages.data.graph.NodeState.BLOCKED
+                && cfg.showBlockedReason.get()) {
+            addBlockedReason(out, font, textWidth);
+        }
+
+        if (!node.anonymous()) addRevokeWarning(out, font, textWidth);
 
         RequirementResult dep = ClientDependencyCache.get(node.stageId(), node.individual());
         builtFromDependency = dep;
@@ -359,6 +371,42 @@ public final class GraphDetailScreen extends AbstractModalScreen {
         }
 
         place(out);
+    }
+
+    /** "Blocked while:" and its conditions, first in the panel: it is why the stage cannot start. */
+    private void addBlockedReason(List<Row> out, Font font, int textWidth) {
+        var blocked = net.bananemdnsa.historystages.client.display.BlockedLines
+                .forLocalPlayer(node.stageId(), node.individual());
+        for (FormattedCharSequence line : font.split(
+                net.bananemdnsa.historystages.client.display.BlockedLines.header(), textWidth)) {
+            out.add(new LineRow(line, STATE_BLOCKED_COLOR, LINE_H));
+        }
+        for (var reason : net.bananemdnsa.historystages.client.display.BlockedLines
+                .reasonLines(blocked, node.individual())) {
+            Component text = Component.literal(reason.indent() > 0 ? "   \u2022 " : " \u2022 ").append(reason.text());
+            for (FormattedCharSequence line : font.split(text, textWidth)) {
+                out.add(new LineRow(line, 0xFFCCCCCC, LINE_H));
+            }
+        }
+        out.add(new SpacerRow(SPACER_H));
+    }
+
+    /** "⚠ Revoked when:" per revoke block of this stage, so a player knows it can go again. */
+    private void addRevokeWarning(List<Row> out, Font font, int textWidth) {
+        var blocks = net.bananemdnsa.historystages.client.display.BlockedLines.revokeBlocks(node.stageId(), node.individual());
+        if (blocks.isEmpty()) return;
+        for (var block : blocks) {
+            for (FormattedCharSequence line : font.split(net.bananemdnsa.historystages.client.display.BlockedLines.revokeHeader(), textWidth)) {
+                out.add(new LineRow(line, 0xFFFFAA00, LINE_H));
+            }
+            for (var reason : net.bananemdnsa.historystages.client.display.BlockedLines.conditionLines(block, node.individual())) {
+                Component text = Component.literal(reason.indent() > 0 ? "   \u2022 " : " \u2022 ").append(reason.text());
+                for (FormattedCharSequence line : font.split(text, textWidth)) {
+                    out.add(new LineRow(line, 0xFFCCCCCC, LINE_H));
+                }
+            }
+        }
+        out.add(new SpacerRow(SPACER_H));
     }
 
     private void place(List<Row> built) {
@@ -694,6 +742,7 @@ public final class GraphDetailScreen extends AbstractModalScreen {
             case UNLOCKED -> "editor.historystages.graph.state.unlocked";
             case REACHABLE -> "editor.historystages.graph.state.reachable";
             case LOCKED -> "editor.historystages.graph.state.locked";
+            case BLOCKED -> "editor.historystages.graph.state.blocked";
         };
     }
 
@@ -702,6 +751,7 @@ public final class GraphDetailScreen extends AbstractModalScreen {
             case UNLOCKED -> STATE_UNLOCKED_COLOR;
             case REACHABLE -> STATE_REACHABLE_COLOR;
             case LOCKED -> STATE_LOCKED_COLOR;
+            case BLOCKED -> STATE_BLOCKED_COLOR;
         };
     }
 
