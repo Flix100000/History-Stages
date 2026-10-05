@@ -301,6 +301,16 @@ public class DebugLogger {
         if (!s.getIcon().isEmpty()) pw.println("  Icon: " + s.getIcon());
         if (s.isLoseOnDeath()) pw.println("  Lose on death: yes");
         if (s.isInterchangeable()) pw.println("  Interchangeable: yes");
+        // These win over the [lock: ...] each entry below shows for itself (true = locked).
+        if (s.getFixedItemLockActions() != null) {
+            pw.println("  Fixed lock actions (items/tags/mods): " + s.getFixedItemLockActions());
+        }
+        if (s.getFixedFluidLockActions() != null) {
+            pw.println("  Fixed lock actions (fluids): " + s.getFixedFluidLockActions());
+        }
+        if (s.getFixedInteractionLockActions() != null) {
+            pw.println("  Fixed lock actions (interactions): " + s.getFixedInteractionLockActions());
+        }
         if (s.hasLogic()) pw.println("  Logic: " + s.getLogic());
         pw.println("  Total entries: " + entryCount);
 
@@ -347,6 +357,11 @@ public class DebugLogger {
 
         printList(pw, "Entities (attacklock)", ent.getAttacklock());
         printSpawnlockEntries(pw, ent.getSpawnlock());
+        if (s.getFixedSpawnRule() != null) {
+            // These rows win over what each entry above says for itself.
+            pw.println("  Fixed spawn rows " + s.getFixedSpawnRule().rows() + ": "
+                    + net.bananemdnsa.historystages.data.lock.spawn.SpawnRuleText.compact(s.getFixedSpawnRule().values()));
+        }
         printList(pw, "Entities (mod-linked)", ent.getModLinked());
         printOtherCategories(pw, s);
 

@@ -28,6 +28,12 @@ public class EntitySpawnLockEntry {
     private final GenerationPhase phase;
     private final SpawnConditions conditions;
     private final ExtraBiomeSpawns extraBiomes; // null = none
+    /**
+     * Blocks no source at all. A stored entry cannot say that — an empty source list reads back as
+     * "all" — but a fixed rule can take the last locked source away, and the merged entry must
+     * then let every source through instead of falling back to blocking all of them.
+     */
+    private final boolean noSourceLocked;
     private final List<String> readProblems; // JSON-read diagnostics only; not equals/hashCode, not serialized
 
     public EntitySpawnLockEntry(String id) {
@@ -49,13 +55,16 @@ public class EntitySpawnLockEntry {
 
     public EntitySpawnLockEntry(String id, List<String> lockSources, GenerationPhase phase,
                                 SpawnConditions conditions, ExtraBiomeSpawns extraBiomes) {
-        this(id, lockSources, phase, conditions, extraBiomes, List.of());
+        this(id, lockSources, phase, conditions, extraBiomes, List.of(), false);
     }
 
     private EntitySpawnLockEntry(String id, List<String> lockSources, GenerationPhase phase,
-                                 SpawnConditions conditions, ExtraBiomeSpawns extraBiomes, List<String> readProblems) {
+                                 SpawnConditions conditions, ExtraBiomeSpawns extraBiomes, List<String> readProblems,
+                                 boolean noSourceLocked) {
         this.id = id;
-        this.lockSources = (lockSources != null && !lockSources.isEmpty()) ? List.copyOf(lockSources) : null;
+        this.noSourceLocked = noSourceLocked;
+        this.lockSources = noSourceLocked ? List.of()
+                : (lockSources != null && !lockSources.isEmpty()) ? List.copyOf(lockSources) : null;
         this.phase = phase != null ? phase : GenerationPhase.WHILE_LOCKED;
         this.conditions = conditions != null ? conditions : SpawnConditions.EMPTY;
         this.extraBiomes = extraBiomes != null && !extraBiomes.ids().isEmpty() ? extraBiomes : null;
@@ -67,11 +76,23 @@ public class EntitySpawnLockEntry {
     /** Returns null if all sources are locked, otherwise the explicit list of locked sources. */
     public List<String> getLockSources() { return lockSources; }
 
-    public boolean hasLockSources() { return lockSources != null && !lockSources.isEmpty(); }
+    public boolean hasLockSources() { return noSourceLocked || (lockSources != null && !lockSources.isEmpty()); }
 
     /** True if the given source is blocked by this entry. */
     public boolean blocksSource(String source) {
+        if (noSourceLocked) return false;
         return lockSources == null || lockSources.contains(source);
+    }
+
+    /**
+     * This entry with exactly these sources locked. Unlike the constructor an empty list is kept
+     * as "none" rather than read as "all" — only merged entries need that, and they are never
+     * written to disk.
+     */
+    public EntitySpawnLockEntry withLockedSources(List<String> locked) {
+        boolean all = locked.containsAll(ALL_SOURCES);
+        return new EntitySpawnLockEntry(id, all ? null : locked, phase, conditions, extraBiomes, readProblems,
+                locked.isEmpty());
     }
 
     public GenerationPhase getPhase() { return phase; }
@@ -108,11 +129,11 @@ public class EntitySpawnLockEntry {
 
     /** Copy carrying read-time diagnostics — used only by the adapter, so it stays out of equals/hashCode. */
     public EntitySpawnLockEntry withReadProblems(List<String> problems) {
-        return new EntitySpawnLockEntry(id, lockSources, phase, conditions, extraBiomes, problems);
+        return new EntitySpawnLockEntry(id, lockSources, phase, conditions, extraBiomes, problems, noSourceLocked);
     }
 
     public EntitySpawnLockEntry copy() {
-        return new EntitySpawnLockEntry(id, lockSources, phase, conditions, extraBiomes);
+        return new EntitySpawnLockEntry(id, lockSources, phase, conditions, extraBiomes, List.of(), noSourceLocked);
     }
 
     @Override
@@ -120,12 +141,13 @@ public class EntitySpawnLockEntry {
         if (this == o) return true;
         if (!(o instanceof EntitySpawnLockEntry other)) return false;
         return Objects.equals(id, other.id) && Objects.equals(lockSources, other.lockSources)
+                && noSourceLocked == other.noSourceLocked
                 && phase == other.phase && conditions.equals(other.conditions)
                 && Objects.equals(extraBiomes, other.extraBiomes);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, lockSources, phase, conditions, extraBiomes);
+        return Objects.hash(id, lockSources, phase, conditions, extraBiomes, noSourceLocked);
     }
 }

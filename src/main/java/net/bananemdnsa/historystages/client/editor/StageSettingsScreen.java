@@ -13,6 +13,11 @@ import net.bananemdnsa.historystages.client.editor.widget.dropdown.DropdownChrom
 import net.bananemdnsa.historystages.client.editor.widget.dropdown.DurationUnitDropdown;
 import net.bananemdnsa.historystages.client.editor.widget.dropdown.PedestalTierDropdown;
 import net.bananemdnsa.historystages.client.editor.widget.StyledButton;
+import net.bananemdnsa.historystages.client.editor.widget.popup.InteractionActionsPopup;
+import net.bananemdnsa.historystages.client.editor.widget.popup.LockActionsPopup;
+import net.bananemdnsa.historystages.client.editor.widget.popup.spawn.SpawnControlPopup;
+import net.bananemdnsa.historystages.data.lock.spawn.FixedSpawnRule;
+import net.bananemdnsa.historystages.api.lock.LockActions;
 import net.bananemdnsa.historystages.api.editor.widget.PickerOverlay;
 import net.bananemdnsa.historystages.client.editor.widget.list.SearchableItemList;
 import net.bananemdnsa.historystages.data.display.DisplayMode;
@@ -63,8 +68,10 @@ public class StageSettingsScreen extends Screen {
                     int minPedestalTier, TierMode pedestalTierMode,
                     StageMode mode, AutoTrigger autoTrigger, TemporaryConfig temporary,
                     HiddenDisplayConfig hiddenDisplay, boolean loseOnDeath,
-                    boolean interchangeable, String scrollCompletion,
-                    Map<String, SettingsValues> addonSettings);
+                    boolean interchangeable,
+                    Map<String, Boolean> fixedItemLockActions, Map<String, Boolean> fixedFluidLockActions,
+                    Map<String, Boolean> fixedInteractionLockActions,
+                    FixedSpawnRule fixedSpawnRule, String scrollCompletion, Map<String, SettingsValues> addonSettings);
     }
 
     private static final int FIELD_HEIGHT = 18;
@@ -125,6 +132,20 @@ public class StageSettingsScreen extends Screen {
     private boolean editLoseOnDeath;
     private boolean editInterchangeable;
     /**
+     * Actions fixed for every item/tag/mod and every fluid, each with its value (true = locked).
+     * null = nothing fixed; every entry decides for itself.
+     */
+    private Map<String, Boolean> editFixedItemActions;
+    private Map<String, Boolean> editFixedFluidActions;
+    private Map<String, Boolean> editFixedInteractionActions;
+    /** Only ever opened in fixing mode here; the per-mob confirm is never reached. */
+    private final InteractionActionsPopup interactionActionsPopup = new InteractionActionsPopup((id, actions) -> {});
+    private final LockActionsPopup lockActionsPopup = new LockActionsPopup();
+    /** SpawnControl rows fixed for every mob; null = none. Global stages only, like spawnlock. */
+    private FixedSpawnRule editFixedSpawnRule;
+    /** Only ever opened in fixing mode here; the per-mob confirm is never reached. */
+    private final SpawnControlPopup spawnControlPopup = new SpawnControlPopup((id, rule) -> {});
+    /**
      * Working copy of the stage's addon settings, keyed by group id. Copied on construction and
      * handed back only from {@link #save()}, exactly like every other field on this screen, so
      * closing without saving changes nothing.
@@ -155,6 +176,12 @@ public class StageSettingsScreen extends Screen {
     // toggle row, one hint line.
     private int lockCardX, lockCardY, lockCardW, lockCardH;
     private int interchangeableRowY, interchangeableToggleX;
+    /** Rows for the fixed actions; their buttons share the toggle column with interchangeable. */
+    private int fixedItemActionsRowY, fixedFluidActionsRowY;
+    private StyledButton fixedItemActionsButton, fixedFluidActionsButton;
+    private int fixedInteractionRowY, fixedSpawnRowY;
+    private StyledButton fixedInteractionButton, fixedSpawnButton;
+    private static final int LOCK_ROW_GAP = 8;
 
     // Individual card state (only laid out and rendered when isIndividual).
     private int indivCardX, indivCardY, indivCardW, indivCardH;
@@ -251,10 +278,13 @@ public class StageSettingsScreen extends Screen {
                                StageMode mode, AutoTrigger autoTrigger, TemporaryConfig temporary,
                                HiddenDisplayConfig hiddenDisplay, boolean loseOnDeath,
                                boolean interchangeable,
-                               String scrollCompletion, Map<String, SettingsValues> addonSettings,
+                               Map<String, Boolean> fixedItemLockActions, Map<String, Boolean> fixedFluidLockActions,
+                               Map<String, Boolean> fixedInteractionLockActions,
+                               FixedSpawnRule fixedSpawnRule, String scrollCompletion, Map<String, SettingsValues> addonSettings,
                                boolean isNewStage, boolean isIndividual, SaveCallback onSave) {
         this(parent, stageId, displayName, researchTime, minPedestalTier, pedestalTierMode,
                 mode, autoTrigger, temporary, hiddenDisplay, loseOnDeath, interchangeable,
+                fixedItemLockActions, fixedFluidLockActions, fixedInteractionLockActions, fixedSpawnRule,
                 scrollCompletion, addonSettings, isNewStage, isIndividual, onSave, null);
     }
 
@@ -263,7 +293,9 @@ public class StageSettingsScreen extends Screen {
                                StageMode mode, AutoTrigger autoTrigger, TemporaryConfig temporary,
                                HiddenDisplayConfig hiddenDisplay, boolean loseOnDeath,
                                boolean interchangeable,
-                               String scrollCompletion, Map<String, SettingsValues> addonSettings,
+                               Map<String, Boolean> fixedItemLockActions, Map<String, Boolean> fixedFluidLockActions,
+                               Map<String, Boolean> fixedInteractionLockActions,
+                               FixedSpawnRule fixedSpawnRule, String scrollCompletion, Map<String, SettingsValues> addonSettings,
                                boolean isNewStage, boolean isIndividual, SaveCallback onSave,
                                Supplier<StageEntry> lockSnapshot) {
         super(Component.translatable("editor.historystages.stage_settings.title"));
@@ -284,6 +316,10 @@ public class StageSettingsScreen extends Screen {
         this.editHiddenDisplay = hiddenDisplay != null ? hiddenDisplay : new HiddenDisplayConfig();
         this.editLoseOnDeath = loseOnDeath;
         this.editInterchangeable = interchangeable;
+        this.editFixedItemActions = copyOrNull(fixedItemLockActions);
+        this.editFixedFluidActions = copyOrNull(fixedFluidLockActions);
+        this.editFixedInteractionActions = copyOrNull(fixedInteractionLockActions);
+        this.editFixedSpawnRule = fixedSpawnRule;
         this.editAddonSettings = copyAddonSettings(addonSettings);
 
         this.editScrollCompletion = scrollCompletion == null ? "" : scrollCompletion;
@@ -315,6 +351,10 @@ public class StageSettingsScreen extends Screen {
             }
         }
         return copy;
+    }
+
+    private static Map<String, Boolean> copyOrNull(Map<String, Boolean> map) {
+        return map != null ? new LinkedHashMap<>(map) : null;
     }
 
     /** Registers a content widget for events + manual scrolled rendering (not auto-rendered). */
@@ -398,6 +438,25 @@ public class StageSettingsScreen extends Screen {
                         })),
                 fieldX, 88, fieldWidth, FIELD_HEIGHT);
         addContentWidget(descriptionButton);
+
+        fixedItemActionsButton = addContentWidget(StyledButton.of(Component.empty(),
+                btn -> openFixedActionsPopup(false), 0, 0, 10, FIELD_HEIGHT - 4));
+        fixedFluidActionsButton = addContentWidget(StyledButton.of(Component.empty(),
+                btn -> openFixedActionsPopup(true), 0, 0, 10, FIELD_HEIGHT - 4));
+        fixedInteractionButton = addContentWidget(StyledButton.of(Component.empty(),
+                btn -> interactionActionsPopup.showFixing(editFixedInteractionActions, fixed -> {
+                    editFixedInteractionActions = fixed.isEmpty() ? null : fixed;
+                    hasChanges = true;
+                    layoutLockCard();
+                }), 0, 0, 10, FIELD_HEIGHT - 4));
+        if (!isIndividual) {
+            fixedSpawnButton = addContentWidget(StyledButton.of(Component.empty(),
+                    btn -> spawnControlPopup.showFixing(editFixedSpawnRule, rule -> {
+                        editFixedSpawnRule = rule;
+                        hasChanges = true;
+                        layoutLockCard();
+                    }, this.width / 2, this.height / 2), 0, 0, 10, FIELD_HEIGHT - 4));
+        }
 
         // --- Card-internal widgets ---
         // Positions inside the card body (cardY + 28 = body start)
@@ -908,9 +967,49 @@ public class StageSettingsScreen extends Screen {
         lockCardY = displayCardY + displayCardH + 6;
         lockCardH = computeLockCardHeight();
 
+        int rowStep = INDIV_TOGGLE_H + INDIV_HINT_GAP + INDIV_HINT_H + LOCK_ROW_GAP;
         interchangeableRowY = lockCardY + INDIV_BODY_TOP;
-        String label = Component.translatable("editor.historystages.locks.interchangeable").getString();
-        interchangeableToggleX = lockCardX + 12 + this.font.width(label) + 8;
+        fixedItemActionsRowY = interchangeableRowY + rowStep;
+        fixedFluidActionsRowY = fixedItemActionsRowY + rowStep;
+        fixedInteractionRowY = fixedFluidActionsRowY + rowStep;
+        fixedSpawnRowY = fixedInteractionRowY + rowStep;
+
+        // One column for the switch and the buttons, so the controls line up.
+        int labelW = Math.max(
+                this.font.width(Component.translatable("editor.historystages.locks.interchangeable")),
+                Math.max(this.font.width(Component.translatable("editor.historystages.locks.fixed_actions.items")),
+                        Math.max(this.font.width(Component.translatable("editor.historystages.locks.fixed_actions.fluids")),
+                                Math.max(this.font.width(Component.translatable("editor.historystages.locks.fixed_interactions")),
+                                        this.font.width(Component.translatable("editor.historystages.locks.fixed_spawn"))))));
+        interchangeableToggleX = lockCardX + 12 + labelW + 8;
+
+        layoutFixedActionsButton(fixedItemActionsButton, editFixedItemActions != null ? editFixedItemActions.size() : 0,
+                fixedItemActionsRowY);
+        layoutFixedActionsButton(fixedFluidActionsButton, editFixedFluidActions != null ? editFixedFluidActions.size() : 0,
+                fixedFluidActionsRowY);
+        layoutFixedActionsButton(fixedInteractionButton,
+                editFixedInteractionActions != null ? editFixedInteractionActions.size() : 0, fixedInteractionRowY);
+        layoutFixedActionsButton(fixedSpawnButton, editFixedSpawnRule != null ? editFixedSpawnRule.rows().size() : 0,
+                fixedSpawnRowY);
+    }
+
+    /** "Edit (2 fixed)", in the toggle column of its row. */
+    private void layoutFixedActionsButton(StyledButton button, int fixedCount, int rowY) {
+        if (button == null) return;
+        button.setMessage(Component.translatable("editor.historystages.locks.fixed_actions.edit", fixedCount));
+        button.setWidth(this.font.width(button.getMessage()) + 12);
+        button.setPosition(interchangeableToggleX, rowY + (INDIV_TOGGLE_H - button.getHeight()) / 2);
+    }
+
+    private void openFixedActionsPopup(boolean fluids) {
+        List<String> vocabulary = fluids ? LockActions.FLUID : LockActions.ITEM;
+        lockActionsPopup.showFixing(vocabulary, fluids ? editFixedFluidActions : editFixedItemActions, fixed -> {
+            Map<String, Boolean> value = fixed.isEmpty() ? null : fixed;
+            if (fluids) editFixedFluidActions = value;
+            else editFixedItemActions = value;
+            hasChanges = true;
+            layoutLockCard();
+        });
     }
 
     /** Computes the Individual card geometry below the Display card. Individual stages only. */
@@ -969,9 +1068,12 @@ public class StageSettingsScreen extends Screen {
         return lockHintsRow + DISP_TOGGLE_H + DISP_BOTTOM_PAD;
     }
 
-    /** Locks-card height (scroll-invariant): the same one-row shape as the Individual card. */
+    /** Locks-card height (scroll-invariant): three toggle rows, each with its hint line. */
     private int computeLockCardHeight() {
-        return computeIndividualCardHeight();
+        int row = INDIV_TOGGLE_H + INDIV_HINT_GAP + INDIV_HINT_H;
+        // Individual stages have no spawn locks, so no SpawnControl row either.
+        int rows = isIndividual ? 4 : 5;
+        return INDIV_BODY_TOP + rows * row + (rows - 1) * LOCK_ROW_GAP + INDIV_BOTTOM_PAD;
     }
 
     /** Individual-card height (scroll-invariant): one toggle row plus its hint line. */
@@ -1078,6 +1180,10 @@ public class StageSettingsScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double dx, double dy) {
+        // The cards must not move under an open action popup.
+        if (lockActionsPopup.isVisible()) return true;
+        if (spawnControlPopup.isVisible()) return spawnControlPopup.mouseScrolled(mouseX, mouseY, dx, dy);
+        if (interactionActionsPopup.isVisible()) return true;
         // The picker sits on top and owns the wheel while it is open; the grid it lists items in
         // scrolls on its own, independently of this screen's card list.
         syncPickerState();
@@ -1108,6 +1214,10 @@ public class StageSettingsScreen extends Screen {
         // The picker sits on top and owns the pointer while it is open. Without this its own
         // scrollbar takes the press, sets itself dragging, and then never hears another mouse
         // move — the thumb stays where it jumped to and nothing follows the cursor.
+        if (spawnControlPopup.isVisible()) {
+            spawnControlPopup.mouseDragged(mouseX, mouseY);
+            return true;
+        }
         syncPickerState();
         if (itemPickerOverlay != null && itemPickerOverlay.mouseDragged(mouseX, mouseY)) return true;
 
@@ -1122,6 +1232,10 @@ public class StageSettingsScreen extends Screen {
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
         // Likewise: without this the picker's drag flag is never cleared, so its thumb keeps
         // rendering as held and the next press behaves as though the button were still down.
+        if (spawnControlPopup.isVisible()) {
+            spawnControlPopup.mouseReleased();
+            return true;
+        }
         syncPickerState();
         if (itemPickerOverlay != null && itemPickerOverlay.mouseReleased()) return true;
 
@@ -1198,7 +1312,9 @@ public class StageSettingsScreen extends Screen {
         // abandons by closing without saving. Copy it out, same as it was copied in.
         onSave.onSave(editStageId, editDisplayName, editResearchTime, editMinTier, editTierMode,
                 editMode, editAutoTrigger, editTemporary, editHiddenDisplay, editLoseOnDeath,
-                editInterchangeable, editScrollCompletion, copyAddonSettings(editAddonSettings));
+                editInterchangeable, copyOrNull(editFixedItemActions), copyOrNull(editFixedFluidActions),
+                copyOrNull(editFixedInteractionActions), editFixedSpawnRule,
+                editScrollCompletion, copyAddonSettings(editAddonSettings));
 
         // The description rides in graph_stages.json, not in the stage entry, so it has its own
         // packet. Keyed on the original id: a rename is the rename logic's business, and writing
@@ -1289,6 +1405,18 @@ public class StageSettingsScreen extends Screen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (lockActionsPopup.isVisible()) {
+            if (keyCode == 256) lockActionsPopup.hide(); // ESC discards, like a click outside
+            return true;
+        }
+        if (spawnControlPopup.isVisible()) {
+            spawnControlPopup.keyPressed(keyCode);
+            return true;
+        }
+        if (interactionActionsPopup.isVisible()) {
+            interactionActionsPopup.keyPressed(keyCode);
+            return true;
+        }
         syncPickerState();
         if (itemPickerOverlay != null) {
             if (keyCode == 256) return closePicker(); // ESC
@@ -1313,6 +1441,7 @@ public class StageSettingsScreen extends Screen {
 
     @Override
     public boolean charTyped(char c, int modifiers) {
+        if (spawnControlPopup.isVisible()) return spawnControlPopup.charTyped(c);
         syncPickerState();
         if (itemPickerOverlay != null) return itemPickerOverlay.charTyped(c);
         return super.charTyped(c, modifiers);
@@ -1526,6 +1655,24 @@ public class StageSettingsScreen extends Screen {
             itemPickerOverlay.render(guiGraphics, this.font, mouseX, mouseY);
             guiGraphics.pose().popPose();
         }
+        if (lockActionsPopup.isVisible()) {
+            guiGraphics.pose().pushPose();
+            guiGraphics.pose().translate(0, 0, 200);
+            lockActionsPopup.render(guiGraphics, this.font, this.width, this.height, mouseX, mouseY);
+            guiGraphics.pose().popPose();
+        }
+        if (spawnControlPopup.isVisible()) {
+            guiGraphics.pose().pushPose();
+            guiGraphics.pose().translate(0, 0, 200);
+            spawnControlPopup.render(guiGraphics, this.font, mouseX, mouseY);
+            guiGraphics.pose().popPose();
+        }
+        if (interactionActionsPopup.isVisible()) {
+            guiGraphics.pose().pushPose();
+            guiGraphics.pose().translate(0, 0, 200);
+            interactionActionsPopup.render(guiGraphics, this.font, mouseX, mouseY);
+            guiGraphics.pose().popPose();
+        }
     }
 
     private int computeCardHeight() {
@@ -1589,6 +1736,19 @@ public class StageSettingsScreen extends Screen {
         drawSmallText(g,
                 Component.translatable("editor.historystages.locks.interchangeable.hint").getString(),
                 labelX, interchangeableRowY + INDIV_TOGGLE_H + INDIV_HINT_GAP, 0x888888);
+
+        renderFixedActionsRow(g, fixedItemActionsRowY, "editor.historystages.locks.fixed_actions.items");
+        renderFixedActionsRow(g, fixedFluidActionsRowY, "editor.historystages.locks.fixed_actions.fluids");
+        renderFixedActionsRow(g, fixedInteractionRowY, "editor.historystages.locks.fixed_interactions");
+        if (!isIndividual) renderFixedActionsRow(g, fixedSpawnRowY, "editor.historystages.locks.fixed_spawn");
+    }
+
+    /** Label and hint; the button itself is a content widget. */
+    private void renderFixedActionsRow(GuiGraphics g, int rowY, String labelKey) {
+        int labelX = lockCardX + 12;
+        g.drawString(this.font, Component.translatable(labelKey).getString(), labelX, rowY + 3, 0xAAAAAA, false);
+        drawSmallText(g, Component.translatable(labelKey + ".hint").getString(),
+                labelX, rowY + INDIV_TOGGLE_H + INDIV_HINT_GAP, 0x888888);
     }
 
     private void renderIndividualCardContent(GuiGraphics g, int mouseX, int mouseY) {
@@ -1805,6 +1965,10 @@ public class StageSettingsScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (lockActionsPopup.isVisible()) return lockActionsPopup.mouseClicked(mouseX, mouseY, button);
+        if (spawnControlPopup.isVisible()) return spawnControlPopup.mouseClicked(mouseX, mouseY, button);
+        if (interactionActionsPopup.isVisible()) return interactionActionsPopup.mouseClicked(mouseX, mouseY, button);
+
         // Item picker overlay: it is drawn on top of everything, so it must get the click before
         // anything underneath it does.
         syncPickerState();

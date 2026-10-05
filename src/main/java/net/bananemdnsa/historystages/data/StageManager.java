@@ -93,7 +93,7 @@ public class StageManager {
             "dependencies", "icon",
             "min_pedestal_tier", "pedestal_tier_mode",
             "mode", "auto_trigger", "temporary", "hidden_display", "lose_on_death", "interchangeable", "logic",
-            "scroll_completion", "addons", "addon_settings"
+            "scroll_completion", "addons", "addon_settings", "fixed_lock_actions", "fixed_spawn_rule"
     );
 
 
@@ -698,6 +698,17 @@ public class StageManager {
         }
         entry.getEntities().getSpawnlock().replaceAll(spEntry -> SpawnRuleValidator.sanitize(spEntry,
                 StageManager::isValidResourceLocation, message -> reportSpawnRuleProblem(message, stageId)));
+        var fixedSpawn = entry.getFixedSpawnRule();
+        if (fixedSpawn != null) {
+            var values = fixedSpawn.values();
+            var sanitized = SpawnRuleValidator.sanitize(values, StageManager::isValidResourceLocation,
+                    message -> reportSpawnRuleProblem("fixed_spawn_rule: " + message, stageId));
+            // The validator rebuilds the entry, which cannot hold "no source locked"; put the
+            // sources back as they were.
+            entry.setFixedSpawnRule(new net.bananemdnsa.historystages.data.lock.spawn.FixedSpawnRule(
+                    fixedSpawn.rows(), sanitized.withLockedSources(
+                            net.bananemdnsa.historystages.data.lock.spawn.FixedSpawnRule.lockedSources(values))));
+        }
 
         if (entry.getResearchTime() < 0) {
             addMessage(MessageLevel.INFO, "Stage '" + stageId + "' has negative research_time (" + entry.getResearchTime() + "). Using global default.");
@@ -724,6 +735,9 @@ public class StageManager {
         for (NamedLockEntry mod : entry.getModEntries()) {
             validateLockActions(mod.getLockActions(), stageId, mod.getId(), "mods");
         }
+        validateLockActions(fixedKeys(entry.getFixedItemLockActions()), stageId, "items", "fixed_lock_actions");
+        validateLockActions(fixedKeys(entry.getFixedFluidLockActions()), stageId, "fluids", "fixed_lock_actions");
+        validateInteractionActions(fixedKeys(entry.getFixedInteractionLockActions()), stageId, "fixed_lock_actions.interactions");
 
         // --- Dependencies validation ---
         if (entry.hasDependencies()) {
@@ -997,6 +1011,11 @@ public class StageManager {
      * Validates a single lock-actions list (internal representation — locked actions):
      * reports unknown actions and duplicates without modifying the list.
      */
+    /** The action names of a fixed-actions map, for {@link #validateLockActions}. */
+    private static List<String> fixedKeys(Map<String, Boolean> fixed) {
+        return fixed != null ? new ArrayList<>(fixed.keySet()) : null;
+    }
+
     private static void validateLockActions(List<String> actions, String stageId, String entryId, String fieldPath) {
         if (actions == null || actions.isEmpty()) return;
 
@@ -1600,6 +1619,12 @@ public class StageManager {
             DebugLogger.error("Individual Stage Loading", msg);
             entry.getEntities().getSpawnlock().clear();
         }
+        if (entry.getFixedSpawnRule() != null) {
+            String msg = "Individual stage '" + stageId + "' contains 'fixed_spawn_rule' — spawn rules are not supported for individual stages. Removed.";
+            addMessage(MessageLevel.WARN, msg);
+            DebugLogger.warn("Individual Stage Loading", msg);
+            entry.setFixedSpawnRule(null);
+        }
     }
 
     /**
@@ -1775,6 +1800,9 @@ public class StageManager {
         for (NamedLockEntry mod : entry.getModEntries()) {
             validateLockActions(mod.getLockActions(), stageId, mod.getId(), "mods");
         }
+        validateLockActions(fixedKeys(entry.getFixedItemLockActions()), stageId, "items", "fixed_lock_actions");
+        validateLockActions(fixedKeys(entry.getFixedFluidLockActions()), stageId, "fluids", "fixed_lock_actions");
+        validateInteractionActions(fixedKeys(entry.getFixedInteractionLockActions()), stageId, "fixed_lock_actions.interactions");
 
         if (entry.getDisplayName().equals("Unknown Stage")) {
             addMessage(MessageLevel.WARN, "Individual stage '" + stageId + "' has no 'display_name'. Defaults to 'Unknown Stage'.");

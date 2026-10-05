@@ -418,6 +418,113 @@ public final class LockTests {
         }
     }
 
+    // --- Fixed lock actions ---
+    //
+    // A fixed action takes the stage's value on every entry; the rest stays the entry's own. Each
+    // test fixes one action each way, so both directions are seen through the real lock path.
+
+    @GameTest(template = "empty")
+    public static void fixedActionsWinOverANarrowedItemEntry(GameTestHelper helper) {
+        try {
+            GameTestStages.global("fixed_actions_item", stage -> {
+                stage.setItemEntries(new ArrayList<>(List.of(
+                        new ItemEntry(LOCKED_ITEM, null, new ArrayList<>(List.of("pickup", "loot"))))));
+                stage.setFixedItemLockActions(new java.util.LinkedHashMap<>(
+                        java.util.Map.of("use", true, "loot", false)));
+            });
+            ItemStack stack = new ItemStack(Items.DIAMOND_SWORD);
+
+            if (!StageLockHelper.isActionLockedForServer(stack, "use")) {
+                helper.fail("\"use\" is fixed as locked, but it was reported as allowed - "
+                        + "the fixed actions are being ignored");
+                return;
+            }
+            if (StageLockHelper.isActionLockedForServer(stack, "loot")) {
+                helper.fail("\"loot\" is fixed as allowed, but the entry's own lock still blocked it");
+                return;
+            }
+            if (!StageLockHelper.isActionLockedForServer(stack, "pickup")) {
+                helper.fail("\"pickup\" is not fixed and the entry locks it, but it was reported as allowed");
+                return;
+            }
+            if (StageLockHelper.isActionLockedForServer(stack, "equip")) {
+                helper.fail("\"equip\" is neither fixed nor in the entry, but it was reported as blocked");
+                return;
+            }
+            helper.succeed();
+        } finally {
+            GameTestStages.removeAll();
+        }
+    }
+
+    @GameTest(template = "empty")
+    public static void fixedActionsReachAModEntryOnAnIndividualStage(GameTestHelper helper) {
+        try {
+            GameTestStages.individual("fixed_actions_mod", stage -> {
+                // No list of its own: the mod entry locks every action until one is fixed as allowed.
+                stage.setModEntries(new ArrayList<>(List.of(new NamedLockEntry("minecraft"))));
+                stage.setFixedItemLockActions(new java.util.LinkedHashMap<>(java.util.Map.of("pickup", false)));
+            });
+            ServerPlayer player = GameTestPlayers.create(helper);
+            ItemStack sword = new ItemStack(Items.DIAMOND_SWORD);
+
+            if (StageLockHelper.isActionLockedByIndividualStage(sword, player.getUUID(), "pickup")) {
+                helper.fail("\"pickup\" is fixed as allowed, but the individual check still blocked it");
+                return;
+            }
+            if (!StageLockHelper.isActionLockedByIndividualStage(sword, player.getUUID(), "use")) {
+                helper.fail("the mod entry locks everything that is not fixed, but \"use\" was allowed");
+                return;
+            }
+            helper.succeed();
+        } finally {
+            GameTestStages.removeAll();
+        }
+    }
+
+    // A cow locked for every interaction, with "milk" fixed as allowed and "breed" left alone.
+    // Asked through the engine for both scopes, since interaction locks exist on both.
+
+    @GameTest(template = "empty")
+    public static void aFixedInteractionActionReachesAGlobalStage(GameTestHelper helper) {
+        try {
+            GameTestStages.global("fixed_interaction", LockTests::cowWithMilkFixedAsAllowed);
+            checkFixedInteraction(helper, StageScope.GLOBAL);
+        } finally {
+            GameTestStages.removeAll();
+        }
+    }
+
+    @GameTest(template = "empty")
+    public static void aFixedInteractionActionReachesAnIndividualStage(GameTestHelper helper) {
+        try {
+            GameTestStages.individual("fixed_interaction_ind", LockTests::cowWithMilkFixedAsAllowed);
+            checkFixedInteraction(helper, StageScope.INDIVIDUAL);
+        } finally {
+            GameTestStages.removeAll();
+        }
+    }
+
+    private static void cowWithMilkFixedAsAllowed(net.bananemdnsa.historystages.data.StageEntry stage) {
+        stage.getEntities().setInteractionlock(new ArrayList<>(List.of(
+                new net.bananemdnsa.historystages.data.lock.EntityInteractionLockEntry("minecraft:cow"))));
+        stage.setFixedInteractionLockActions(new java.util.LinkedHashMap<>(java.util.Map.of("milk", false)));
+    }
+
+    private static void checkFixedInteraction(GameTestHelper helper, StageScope scope) {
+        var engine = StageLocks.engine();
+        if (!engine.gatingStagesForEntityInteraction("minecraft:cow", "milk", ItemStack.EMPTY, scope).isEmpty()) {
+            helper.fail("\"milk\" is fixed as allowed, but the " + scope + " lock engine still blocks it");
+            return;
+        }
+        if (engine.gatingStagesForEntityInteraction("minecraft:cow", "breed", ItemStack.EMPTY, scope).isEmpty()) {
+            helper.fail("\"breed\" is not fixed and the cow locks everything, but the " + scope
+                    + " lock engine let it through");
+            return;
+        }
+        helper.succeed();
+    }
+
     /** An individual stage locking the whole {@code minecraft} namespace, for the named actions. */
     private static void individualStageLockingMod(String name, List<String> actions) {
         GameTestStages.individual(name, stage -> stage.setModEntries(new ArrayList<>(

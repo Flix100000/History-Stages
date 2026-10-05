@@ -24,6 +24,7 @@ import net.bananemdnsa.historystages.client.editor.widget.list.SearchableTagList
 import net.bananemdnsa.historystages.data.DependencyGroup;
 import net.bananemdnsa.historystages.data.lock.EntityLocks;
 import net.bananemdnsa.historystages.data.lock.EntitySpawnLockEntry;
+import net.bananemdnsa.historystages.data.lock.spawn.FixedSpawnRule;
 import net.bananemdnsa.historystages.data.lock.GenerationPhase;
 import net.bananemdnsa.historystages.data.lock.StructureGenerationRule;
 import net.bananemdnsa.historystages.api.stage.StageScope;
@@ -50,7 +51,6 @@ import net.bananemdnsa.historystages.api.editor.EditorTab;
 import net.bananemdnsa.historystages.api.editor.EntryAction;
 import net.bananemdnsa.historystages.api.editor.EntryActionContext;
 import net.bananemdnsa.historystages.client.editor.tab.EntityTabsState;
-import net.bananemdnsa.historystages.client.editor.tab.LockActionGroups;
 import net.bananemdnsa.historystages.client.editor.tab.ModLinkedCategoryTab;
 import net.bananemdnsa.historystages.client.editor.tab.ZoneCategoryTab;
 import net.bananemdnsa.historystages.client.editor.tab.RichEntryCategoryTab;
@@ -141,6 +141,12 @@ public class StageDetailScreen extends Screen {
     private net.bananemdnsa.historystages.data.display.HiddenDisplayConfig editHiddenDisplay;
     private boolean editLoseOnDeath;
     private boolean editInterchangeable;
+    /** Actions fixed for every item/tag/mod and every fluid (true = locked); null = none. */
+    private Map<String, Boolean> editFixedItemLockActions;
+    private Map<String, Boolean> editFixedFluidLockActions;
+    private Map<String, Boolean> editFixedInteractionLockActions;
+    /** SpawnControl rows fixed for every mob of this stage; null = none. Immutable. */
+    private net.bananemdnsa.historystages.data.lock.spawn.FixedSpawnRule editFixedSpawnRule;
     /** Logic blocks as the raw array; the logic screen edits it, unknown blocks pass through. */
     private com.google.gson.JsonArray editLogic;
     /** Addon settings for this stage, keyed by group id. Only ever holds installed groups. */
@@ -276,12 +282,8 @@ public class StageDetailScreen extends Screen {
     private static final long CARD_MARQUEE_DELAY_MS = Timing.MARQUEE_DELAY_MS;
     private static final float CARD_MARQUEE_SPEED = Timing.MARQUEE_SPEED;
 
-    // Lock Actions popup state
-    private boolean lockActionsPopupVisible = false;
-    private int lockActionsPopupTab = -1;   // tab that opened it (0=items, 1=tags, 2=mods)
-    private int lockActionsPopupIdx = -1;   // entry index
-    private List<String> lockActionsPopupCurrent = new ArrayList<>(); // working copy
-    private int cachedLockPopupX, cachedLockPopupY, cachedLockPopupW, cachedLockPopupH;
+    private final net.bananemdnsa.historystages.client.editor.widget.popup.LockActionsPopup lockActionsPopup =
+            new net.bananemdnsa.historystages.client.editor.widget.popup.LockActionsPopup();
 
     // Text-override popup state (per-item REPLACE name/tooltip overrides)
     private boolean overridePopupVisible = false;
@@ -414,6 +416,10 @@ public class StageDetailScreen extends Screen {
         this.editHiddenDisplay = e.getHiddenDisplay().copy();
         this.editLoseOnDeath = e.isLoseOnDeath();
         this.editInterchangeable = e.isInterchangeable();
+        this.editFixedItemLockActions = copyOrNull(e.getFixedItemLockActions());
+        this.editFixedFluidLockActions = copyOrNull(e.getFixedFluidLockActions());
+        this.editFixedInteractionLockActions = copyOrNull(e.getFixedInteractionLockActions());
+        this.editFixedSpawnRule = e.getFixedSpawnRule();
         this.editLogic = e.getLogic() != null ? e.getLogic().deepCopy() : null;
         // Safe cast: the built-in items category stores ItemEntry.
         @SuppressWarnings("unchecked")
@@ -1070,7 +1076,7 @@ public class StageDetailScreen extends Screen {
     private boolean isAnyOverlayVisible() {
         return (iconSearch != null && iconSearch.isVisible())
                 || anyCategoryPickerVisible()
-                || lockActionsPopupVisible || spawnControlPopup.isVisible()
+                || lockActionsPopup.isVisible() || spawnControlPopup.isVisible()
                 || tradeLevelsPopup.isVisible() || interactionActionsPopup.isVisible()
                 || interactionItemsPopup.isVisible() || filterItemSearch.isVisible() || filterTagSearch.isVisible()
                 || generationLimitPopup.isVisible()
@@ -1515,11 +1521,20 @@ public class StageDetailScreen extends Screen {
 
         Map<Integer, List<String>> tabLockActions = getLockActionsMapForTab(activeTab);
         List<String> entryLockActions = tabLockActions != null ? tabLockActions.get(index) : null;
+        // Only what this entry decides itself: fixed actions are the same on every row, so
+        // counting them would put a badge on all of them and hide the ones that really differ.
         if (entryLockActions != null) {
-            String label = Component.translatable("editor.historystages.badge.actions").getString();
-            row.badge("[" + label + ": " + entryLockActions.size() + "/"
-                            + lockActionsForTab(activeTab).size() + "]",
-                    0xCCAA66);
+            Map<String, Boolean> fixed = fixedLockActionsForTab(activeTab);
+            int free = 0, locked = 0;
+            for (String action : lockActionsForTab(activeTab)) {
+                if (fixed != null && fixed.containsKey(action)) continue;
+                free++;
+                if (entryLockActions.contains(action)) locked++;
+            }
+            if (locked < free) {
+                String label = Component.translatable("editor.historystages.badge.actions").getString();
+                row.badge("[" + label + ": " + locked + "/" + free + "]", 0xCCAA66);
+            }
         }
 
         // How much of the pack this one entry reaches. Gating a common fluid can take out four
@@ -1548,16 +1563,35 @@ public class StageDetailScreen extends Screen {
         if (isTab(activeTab, CAT_SPAWN)) {
             EntitySpawnLockEntry rule = editSpawnRules.get(entry);
             if (rule != null) {
-                if (rule.hasLockSources()) {
-                    String label = Component.translatable("editor.historystages.badge.sources").getString();
-                    row.badge("[" + label + ": " + rule.getLockSources().size() + "/" + SPAWN_SOURCE_KEYS.length + "]",
-                            0xCCAA66);
+                // Only what this mob decides itself: fixed rows are the same on every row of the
+                // list, so badging them would mark all of them and hide the ones that differ.
+                var fixedRule = editFixedSpawnRule;
+                java.util.function.Predicate<String> own = key -> fixedRule == null || !fixedRule.isFixed(key);
+                int freeSources = 0, lockedSources = 0;
+                for (String source : SPAWN_SOURCE_KEYS) {
+                    if (!own.test(FixedSpawnRule.source(source))) continue;
+                    freeSources++;
+                    if (rule.blocksSource(source)) lockedSources++;
                 }
-                if (rule.getPhase() == GenerationPhase.AFTER_UNLOCK) {
+                if (lockedSources < freeSources) {
+                    String label = Component.translatable("editor.historystages.badge.sources").getString();
+                    row.badge("[" + label + ": " + lockedSources + "/" + freeSources + "]", 0xCCAA66);
+                }
+                if (rule.getPhase() == GenerationPhase.AFTER_UNLOCK
+                        && own.test(FixedSpawnRule.PHASE)) {
                     row.badge("[" + Component.translatable("editor.historystages.spawn_control.badge.after_unlock")
                             .getString() + "]", 0xCCAA66);
                 }
-                int conditions = rule.getConditions().count();
+                var c = rule.getConditions();
+                int conditions = 0;
+                if (c.dimensions() != null && own.test(FixedSpawnRule.DIMENSIONS)) conditions++;
+                if (c.biomes() != null && own.test(FixedSpawnRule.BIOMES)) conditions++;
+                if (c.sky() != null && own.test(FixedSpawnRule.SKY)) conditions++;
+                if (c.height() != null && own.test(FixedSpawnRule.HEIGHT)) conditions++;
+                if (c.time() != null && own.test(FixedSpawnRule.TIME)) conditions++;
+                if (c.light() != null && own.test(FixedSpawnRule.LIGHT)) conditions++;
+                if (c.weather() != null && own.test(FixedSpawnRule.WEATHER)) conditions++;
+                if (!c.moonPhases().isEmpty() && own.test(FixedSpawnRule.MOON)) conditions++;
                 if (conditions > 0) {
                     row.badge("[" + Component.translatable("editor.historystages.spawn_control.badge.conditions")
                             .getString() + ": " + conditions + "]", 0xCCAA66);
@@ -1571,10 +1605,19 @@ public class StageDetailScreen extends Screen {
 
         if (isTab(activeTab, CAT_INTERACT)) {
             List<String> actFilter = editInteractionlockActions.get(entry);
-            int allActions = net.bananemdnsa.historystages.data.lock.EntityInteractionLockEntry.ALL_ACTIONS.size();
-            if (actFilter != null && !actFilter.isEmpty() && actFilter.size() < allActions) {
-                String label = Component.translatable("editor.historystages.badge.actions").getString();
-                row.badge("[" + label + ": " + actFilter.size() + "/" + allActions + "]", 0xCCAA66);
+            if (actFilter != null && !actFilter.isEmpty()) {
+                // Only the actions this mob decides itself; fixed ones are the same on every row.
+                int free = 0, locked = 0;
+                for (String action : net.bananemdnsa.historystages.data.lock.EntityInteractionLockEntry.ALL_ACTIONS) {
+                    if (editFixedInteractionLockActions != null
+                            && editFixedInteractionLockActions.containsKey(action)) continue;
+                    free++;
+                    if (actFilter.contains(action)) locked++;
+                }
+                if (locked < free) {
+                    String label = Component.translatable("editor.historystages.badge.actions").getString();
+                    row.badge("[" + label + ": " + locked + "/" + free + "]", 0xCCAA66);
+                }
             }
             List<net.bananemdnsa.historystages.data.ItemEntry> itemFilter =
                     editInteractionlockItems.get(entry);
@@ -2056,7 +2099,7 @@ public class StageDetailScreen extends Screen {
         modStructurePopup.render(guiGraphics, this.font, mouseX, mouseY);
         modBiomePopup.render(guiGraphics, this.font, mouseX, mouseY);
         if (recipePopupVisible) renderRecipePopup(guiGraphics, mouseX, mouseY);
-        if (lockActionsPopupVisible) renderLockActionsPopup(guiGraphics, mouseX, mouseY);
+        lockActionsPopup.render(guiGraphics, this.font, this.width, this.height, mouseX, mouseY);
         tradeLevelsPopup.render(guiGraphics, this.font, mouseX, mouseY);
         interactionActionsPopup.render(guiGraphics, this.font, mouseX, mouseY);
         // Skip the popup while one of its pickers is up: text is batched and flushed after the
@@ -2316,317 +2359,46 @@ public class StageDetailScreen extends Screen {
     }
 
     /**
-     * The grouped popup layout with every action the asking tab does not offer removed, and any
-     * group left empty dropped entirely. One layout table serves all categories instead of one
-     * table per vocabulary.
+     * The actions the stage settings fix for every entry of this tab, with their value
+     * (true = locked), or null when none are. Items, tags and mods share one map; fluids have
+     * their own.
      */
-    private List<String[]> lockActionGroupsForPopup() {
-        return LockActionGroups.forVocabulary(lockActionsForTab(lockActionsPopupTab));
+    private Map<String, Boolean> fixedLockActionsForTab(int tab) {
+        if (isAnyTab(tab, CAT_ITEMS, CAT_TAGS, CAT_MODS)) return editFixedItemLockActions;
+        if (isTab(tab, CAT_FLUIDS)) return editFixedFluidLockActions;
+        return null;
+    }
+
+    private static Map<String, Boolean> copyOrNull(Map<String, Boolean> map) {
+        return map != null ? new LinkedHashMap<>(map) : null;
     }
 
     private void openLockActionsPopup(int tab, int idx) {
-        lockActionsPopupTab = tab;
-        lockActionsPopupIdx = idx;
         Map<Integer, List<String>> map = getLockActionsMapForTab(tab);
-        if (map != null && map.containsKey(idx)) {
-            lockActionsPopupCurrent = new ArrayList<>(map.get(idx));
-        } else {
-            // All actions locked by default
-            lockActionsPopupCurrent = new ArrayList<>(lockActionsForTab(tab));
-        }
-        lockActionsPopupVisible = true;
-    }
-
-    private void saveLockActionsPopup() {
-        Map<Integer, List<String>> map = getLockActionsMapForTab(lockActionsPopupTab);
         if (map == null) return;
-        // If all actions are selected → remove from map (null = all locked = default, no JSON bloat)
-        boolean allLocked =
-                lockActionsPopupCurrent.size() == lockActionsForTab(lockActionsPopupTab).size();
-        if (allLocked) {
-            map.remove(lockActionsPopupIdx);
-        } else {
-            map.put(lockActionsPopupIdx, new ArrayList<>(lockActionsPopupCurrent));
-        }
-        hasChanges = true;
-        lockActionsPopupVisible = false;
-    }
-
-    // Layout constants for the popup
-    private static final int LP_PAD          = 8;
-    private static final int LP_WIDTH        = 232;
-    private static final int LP_COLS         = 3;
-    private static final int LP_HEADER_H     = 18;   // title block (title + underline)
-    private static final int LP_HINT_H       = 10;
-    private static final int LP_GROUP_HEAD_H = 10;
-    private static final int LP_TOGGLE_H     = 14;
-    private static final int LP_TOGGLE_GAP   = 2;
-    private static final int LP_GROUP_GAP    = 5;
-    private static final int LP_DESC_H       = 11;
-    private static final int LP_FOOTER_H     = 20;
-
-    private boolean handleLockActionsPopupClick(double mouseX, double mouseY, int button) {
-        int popupW = cachedLockPopupW, popupH = cachedLockPopupH;
-        int popupX = cachedLockPopupX, popupY = cachedLockPopupY;
-        if (popupW == 0) return true; // not yet rendered
-
-        int btnH = 14;
-        int btnY = popupY + popupH - btnH - 6;
-
-        // Done button (right, gold)
-        int doneW = computeLockDoneBtnWidth();
-        int doneX = popupX + popupW - doneW - LP_PAD;
-        if (mouseX >= doneX && mouseX < doneX + doneW && mouseY >= btnY && mouseY < btnY + btnH) {
-            Minecraft.getInstance().getSoundManager()
-                    .play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
-            saveLockActionsPopup();
-            return true;
-        }
-
-        // All button (left)
-        int qBtnW = computeLockQuickBtnWidth();
-        int allX = popupX + LP_PAD;
-        if (mouseX >= allX && mouseX < allX + qBtnW && mouseY >= btnY && mouseY < btnY + btnH) {
-            Minecraft.getInstance().getSoundManager()
-                    .play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
-            lockActionsPopupCurrent = new ArrayList<>(lockActionsForTab(lockActionsPopupTab));
-            return true;
-        }
-
-        // None button (next to All)
-        int noneX = allX + qBtnW + 3;
-        if (mouseX >= noneX && mouseX < noneX + qBtnW && mouseY >= btnY && mouseY < btnY + btnH) {
-            Minecraft.getInstance().getSoundManager()
-                    .play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
-            lockActionsPopupCurrent.clear();
-            return true;
-        }
-
-        // Toggle clicks — walk the grouped layout
-        int curY = popupY + LP_HEADER_H + LP_HINT_H + 3;
-        int toggleW = (popupW - 2 * LP_PAD - (LP_COLS - 1) * 3) / LP_COLS;
-        for (String[] group : lockActionGroupsForPopup()) {
-            curY += LP_GROUP_HEAD_H;
-            int actionCount = group.length - 1;
-            for (int j = 0; j < actionCount; j++) {
-                String action = group[j + 1];
-                int col = j % LP_COLS;
-                int row = j / LP_COLS;
-                int tx = popupX + LP_PAD + col * (toggleW + 3);
-                int ty = curY + row * (LP_TOGGLE_H + LP_TOGGLE_GAP);
-                if (mouseX >= tx && mouseX < tx + toggleW && mouseY >= ty && mouseY < ty + LP_TOGGLE_H) {
-                    Minecraft.getInstance().getSoundManager()
-                            .play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
-                    if (lockActionsPopupCurrent.contains(action)) {
-                        lockActionsPopupCurrent.remove(action);
-                    } else {
-                        lockActionsPopupCurrent.add(action);
-                    }
-                    return true;
+        List<String> vocabulary = lockActionsForTab(tab);
+        Map<String, Boolean> fixed = fixedLockActionsForTab(tab);
+        List<String> own = map.get(idx);
+        lockActionsPopup.show(vocabulary, own, fixed, blocked -> {
+            // A fixed action shows the stage's value, not the entry's. Put the entry's own value
+            // back before storing, so releasing the action in the settings later restores the
+            // entry as the user set it instead of leaving the stage's value behind.
+            List<String> keep = new ArrayList<>(blocked);
+            if (fixed != null) {
+                for (String action : fixed.keySet()) {
+                    boolean ownBlocked = own == null || own.contains(action);
+                    keep.remove(action);
+                    if (ownBlocked) keep.add(action);
                 }
             }
-            int rowsInGroup = (actionCount + LP_COLS - 1) / LP_COLS;
-            curY += rowsInGroup * LP_TOGGLE_H + (rowsInGroup - 1) * LP_TOGGLE_GAP + LP_GROUP_GAP;
-        }
-
-        // Click outside closes (and discards changes)
-        if (mouseX < popupX || mouseX > popupX + popupW || mouseY < popupY || mouseY > popupY + popupH) {
-            lockActionsPopupVisible = false;
-        }
-        return true;
-    }
-
-    private void renderLockActionsPopup(GuiGraphics g, int mouseX, int mouseY) {
-        // Compute popup height from group structure
-        int contentH = 0;
-        for (String[] group : lockActionGroupsForPopup()) {
-            int actionCount = group.length - 1;
-            int rowsInGroup = (actionCount + LP_COLS - 1) / LP_COLS;
-            contentH += LP_GROUP_HEAD_H + rowsInGroup * LP_TOGGLE_H + (rowsInGroup - 1) * LP_TOGGLE_GAP + LP_GROUP_GAP;
-        }
-        contentH -= LP_GROUP_GAP; // no gap after last group
-
-        int popupW = computeLockPopupWidth();
-        int popupH = LP_HEADER_H + LP_HINT_H + 3 + contentH + LP_DESC_H + LP_FOOTER_H;
-        int popupX = this.width / 2 - popupW / 2;
-        int popupY = this.height / 2 - popupH / 2;
-
-        cachedLockPopupX = popupX;
-        cachedLockPopupY = popupY;
-        cachedLockPopupW = popupW;
-        cachedLockPopupH = popupH;
-
-        // Backdrop dim
-        g.fill(0, 0, this.width, this.height, 0x88000000);
-        // Drop shadow
-        g.fill(popupX + 3, popupY + 3, popupX + popupW + 3, popupY + popupH + 3, 0x50000000);
-        // Outer border + inner background (matches editor dialog style)
-        g.fill(popupX - 1, popupY - 1, popupX + popupW + 1, popupY + popupH + 1, 0xFF333333);
-        g.fill(popupX, popupY, popupX + popupW, popupY + popupH, 0xFF1A1A1A);
-
-        // Title with subtle gold underline
-        g.drawCenteredString(this.font,
-                Component.translatable("editor.historystages.lock_actions.title"),
-                popupX + popupW / 2, popupY + 5, 0xFFFFFFFF);
-        int accentW = 40;
-        int accentX = popupX + (popupW - accentW) / 2;
-        g.fill(accentX, popupY + 15, accentX + accentW, popupY + 16, 0xFFFFCC00);
-
-        // Hint
-        g.drawCenteredString(this.font,
-                Component.translatable("editor.historystages.lock_actions.hint"),
-                popupX + popupW / 2, popupY + LP_HEADER_H, 0x888888);
-
-        // Render groups
-        int curY = popupY + LP_HEADER_H + LP_HINT_H + 3;
-        int toggleW = (popupW - 2 * LP_PAD - (LP_COLS - 1) * 3) / LP_COLS;
-        String hoveredAction = null;
-
-        for (String[] group : lockActionGroupsForPopup()) {
-            String groupKey = group[0];
-            Component groupLabel = Component.translatable("editor.historystages.lock_actions.group." + groupKey);
-
-            // Group header — subtle label with thin separator line
-            g.drawString(this.font, groupLabel, popupX + LP_PAD, curY + 1, 0xCCCCCC, false);
-            int textW = this.font.width(groupLabel);
-            int sepX = popupX + LP_PAD + textW + 5;
-            int sepY = curY + 4;
-            g.fill(sepX, sepY, popupX + popupW - LP_PAD, sepY + 1, 0xFF2E2E2E);
-            curY += LP_GROUP_HEAD_H;
-
-            int actionCount = group.length - 1;
-            for (int j = 0; j < actionCount; j++) {
-                String action = group[j + 1];
-                int col = j % LP_COLS;
-                int row = j / LP_COLS;
-                int tx = popupX + LP_PAD + col * (toggleW + 3);
-                int ty = curY + row * (LP_TOGGLE_H + LP_TOGGLE_GAP);
-
-                boolean blocked = lockActionsPopupCurrent.contains(action);
-                boolean hovered = mouseX >= tx && mouseX < tx + toggleW && mouseY >= ty && mouseY < ty + LP_TOGGLE_H;
-                if (hovered) hoveredAction = action;
-
-                // Background
-                int bg = blocked
-                        ? (hovered ? 0x40FFCC00 : 0x25FFCC00)
-                        : (hovered ? 0x25FFFFFF : 0x10FFFFFF);
-                g.fill(tx, ty, tx + toggleW, ty + LP_TOGGLE_H, bg);
-
-                // Bottom accent line
-                int accent = blocked
-                        ? (hovered ? 0xFFFFCC00 : 0xB0FFCC00)
-                        : (hovered ? 0x40FFFFFF : 0x20FFFFFF);
-                g.fill(tx, ty + LP_TOGGLE_H - 1, tx + toggleW, ty + LP_TOGGLE_H, accent);
-
-                // Indicator dot + label
-                int textColor = blocked ? 0xFFFFFF : 0x999999;
-                int dotColor  = blocked ? 0xFFFFCC00 : 0xFF555555;
-                g.fill(tx + 4, ty + 6, tx + 7, ty + 9, dotColor);
-                g.drawString(this.font,
-                        Component.translatable("editor.historystages.lock_actions.action." + action),
-                        tx + 10, ty + 3, textColor, false);
+            // All blocked is the default an entry gets without a list, so store it as no list.
+            if (keep.size() == vocabulary.size()) {
+                map.remove(idx);
+            } else {
+                map.put(idx, keep);
             }
-            int rowsInGroup = (actionCount + LP_COLS - 1) / LP_COLS;
-            curY += rowsInGroup * LP_TOGGLE_H + (rowsInGroup - 1) * LP_TOGGLE_GAP + LP_GROUP_GAP;
-        }
-
-        // Description line — shows hovered action's description, or a generic hint
-        int descY = popupY + popupH - LP_FOOTER_H - LP_DESC_H + 1;
-        g.fill(popupX + LP_PAD, descY - 1, popupX + popupW - LP_PAD, descY, 0xFF2E2E2E);
-        Component descText;
-        int descColor;
-        if (hoveredAction != null) {
-            descText = Component.translatable("editor.historystages.lock_actions.action." + hoveredAction)
-                    .append(Component.literal(" — "))
-                    .append(Component.translatable("editor.historystages.lock_actions.desc." + hoveredAction));
-            descColor = 0xCCCCCC;
-        } else {
-            int blockedCount = lockActionsPopupCurrent.size();
-            descText = Component.translatable("editor.historystages.lock_actions.status",
-                    blockedCount, lockActionsForTab(lockActionsPopupTab).size());
-            descColor = 0x888888;
-        }
-        g.drawCenteredString(this.font, descText, popupX + popupW / 2, descY + 2, descColor);
-
-        // Footer buttons
-        int btnH = 14;
-        int btnY = popupY + popupH - btnH - 6;
-        int qBtnW = computeLockQuickBtnWidth();
-
-        // All
-        int allX = popupX + LP_PAD;
-        boolean allHov = mouseX >= allX && mouseX < allX + qBtnW && mouseY >= btnY && mouseY < btnY + btnH;
-        g.fill(allX, btnY, allX + qBtnW, btnY + btnH, allHov ? 0x25FFFFFF : 0x10FFFFFF);
-        g.fill(allX, btnY + btnH - 1, allX + qBtnW, btnY + btnH, allHov ? 0x80FFFFFF : 0x40FFFFFF);
-        g.drawCenteredString(this.font,
-                Component.translatable("editor.historystages.lock_actions.btn_all"),
-                allX + qBtnW / 2, btnY + 3, allHov ? 0xFFFFFF : 0xCCCCCC);
-
-        // None
-        int noneX = allX + qBtnW + 3;
-        boolean noneHov = mouseX >= noneX && mouseX < noneX + qBtnW && mouseY >= btnY && mouseY < btnY + btnH;
-        g.fill(noneX, btnY, noneX + qBtnW, btnY + btnH, noneHov ? 0x25FFFFFF : 0x10FFFFFF);
-        g.fill(noneX, btnY + btnH - 1, noneX + qBtnW, btnY + btnH, noneHov ? 0x80FFFFFF : 0x40FFFFFF);
-        g.drawCenteredString(this.font,
-                Component.translatable("editor.historystages.lock_actions.btn_none"),
-                noneX + qBtnW / 2, btnY + 3, noneHov ? 0xFFFFFF : 0xCCCCCC);
-
-        // Done (gold accent)
-        int doneW = computeLockDoneBtnWidth();
-        int doneX = popupX + popupW - doneW - LP_PAD;
-        boolean doneHov = mouseX >= doneX && mouseX < doneX + doneW && mouseY >= btnY && mouseY < btnY + btnH;
-        g.fill(doneX, btnY, doneX + doneW, btnY + btnH, doneHov ? 0x50FFCC00 : 0x25FFCC00);
-        g.fill(doneX, btnY + btnH - 1, doneX + doneW, btnY + btnH, doneHov ? 0xFFFFCC00 : 0x80FFCC00);
-        g.drawCenteredString(this.font,
-                Component.translatable("editor.historystages.lock_actions.btn_done"),
-                doneX + doneW / 2, btnY + 3, doneHov ? 0xFFFFFF : 0xEEEEEE);
-    }
-
-    /**
-     * Popup width grown to fit every piece of text it holds — title, hint, toggle labels, the
-     * widest hover-description/status line, and the footer button row — instead of shrinking text
-     * into a fixed {@link #LP_WIDTH}.
-     */
-    private int computeLockPopupWidth() {
-        int maxToggleW = 0;
-        int maxLineW = 0;
-        List<String> vocabulary = lockActionsForTab(lockActionsPopupTab);
-        for (String action : vocabulary) {
-            Component name = Component.translatable("editor.historystages.lock_actions.action." + action);
-            Component desc = Component.translatable("editor.historystages.lock_actions.desc." + action);
-            maxToggleW = Math.max(maxToggleW, this.font.width(name));
-            Component combined = name.copy().append(Component.literal(" — ")).append(desc);
-            maxLineW = Math.max(maxLineW, this.font.width(combined));
-        }
-        Component status = Component.translatable("editor.historystages.lock_actions.status",
-                vocabulary.size(), vocabulary.size());
-        maxLineW = Math.max(maxLineW, this.font.width(status));
-        // Centered header lines must fit too.
-        maxLineW = Math.max(maxLineW, this.font.width(Component.translatable("editor.historystages.lock_actions.title")));
-        maxLineW = Math.max(maxLineW, this.font.width(Component.translatable("editor.historystages.lock_actions.hint")));
-
-        int neededToggleW = maxToggleW + 14; // dot + gap (10px) + right margin (4px)
-        int neededFromGrid = 2 * LP_PAD + LP_COLS * neededToggleW + (LP_COLS - 1) * 3;
-        int neededFromLine = maxLineW + 2 * LP_PAD;
-        // Footer: [All][None] on the left, [Done] on the right, with a small gap between the groups.
-        int neededFromFooter = 2 * LP_PAD + 2 * computeLockQuickBtnWidth() + 3 + 8 + computeLockDoneBtnWidth();
-        int needed = Math.max(LP_WIDTH, Math.max(Math.max(neededFromGrid, neededFromLine), neededFromFooter));
-        // Never wider than the screen: on a very small GUI the box would otherwise spill off both
-        // edges (it is screen-centered). Degrades to slight internal overflow, not an off-screen box.
-        return Math.min(needed, this.width - 8);
-    }
-
-    /** Width for the "All"/"None" footer buttons, grown to fit whichever label is wider. */
-    private int computeLockQuickBtnWidth() {
-        int w = this.font.width(Component.translatable("editor.historystages.lock_actions.btn_all"));
-        w = Math.max(w, this.font.width(Component.translatable("editor.historystages.lock_actions.btn_none")));
-        return Math.max(34, w + 10);
-    }
-
-    /** Width for the "Done" footer button, grown to fit its label. */
-    private int computeLockDoneBtnWidth() {
-        int w = this.font.width(Component.translatable("editor.historystages.lock_actions.btn_done"));
-        return Math.max(48, w + 10);
+            hasChanges = true;
+        });
     }
 
     // ===== Spawn sources popup =====
@@ -2669,9 +2441,9 @@ public class StageDetailScreen extends Screen {
         if (modEntityPopup.isVisible()) { return modEntityPopup.mouseClicked(mouseX, mouseY); }
         if (modStructurePopup.isVisible()) { return modStructurePopup.mouseClicked(mouseX, mouseY); }
         if (modBiomePopup.isVisible()) { return modBiomePopup.mouseClicked(mouseX, mouseY); }
-        if (lockActionsPopupVisible) { return handleLockActionsPopupClick(mouseX, mouseY, button); }
+        if (lockActionsPopup.isVisible()) { return lockActionsPopup.mouseClicked(mouseX, mouseY, button); }
         if (tradeLevelsPopup.isVisible()) { return tradeLevelsPopup.mouseClicked(mouseX, mouseY); }
-        if (interactionActionsPopup.isVisible()) { return interactionActionsPopup.mouseClicked(mouseX, mouseY); }
+        if (interactionActionsPopup.isVisible()) { return interactionActionsPopup.mouseClicked(mouseX, mouseY, button); }
         if (filterItemSearch.isVisible()) { if (filterItemSearch.mouseClicked(mouseX, mouseY)) return true; }
         if (filterTagSearch.isVisible()) { if (filterTagSearch.mouseClicked(mouseX, mouseY)) return true; }
         // The row menu sits on top of the popup, so let it consume the click first (its own
@@ -2682,7 +2454,7 @@ public class StageDetailScreen extends Screen {
             if (!interactionItemsPopup.isVisible()) interactionItemsTarget = null;
             return handled;
         }
-        if (spawnControlPopup.isVisible()) { return spawnControlPopup.mouseClicked(mouseX, mouseY); }
+        if (spawnControlPopup.isVisible()) { return spawnControlPopup.mouseClicked(mouseX, mouseY, button); }
         if (generationLimitPopup.isVisible()) { return generationLimitPopup.mouseClicked(mouseX, mouseY); }
         if (overridePopupVisible) { return handleOverridePopupClick(mouseX, mouseY, button); }
         if (recipePopupVisible) {
@@ -2852,12 +2624,13 @@ public class StageDetailScreen extends Screen {
                     }
                     if (isTab(tabIdx, CAT_SPAWN)) {
                         contextMenu.addEntry(Component.translatable("editor.historystages.context.spawn_control").getString(),
-                                () -> spawnControlPopup.show(entryValue, editSpawnRules.get(entryValue),
+                                () -> spawnControlPopup.show(entryValue, editSpawnRules.get(entryValue), editFixedSpawnRule,
                                         this.width / 2, this.height / 2));
                     }
                     if (isTab(tabIdx, CAT_INTERACT)) {
                         contextMenu.addEntry(Component.translatable("editor.historystages.context.interaction_actions").getString(),
-                                () -> interactionActionsPopup.show(entryValue, editInteractionlockActions.get(entryValue)));
+                                () -> interactionActionsPopup.show(entryValue, editInteractionlockActions.get(entryValue),
+                                        editFixedInteractionLockActions));
                         contextMenu.addEntry(Component.translatable("editor.historystages.context.interaction_items").getString(),
                                 () -> {
                                     interactionItemsTarget = entryValue;
@@ -3337,10 +3110,14 @@ public class StageDetailScreen extends Screen {
         this.minecraft.setScreen(new StageSettingsScreen(this,
                 editStageId, editDisplayName, editResearchTime,
                 editMinPedestalTier, editPedestalTierMode, editMode, editAutoTrigger, editTemporary,
-                editHiddenDisplay.copy(), editLoseOnDeath, editInterchangeable, editScrollCompletion,
+                editHiddenDisplay.copy(), editLoseOnDeath, editInterchangeable,
+                editFixedItemLockActions, editFixedFluidLockActions, editFixedInteractionLockActions,
+                editFixedSpawnRule, editScrollCompletion,
                 editAddonSettings, isNewStage, isIndividual,
                 (newId, newName, newTime, newTier, newTierMode, newStageMode, newAutoTrigger,
-                 newTemporary, newHidden, newLoseOnDeath, newInterchangeable, newScrollCompletion,
+                 newTemporary, newHidden, newLoseOnDeath, newInterchangeable,
+                 newFixedItemActions, newFixedFluidActions, newFixedInteractionActions, newFixedSpawnRule,
+                 newScrollCompletion,
                  newAddonSettings) -> {
                     editStageId = newId;
                     editDisplayName = newName;
@@ -3353,6 +3130,10 @@ public class StageDetailScreen extends Screen {
                     editHiddenDisplay = newHidden != null ? newHidden : new net.bananemdnsa.historystages.data.display.HiddenDisplayConfig();
                     editLoseOnDeath = newLoseOnDeath;
                     editInterchangeable = newInterchangeable;
+                    editFixedItemLockActions = copyOrNull(newFixedItemActions);
+                    editFixedFluidLockActions = copyOrNull(newFixedFluidActions);
+                    editFixedInteractionLockActions = copyOrNull(newFixedInteractionActions);
+                    editFixedSpawnRule = newFixedSpawnRule;
                     editScrollCompletion = newScrollCompletion == null ? "" : newScrollCompletion;
                     editAddonSettings = newAddonSettings;
                     hasChanges = true;
@@ -3552,6 +3333,10 @@ public class StageDetailScreen extends Screen {
         newEntry.setHiddenDisplay(editHiddenDisplay);
         newEntry.setLoseOnDeath(editLoseOnDeath);
         newEntry.setInterchangeable(editInterchangeable);
+        newEntry.setFixedItemLockActions(editFixedItemLockActions);
+        newEntry.setFixedFluidLockActions(editFixedFluidLockActions);
+        newEntry.setFixedInteractionLockActions(editFixedInteractionLockActions);
+        newEntry.setFixedSpawnRule(editFixedSpawnRule);
         newEntry.setLogic(editLogic != null ? editLogic.deepCopy() : null);
         newEntry.setIcon(editIcon);
         newEntry.setScrollCompletion(editScrollCompletion);

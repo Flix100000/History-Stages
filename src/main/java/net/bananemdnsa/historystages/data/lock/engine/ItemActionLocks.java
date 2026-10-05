@@ -32,7 +32,7 @@ public final class ItemActionLocks {
             if (!entry.getId().equals(subject.itemId())) continue;
             boolean nbtMatch = !entry.hasNbt()
                     || (subject.stack() != null && NbtMatcher.matches(subject.stack(), entry.getNbt()));
-            if (nbtMatch) return isActionInList(entry.getLockActions(), action);
+            if (nbtMatch) return isActionInList(stage.effectiveItemLockActions(entry.getLockActions()), action);
         }
 
         // Right after items and before mods: naming what the container holds is a statement
@@ -40,21 +40,21 @@ public final class ItemActionLocks {
         // bucket itself still wins, so a pack can carve out one container of a gated fluid.
         for (net.bananemdnsa.historystages.data.FluidEntry fluidEntry : stage.getFluidEntries()) {
             if (BuiltInLockMatching.fluidEntryMatches(fluidEntry, subject)) {
-                return isActionInList(fluidEntry.getLockActions(), action);
+                return isActionInList(stage.effectiveFluidLockActions(fluidEntry.getLockActions()), action);
             }
         }
 
         for (NamedLockEntry modEntry : stage.getModEntries()) {
             if (modEntry.getId().equals(subject.modId())
                     && !stage.isModExcepted(subject.itemId(), subject.stack())) {
-                return isActionInList(modEntry.getLockActions(), action);
+                return isActionInList(stage.effectiveItemLockActions(modEntry.getLockActions()), action);
             }
         }
 
         if (subject.item() != null) {
             for (NamedLockEntry tagEntry : stage.getTagEntries()) {
                 if (BuiltInLockMatching.tagEntryMatches(tagEntry, subject)) {
-                    return isActionInList(tagEntry.getLockActions(), action);
+                    return isActionInList(stage.effectiveItemLockActions(tagEntry.getLockActions()), action);
                 }
             }
         }

@@ -9,6 +9,7 @@ import net.bananemdnsa.historystages.client.editor.widget.list.SearchableDimensi
 import net.bananemdnsa.historystages.data.lock.EntitySpawnLockEntry;
 import net.bananemdnsa.historystages.data.lock.GenerationPhase;
 import net.bananemdnsa.historystages.data.lock.spawn.FilterMode;
+import net.bananemdnsa.historystages.data.lock.spawn.FixedSpawnRule;
 import net.bananemdnsa.historystages.data.lock.spawn.SkyCondition;
 import net.bananemdnsa.historystages.data.lock.spawn.TimeOfDay;
 import net.bananemdnsa.historystages.data.lock.spawn.WeatherCondition;
@@ -19,8 +20,12 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.util.FormattedCharSequence;
 
+import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import static net.bananemdnsa.historystages.client.editor.widget.popup.spawn.SpawnPageRows.K;
@@ -39,6 +44,11 @@ import static net.bananemdnsa.historystages.client.editor.widget.popup.spawn.Spa
  * {@link SpawnRuleSummary} instead, which is what lets those two be unit-tested without Minecraft.
  *
  * <p>On confirm it reports the entity id and the full entry, a plain lock included.
+ *
+ * <p>{@link #showFixing} opens the same dialog for the stage settings, where a right click fixes a
+ * row for every mob of the stage. A mob then shows its fixed rows with the stage's value, dimmed
+ * and closed to input; on confirm the mob's own values go back into those rows, so releasing a
+ * fixed row later restores what the mob had.
  */
 public class SpawnControlPopup {
 
@@ -78,6 +88,28 @@ public class SpawnControlPopup {
     private int activeTab;
     private PickerOverlay picker;
 
+    /** True while editing the stage's fixed rows rather than one mob. */
+    private boolean fixing;
+    /** Fixing mode: the rows fixed so far. */
+    private final Set<String> fixingRows = new LinkedHashSet<>();
+    private Consumer<FixedSpawnRule> onFixed = rule -> {};
+    /** Mob mode: the stage's fixed rows, or null when none are. */
+    private FixedSpawnRule fixed;
+    /** Mob mode: what the mob itself says, kept apart from the shown draft so it can go back. */
+    private SpawnRuleDraft ownDraft = SpawnRuleDraft.from(null);
+
+    private final SpawnPageRows.FixHost fixHost = new SpawnPageRows.FixHost() {
+        @Override public boolean fixing() { return fixing; }
+
+        @Override public boolean isFixed(String row) {
+            return fixing ? fixingRows.contains(row) : fixed != null && fixed.isFixed(row);
+        }
+
+        @Override public void toggleFixed(String row) {
+            if (!fixingRows.remove(row)) fixingRows.add(row);
+        }
+    };
+
     private int centerX, centerY;
     private int panelX, panelY, panelW, panelH, bodyH;
 
@@ -96,15 +128,20 @@ public class SpawnControlPopup {
     private final NumberStepper maxGroup = extraRows.stepper(1, 32, v -> draft.maxGroup = v);
 
     private final List<Tab> tabs = List.of(
-            new Tab(K + "tab.sources", sourceRows,
-                    () -> draft.lockedSources.size() + "/" + EntitySpawnLockEntry.ALL_SOURCES.size(),
-                    this::drawSources),
+            new Tab(K + "tab.sources", sourceRows, this::sourcesBadge, this::drawSources),
             new Tab(K + "tab.location", locationRows,
-                    () -> countBadge(draft.locationCount()), this::drawLocation),
+                    () -> fixing ? countBadge(fixedCount(LOCATION_ROWS)) : countBadge(draft.locationCount(fixedRows())),
+                    this::drawLocation),
             new Tab(K + "tab.time", timeRows,
-                    () -> countBadge(draft.timeCount()), this::drawTimeAndWeather),
+                    () -> fixing ? countBadge(fixedCount(TIME_ROWS)) : countBadge(draft.timeCount(fixedRows())),
+                    this::drawTimeAndWeather),
             new Tab(K + "tab.extra", extraRows,
                     () -> countBadge(draft.extraIds.size()), this::drawExtraBiomes));
+
+    private static final List<String> LOCATION_ROWS = List.of(
+            FixedSpawnRule.DIMENSIONS, FixedSpawnRule.BIOMES, FixedSpawnRule.SKY, FixedSpawnRule.HEIGHT);
+    private static final List<String> TIME_ROWS = List.of(
+            FixedSpawnRule.TIME, FixedSpawnRule.LIGHT, FixedSpawnRule.WEATHER, FixedSpawnRule.MOON);
 
     public SpawnControlPopup(BiConsumer<String, EntitySpawnLockEntry> onConfirm) {
         this.onConfirm = onConfirm;
@@ -122,13 +159,88 @@ public class SpawnControlPopup {
 
     /** @param current the stored entry, or null for a plain lock */
     public void show(String entityId, EntitySpawnLockEntry current, int centerX, int centerY) {
+        show(entityId, current, null, centerX, centerY);
+    }
+
+    /**
+     * @param current the stored entry, or null for a plain lock
+     * @param fixed   the stage's fixed rows, or null when none are
+     */
+    public void show(String entityId, EntitySpawnLockEntry current, FixedSpawnRule fixed, int centerX, int centerY) {
+        this.fixing = false;
         this.entityId = entityId;
+        this.fixed = fixed != null && !fixed.isEmpty() ? fixed : null;
+        this.ownDraft = SpawnRuleDraft.from(current);
+        open(withFixedRows(SpawnRuleDraft.from(current)), centerX, centerY);
+    }
+
+    /**
+     * Opens the dialog for the stage settings: a right click fixes a row for every mob of the
+     * stage. Extra biomes are left out — they belong to one mob.
+     *
+     * @param current the fixed rows so far, or null
+     * @param onDone  receives the new fixed rows, or null when none are left
+     */
+    public void showFixing(FixedSpawnRule current, Consumer<FixedSpawnRule> onDone, int centerX, int centerY) {
+        this.fixing = true;
+        this.entityId = null;
+        this.fixed = null;
+        this.onFixed = onDone;
+        fixingRows.clear();
+        if (current != null) fixingRows.addAll(current.rows());
+        open(SpawnRuleDraft.from(current != null ? current.values() : null), centerX, centerY);
+    }
+
+    private void open(SpawnRuleDraft next, int centerX, int centerY) {
         this.centerX = centerX;
         this.centerY = centerY;
-        load(SpawnRuleDraft.from(current));
+        // The padlock column only opens where something can be fixed or already is.
+        SpawnPageRows.FixHost host = fixing || fixed != null ? fixHost : null;
+        for (Tab tab : tabs) tab.rows().setFixHost(host);
+        load(next);
         this.activeTab = 0;
         this.picker = null;
         this.visible = true;
+    }
+
+    /** {@code draft} with the stage's fixed rows shown in place of the mob's own. */
+    private SpawnRuleDraft withFixedRows(SpawnRuleDraft draft) {
+        if (fixed != null) draft.copyRowsFrom(fixedRows(), SpawnRuleDraft.from(fixed.values()));
+        return draft;
+    }
+
+    /** The fixed rows this dialog is showing, in either mode. */
+    private Set<String> fixedRows() {
+        if (fixing) return fixingRows;
+        return fixed != null ? new HashSet<>(fixed.rows()) : Set.of();
+    }
+
+    private int fixedCount(List<String> rows) {
+        int n = 0;
+        for (String row : rows) if (fixingRows.contains(row)) n++;
+        return n;
+    }
+
+    /** Fixing: how many sources are fixed. On a mob: what it locks among the sources it decides. */
+    private String sourcesBadge() {
+        if (fixing) {
+            int n = 0;
+            for (String source : EntitySpawnLockEntry.ALL_SOURCES) {
+                if (fixingRows.contains(FixedSpawnRule.source(source))) n++;
+            }
+            return countBadge(n);
+        }
+        int free = 0, locked = 0;
+        for (String source : EntitySpawnLockEntry.ALL_SOURCES) {
+            if (fixedRows().contains(FixedSpawnRule.source(source))) continue;
+            free++;
+            if (draft.locksSource(source)) locked++;
+        }
+        return free == 0 ? null : locked + "/" + free;
+    }
+
+    private List<Tab> visibleTabs() {
+        return fixing ? tabs.subList(0, 3) : tabs;
     }
 
     private void load(SpawnRuleDraft next) {
@@ -151,15 +263,46 @@ public class SpawnControlPopup {
         String hovered = null;
         for (String source : EntitySpawnLockEntry.ALL_SOURCES) {
             if (sourceRows.rowHovered()) hovered = source;
+            sourceRows.beginRow(FixedSpawnRule.source(source));
             sourceRows.checkboxRow("editor.historystages.spawn_sources.source." + source,
-                    draft.lockedSources.contains(source), true, () -> draft.toggleSource(source));
+                    draft.lockedSources.contains(source), true, () -> toggleSource(source));
+            sourceRows.endRow();
         }
         sourceRows.hint(hovered != null
                 ? "editor.historystages.spawn_sources.desc." + hovered
                 : K + "sources.hint");
     }
 
+    /**
+     * Fixing allows every source to be cleared — "all allowed" is a value worth fixing. On a mob
+     * the last source the mob itself locks stays, judged on what it will store: its own sources
+     * in the fixed rows plus the shown ones elsewhere.
+     */
+    private void toggleSource(String source) {
+        if (fixing) {
+            draft.toggleSourceFreely(source);
+            return;
+        }
+        if (fixed == null) {
+            draft.toggleSource(source);
+            return;
+        }
+        if (!draft.locksSource(source)) {
+            draft.toggleSourceFreely(source);
+            return;
+        }
+        for (String other : EntitySpawnLockEntry.ALL_SOURCES) {
+            if (other.equals(source)) continue;
+            boolean fixedHere = fixed.isFixed(FixedSpawnRule.source(other));
+            if (fixedHere ? ownDraft.locksSource(other) : draft.locksSource(other)) {
+                draft.toggleSourceFreely(source);
+                return;
+            }
+        }
+    }
+
     private void drawLocation() {
+        locationRows.beginRow(FixedSpawnRule.DIMENSIONS);
         locationRows.segmentRow(K + "dimensions", FILTER, modeIndex(draft.dimensionMode),
                 i -> draft.dimensionMode = modeAt(i));
         if (draft.dimensionMode != null) {
@@ -168,7 +311,9 @@ public class SpawnControlPopup {
                 closePicker();
             }, () -> draft.dimensionIds)));
         }
+        locationRows.endRow();
 
+        locationRows.beginRow(FixedSpawnRule.BIOMES);
         locationRows.segmentRow(K + "biomes", FILTER, modeIndex(draft.biomeMode),
                 i -> draft.biomeMode = modeAt(i));
         if (draft.biomeMode != null) {
@@ -177,26 +322,39 @@ public class SpawnControlPopup {
                 closePicker();
             }, () -> draft.biomeIds, true)));
         }
+        locationRows.endRow();
 
+        locationRows.beginRow(FixedSpawnRule.SKY);
         locationRows.segmentRow(K + "sky", SKY, draft.sky == null ? 0 : draft.sky.ordinal() + 1,
                 i -> draft.sky = i == 0 ? null : SkyCondition.values()[i - 1]);
+        locationRows.endRow();
 
+        locationRows.beginRow(FixedSpawnRule.HEIGHT);
         locationRows.segmentRow(K + "height", RANGE, draft.heightOn ? 1 : 0, i -> draft.heightOn = i == 1);
         if (draft.heightOn) locationRows.rangeRow(null, heightMin, heightMax);
+        locationRows.endRow();
     }
 
     private void drawTimeAndWeather() {
+        timeRows.beginRow(FixedSpawnRule.TIME);
         timeRows.segmentRow(K + "time", TIME, draft.time == null ? 0 : draft.time.ordinal() + 1,
                 i -> draft.time = i == 0 ? null : TimeOfDay.values()[i - 1]);
+        timeRows.endRow();
 
+        timeRows.beginRow(FixedSpawnRule.LIGHT);
         timeRows.segmentRow(K + "light", RANGE, draft.lightOn ? 1 : 0, i -> draft.lightOn = i == 1);
         if (draft.lightOn) timeRows.rangeRow(null, lightMin, lightMax);
+        timeRows.endRow();
 
+        timeRows.beginRow(FixedSpawnRule.WEATHER);
         timeRows.segmentRow(K + "weather", WEATHER, draft.weather == null ? 0 : draft.weather.ordinal() + 1,
                 i -> draft.weather = i == 0 ? null : WeatherCondition.values()[i - 1]);
+        timeRows.endRow();
 
+        timeRows.beginRow(FixedSpawnRule.MOON);
         timeRows.segmentRow(K + "moon", MOON, draft.moonOn ? 1 : 0, i -> draft.moonOn = i == 1);
         if (draft.moonOn) timeRows.moonGrid(draft.moonPhases);
+        timeRows.endRow();
     }
 
     private void drawExtraBiomes() {
@@ -262,7 +420,8 @@ public class SpawnControlPopup {
         g.fill(panelX - 1, panelY - 1, panelX + panelW + 1, panelY + panelH + 1, 0xFF333333);
         g.fill(panelX, panelY, panelX + panelW, panelY + panelH, 0xFF1A1A1A);
 
-        g.drawCenteredString(font, Component.translatable(K + "title", entityId),
+        g.drawCenteredString(font, fixing ? Component.translatable(K + "fixing.title")
+                        : Component.translatable(K + "title", entityId),
                 panelX + panelW / 2, panelY + 6, 0xFFFFFFFF);
         g.fill(panelX + panelW / 2 - 20, panelY + 17, panelX + panelW / 2 + 20, panelY + 18, 0xFFFFCC00);
 
@@ -272,13 +431,14 @@ public class SpawnControlPopup {
         phaseDropdown.setPosition(panelX + panelW - PAD - phaseDropdown.getWidth(),
                 phaseY + (PHASE_ROW_H - EnumDropdown.BUTTON_HEIGHT) / 2);
         phaseDropdown.renderButton(g, font, mouseX, mouseY);
+        renderPhaseLock(g, mouseX, mouseY, phaseY);
 
         int bodyY = phaseY + PHASE_ROW_H;
         g.fill(panelX, bodyY - 1, panelX + panelW, bodyY, 0xFF555555);
         renderTabs(g, font, mouseX, mouseY, bodyY);
         g.fill(panelX + TAB_W, bodyY, panelX + TAB_W + 1, bodyY + bodyH, 0xFF333333);
 
-        Tab tab = tabs.get(activeTab);
+        Tab tab = visibleTabs().get(activeTab);
         g.enableScissor(panelX + TAB_W + 1, bodyY, panelX + panelW, bodyY + bodyH);
         tab.rows().render(new SpawnPageRows.Frame(g, font, mouseX, mouseY, panelX + TAB_W + 1, bodyY,
                 panelW - TAB_W - 1, bodyH), tab.body());
@@ -303,8 +463,11 @@ public class SpawnControlPopup {
     private void renderTooltip(GuiGraphics g, Font font, int mouseX, int mouseY, int phaseY) {
         if (phaseDropdown.isShowing()) return;
         String tip = inBox(mouseX, mouseY, panelX, phaseY, panelW, PHASE_ROW_H)
-                ? Component.translatable(K + "tip.phase").getString()
-                : tabs.get(activeTab).rows().tooltip();
+                ? Component.translatable(phaseLocked() ? K + "tip.fixed_by_stage"
+                        : fixing && inBox(mouseX, mouseY, phaseLockX() - 2, phaseY, 12, PHASE_ROW_H)
+                                ? K + (fixingRows.contains(FixedSpawnRule.PHASE) ? "tip.release_row" : "tip.fix_row")
+                                : K + "tip.phase").getString()
+                : visibleTabs().get(activeTab).rows().tooltip();
         if (tip != null && !tip.isEmpty()) {
             EditorTooltip.draw(g, font, tip, mouseX, mouseY, g.guiWidth(), g.guiHeight());
         }
@@ -322,7 +485,37 @@ public class SpawnControlPopup {
         return Math.max(4, Math.min(value, Math.max(4, max)));
     }
 
+    /**
+     * The phase sits in the header, not in a tab, so it gets its padlock here: left of the
+     * dropdown. On a mob a fixed phase veils the dropdown the way a fixed row is veiled.
+     */
+    private void renderPhaseLock(GuiGraphics g, int mouseX, int mouseY, int phaseY) {
+        if (!fixing && fixed == null) return;
+        int lockX = phaseLockX();
+        int lockY = phaseY + (PHASE_ROW_H - 8) / 2;
+        boolean isFixed = fixHost.isFixed(FixedSpawnRule.PHASE);
+        if (!fixing && isFixed) {
+            int x = panelX + panelW - PAD - phaseDropdown.getWidth();
+            int y = phaseY + (PHASE_ROW_H - EnumDropdown.BUTTON_HEIGHT) / 2;
+            g.fill(x, y, x + phaseDropdown.getWidth(), y + EnumDropdown.BUTTON_HEIGHT, 0x99141414);
+        }
+        if (isFixed) {
+            SpawnPageRows.drawPadlock(g, lockX, lockY, 0xFFFFCC00);
+        } else if (fixing && inBox(mouseX, mouseY, panelX, phaseY, panelW, PHASE_ROW_H)) {
+            SpawnPageRows.drawPadlock(g, lockX, lockY, 0xFF555555);
+        }
+    }
+
+    private int phaseLockX() {
+        return panelX + panelW - PAD - phaseDropdown.getWidth() - 12;
+    }
+
+    private boolean phaseLocked() {
+        return !fixing && fixed != null && fixed.isFixed(FixedSpawnRule.PHASE);
+    }
+
     private void renderTabs(GuiGraphics g, Font font, int mouseX, int mouseY, int bodyY) {
+        List<Tab> tabs = visibleTabs();
         for (int i = 0; i < tabs.size(); i++) {
             int ty = tabY(bodyY, i);
             boolean on = i == activeTab;
@@ -344,8 +537,11 @@ public class SpawnControlPopup {
     private void renderSummary(GuiGraphics g, Font font, int y, int height) {
         g.fill(panelX, y, panelX + panelW, y + height, 0xFF151515);
         g.fill(panelX, y, panelX + panelW, y + 1, 0xFF333333);
-        List<FormattedCharSequence> lines =
-                font.split(sentence(SpawnRuleSummary.describe(draft.toEntry(entityId))), panelW - 2 * PAD);
+        // A rule for no mob in particular has no sentence worth reading; say how fixing works.
+        Component text = fixing
+                ? Component.translatable(K + "fixing.hint", fixingRows.size())
+                : sentence(SpawnRuleSummary.describe(draft.toEntry(entityId)));
+        List<FormattedCharSequence> lines = font.split(text, panelW - 2 * PAD);
         int fits = Math.max(1, (height - 8) / (font.lineHeight + 1));
         int ly = y + 5;
         for (int i = 0; i < Math.min(fits, lines.size()); i++) {
@@ -406,23 +602,38 @@ public class SpawnControlPopup {
     }
 
     public boolean mouseClicked(double mouseX, double mouseY) {
+        return mouseClicked(mouseX, mouseY, 0);
+    }
+
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (!visible) return false;
         // Geometry is only known once render() has run; swallow the click until then.
         if (panelW == 0) return true;
 
         if (picker != null && picker.isVisible()) {
-            picker.mouseClicked(mouseX, mouseY);
+            if (button == 0) picker.mouseClicked(mouseX, mouseY);
+            return true;
+        }
+
+        List<Tab> tabs = visibleTabs();
+        if (button == 1) {
+            if (fixing && inBox(mouseX, mouseY, panelX, panelY + HEADER_H, panelW, PHASE_ROW_H)) {
+                SpawnPageRows.playClick();
+                fixHost.toggleFixed(FixedSpawnRule.PHASE);
+                return true;
+            }
+            tabs.get(activeTab).rows().mouseClicked(mouseX, mouseY, 1);
             return true;
         }
 
         // Read up front: the dropdown collapses on a click that misses it, and that click should
         // only close the list, not reach the rows underneath.
         boolean listWasOpen = phaseDropdown.isExpanded();
-        if (phaseDropdown.mouseClicked(mouseX, mouseY)) return true;
+        if (!phaseLocked() && phaseDropdown.mouseClicked(mouseX, mouseY)) return true;
         if (listWasOpen) return true;
 
         Tab tab = tabs.get(activeTab);
-        if (tab.rows().mouseClicked(mouseX, mouseY)) return true;
+        if (tab.rows().mouseClicked(mouseX, mouseY, 0)) return true;
 
         int bodyY = panelY + HEADER_H + PHASE_ROW_H;
         for (int i = 0; i < tabs.size(); i++) {
@@ -445,7 +656,14 @@ public class SpawnControlPopup {
         }
         if (inBox(mouseX, mouseY, resetX(), btnY, resetW(font), BTN_H)) {
             SpawnPageRows.playClick();
-            load(SpawnRuleDraft.from(null));
+            if (fixing) {
+                fixingRows.clear();
+                load(SpawnRuleDraft.from(null));
+            } else {
+                // The mob's own rule goes back to a plain lock; the fixed rows still show.
+                ownDraft = SpawnRuleDraft.from(null);
+                load(withFixedRows(SpawnRuleDraft.from(null)));
+            }
             return true;
         }
 
@@ -458,7 +676,7 @@ public class SpawnControlPopup {
         if (picker != null && picker.isVisible()) {
             picker.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
         } else {
-            tabs.get(activeTab).rows().mouseScrolled(mouseX, mouseY, scrollY);
+            visibleTabs().get(activeTab).rows().mouseScrolled(mouseX, mouseY, scrollY);
         }
         return true;
     }
@@ -480,7 +698,7 @@ public class SpawnControlPopup {
             }
             return picker.keyPressed(keyCode);
         }
-        if (tabs.get(activeTab).rows().keyPressed(keyCode)) return true;
+        if (visibleTabs().get(activeTab).rows().keyPressed(keyCode)) return true;
         if (keyCode == 256) {
             // One level at a time: an open list closes first.
             if (phaseDropdown.isExpanded()) {
@@ -496,12 +714,18 @@ public class SpawnControlPopup {
     public boolean charTyped(char c) {
         if (!visible) return false;
         if (picker != null && picker.isVisible()) return picker.charTyped(c);
-        return tabs.get(activeTab).rows().charTyped(c);
+        return visibleTabs().get(activeTab).rows().charTyped(c);
     }
 
     private void confirm() {
         for (Tab tab : tabs) tab.rows().commitEdits();
-        onConfirm.accept(entityId, draft.toEntry(entityId));
+        if (fixing) {
+            onFixed.accept(fixingRows.isEmpty() ? null : new FixedSpawnRule(fixingRows, draft.toFixedValues()));
+        } else {
+            // The fixed rows show the stage's value; the mob keeps its own in them.
+            if (fixed != null) draft.copyRowsFrom(fixedRows(), ownDraft);
+            onConfirm.accept(entityId, draft.toEntry(entityId));
+        }
         visible = false;
     }
 

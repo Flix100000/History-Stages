@@ -56,4 +56,43 @@ class SpawnRuleDraftTest {
         assertEquals(2, draft.locationCount());
         assertEquals(1, draft.timeCount());
     }
+
+    /** What a mob shows for a fixed row and what it stores again must be two different drafts. */
+    @Test
+    void copiedRowsCarryTheirValueAndLeaveTheOthersAlone() {
+        SpawnRuleDraft mob = SpawnRuleDraft.from(new EntitySpawnLockEntry("a:b", List.of("natural", "spawner")));
+        mob.time = TimeOfDay.DAY;
+        SpawnRuleDraft stage = SpawnRuleDraft.from(null);
+        stage.lockedSources.remove("spawner");
+        stage.time = TimeOfDay.NIGHT;
+        stage.heightOn = true;
+        stage.heightMin = 0;
+
+        mob.copyRowsFrom(Set.of(FixedSpawnRule.source("spawner"), FixedSpawnRule.HEIGHT), stage);
+
+        assertFalse(mob.locksSource("spawner"), "spawner is fixed: the stage's value");
+        assertTrue(mob.locksSource("natural"), "natural is not fixed: the mob's value");
+        assertEquals(TimeOfDay.DAY, mob.time, "time is not fixed");
+        assertEquals(new IntRange(0, 320), mob.toEntry("a:b").getConditions().height());
+    }
+
+    @Test
+    void theFixedValuesKeepNoSourceLocked() {
+        SpawnRuleDraft draft = SpawnRuleDraft.from(null);
+        for (String source : EntitySpawnLockEntry.ALL_SOURCES) draft.toggleSourceFreely(source);
+
+        EntitySpawnLockEntry values = draft.toFixedValues();
+
+        for (String source : EntitySpawnLockEntry.ALL_SOURCES) assertFalse(values.blocksSource(source));
+    }
+
+    @Test
+    void fixedRowsAreLeftOutOfTheTabCounts() {
+        SpawnRuleDraft draft = SpawnRuleDraft.from(null);
+        draft.sky = SkyCondition.HIDDEN;
+        draft.weather = WeatherCondition.RAIN;
+
+        assertEquals(0, draft.locationCount(Set.of(FixedSpawnRule.SKY)));
+        assertEquals(1, draft.timeCount(Set.of(FixedSpawnRule.SKY)));
+    }
 }

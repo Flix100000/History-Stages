@@ -87,12 +87,14 @@ class AddonBlockSurvivesEditingTest {
         int start = source.indexOf("private StageEntry buildEntrySnapshot()");
         String body = source.substring(start, source.indexOf("\n    }", start));
 
-        // Four fields are written through a setter that is not named after them.
+        // Five fields are written through a setter that is not named after them. The fixed lock
+        // actions have two, one per kind; the item one stands for both.
         Map<String, String> setterAliases = Map.of(
                 "items", "setItemEntries",
                 "tags", "setTagEntries",
                 "mods", "setModEntries",
-                "modExceptions", "setModExceptionEntries");
+                "modExceptions", "setModExceptionEntries",
+                "fixedLockActions", "setFixedItemLockActions");
 
         List<String> unset = new ArrayList<>();
         for (Field field : StageEntry.class.getDeclaredFields()) {
