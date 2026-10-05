@@ -37,7 +37,7 @@ public final class ZoneTerrainSampler {
      *             untouched rather than swapped twice.
      */
     public record Surface(int minX, int minZ, int step, int cols, int rows,
-                          int[] abgr, int[] height, int[] sideAbgr) {
+                          int[] abgr, int[] height) {
 
         public boolean known(int col, int row) {
             return abgr[row * cols + col] != 0;
@@ -49,18 +49,6 @@ public final class ZoneTerrainSampler {
 
         public int heightAt(int col, int row) {
             return height[row * cols + col];
-        }
-
-        /**
-         * The colour of what a drop at this sample exposes, or zero where nothing is exposed.
-         *
-         * <p>Separate from the colour on top because they are rarely the same material: the top of
-         * a cliff is grass and its face is stone, the top of a mansion is its roof and its face is
-         * planks. Painting the drop in the colour of the roof above it was the first attempt, and
-         * it made every building look like a solid block of roof.
-         */
-        public int sideAbgrAt(int col, int row) {
-            return sideAbgr[row * cols + col];
         }
 
         public boolean anyUnknown() {
@@ -97,52 +85,8 @@ public final class ZoneTerrainSampler {
             }
         }
 
-        Surface surface = new Surface(minX, minZ, step, cols, rows, abgr, height,
-                new int[cols * rows]);
-        fillSides(level, surface);
-        return surface;
+        return new Surface(minX, minZ, step, cols, rows, abgr, height);
     }
-
-    /**
-     * Looks up what each drop exposes, for the samples that have a drop at all.
-     *
-     * <p>A second pass rather than part of the first: whether a sample sits at a step is only known
-     * once its neighbours have been measured. It costs one block lookup per step in the ground,
-     * which on ordinary terrain is a small fraction of the grid.
-     */
-    private static void fillSides(ClientLevel level, Surface surface) {
-        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
-
-        for (int row = 0; row < surface.rows(); row++) {
-            for (int col = 0; col < surface.cols(); col++) {
-                if (!surface.known(col, row)) continue;
-
-                int height = surface.heightAt(col, row);
-                int lowest = height;
-                for (int[] side : NEIGHBOURS) {
-                    int c = col + side[0];
-                    int r = row + side[1];
-                    if (c < 0 || r < 0 || c >= surface.cols() || r >= surface.rows()) continue;
-                    if (!surface.known(c, r)) continue;
-                    lowest = Math.min(lowest, surface.heightAt(c, r));
-                }
-                if (lowest >= height) continue;
-
-                // Halfway down the drop: the top block is the roof or the turf, and neither is what
-                // the face of the step is made of.
-                int middle = (height + lowest) / 2;
-                pos.set(surface.minX() + col * surface.step(), middle,
-                        surface.minZ() + row * surface.step());
-                MapColor colour = level.getBlockState(pos).getMapColor(level, pos);
-                if (colour == MapColor.NONE) continue;
-
-                surface.sideAbgr()[row * surface.cols() + col] =
-                        colour.calculateRGBColor(MapColor.Brightness.NORMAL);
-            }
-        }
-    }
-
-    private static final int[][] NEIGHBOURS = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
 
     /**
      * Fills in the samples that were unknown last time, and touches nothing else.
@@ -174,9 +118,6 @@ public final class ZoneTerrainSampler {
             }
         }
 
-        // The new ground changes which of its neighbours stand at a step, so the faces of the drops
-        // are worked out again rather than left as they were.
-        if (filled > 0) fillSides(level, surface);
         return filled;
     }
 
