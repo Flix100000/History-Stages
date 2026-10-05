@@ -131,6 +131,7 @@ public class TooltipEventHandler {
         }
         // Lock hints are the mod's own lines below; suppress them when configured.
         if (!hidden.showLockHints()) return;
+        if (net.bananemdnsa.historystages.client.disguise.ClientDisguises.hidesHints(stack)) return;
 
         // --- AB HIER: NORMALER LOCKED ITEM CHECK ---
         ResourceLocation itemLocation = BuiltInRegistries.ITEM.getKey(stack.getItem());

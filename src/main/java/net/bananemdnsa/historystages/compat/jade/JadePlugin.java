@@ -8,6 +8,7 @@ import net.bananemdnsa.historystages.block.ResearchPedestalBlock;
 import net.bananemdnsa.historystages.block.TieredPedestal;
 import net.bananemdnsa.historystages.research.TierMatcher;
 import net.bananemdnsa.historystages.client.display.HiddenDisplayResolver;
+import net.bananemdnsa.historystages.client.disguise.ClientDisguises;
 import net.bananemdnsa.historystages.data.display.DisplayMode;
 import net.bananemdnsa.historystages.data.ItemEntry;
 import net.bananemdnsa.historystages.data.NbtMatcher;
@@ -51,6 +52,19 @@ public class JadePlugin implements IWailaPlugin {
         registration.registerBlockComponent(PedestalBoosterProvider.INSTANCE, MultiBlockResearchPedestalBlock.class);
         registration.registerEntityComponent(LockedEntityItemProvider.INSTANCE, ItemFrame.class);
         registration.registerEntityComponent(LockedEntityItemProvider.INSTANCE, ArmorStand.class);
+        registration.addRayTraceCallback((hit, accessor, original) -> disguise(registration, accessor));
+    }
+
+    /**
+     * A disguised block is shown as its disguise: name, icon, harvest info. Its block entity goes
+     * with it — a spawner's mob or a chest's contents would give the real block away.
+     */
+    private static Accessor<?> disguise(IWailaClientRegistration registration, Accessor<?> accessor) {
+        if (!(accessor instanceof BlockAccessor block)) return accessor;
+        var real = block.getBlockState();
+        var shown = ClientDisguises.view(real);
+        if (shown == real) return accessor;
+        return registration.blockAccessor().from(block).blockState(shown).blockEntity(() -> null).build();
     }
 
     public enum PedestalBoosterProvider implements IBlockComponentProvider {
@@ -103,7 +117,11 @@ public class JadePlugin implements IWailaPlugin {
 
         @Override
         public void appendTooltip(ITooltip tooltip, BlockAccessor accessor, IPluginConfig config) {
-            Block block = accessor.getBlock();
+            // The accessor may carry the disguise; the lock lines are about the block really there.
+            var realState = accessor.getLevel().getBlockState(accessor.getPosition());
+            Block block = realState.getBlock();
+            if (ClientDisguises.isDisguised(realState)
+                    && ClientDisguises.hidesHints(new ItemStack(block.asItem()))) return;
             ResourceLocation blockLocation = BuiltInRegistries.BLOCK.getKey(block);
             if (blockLocation == null) return;
 

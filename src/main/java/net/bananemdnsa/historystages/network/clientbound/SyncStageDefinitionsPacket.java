@@ -10,6 +10,8 @@ import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.data.graph.GraphLayoutData;
 import net.bananemdnsa.historystages.data.graph.GraphStageData;
+import net.bananemdnsa.historystages.data.disguise.DisguiseData;
+import net.bananemdnsa.historystages.data.disguise.DisguiseRuleSet;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
@@ -41,6 +43,9 @@ import java.util.Set;
  * player was simply dropped. Stage JSON is the same handful of keys repeated once per entry, so it
  * compresses about tenfold, which buys far more headroom than raising the cap would and keeps the
  * packet well under the frame limit at the same time.
+ *
+ * <p>{@code disguises.json} rides along for the same reason as the graph files: both the login
+ * sync and the post-save broadcast already go through here.
  */
 public record SyncStageDefinitionsPacket(Map<String, StageEntry> stages,
                                          Map<String, StageEntry> individualStages,
@@ -51,7 +56,8 @@ public record SyncStageDefinitionsPacket(Map<String, StageEntry> stages,
                                          String graphLayout,
                                          String graphStages,
                                          boolean graphGlobalFrozen,
-                                         boolean graphIndividualFrozen) implements CustomPacketPayload {
+                                         boolean graphIndividualFrozen,
+                                         String disguises) implements CustomPacketPayload {
     private static final Gson GSON = new Gson();
     private static final java.lang.reflect.Type MAP_TYPE = new TypeToken<Map<String, StageEntry>>() {}.getType();
     private static final java.lang.reflect.Type PATH_MAP_TYPE = new TypeToken<Map<String, String>>() {}.getType();
@@ -66,7 +72,8 @@ public record SyncStageDefinitionsPacket(Map<String, StageEntry> stages,
                 GraphLayoutData.toJson(GraphLayoutData.get()),
                 GraphStageData.toJson(GraphStageData.get()),
                 GraphLayoutData.get().globalFrozen(),
-                GraphLayoutData.get().individualFrozen());
+                GraphLayoutData.get().individualFrozen(),
+                DisguiseRuleSet.toJson(DisguiseData.get()));
     }
 
     public SyncStageDefinitionsPacket(Map<String, StageEntry> stages, Map<String, StageEntry> individualStages) {
@@ -78,7 +85,8 @@ public record SyncStageDefinitionsPacket(Map<String, StageEntry> stages,
                 GraphLayoutData.toJson(GraphLayoutData.get()),
                 GraphStageData.toJson(GraphStageData.get()),
                 GraphLayoutData.get().globalFrozen(),
-                GraphLayoutData.get().individualFrozen());
+                GraphLayoutData.get().individualFrozen(),
+                DisguiseRuleSet.toJson(DisguiseData.get()));
     }
 
     public static final CustomPacketPayload.Type<SyncStageDefinitionsPacket> TYPE =
@@ -112,6 +120,7 @@ public record SyncStageDefinitionsPacket(Map<String, StageEntry> stages,
         // computed positions too, so a non-empty section proves nothing off disk.
         buffer.writeBoolean(msg.graphGlobalFrozen);
         buffer.writeBoolean(msg.graphIndividualFrozen);
+        PacketJson.write(buffer, msg.disguises != null ? msg.disguises : "{}", MAX_JSON_CHARS, "disguises");
     }
 
     private static SyncStageDefinitionsPacket decode(FriendlyByteBuf buffer) {
@@ -131,9 +140,10 @@ public record SyncStageDefinitionsPacket(Map<String, StageEntry> stages,
         String graphStages = PacketJson.read(buffer, MAX_JSON_CHARS, "graph stages");
         boolean graphGlobalFrozen = buffer.readBoolean();
         boolean graphIndividualFrozen = buffer.readBoolean();
+        String disguises = PacketJson.read(buffer, MAX_JSON_CHARS, "disguises");
         return new SyncStageDefinitionsPacket(stages, individualStages, stagePaths,
                 individualStagePaths, folders, individualFolders, graphLayout, graphStages,
-                graphGlobalFrozen, graphIndividualFrozen);
+                graphGlobalFrozen, graphIndividualFrozen, disguises);
     }
 
     public static void handle(SyncStageDefinitionsPacket msg, IPayloadContext ctx) {
@@ -146,6 +156,7 @@ public record SyncStageDefinitionsPacket(Map<String, StageEntry> stages,
             GraphLayoutData.setFromSync(layout.global(), layout.individual(),
                     msg.graphGlobalFrozen, msg.graphIndividualFrozen);
             GraphStageData.set(GraphStageData.fromJson(msg.graphStages));
+            DisguiseData.set(DisguiseRuleSet.fromJson(msg.disguises).set());
             StageManager.rebuildDualPhase();
             EditorDataCache.setStages(new HashMap<>(msg.stages));
 

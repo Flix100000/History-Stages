@@ -23,6 +23,7 @@ import net.bananemdnsa.historystages.network.serverbound.RequestTradeGoodsPacket
 import net.bananemdnsa.historystages.network.serverbound.SaveGraphPositionsPacket;
 import net.bananemdnsa.historystages.network.serverbound.RearrangeGraphPacket;
 import net.bananemdnsa.historystages.network.serverbound.SaveStageGraphInfoPacket;
+import net.bananemdnsa.historystages.network.serverbound.SaveDisguisePacket;
 import net.bananemdnsa.historystages.network.serverbound.SaveStageGraphStylePacket;
 import net.bananemdnsa.historystages.network.serverbound.PedestalControlPacket;
 import net.bananemdnsa.historystages.network.serverbound.TakeLecternScrollPacket;
@@ -107,6 +108,7 @@ public class PacketHandler {
         registrar.playToServer(RearrangeGraphPacket.TYPE, RearrangeGraphPacket.STREAM_CODEC, RearrangeGraphPacket::handle);
         registrar.playToServer(SaveStageGraphInfoPacket.TYPE, SaveStageGraphInfoPacket.STREAM_CODEC, SaveStageGraphInfoPacket::handle);
         registrar.playToServer(SaveStageGraphStylePacket.TYPE, SaveStageGraphStylePacket.STREAM_CODEC, SaveStageGraphStylePacket::handle);
+        registrar.playToServer(SaveDisguisePacket.TYPE, SaveDisguisePacket.STREAM_CODEC, SaveDisguisePacket::handle);
         registrar.playToServer(PedestalControlPacket.TYPE, PedestalControlPacket.STREAM_CODEC, PedestalControlPacket::handle);
         registrar.playToServer(TakeLecternScrollPacket.TYPE, TakeLecternScrollPacket.STREAM_CODEC, TakeLecternScrollPacket::handle);
 

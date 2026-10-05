@@ -1549,6 +1549,17 @@ public class StageDetailScreen extends Screen {
             }
         }
 
+        // The disguise is not the stage's, but it is about this entry, so the row says so.
+        if (isItemsTab || isTagsTab) {
+            var disguise = net.bananemdnsa.historystages.data.disguise.DisguiseData.get()
+                    .get(isTagsTab ? "#" + entry : entry);
+            if (disguise != null) {
+                row.badge("[" + Component.translatable("editor.historystages.disguise.badge",
+                        net.bananemdnsa.historystages.client.editor.dialog.DisguiseDialog.keyName(disguise.as()))
+                        .getString() + "]", 0x7FC8D2);
+            }
+        }
+
         if (isAnyTab(activeTab, CAT_ITEMS, CAT_FLUIDS, CAT_TAGS, CAT_MODS)) {
             if (overrideNameMap(activeTab).containsKey(index)) {
                 row.badge("[" + Component.translatable("editor.historystages.badge.name_override")
@@ -2621,6 +2632,13 @@ public class StageDetailScreen extends Screen {
                     if (isAnyTab(tabIdx, CAT_ITEMS, CAT_FLUIDS, CAT_TAGS, CAT_MODS) && hasReplaceAxis()) {
                         contextMenu.addEntry(Component.translatable("editor.historystages.context.text_override").getString(),
                                 () -> openOverridePopup(tabIdx, entryIdx));
+                    }
+                    if (isAnyTab(tabIdx, CAT_ITEMS, CAT_TAGS)) {
+                        String disguiseKey = isTab(tabIdx, CAT_TAGS) ? "#" + entryValue : entryValue;
+                        contextMenu.addEntry(Component.translatable("editor.historystages.context.disguise").getString(),
+                                () -> this.minecraft.setScreen(
+                                        new net.bananemdnsa.historystages.client.editor.dialog.DisguiseDialog(
+                                                this, disguiseKey, false)));
                     }
                     if (isTab(tabIdx, CAT_SPAWN)) {
                         contextMenu.addEntry(Component.translatable("editor.historystages.context.spawn_control").getString(),
