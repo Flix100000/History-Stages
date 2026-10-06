@@ -20,6 +20,7 @@ import net.bananemdnsa.historystages.client.editor.widget.ContextMenu;
 import net.bananemdnsa.historystages.client.editor.widget.StyledButton;
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.StageManager;
+import net.bananemdnsa.historystages.data.graph.GraphBranch;
 import net.bananemdnsa.historystages.data.graph.GraphLayoutData;
 import net.bananemdnsa.historystages.data.graph.GraphPos;
 import net.bananemdnsa.historystages.data.graph.GraphStageData;
@@ -34,9 +35,12 @@ import net.minecraft.client.resources.language.I18n;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
+import org.lwjgl.glfw.GLFW;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Host screen for the stage graph: composes {@link GraphSidebar} and {@link GraphCanvas} into
@@ -91,7 +95,7 @@ public class StageGraphScreen extends Screen {
     private final Mode mode;
 
     private GraphCanvas canvas;
-    /** Null whenever {@code [general] showSidebar} is off — this screen owns that decision. */
+    /** Null in the player view whenever {@code [general] showSidebar} is off — this screen owns that decision. */
     private GraphSidebar sidebar;
     /** Null whenever {@code [general] showLegend} is off — this screen owns that decision too. */
     private GraphLegend legend;
@@ -136,7 +140,9 @@ public class StageGraphScreen extends Screen {
         int contentHeight = Math.max(0, this.height - TOP_BAR_H);
 
         int columnCap = Math.max(90, Math.round(this.width * MAX_COLUMN_SHARE));
-        boolean showSidebar = GraphConfig.GRAPH.showSidebar.get();
+        // The editor always gets the sidebar: it holds the unplaced stages and is where stages are
+        // dropped to take them off the map. showSidebar is a player-view setting.
+        boolean showSidebar = editorView || GraphConfig.GRAPH.showSidebar.get();
         int sidebarFullW = showSidebar ? Math.min(SIDEBAR_W, columnCap) : 0;
 
         // A ConfirmDialog is a full screen swap, so confirming Re-arrange or a freeze re-enters
@@ -148,6 +154,17 @@ public class StageGraphScreen extends Screen {
             canvas = new GraphCanvas(model, sidebarFullW, contentTop,
                     Math.max(0, this.width - sidebarFullW), contentHeight, editorView);
             canvas.setDragHandler(this::handleDrop);
+            canvas.setRemoveTarget(new GraphCanvas.RemoveTarget() {
+                @Override
+                public boolean contains(double mx, double my) {
+                    return sidebar != null && sidebar.containsPoint(mx, my);
+                }
+
+                @Override
+                public void onRemove(Set<String> graphKeys) {
+                    removeFromGraph(graphKeys);
+                }
+            });
         } else {
             canvas.setModel(model);
         }
@@ -155,7 +172,8 @@ public class StageGraphScreen extends Screen {
 
         if (showSidebar) {
             if (sidebar == null) {
-                sidebar = new GraphSidebar(canvas);
+                sidebar = new GraphSidebar(canvas, editorView);
+                sidebar.setTrayPressHandler(canvas::beginExternalDrag);
                 // A list click centres the map and marks the stage — it deliberately does not
                 // open the detail window. Paging down the list would otherwise throw a modal up
                 // and down on every single click. The window is reached through a node.
@@ -267,6 +285,17 @@ public class StageGraphScreen extends Screen {
 
         canvas.render(g, this.font, mouseX, mouseY, partialTick);
         if (sidebar != null) {
+            sidebar.setDraggingFromTray(canvas.draggedUnplaced());
+            if (mode == Mode.EDITOR) {
+                String hint = null;
+                if (canvas.isDraggingPlacedNode()) {
+                    int count = canvas.draggedCount();
+                    hint = count == 1
+                            ? Component.translatable("editor.historystages.graph.drop.remove_one", canvas.draggedLabel()).getString()
+                            : Component.translatable("editor.historystages.graph.drop.remove_many", count).getString();
+                }
+                sidebar.setDropHint(hint, hint != null && sidebar.containsPoint(mouseX, mouseY));
+            }
             sidebar.render(g, this.font, mouseX, mouseY);
         }
         if (legend != null) {
@@ -329,6 +358,14 @@ public class StageGraphScreen extends Screen {
             contextMenu.addEntry(Component.translatable("editor.historystages.graph.context.paste_style").getString(),
                     () -> pasteStyle(node));
         }
+        contextMenu.addEntry(Component.translatable("editor.historystages.graph.context.select_branch").getString(),
+                () -> canvas.select(GraphBranch.withDependents(hit, StageManager.graphPrerequisites(),
+                        key -> model.nodes().containsKey(key))));
+        // On a selected node the menu speaks for the whole selection, as a drag does.
+        Set<String> selected = canvas.selection();
+        Set<String> targets = selected.contains(hit) ? Set.copyOf(selected) : Set.of(hit);
+        contextMenu.addEntry(Component.translatable("editor.historystages.graph.context.remove").getString(),
+                () -> removeFromGraph(targets));
         Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
         contextMenu.show((int) mouseX, (int) mouseY, this.font);
         return true;
@@ -410,7 +447,8 @@ public class StageGraphScreen extends Screen {
         // Opening deliberately does NOT happen here — see mouseReleased. Opening the detail
         // window on press means grabbing a node to move it throws a modal up over the very area
         // you were about to drag into.
-        if (button == 0) {
+        // Ctrl-clicks build the selection and never open anything.
+        if (button == 0 && !(mode == Mode.EDITOR && hasControlDown())) {
             pressX = mouseX;
             pressY = mouseY;
             pressedOnCanvas = true;
@@ -458,6 +496,7 @@ public class StageGraphScreen extends Screen {
                 String hit = canvas.nodeAt(mouseX, mouseY);
                 canvas.highlight(hit);
                 if (hit != null) openDetail(hit);
+                else canvas.clearSelection();
             }
             return true;
         }
@@ -483,6 +522,12 @@ public class StageGraphScreen extends Screen {
         // The sidebar only consumes ESC while its filter dropdown is open; otherwise it falls
         // through to super, whose default shouldCloseOnEsc()/onClose() closes this screen.
         if (sidebar != null && sidebar.keyPressed(keyCode)) return true;
+        // With a selection, the first Esc lets go of it and only the second leaves the graph.
+        if (keyCode == GLFW.GLFW_KEY_ESCAPE && !canvas.selection().isEmpty()
+                && (sidebar == null || !sidebar.isSearchFocused())) {
+            canvas.clearSelection();
+            return true;
+        }
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
@@ -505,25 +550,69 @@ public class StageGraphScreen extends Screen {
 
     /**
      * {@link GraphCanvas.DragHandler}: a drag just completed. The canvas has not moved anything
-     * yet — {@code commit} does that — so an already-frozen tree commits and saves immediately,
-     * while an unfrozen tree is gated behind a confirmation, and declining it leaves the canvas
-     * untouched.
+     * yet — {@code commit} does that. When every touched tree is already frozen it commits and
+     * saves immediately; otherwise one confirmation covers all of them, and declining it leaves
+     * the canvas untouched.
      */
-    private void handleDrop(boolean individual, boolean frozen, Map<String, GraphPos> positions, Runnable commit) {
-        if (frozen) {
+    private void handleDrop(Map<Boolean, Map<String, GraphPos>> positions, Runnable commit) {
+        savePositions(positions, commit);
+    }
+
+    /**
+     * Takes stages off the map. Same path as a drop: each touched tree's complete position map,
+     * minus these stages, goes out as one SaveGraphPositionsPacket — and an unfrozen tree asks
+     * first, because taking something off is the moment the author starts owning the layout.
+     */
+    private void removeFromGraph(Set<String> graphKeys) {
+        Map<Boolean, Map<String, GraphPos>> positions = new LinkedHashMap<>();
+        for (boolean individual : new boolean[]{false, true}) {
+            boolean touched = false;
+            Map<String, GraphPos> tree = new LinkedHashMap<>();
+            for (Map.Entry<String, StageGraphModel.Node> e : model.nodes().entrySet()) {
+                StageGraphModel.Node node = e.getValue();
+                if (node.individual() != individual) continue;
+                if (graphKeys.contains(e.getKey())) touched = true;
+                else tree.put(node.stageId(), node.pos());
+            }
+            if (touched) positions.put(individual, tree);
+        }
+        if (positions.isEmpty()) return;
+        canvas.clearSelection();
+        savePositions(positions, () -> {});
+    }
+
+    private void savePositions(Map<Boolean, Map<String, GraphPos>> positions, Runnable commit) {
+        Runnable apply = () -> {
             commit.run();
-            sendPositions(individual, positions);
+            positions.forEach(this::sendPositions);
+            reloadModel();
+        };
+        boolean anyUnfrozen = false;
+        for (boolean individual : positions.keySet()) {
+            if (!GraphLayoutData.get().isFrozen(individual)) anyUnfrozen = true;
+        }
+        if (!anyUnfrozen) {
+            apply.run();
             return;
         }
-
         this.minecraft.setScreen(new ConfirmDialog(this,
                 Component.translatable("editor.historystages.graph.freeze.title"),
                 Component.translatable("editor.historystages.graph.freeze.confirm"),
                 () -> {
-                    commit.run();
-                    sendPositions(individual, positions);
+                    apply.run();
                     this.minecraft.setScreen(this);
                 }));
+    }
+
+    /**
+     * Rebuilds the model from the local layout snapshot, which {@link #sendPositions} has just
+     * updated. Moving nodes in place is not enough: a stage placed from the tray has no edges
+     * in the old model, and one taken off still has them.
+     */
+    private void reloadModel() {
+        model = buildModel();
+        canvas.setModel(model);
+        if (sidebar != null) sidebar.setModel(model);
     }
 
     private void sendPositions(boolean individual, Map<String, GraphPos> positions) {
@@ -560,6 +649,7 @@ public class StageGraphScreen extends Screen {
         GraphLayoutData.set(GraphLayoutData.Snapshot.empty());
         StageManager.recomputeGraphLayout();
 
+        canvas.clearSelection();
         this.minecraft.setScreen(this);
     }
 }

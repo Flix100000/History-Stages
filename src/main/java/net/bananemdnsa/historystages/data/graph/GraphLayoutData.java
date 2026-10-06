@@ -20,8 +20,8 @@ import java.util.TreeMap;
  * Reads and writes {@code settings/graph_layout.json} — the stage positions the pack author
  * owns.
  *
- * <p>A tree with a non-empty section is <em>frozen</em>: the author dragged something, the
- * whole auto-layout was written out at that moment, and the algorithm no longer touches it.
+ * <p>A <em>frozen</em> tree is one the author owns: they dragged something, the whole
+ * auto-layout was written out at that moment, and the algorithm no longer touches it.
  * Re-arranging clears the section, which is a plain delete rather than a selective key removal —
  * that is exactly why the hand-written descriptions live in a different file
  * ({@link GraphStageData}). A bug in a selective removal would cost the author their texts.
@@ -45,9 +45,9 @@ public final class GraphLayoutData {
      * worked these out". Frozen-ness is a question of provenance, and provenance has to be
      * recorded, not inferred.
      *
-     * <p>On disk it still is inferred — a tree only has a section in {@code graph_layout.json} once
-     * it has been frozen, so {@link #fromJson} reads a non-empty section as frozen. The flag exists
-     * for the in-memory and over-the-wire snapshots, where computed positions also live.
+     * <p>On disk the flags sit in a {@code frozen} object, and only frozen trees keep their
+     * positions there (see {@link #forDisk}). Files from before the flags existed are read the old
+     * way: a non-empty section means frozen.
      */
     public record Snapshot(Map<String, GraphPos> global, Map<String, GraphPos> individual,
                            boolean globalFrozen, boolean individualFrozen) {
@@ -71,6 +71,18 @@ public final class GraphLayoutData {
                     ? new Snapshot(global(), positions, globalFrozen(), individualFrozen())
                     : new Snapshot(positions, individual(), globalFrozen(), individualFrozen());
         }
+
+        /**
+         * What belongs in graph_layout.json: only the trees the author owns. An unfrozen tree's
+         * positions are recomputed on every load, and writing them out made that tree look
+         * author-owned to anything inferring from content — freezing one tree used to freeze the
+         * other on the next restart.
+         */
+        public Snapshot forDisk() {
+            return new Snapshot(globalFrozen() ? global() : Map.of(),
+                    individualFrozen() ? individual() : Map.of(),
+                    globalFrozen(), individualFrozen());
+        }
     }
 
     // --- pure conversion, unit-tested ---
@@ -82,15 +94,25 @@ public final class GraphLayoutData {
             JsonObject obj = root.getAsJsonObject();
             Map<String, GraphPos> global = section(obj, "global");
             Map<String, GraphPos> individual = section(obj, "individual");
-            // A tree only gets a section in the file once it has been frozen, so on disk a
-            // non-empty section is exactly the frozen ones.
-            return new Snapshot(global, individual, !global.isEmpty(), !individual.isEmpty());
+            // Files written since the flags were added say it outright; that matters once every
+            // stage of a tree has been taken off the map and its section is empty. Older files
+            // only had a section once the tree was frozen, so there content is the answer.
+            boolean globalFrozen = flag(obj, "global", !global.isEmpty());
+            boolean individualFrozen = flag(obj, "individual", !individual.isEmpty());
+            return new Snapshot(global, individual, globalFrozen, individualFrozen);
         } catch (Exception e) {
             // A hand-edited file with a typo must not take the graph down; the author sees an
             // unfrozen map and can re-arrange.
             DebugLogger.error("Stage Graph", "Could not parse graph_layout.json: " + e.getMessage());
             return Snapshot.empty();
         }
+    }
+
+    private static boolean flag(JsonObject root, String tree, boolean fallback) {
+        if (!root.has("frozen") || !root.get("frozen").isJsonObject()) return fallback;
+        JsonObject frozen = root.getAsJsonObject("frozen");
+        if (!frozen.has(tree) || !frozen.get(tree).isJsonPrimitive()) return fallback;
+        return frozen.get(tree).getAsBoolean();
     }
 
     private static Map<String, GraphPos> section(JsonObject root, String name) {
@@ -116,6 +138,10 @@ public final class GraphLayoutData {
 
     public static String toJson(Snapshot snapshot) {
         JsonObject root = new JsonObject();
+        JsonObject frozen = new JsonObject();
+        frozen.addProperty("global", snapshot.globalFrozen());
+        frozen.addProperty("individual", snapshot.individualFrozen());
+        root.add("frozen", frozen);
         root.add("global", writeSection(snapshot.global()));
         root.add("individual", writeSection(snapshot.individual()));
         return GSON.toJson(root);
@@ -160,7 +186,7 @@ public final class GraphLayoutData {
     public static void save() {
         File file = GraphSettingsPaths.file(GraphSettingsPaths.LAYOUT_FILE);
         try {
-            Files.write(file.toPath(), toJson(current).getBytes(StandardCharsets.UTF_8));
+            Files.write(file.toPath(), toJson(current.forDisk()).getBytes(StandardCharsets.UTF_8));
         } catch (Exception e) {
             DebugLogger.error("Stage Graph", "Could not write graph_layout.json: " + e.getMessage());
         }

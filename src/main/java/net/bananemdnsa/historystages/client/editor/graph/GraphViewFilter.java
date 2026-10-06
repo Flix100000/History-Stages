@@ -28,8 +28,6 @@ public class GraphViewFilter {
     private final boolean passThrough;
     private final GraphConfig.GraphVisibility visibility;
     private final boolean respectHiddenDisplay;
-    private final boolean showStageElements;
-    private final boolean showTriggers;
     private final boolean showIndividualStages;
 
     /**
@@ -42,14 +40,10 @@ public class GraphViewFilter {
     private GraphViewFilter(boolean passThrough,
                             GraphConfig.GraphVisibility visibility,
                             boolean respectHiddenDisplay,
-                            boolean showStageElements,
-                            boolean showTriggers,
                             boolean showIndividualStages) {
         this.passThrough = passThrough;
         this.visibility = visibility;
         this.respectHiddenDisplay = respectHiddenDisplay;
-        this.showStageElements = showStageElements;
-        this.showTriggers = showTriggers;
         this.showIndividualStages = showIndividualStages;
         this.visible = passThrough ? null : computeVisible();
     }
@@ -57,26 +51,14 @@ public class GraphViewFilter {
     /** Admin view: everything, ignoring all config. */
     public static GraphViewFilter passThrough() {
         return new GraphViewFilter(true, GraphConfig.GraphVisibility.ALL,
-                false, true, true, true);
+                false, true);
     }
 
     /** Player view: reads the synced server config and the client's unlock caches. */
     public static GraphViewFilter fromConfig() {
-        // showStageElements has no single equivalent in graph.toml any more — it fanned out
-        // into the six [panel] item/xp/advancement/kill/stat/scoreboard toggles. This legacy
-        // filter still gates all detail satellites together, so it shows them if any is on.
-        boolean showStageElements = GraphConfig.GRAPH.showItems.get()
-                || GraphConfig.GRAPH.showXp.get()
-                || GraphConfig.GRAPH.showAdvancements.get()
-                || GraphConfig.GRAPH.showKills.get()
-                || GraphConfig.GRAPH.showStats.get()
-                || GraphConfig.GRAPH.showScoreboard.get();
-
         return new GraphViewFilter(false,
                 GraphConfig.GRAPH.visibilityMode.get(),
                 GraphConfig.GRAPH.respectHiddenDisplay.get(),
-                showStageElements,
-                GraphConfig.GRAPH.showTriggers.get(),
                 GraphConfig.GRAPH.showIndividualStages.get());
     }
 
@@ -99,17 +81,6 @@ public class GraphViewFilter {
         if (GraphUnlocks.isUnlocked(StageManager.graphKey(stageId, isIndividual))) return StageLogic.Visibility.VISIBLE;
         return BlockedLines.visibilityForLocalPlayer(stageId, isIndividual);
     }
-
-    /** True when DETAIL satellites (items/XP/kills/...) may be drawn. */
-    public boolean showsDetails() {
-        return passThrough || showStageElements;
-    }
-
-    /** True when TRIGGER satellites may be drawn. */
-    public boolean showsTriggers() {
-        return passThrough || showTriggers;
-    }
-
 
     /**
      * True when this stage's name must be replaced by an anonymous placeholder.

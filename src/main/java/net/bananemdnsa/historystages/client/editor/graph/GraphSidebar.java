@@ -13,6 +13,7 @@ import net.bananemdnsa.historystages.data.graph.GraphStageData;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.FormattedCharSequence;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -77,6 +78,11 @@ public final class GraphSidebar {
     private static final int ROW_FILL_COLOR = 0x2A2A2E;
     private static final int ACCENT_COLOR = 0xFFCC00;
     private static final int SELECTED_TEXT_COLOR = 0xFFFFCC00;
+    private static final int DROP_FILL = 0x1AFFCC00;
+    private static final int DROP_EDGE = 0xFFFFCC00;
+    private static final int DROP_INSET = 6;
+    private static final int DASH = 4;
+    private static final int DASH_GAP = 3;
 
     private final GraphCanvas canvas;
     private final SearchBar searchBar =
@@ -86,6 +92,22 @@ public final class GraphSidebar {
 
     /** Told about a stage picked in the list, so the screen can open the detail panel on it. */
     private Consumer<String> onSelect;
+
+    /** The docked "Unplaced" section. Editor only, null in the player view. */
+    private final GraphUnplacedTray tray;
+    /** Told when a row of the tray is pressed; the canvas takes the drag over from there. */
+    private TrayPressHandler onTrayPress;
+    /** The tray stage currently being dragged onto the map, hidden from the tray meanwhile. */
+    private StageGraphModel.Node draggingFromTray;
+    /** Text of the removal drop zone while a dragged node hovers the sidebar; null otherwise. */
+    private String dropHint;
+    /** True when a drag opened the collapsed sidebar, so it folds back once the drag ends. */
+    private boolean openedForDrag;
+
+    /** A press on an unplaced stage in the tray. */
+    public interface TrayPressHandler {
+        void onPress(StageGraphModel.Node node, double mx, double my);
+    }
 
     private StageGraphModel model;
     /** Width the sidebar occupies when fully open; {@link #width} is the animated value. */
@@ -149,8 +171,9 @@ public final class GraphSidebar {
     /** Running total while {@link #layoutFolder} walks the tree. */
     private int layoutCursor;
 
-    public GraphSidebar(GraphCanvas canvas) {
+    public GraphSidebar(GraphCanvas canvas, boolean editor) {
         this.canvas = canvas;
+        this.tray = editor ? new GraphUnplacedTray() : null;
         this.open = GraphConfig.GRAPH.sidebarOpen.get();
         this.openAnim = new Anim(open ? 1.0f : 0.0f);
         searchBar.onChange(t -> rebuildPositions());
@@ -201,6 +224,37 @@ public final class GraphSidebar {
         if (fullWidth <= COLLAPSED_W) return fullWidth;
         float t = Ease.outCubic(openAnim.value());
         return Math.round(COLLAPSED_W + (fullWidth - COLLAPSED_W) * t);
+    }
+
+    public void setTrayPressHandler(TrayPressHandler handler) {
+        this.onTrayPress = handler;
+    }
+
+    /** Set by the screen every frame; null when nothing is being dragged out of the tray. */
+    public void setDraggingFromTray(StageGraphModel.Node node) {
+        this.draggingFromTray = node;
+    }
+
+    /**
+     * Called by the screen every frame. {@code hint} is the drop-zone text while nodes from the
+     * map are being dragged, null otherwise; {@code cursorOver} says whether they hover the sidebar.
+     * A collapsed sidebar opens under such a drag and folds back afterwards — an author should not
+     * have to open it first to have somewhere to drop.
+     */
+    public void setDropHint(String hint, boolean cursorOver) {
+        if (hint != null && cursorOver && !open) {
+            open = true;
+            openedForDrag = true;
+        } else if (hint == null && openedForDrag) {
+            open = false;
+            openedForDrag = false;
+        }
+        this.dropHint = hint != null && cursorOver ? hint : null;
+    }
+
+    /** True when the point is over the sidebar, collapsed rail included. */
+    public boolean containsPoint(double mx, double my) {
+        return within(mx, my);
     }
 
     /** Told about a stage picked in the list; see {@link #selectStage}. */
@@ -340,6 +394,7 @@ public final class GraphSidebar {
             }
         }
         positioned = out;
+        if (tray != null) tray.setRows(model == null ? List.of() : model.unplaced(), query);
         maxScroll = Math.max(0, layoutCursor - listAreaHeight());
         scroll = Math.max(0, Math.min(scroll, maxScroll));
     }
@@ -384,7 +439,11 @@ public final class GraphSidebar {
     }
 
     private int listBottom() {
-        return y + height - PADDING;
+        return y + height - PADDING - trayHeight();
+    }
+
+    private int trayHeight() {
+        return tray == null ? 0 : tray.preferredHeight(height);
     }
 
     private int listAreaHeight() {
@@ -407,8 +466,47 @@ public final class GraphSidebar {
         boolean animate = GraphConfig.GRAPH.animations.get();
         if (bodyVisible()) {
             renderBody(g, font, mouseX, mouseY, animate);
+            if (tray != null) {
+                int trayH = trayHeight();
+                tray.setBounds(x, y + height - trayH, width - 1, trayH);
+                tray.render(g, font, mouseX, mouseY, draggingFromTray);
+            }
         }
         renderHandle(g, font, mouseX, mouseY);
+        if (dropHint != null) renderDropZone(g, font);
+    }
+
+    /** Dashed gold frame over the whole sidebar: let go here and the dragged stages leave the map. */
+    private void renderDropZone(GuiGraphics g, Font font) {
+        int x1 = x + DROP_INSET, y1 = y + DROP_INSET;
+        int x2 = x + width - DROP_INSET, y2 = y + height - DROP_INSET;
+        if (x2 - x1 < 4 || y2 - y1 < 4) return;
+
+        g.pose().pushPose();
+        g.pose().translate(0, 0, 200); // above the tray's item icons
+        g.fill(x1, y1, x2, y2, DROP_FILL);
+        // Bounded by the side length up front, never by a running sum — see the grid loop in
+        // GraphRenderer for why that matters.
+        int step = DASH + DASH_GAP;
+        for (int i = 0, n = (x2 - x1) / step + 1; i < n; i++) {
+            int a = x1 + i * step, b = Math.min(a + DASH, x2);
+            g.fill(a, y1, b, y1 + 1, DROP_EDGE);
+            g.fill(a, y2 - 1, b, y2, DROP_EDGE);
+        }
+        for (int i = 0, n = (y2 - y1) / step + 1; i < n; i++) {
+            int a = y1 + i * step, b = Math.min(a + DASH, y2);
+            g.fill(x1, a, x1 + 1, b, DROP_EDGE);
+            g.fill(x2 - 1, a, x2, b, DROP_EDGE);
+        }
+
+        List<FormattedCharSequence> lines =
+                font.split(Component.literal(dropHint), Math.max(10, x2 - x1 - 12));
+        int textY = (y1 + y2) / 2 - lines.size() * font.lineHeight / 2;
+        for (FormattedCharSequence line : lines) {
+            g.drawString(font, line, (x1 + x2 - font.width(line)) / 2, textY, DROP_EDGE, false);
+            textY += font.lineHeight;
+        }
+        g.pose().popPose();
     }
 
     private void renderBody(GuiGraphics g, Font font, int mouseX, int mouseY, boolean animate) {
@@ -619,6 +717,16 @@ public final class GraphSidebar {
         }
         if (searchBar.mouseClicked(mx, my)) return true;
 
+        if (tray != null && tray.contains(mx, my)) {
+            if (tray.scrollbarClicked(mx, my) || tray.clickHeader(mx, my)) {
+                rebuildPositions(); // the tray's height changed, and with it the list's
+                return true;
+            }
+            StageGraphModel.Node node = tray.rowAt(mx, my);
+            if (node != null && onTrayPress != null) onTrayPress.onPress(node, mx, my);
+            return true;
+        }
+
         int top = listTop();
         int bottom = listBottom();
         if (my < top || my >= bottom) return true;
@@ -665,12 +773,14 @@ public final class GraphSidebar {
 
     public boolean mouseScrolled(double mx, double my, double delta) {
         if (!within(mx, my) || !bodyVisible()) return false;
+        if (tray != null && tray.mouseScrolled(mx, my, delta)) return true;
         scroll = (float) Math.max(0, Math.min(maxScroll, scroll - delta * STAGE_ROW_HEIGHT));
         return true;
     }
 
     /** Continues a scrollbar drag. The owning screen has to forward its drags here. */
     public boolean mouseDragged(double my) {
+        if (tray != null && tray.scrollbarDragged(my)) return true;
         if (!scrollbar.isDragging()) return false;
         scroll = scrollbar.scrollFor(my);
         return true;
@@ -678,6 +788,7 @@ public final class GraphSidebar {
 
     public void mouseReleased() {
         scrollbar.mouseReleased();
+        if (tray != null) tray.mouseReleased();
     }
 
     public boolean charTyped(char c) {
