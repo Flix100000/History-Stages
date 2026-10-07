@@ -117,6 +117,9 @@ public class StageGraphScreen extends Screen {
     /** Fresh instance per open, exactly as {@code StageOverviewScreen} does it. Editor mode only. */
     private ContextMenu contextMenu;
 
+    /** The stage whose detail window is open over this screen, or null. */
+    private String detailKey;
+
     private final GraphLayoutHistory history = GraphLayoutHistory.CLIENT;
     private final EditorTooltip tooltip = new EditorTooltip();
     private final GraphShortcutPanel shortcutPanel = new GraphShortcutPanel();
@@ -212,6 +215,11 @@ public class StageGraphScreen extends Screen {
             });
         } else {
             canvas.setModel(model);
+        }
+        // Back from the detail window: its ring only said which stage the window was about.
+        if (detailKey != null) {
+            if (detailKey.equals(canvas.focusedKey())) canvas.highlight(null);
+            detailKey = null;
         }
         refreshBackground();
 
@@ -595,6 +603,7 @@ public class StageGraphScreen extends Screen {
         StageGraphModel.Node node = model.nodes().get(graphKey);
         if (node == null) return; // vanished between hit test and release
 
+        detailKey = graphKey;
         this.minecraft.setScreen(new GraphDetailScreen(this, model, node));
     }
 
@@ -709,8 +718,8 @@ public class StageGraphScreen extends Screen {
     }
 
     /**
-     * What Delete acts on: the selection, or else the stage last clicked. A plain click only
-     * marks a stage and opens its window — the selection is a Ctrl-click thing.
+     * What Delete acts on: the selection, or else the stage picked in the sidebar list, which
+     * keeps its ring on the map.
      */
     private Set<String> keyboardTargets() {
         if (!canvas.selection().isEmpty()) return Set.copyOf(canvas.selection());
