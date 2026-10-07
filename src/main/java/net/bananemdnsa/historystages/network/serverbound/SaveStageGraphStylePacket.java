@@ -92,30 +92,42 @@ public record SaveStageGraphStylePacket(String stageId, boolean individual, Stri
         String collection = individual ? "individual" : "global";
         GraphStageData.Entry out = new GraphStageData.Entry();
 
-        // The all-states block has no state of its own; unlocked's spec supplies the types and
-        // ranges, which are identical across the three blocks.
-        List<GraphKey> allStatesKeys = GraphConfigEntries.styleKeys(collection, "unlocked");
-        out.style = StageStyleValidator.sanitize(incoming.style, allStatesKeys);
-        carryOverHidden(stored == null ? null : stored.style, out.style, allStatesKeys);
-
-        StateStyles storedStates = stored == null ? null : stored.styles;
-        if (incoming.styles != null || storedStates != null) {
-            StateStyles states = new StateStyles();
-            for (NodeState state : NodeState.values()) {
-                List<GraphKey> keys = GraphConfigEntries.styleKeys(
-                        collection, state.name().toLowerCase(Locale.ROOT));
-                StageStyle checked = StageStyleValidator.sanitize(
-                        incoming.styles == null ? null : incoming.styles.get(state), keys);
-                carryOverHidden(storedStates == null ? null : storedStates.get(state), checked, keys);
-                states.set(state, checked.isEmpty() ? null : checked);
-            }
-            out.styles = states;
-        }
+        out.style = sanitizeAllStates(incoming.style, stored == null ? null : stored.style, collection);
+        out.styles = sanitizeStates(incoming.styles, stored == null ? null : stored.styles, collection);
 
         CanvasBackgroundStyle background = StageStyleValidator.sanitizeBackground(
                 incoming.background, ResolvedCanvasBackground.MODES);
         out.background = background.isEmpty() ? null : background;
+        // A preset that does not exist (deleted meanwhile, or made up) is dropped, not stored.
+        out.preset = incoming.preset != null && GraphStageData.get().presets().containsKey(incoming.preset)
+                ? incoming.preset : null;
         return out;
+    }
+
+    /**
+     * The all-states block, checked against unlocked's spec — it has no state of its own, and
+     * the types and ranges are identical across the blocks. Shared with the preset packet.
+     */
+    static StageStyle sanitizeAllStates(StageStyle incoming, StageStyle stored, String collection) {
+        List<GraphKey> keys = GraphConfigEntries.styleKeys(collection, "unlocked");
+        StageStyle out = StageStyleValidator.sanitize(incoming, keys);
+        carryOverHidden(stored, out, keys);
+        return out;
+    }
+
+    /** The per-state blocks, each against its own state's spec; null when there is nothing. */
+    static StateStyles sanitizeStates(StateStyles incoming, StateStyles stored, String collection) {
+        if (incoming == null && stored == null) return null;
+        StateStyles states = new StateStyles();
+        for (NodeState state : NodeState.values()) {
+            List<GraphKey> keys = GraphConfigEntries.styleKeys(
+                    collection, state.name().toLowerCase(Locale.ROOT));
+            StageStyle checked = StageStyleValidator.sanitize(
+                    incoming == null ? null : incoming.get(state), keys);
+            carryOverHidden(stored == null ? null : stored.get(state), checked, keys);
+            states.set(state, checked.isEmpty() ? null : checked);
+        }
+        return states;
     }
 
     /**

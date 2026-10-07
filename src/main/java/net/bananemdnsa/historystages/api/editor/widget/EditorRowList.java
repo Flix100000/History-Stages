@@ -162,7 +162,12 @@ public final class EditorRowList {
         }
 
         public Row badge(String text, int colour) {
-            slots.add(new Slot(text, colour, null, null, false, null, false));
+            return badge(text, colour, 0);
+        }
+
+        /** A badge in a column at least {@code minWidth} wide, its text centred in it. */
+        public Row badge(String text, int colour, int minWidth) {
+            slots.add(new Slot(text, colour, null, null, false, null, false, minWidth));
             return this;
         }
 
@@ -172,7 +177,16 @@ public final class EditorRowList {
         }
 
         public Row button(String label, @Nullable String tooltip, Runnable onClick) {
-            slots.add(new Slot(label, 0xCCCCCC, tooltip, (x, y, w, h) -> onClick.run(), false, null, false));
+            return button(label, tooltip, 0, onClick);
+        }
+
+        /**
+         * A button at least {@code minWidth} wide, its label centred. Give every button of a kind
+         * the same width and they line up as columns down the list, whatever their labels.
+         */
+        public Row button(String label, @Nullable String tooltip, int minWidth, Runnable onClick) {
+            slots.add(new Slot(label, 0xCCCCCC, tooltip, (x, y, w, h) -> onClick.run(), false, null, false,
+                    minWidth));
             return this;
         }
 
@@ -183,7 +197,7 @@ public final class EditorRowList {
          * @param expanded whether the popup is up, which turns the caret over
          */
         public Row dropdown(String label, @Nullable String tooltip, boolean expanded, SlotClick onClick) {
-            slots.add(new Slot(label, 0xCCCCCC, tooltip, onClick, true, null, false));
+            slots.add(new Slot(label, 0xCCCCCC, tooltip, onClick, true, null, false, 0));
             this.caretUp = expanded;
             return this;
         }
@@ -196,14 +210,14 @@ public final class EditorRowList {
          * introduced to stop.
          */
         public Row toggle(boolean value, @Nullable String tooltip, ToggleClick onPick) {
-            slots.add(new Slot("", 0xCCCCCC, tooltip, null, false, onPick, value));
+            slots.add(new Slot("", 0xCCCCCC, tooltip, null, false, onPick, value, 0));
             return this;
         }
     }
 
     private record Slot(String text, int colour, @Nullable String tooltip,
                         @Nullable SlotClick onClick, boolean caret,
-                        @Nullable ToggleClick onToggle, boolean toggleValue) {
+                        @Nullable ToggleClick onToggle, boolean toggleValue, int minWidth) {
 
         boolean isToggle() {
             return onToggle != null;
@@ -400,7 +414,7 @@ public final class EditorRowList {
             Slot slot = row.slots.get(i);
             int slotW = slot.isToggle()
                     ? ToggleControl.width(font)
-                    : font.width(slot.text()) + 6 + (slot.caret() ? CARET_SLOT_W : 0);
+                    : Math.max(slot.minWidth(), font.width(slot.text()) + 6 + (slot.caret() ? CARET_SLOT_W : 0));
             int slotX = right - used - slotW;
             if (slot.isToggle()) {
                 int toggleY = cardY + (rowHeight - ToggleControl.height()) / 2;
@@ -419,14 +433,19 @@ public final class EditorRowList {
                     ctx.tooltip("row." + index + ".slot." + i, slot.tooltip());
                 }
             } else if (slot.onClick() == null) {
-                g.drawString(font, slot.text(), slotX, textY, slot.colour(), false);
+                // The slot carries the same 6px of padding as a button; a badge sized to its text
+                // keeps drawing flush left in it, as it always has.
+                int badgeX = slot.minWidth() > 0 ? slotX + (slotW - font.width(slot.text())) / 2 : slotX;
+                g.drawString(font, slot.text(), badgeX, textY, slot.colour(), false);
             } else {
                 boolean slotHovered = !ctx.inputBlocked()
                         && ctx.mouseX() >= slotX && ctx.mouseX() < slotX + slotW
                         && ctx.mouseY() >= cardY + 3 && ctx.mouseY() < cardY + rowHeight - 3;
                 g.fill(slotX, cardY + 3, slotX + slotW, cardY + rowHeight - 3,
                         slotHovered ? 0xFF3D3520 : 0xFF2A2A2A);
-                g.drawString(font, slot.text(), slotX + 3, textY,
+                // Centred: the same as the old 3px inset for a button sized to its label.
+                int labelX = slot.caret() ? slotX + 3 : slotX + (slotW - font.width(slot.text())) / 2;
+                g.drawString(font, slot.text(), labelX, textY,
                         slotHovered ? 0xFFCC00 : 0xCCCCCC, false);
                 if (slot.caret()) {
                     float flip = caretAnim.computeIfAbsent(index, k -> new Anim())

@@ -5,6 +5,7 @@ import net.bananemdnsa.historystages.client.editor.anim.Ease;
 import net.bananemdnsa.historystages.client.editor.anim.Fade;
 import net.bananemdnsa.historystages.client.editor.anim.Timing;
 import net.bananemdnsa.historystages.client.editor.dialog.ColorInputScreen;
+import net.bananemdnsa.historystages.client.editor.dialog.StylePresetNameScreen;
 import net.bananemdnsa.historystages.api.editor.widget.PickerOverlay;
 import net.bananemdnsa.historystages.client.editor.graph.CanvasBackgrounds;
 import net.bananemdnsa.historystages.client.editor.graph.NodeShapes;
@@ -30,6 +31,7 @@ import net.bananemdnsa.historystages.data.graph.StageStyleFields;
 import net.bananemdnsa.historystages.data.graph.StateStyles;
 import net.bananemdnsa.historystages.network.PacketHandler;
 import net.bananemdnsa.historystages.network.serverbound.SaveStageGraphStylePacket;
+import net.bananemdnsa.historystages.network.serverbound.SaveStylePresetPacket;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
@@ -56,6 +58,11 @@ import java.util.Map;
  *
  * <p>Every row can be unset. A row showing a value it does not own is drawn dimmed by
  * {@link ConfigRowList}; a row this stage does own carries a × that puts it back.
+ *
+ * <p>The same screen edits a style preset ({@link #forPreset}): no background tab, no preset
+ * row, and the rows inherit from graph.toml's global blocks, since a preset serves both trees.
+ * For a stage, a preset sits between graph.toml and the stage's own values, and a row whose
+ * value the preset supplies says so with a tag.
  */
 public class StageStyleScreen extends Screen {
 
@@ -86,15 +93,23 @@ public class StageStyleScreen extends Screen {
     private static final int SWITCH_H = 16;
     private static final int SWITCH_GAP = 2;
     private static final int TAB_Y = 40;
-    private static final int ROWS_TOP = TAB_Y + SWITCH_H + 8;
+    /** The preset row above the tabs, stage mode only. */
+    private static final int PRESET_ROW_H = 24;
+    private static final int PRESET_ROW_Y = 38;
     /** Space kept clear at the bottom for the one row of buttons. */
     private static final int BUTTON_BAND = 40;
     private static final int SWITCH_BAR_MAX_W = 430;
 
     private final Screen parent;
+    /** Null in preset mode. */
     private final String stageId;
     private final boolean individual;
     private final String collection;
+    /** The preset being edited, or null when this screen edits a stage. */
+    private final String presetId;
+    /** Stage mode only: picks the buffer's preset. Rebuilt in {@link #init()}. */
+    private EnumDropdown presetDropdown;
+    private StyledButton editPresetButton;
 
     /** The edit buffer: a deep copy, so cancelling really cancels. */
     private final GraphStageData.Entry buffer;
@@ -139,13 +154,34 @@ public class StageStyleScreen extends Screen {
     private int scrollGrabOffset;
 
     public StageStyleScreen(Screen parent, String stageId, boolean individual) {
-        super(Component.translatable("editor.historystages.graph.style.title"));
+        this(parent, Component.translatable("editor.historystages.graph.style.title"), stageId, individual,
+                null, GraphStageData.get().tree(individual).get(stageId));
+    }
+
+    /** Edits a style preset instead of a stage. */
+    public static StageStyleScreen forPreset(Screen parent, String presetId) {
+        GraphStageData.Preset preset = GraphStageData.get().presets().get(presetId);
+        GraphStageData.Entry loaded = new GraphStageData.Entry();
+        if (preset != null) {
+            loaded.style = preset.style == null ? null : preset.style.copy();
+            loaded.styles = preset.styles == null ? null : preset.styles.copy();
+        }
+        return new StageStyleScreen(parent,
+                Component.translatable("editor.historystages.graph.preset.edit_title",
+                        preset == null ? presetId : preset.name),
+                null, false, presetId, loaded);
+    }
+
+    private StageStyleScreen(Screen parent, Component title, String stageId, boolean individual,
+                             String presetId, GraphStageData.Entry loaded) {
+        super(title);
         this.parent = parent;
         this.stageId = stageId;
         this.individual = individual;
+        this.presetId = presetId;
+        // A preset serves both trees; the global blocks are what it is shown against.
         this.collection = individual ? "individual" : "global";
 
-        GraphStageData.Entry loaded = GraphStageData.get().tree(individual).get(stageId);
         this.buffer = loaded == null ? new GraphStageData.Entry() : loaded.copyStyles();
         if (buffer.style == null) buffer.style = new StageStyle();
         if (buffer.styles == null) buffer.styles = new StateStyles();
@@ -155,6 +191,33 @@ public class StageStyleScreen extends Screen {
 
     private boolean onBackgroundTab() {
         return TAB_BACKGROUND.equals(tab);
+    }
+
+    private boolean presetMode() {
+        return presetId != null;
+    }
+
+    /** A preset has no background: that is a per-stage unlock event, not part of a look. */
+    private List<String> tabs() {
+        return presetMode() ? TABS.subList(0, TABS.size() - 1) : TABS;
+    }
+
+    private int tabY() {
+        return presetMode() ? TAB_Y : TAB_Y + PRESET_ROW_H;
+    }
+
+    private int rowsTop() {
+        return tabY() + SWITCH_H + 8;
+    }
+
+    /**
+     * The preset's look in one state, as the layer under this stage's own values — empty in
+     * preset mode and when no or an unknown preset is picked. Read live, so a preset edited and
+     * saved in the meantime shows here at once.
+     */
+    private StageStyle presetLayer(NodeState state) {
+        if (presetMode()) return new StageStyle();
+        return GraphStageData.get().presetStyle(buffer.preset, state);
     }
 
     /** What this stage itself sets for a row's leaf on the current tab, or null. */
@@ -228,6 +291,7 @@ public class StageStyleScreen extends Screen {
         }
         pruned.background = buffer.background == null || buffer.background.isEmpty()
                 ? null : buffer.background.copy();
+        pruned.preset = buffer.preset;
         return GraphStageData.entryToJson(pruned);
     }
 
@@ -246,8 +310,8 @@ public class StageStyleScreen extends Screen {
         if (onBackgroundTab()) return graphValues.get("canvas." + leaf);
         if (TAB_ALL.equals(tab)) {
             String first = null;
-            for (String state : List.of("unlocked", "reachable", "locked", "blocked")) {
-                String value = graphValues.get(stylePath(state, leaf));
+            for (NodeState state : NodeState.values()) {
+                String value = layeredValue(state, leaf);
                 if (first == null) {
                     first = value;
                 } else if (!first.equals(value)) {
@@ -257,9 +321,47 @@ public class StageStyleScreen extends Screen {
             return first;
         }
 
-        String base = graphValues.get(stylePath(tab, leaf));
+        NodeState state = NodeState.valueOf(tab.toUpperCase(Locale.ROOT));
         String allStates = StageStyleFields.get(buffer.style, leaf);
-        return allStates != null ? allStates : base;
+        return allStates != null ? allStates : layeredValue(state, leaf);
+    }
+
+    /** The preset's value for a state, or graph.toml's where the preset sets none. */
+    private String layeredValue(NodeState state, String leaf) {
+        String fromPreset = StageStyleFields.get(presetLayer(state), leaf);
+        return fromPreset != null ? fromPreset
+                : graphValues.get(stylePath(state.name().toLowerCase(Locale.ROOT), leaf));
+    }
+
+    /**
+     * True when the value a row inherits is the preset's: on the all-states tab only when the
+     * preset sets it for every state, on a state tab when the stage's own all-states block does
+     * not already cover it.
+     */
+    private boolean inheritsFromPreset(String leaf) {
+        if (presetMode() || onBackgroundTab() || buffer.preset == null) return false;
+        if (TAB_ALL.equals(tab)) {
+            for (NodeState state : NodeState.values()) {
+                if (StageStyleFields.get(presetLayer(state), leaf) == null) return false;
+            }
+            return true;
+        }
+        if (StageStyleFields.get(buffer.style, leaf) != null) return false;
+        NodeState state = NodeState.valueOf(tab.toUpperCase(Locale.ROOT));
+        return StageStyleFields.get(presetLayer(state), leaf) != null;
+    }
+
+    /** Tooltip key for the preset tag on a row; the text names the preset. */
+    private static final String PRESET_TAG_TOOLTIP = "editor.historystages.graph.preset.tag.tooltip";
+
+    private String presetTagTooltip() {
+        GraphStageData.Preset preset = buffer.preset == null ? null : GraphStageData.get().presets().get(buffer.preset);
+        return Component.translatable(PRESET_TAG_TOOLTIP, preset == null ? "" : preset.name).getString();
+    }
+
+    private String presetTag(String leaf) {
+        return inheritsFromPreset(leaf)
+                ? Component.translatable("editor.historystages.graph.preset.tag").getString() : null;
     }
 
     private String stylePath(String state, String leaf) {
@@ -271,7 +373,7 @@ public class StageStyleScreen extends Screen {
         String inherited = inheritedValue(leaf);
         if (inherited != null) return inherited;
         // The all-states tab with three disagreeing blocks: unlocked is the one to start from.
-        String unlocked = graphValues.get(stylePath("unlocked", leaf));
+        String unlocked = layeredValue(NodeState.UNLOCKED, leaf);
         return unlocked != null ? unlocked : key.defaultValue();
     }
 
@@ -309,6 +411,7 @@ public class StageStyleScreen extends Screen {
                     key.enumConstants(), key.enumType());
             entry.inherited = own == null;
             entry.varies = own == null && inherited == null;
+            entry.inheritTag = own == null ? presetTag(leaf) : null;
             currentRows.add(entry);
         }
         updateMaxScroll();
@@ -316,13 +419,13 @@ public class StageStyleScreen extends Screen {
 
     private void updateMaxScroll() {
         int contentHeight = currentRows.size() * ConfigRowList.ENTRY_HEIGHT;
-        maxScroll = Math.max(0, contentHeight - (rowsBottom - ROWS_TOP));
+        maxScroll = Math.max(0, contentHeight - (rowsBottom - rowsTop()));
         scrollOffset = Math.min(scrollOffset, maxScroll);
     }
 
     /** Screen y of the row at {@code index}, with the current scroll applied. */
     private int rowTop(int index) {
-        return ROWS_TOP - Math.round(smoothScroll.value()) + index * ConfigRowList.ENTRY_HEIGHT;
+        return rowsTop() - Math.round(smoothScroll.value()) + index * ConfigRowList.ENTRY_HEIGHT;
     }
 
     /** Left edge of the scrollbar track. Drawn 3px wide; the click area adds a pixel each side. */
@@ -332,15 +435,15 @@ public class StageStyleScreen extends Screen {
 
     /** Height of the scrollbar thumb. The render and the drag paths must both go through this. */
     private int thumbHeight() {
-        int track = rowsBottom - ROWS_TOP;
+        int track = rowsBottom - rowsTop();
         return Math.max(20, track * track / (maxScroll + track));
     }
 
     /** Top of the thumb, following the drawn scroll so thumb and rows move as one. */
     private int thumbTop() {
-        int span = (rowsBottom - ROWS_TOP) - thumbHeight();
-        if (maxScroll <= 0 || span <= 0) return ROWS_TOP;
-        return ROWS_TOP + Math.round(smoothScroll.value() / maxScroll * span);
+        int span = (rowsBottom - rowsTop()) - thumbHeight();
+        if (maxScroll <= 0 || span <= 0) return rowsTop();
+        return rowsTop() + Math.round(smoothScroll.value() / maxScroll * span);
     }
 
     /**
@@ -352,11 +455,11 @@ public class StageStyleScreen extends Screen {
      * the same offset for the same reason.
      */
     private void updateScrollFromMouse(double mouseY) {
-        int span = (rowsBottom - ROWS_TOP) - thumbHeight();
+        int span = (rowsBottom - rowsTop()) - thumbHeight();
         if (maxScroll <= 0 || span <= 0) {
             scrollOffset = 0;
         } else {
-            double top = mouseY - scrollGrabOffset - ROWS_TOP;
+            double top = mouseY - scrollGrabOffset - rowsTop();
             float ratio = (float) Math.max(0, Math.min(1, top / span));
             scrollOffset = Math.max(0, Math.min(maxScroll, Math.round(ratio * maxScroll)));
         }
@@ -390,6 +493,7 @@ public class StageStyleScreen extends Screen {
         entry.inherited = false;
         // The row now owns a value of its own, so there is nothing left for it to vary between.
         entry.varies = false;
+        entry.inheritTag = null;
     }
 
     /** Puts a row back to inheriting and re-reads what it now shows. */
@@ -405,6 +509,7 @@ public class StageStyleScreen extends Screen {
             if (key != null) entry.value = seedValue(key, leaf);
         }
         entry.inherited = true;
+        entry.inheritTag = presetTag(leaf);
     }
 
     // --- Lifecycle ----------------------------------------------------------------------------
@@ -419,17 +524,22 @@ public class StageStyleScreen extends Screen {
 
         switchRects.clear();
         int total = Math.min(SWITCH_BAR_MAX_W, this.width - 40);
-        int each = (total - SWITCH_GAP * (TABS.size() - 1) - BACKGROUND_TAB_GAP) / TABS.size();
+        List<String> tabs = tabs();
+        int gap = presetMode() ? 0 : BACKGROUND_TAB_GAP;
+        int each = (total - SWITCH_GAP * (tabs.size() - 1) - gap) / tabs.size();
         int x = this.width / 2 - total / 2;
-        for (String option : TABS) {
+        for (String option : tabs) {
             if (TAB_BACKGROUND.equals(option)) x += BACKGROUND_TAB_GAP;
-            switchRects.put(option, new int[]{x, TAB_Y, each});
+            switchRects.put(option, new int[]{x, tabY(), each});
             x += each + SWITCH_GAP;
         }
 
         rows.setLabelColumnWidth(LABEL_COLUMN_W);
         rowsBottom = this.height - BUTTON_BAND;
+        // A tab the mode does not have (the background one, in preset mode) cannot stay open.
+        if (!tabs().contains(tab)) tab = TAB_ALL;
         rebuildRows();
+        if (!presetMode()) initPresetRow();
 
         this.addRenderableWidget(StyledButton.of(
                 Component.translatable("editor.historystages.back"),
@@ -456,6 +566,98 @@ public class StageStyleScreen extends Screen {
                 this.width - 120, this.height - 30, 110, 20));
     }
 
+    /**
+     * "Preset [dropdown] [Edit preset] [Save as preset…]" above the tabs. The dropdown only
+     * changes the buffer — picking a preset is an edit like any row, saved with the rest.
+     */
+    private void initPresetRow() {
+        String label = Component.translatable("editor.historystages.graph.preset.label").getString();
+        int labelW = this.font.width(label);
+
+        List<String> options = new ArrayList<>();
+        options.add("");
+        for (Map.Entry<String, GraphStageData.Preset> e : GraphStageData.get().presetsByName()) options.add(e.getKey());
+        // A preset deleted since this buffer was loaded is not an option any more.
+        if (buffer.preset != null && !options.contains(buffer.preset)) buffer.preset = null;
+
+        presetDropdown = new EnumDropdown(options, buffer.preset == null ? "" : buffer.preset, 110,
+                this::presetLabel, picked -> {
+                    syncRowsIntoBuffer();
+                    buffer.preset = picked.isEmpty() ? null : picked;
+                    rebuildRows();
+                    refreshPresetButtons();
+                });
+
+        int editW = 90;
+        int saveAsW = 110;
+        int total = labelW + 6 + presetDropdown.getWidth() + 4 + editW + 4 + saveAsW;
+        int x = this.width / 2 - total / 2;
+        presetLabelX = x;
+        x += labelW + 6;
+        presetDropdown.setPosition(x, PRESET_ROW_Y);
+        x += presetDropdown.getWidth() + 4;
+
+        editPresetButton = this.addRenderableWidget(StyledButton.of(
+                Component.translatable("editor.historystages.graph.preset.edit"),
+                btn -> {
+                    syncRowsIntoBuffer();
+                    this.minecraft.setScreen(StageStyleScreen.forPreset(this, buffer.preset));
+                }, x, PRESET_ROW_Y, editW, EnumDropdown.BUTTON_HEIGHT));
+        x += editW + 4;
+        this.addRenderableWidget(StyledButton.of(
+                Component.translatable("editor.historystages.graph.preset.save_as"),
+                btn -> this.minecraft.setScreen(new StylePresetNameScreen(this,
+                        Component.translatable("editor.historystages.graph.preset.save_as.title"),
+                        null, null, this::saveAsPreset)),
+                x, PRESET_ROW_Y, saveAsW, EnumDropdown.BUTTON_HEIGHT));
+        refreshPresetButtons();
+    }
+
+    private int presetLabelX;
+
+    private Component presetLabel(String id) {
+        if (id.isEmpty()) return Component.translatable("editor.historystages.graph.preset.none");
+        GraphStageData.Preset preset = GraphStageData.get().presets().get(id);
+        return Component.literal(preset == null ? id : preset.name);
+    }
+
+    private void refreshPresetButtons() {
+        if (editPresetButton != null) {
+            editPresetButton.active = buffer.preset != null
+                    && GraphStageData.get().presets().containsKey(buffer.preset);
+        }
+    }
+
+    /**
+     * Turns what the node looks like right now — preset and own values together, the
+     * background aside — into a new preset, points this stage at it and clears the own values,
+     * which now live in the preset. Saved straight away, preset and stage alike.
+     */
+    private void saveAsPreset(String name) {
+        syncRowsIntoBuffer();
+        GraphStageData.Snapshot data = GraphStageData.get();
+        GraphStageData.Preset base = buffer.preset == null ? null : data.presets().get(buffer.preset);
+        GraphStageData.Preset flat = GraphStageData.Preset.flatten(name, base, buffer.style, buffer.styles);
+        // The server picks the id the same way from the same list, so this guess is what it stores.
+        String id = GraphStageData.newPresetId(name, data.presets().keySet());
+
+        GraphStageData.Entry presetJson = new GraphStageData.Entry();
+        presetJson.style = flat.style;
+        presetJson.styles = flat.styles;
+        PacketHandler.sendToServer(new SaveStylePresetPacket(id, name, GraphStageData.entryToJson(presetJson)));
+        GraphStageData.set(data.withPreset(id, flat));
+
+        buffer.preset = id;
+        buffer.style = new StageStyle();
+        buffer.styles = new StateStyles();
+        // Before save(): it folds the rows back into the buffer first, and the rows still hold
+        // the own values that were just moved into the preset.
+        rebuildRows();
+        save();
+        // setScreen(this) already ran init() before the preset existed locally; build it again.
+        rebuildWidgets();
+    }
+
     private boolean hasChanges() {
         return !initialJson.equals(bufferJson());
     }
@@ -466,6 +668,10 @@ public class StageStyleScreen extends Screen {
         syncRowsIntoBuffer();
 
         String json = bufferJson();
+        if (presetMode()) {
+            savePreset(json);
+            return;
+        }
         PacketHandler.sendToServer(new SaveStageGraphStylePacket(stageId, individual, json));
 
         // Optimistic local update, as StageInfoTextScreen does it: on a dedicated server the
@@ -482,6 +688,22 @@ public class StageStyleScreen extends Screen {
         // Deliberately does not navigate, as the node-styles screen does not: the point of saving
         // here is to look at the preview and keep tweaking. What was just written becomes the new
         // baseline, so the unsaved marker goes out until the next edit.
+        initialJson = json;
+    }
+
+    /** Preset mode: the buffer's two style blocks become the preset's, under its current name. */
+    private void savePreset(String json) {
+        GraphStageData.Preset stored = GraphStageData.get().presets().get(presetId);
+        String name = stored == null ? presetId : stored.name;
+        PacketHandler.sendToServer(new SaveStylePresetPacket(presetId, name, json));
+
+        GraphStageData.Entry sent = GraphStageData.entryFromJson(json);
+        GraphStageData.Preset preset = new GraphStageData.Preset();
+        preset.name = name;
+        preset.style = sent.style;
+        preset.styles = sent.styles;
+        GraphStageData.set(GraphStageData.get().withPreset(presetId, preset));
+        StageGraphConfig.invalidateCache();
         initialJson = json;
     }
 
@@ -526,20 +748,28 @@ public class StageStyleScreen extends Screen {
 
         g.fill(0, 0, this.width, this.height, 0xE0101010);
         g.drawCenteredString(this.font, this.title, this.width / 2, 10, 0xFFFFFF);
-        ConfigEditorScreen.drawSmallText(g, stageId, this.width / 2 - this.font.width(stageId) / 4,
-                24, 0xFF999999);
+        if (stageId != null) {
+            ConfigEditorScreen.drawSmallText(g, stageId, this.width / 2 - this.font.width(stageId) / 4,
+                    24, 0xFF999999);
+        }
+        if (presetDropdown != null) {
+            g.drawString(this.font, Component.translatable("editor.historystages.graph.preset.label"),
+                    presetLabelX, PRESET_ROW_Y + 5, 0xFFCCCCCC, false);
+            presetDropdown.renderButton(g, this.font, mouseX, mouseY);
+        }
 
         renderTabs(g, mouseX, mouseY);
 
         String hoveredDesc = null;
-        g.enableScissor(contentLeft() - 6, ROWS_TOP, contentRight() + 6, rowsBottom);
+        g.enableScissor(contentLeft() - 6, rowsTop(), contentRight() + 6, rowsBottom);
         int y = rowTop(0);
         for (ConfigEditorScreen.ConfigEntry entry : currentRows) {
             rows.renderRow(g, entry, contentLeft(), y, contentRight(), mouseX, mouseY);
             if (mouseX >= contentLeft() && mouseX <= contentRight()
-                    && mouseY >= Math.max(y, ROWS_TOP)
+                    && mouseY >= Math.max(y, rowsTop())
                     && mouseY < Math.min(y + ConfigRowList.ENTRY_HEIGHT, rowsBottom)) {
-                hoveredDesc = entry.descKey;
+                hoveredDesc = ConfigRowList.overInheritTag(entry, contentRight(), y, mouseX, mouseY)
+                        ? PRESET_TAG_TOOLTIP : entry.descKey;
             }
             y += ConfigRowList.ENTRY_HEIGHT;
         }
@@ -551,15 +781,15 @@ public class StageStyleScreen extends Screen {
             int barH = thumbHeight();
             int barY = thumbTop();
             boolean barHovered = mouseX >= scrollbarX() - 1 && mouseX <= scrollbarX() + 4
-                    && mouseY >= ROWS_TOP && mouseY <= rowsBottom;
+                    && mouseY >= rowsTop() && mouseY <= rowsBottom;
             float bh = Ease.outCubic(scrollThumbHover.ramp(barHovered || draggingScrollbar,
                     Timing.HOVER_IN_MS, Timing.HOVER_OUT_MS));
-            g.fill(scrollbarX(), ROWS_TOP, scrollbarX() + 3, rowsBottom, 0x20FFFFFF);
+            g.fill(scrollbarX(), rowsTop(), scrollbarX() + 3, rowsBottom, 0x20FFFFFF);
             g.fill(scrollbarX(), barY, scrollbarX() + 3, barY + barH,
                     Fade.mix(0x80FFFFFF, 0xFFFFCC00, bh));
         }
 
-        renderPreview(g, contentRight() + 30, ROWS_TOP, rowsBottom - ROWS_TOP);
+        renderPreview(g, contentRight() + 30, rowsTop(), rowsBottom - rowsTop());
 
         if (hasChanges()) {
             int dotX = this.width / 2 + 55;
@@ -579,6 +809,10 @@ public class StageStyleScreen extends Screen {
             openDropdown.renderPopup(g, this.font, mouseX, mouseY);
             if (openDropdown.isExpanded()) hoveredDesc = null;
         }
+        if (presetDropdown != null) {
+            presetDropdown.renderPopup(g, this.font, mouseX, mouseY);
+            if (presetDropdown.isExpanded()) hoveredDesc = null;
+        }
 
         if (pickerOpen()) {
             // Lifted above the rows: text is flushed after the panel's fills, so the row labels
@@ -593,13 +827,15 @@ public class StageStyleScreen extends Screen {
 
         boolean hasText = hoveredDesc != null
                 && net.minecraft.client.resources.language.I18n.exists(hoveredDesc);
-        tooltip.render(g, this.font, hasText ? hoveredDesc : null,
-                hasText ? Component.translatable(hoveredDesc).getString() : null,
+        String text = !hasText ? null
+                : PRESET_TAG_TOOLTIP.equals(hoveredDesc) ? presetTagTooltip()
+                : Component.translatable(hoveredDesc).getString();
+        tooltip.render(g, this.font, hasText ? hoveredDesc : null, text,
                 mouseX, mouseY, this.width, this.height);
     }
 
     private void renderTabs(GuiGraphics g, int mouseX, int mouseY) {
-        for (String option : TABS) {
+        for (String option : tabs()) {
             int[] r = switchRects.get(option);
             if (r == null) continue;
             boolean active = tab.equals(option);
@@ -752,8 +988,8 @@ public class StageStyleScreen extends Screen {
                 GraphColors.parse(graphValue(stateName, "labelColor", "#DDDDDD"), 0xDDDDDD),
                 Boolean.parseBoolean(graphValue(stateName, "checkmark", "false")));
 
-        StageStyle override = StageStyle.overlay(buffer.style, buffer.styles.get(state));
-        return ResolvedStyle.merge(base, override);
+        StageStyle own = StageStyle.overlay(buffer.style, buffer.styles.get(state));
+        return ResolvedStyle.merge(base, StageStyle.overlay(presetLayer(state), own));
     }
 
     private String graphValue(String state, String leaf, String fallback) {
@@ -804,6 +1040,13 @@ public class StageStyleScreen extends Screen {
             if (wasExpanded) return true;
         }
 
+        if (presetDropdown != null) {
+            boolean wasExpanded = presetDropdown.isExpanded();
+            if (presetDropdown.mouseClicked(mouseX, mouseY)) return true;
+            // A click beside an open popup only closes it.
+            if (wasExpanded) return true;
+        }
+
         for (Map.Entry<String, int[]> e : switchRects.entrySet()) {
             int[] r = e.getValue();
             if (mouseX < r[0] || mouseX >= r[0] + r[2]
@@ -822,7 +1065,7 @@ public class StageStyleScreen extends Screen {
         if (super.mouseClicked(mouseX, mouseY, button)) return true;
 
         if (maxScroll > 0 && mouseX >= scrollbarX() - 1 && mouseX <= scrollbarX() + 4
-                && mouseY >= ROWS_TOP && mouseY <= rowsBottom) {
+                && mouseY >= rowsTop() && mouseY <= rowsBottom) {
             // Grabbing the thumb keeps the spot it was grabbed at; clicking the bare track has no
             // such spot, so the thumb centres itself on the cursor once and drags on from there.
             int top = thumbTop();
@@ -836,7 +1079,7 @@ public class StageStyleScreen extends Screen {
         }
 
         // Outside the row band the rows are not drawn, so they must not be clickable either.
-        if (mouseY < ROWS_TOP || mouseY >= rowsBottom) return false;
+        if (mouseY < rowsTop() || mouseY >= rowsBottom) return false;
 
         int y = rowTop(0);
         for (ConfigEditorScreen.ConfigEntry entry : currentRows) {

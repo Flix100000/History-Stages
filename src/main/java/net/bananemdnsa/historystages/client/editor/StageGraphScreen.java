@@ -4,6 +4,7 @@ import net.bananemdnsa.historystages.GraphConfig;
 import net.bananemdnsa.historystages.client.cache.ClientIndividualStageCache;
 import net.bananemdnsa.historystages.client.cache.ClientStageCache;
 import net.bananemdnsa.historystages.client.editor.dialog.StageInfoTextScreen;
+import net.bananemdnsa.historystages.client.editor.dialog.StylePresetPickerScreen;
 import net.bananemdnsa.historystages.client.editor.graph.CanvasBackgrounds;
 import net.bananemdnsa.historystages.client.editor.graph.GraphCanvas;
 import net.bananemdnsa.historystages.client.editor.graph.GraphDetailScreen;
@@ -33,6 +34,7 @@ import net.bananemdnsa.historystages.data.graph.GraphStageData;
 import net.bananemdnsa.historystages.network.PacketHandler;
 import net.bananemdnsa.historystages.network.serverbound.RearrangeGraphPacket;
 import net.bananemdnsa.historystages.network.serverbound.SaveGraphPositionsPacket;
+import net.bananemdnsa.historystages.network.serverbound.AssignStylePresetPacket;
 import net.bananemdnsa.historystages.network.serverbound.SaveStageGraphStylePacket;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
@@ -44,8 +46,10 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
 import org.lwjgl.glfw.GLFW;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -95,6 +99,9 @@ public class StageGraphScreen extends Screen {
 
     private static final int REARRANGE_BUTTON_X = BACK_BUTTON_X + BACK_BUTTON_W + 6;
     private static final int REARRANGE_BUTTON_W = 90;
+
+    private static final int PRESETS_BUTTON_X = REARRANGE_BUTTON_X + REARRANGE_BUTTON_W + 6;
+    private static final int PRESETS_BUTTON_W = 70;
 
     /** Undo, redo and "?" sit right in the top bar, away from Re-arrange on the left. */
     private static final int ICON_BUTTON_W = 18;
@@ -288,6 +295,17 @@ public class StageGraphScreen extends Screen {
                     Component.translatable("editor.historystages.graph.button.undo"),
                     btn -> travel(true),
                     iconX, BACK_BUTTON_Y, ICON_BUTTON_W, BACK_BUTTON_H));
+
+            // Next to Re-arrange when the title leaves room for it, otherwise in front of the
+            // undo group — at a large GUI scale the left group runs into the centred title.
+            int titleLeft = this.width / 2 - this.font.width(this.title) / 2;
+            int presetsX = PRESETS_BUTTON_X + PRESETS_BUTTON_W + 4 <= titleLeft
+                    ? PRESETS_BUTTON_X
+                    : iconX - ICON_BUTTON_GAP - PRESETS_BUTTON_W;
+            this.addRenderableWidget(StyledButton.of(
+                    Component.translatable("editor.historystages.graph.preset.manage"),
+                    btn -> this.minecraft.setScreen(new StylePresetsScreen(this)),
+                    presetsX, BACK_BUTTON_Y, PRESETS_BUTTON_W, BACK_BUTTON_H));
         }
     }
 
@@ -499,6 +517,12 @@ public class StageGraphScreen extends Screen {
         // On a selected node the menu speaks for the whole selection, as a drag does.
         Set<String> selected = canvas.selection();
         Set<String> targets = selected.contains(hit) ? Set.copyOf(selected) : Set.of(hit);
+        contextMenu.addEntry(targets.size() == 1
+                        ? Component.translatable("editor.historystages.graph.context.assign_preset").getString()
+                        : Component.translatable("editor.historystages.graph.context.assign_preset.many", targets.size()).getString(),
+                () -> this.minecraft.setScreen(new StylePresetPickerScreen(this, targets.size(),
+                        presetId -> assignPreset(targets, presetId),
+                        () -> this.minecraft.setScreen(new StylePresetsScreen(this)))));
         contextMenu.addEntry(Component.translatable("editor.historystages.graph.context.remove").getString(),
                 () -> removeFromGraph(targets));
         Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
@@ -569,6 +593,25 @@ public class StageGraphScreen extends Screen {
         // server the node would otherwise keep its old look until the broadcast returns.
         GraphStageData.set(GraphStageData.get()
                 .withStyle(node.stageId(), node.individual(), clipboard));
+        StageGraphConfig.invalidateCache();
+    }
+
+    /**
+     * Points every target at a preset, or at none. One packet for the lot; the same change is
+     * made locally right away, so the nodes behind the picker do not wait for the broadcast.
+     */
+    private void assignPreset(Set<String> graphKeys, String presetId) {
+        List<AssignStylePresetPacket.Target> targets = new ArrayList<>();
+        GraphStageData.Snapshot data = GraphStageData.get();
+        for (String key : graphKeys) {
+            StageGraphModel.Node node = model.nodes().get(key);
+            if (node == null) continue;
+            targets.add(new AssignStylePresetPacket.Target(node.stageId(), node.individual()));
+            data = data.withAssignedPreset(node.stageId(), node.individual(), presetId);
+        }
+        if (targets.isEmpty()) return;
+        PacketHandler.sendToServer(new AssignStylePresetPacket(targets, presetId == null ? "" : presetId));
+        GraphStageData.set(data);
         StageGraphConfig.invalidateCache();
     }
 

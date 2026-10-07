@@ -10,7 +10,12 @@ import net.bananemdnsa.historystages.util.DebugLogger;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -54,9 +59,12 @@ public final class GraphStageData {
         public StateStyles styles;
         /** Map background while this is the player's latest unlock with one. May be null. */
         public CanvasBackgroundStyle background;
+        /** Id of the {@link Preset} under this stage's own style. May be null. */
+        public String preset;
 
         public boolean isEmpty() {
             return (description == null || description.isBlank())
+                    && preset == null
                     && (style == null || style.isEmpty())
                     && (styles == null || styles.isEmpty())
                     && (background == null || background.isEmpty());
@@ -68,7 +76,8 @@ public final class GraphStageData {
          * and three objects per stage per frame is a lot of garbage for a 3×3 dot.
          */
         public boolean hasStyles() {
-            return (style != null && !style.isEmpty()) || (styles != null && !styles.isEmpty())
+            return preset != null
+                    || (style != null && !style.isEmpty()) || (styles != null && !styles.isEmpty())
                     || (background != null && !background.isEmpty());
         }
 
@@ -78,15 +87,80 @@ public final class GraphStageData {
             out.style = style == null ? null : style.copy();
             out.styles = styles == null ? null : styles.copy();
             out.background = background == null ? null : background.copy();
+            out.preset = preset;
             return out;
         }
     }
 
-    /** Immutable pair of entry maps, one per stage tree. */
-    public record Snapshot(Map<String, Entry> global, Map<String, Entry> individual) {
+    /**
+     * A named node look that stages point at. Change it once and every stage using it follows; a
+     * stage's own style still lies on top. Holds the node look only — the map background is a
+     * per-stage event, not part of how a kind of stage looks.
+     */
+    public static class Preset {
+        public String name;
+        /** Applies in every state. May be null. */
+        public StageStyle style;
+        /** Per-state, layered over {@link #style}. May be null. */
+        public StateStyles styles;
+
+        public Preset copy() {
+            Preset out = new Preset();
+            out.name = name;
+            out.style = style == null ? null : style.copy();
+            out.styles = styles == null ? null : styles.copy();
+            return out;
+        }
+
+        /** The look for one state: the all-states block with that state's block folded on top. */
+        public StageStyle style(NodeState state) {
+            return StageStyle.overlay(style, styles == null ? null : styles.get(state));
+        }
+
+        /**
+         * One preset that looks exactly like {@code base} with a stage's own blocks on top, in
+         * every state — what "save as preset" stores.
+         *
+         * <p>Not a plain block-by-block overlay: a stage's all-states value beats the preset's
+         * per-state one, but in a single preset a per-state value beats the all-states one. So
+         * the base's per-state blocks lose every field the stage's all-states block sets.
+         */
+        public static Preset flatten(String name, Preset base, StageStyle ownStyle, StateStyles ownStyles) {
+            Preset out = new Preset();
+            out.name = name;
+            StageStyle merged = StageStyle.overlay(base == null ? null : base.style, ownStyle);
+            out.style = merged.isEmpty() ? null : merged;
+            StateStyles states = new StateStyles();
+            for (NodeState state : NodeState.values()) {
+                StageStyle basePart = without(base == null || base.styles == null ? null : base.styles.get(state), ownStyle);
+                StageStyle block = StageStyle.overlay(basePart, ownStyles == null ? null : ownStyles.get(state));
+                states.set(state, block.isEmpty() ? null : block);
+            }
+            out.styles = states.isEmpty() ? null : states;
+            return out;
+        }
+
+        /** {@code style} minus every field {@code mask} sets. */
+        private static StageStyle without(StageStyle style, StageStyle mask) {
+            StageStyle out = style == null ? new StageStyle() : style.copy();
+            if (mask == null) return out;
+            for (String leaf : StageStyleFields.LEAVES) {
+                if (StageStyleFields.get(mask, leaf) != null) StageStyleFields.set(out, leaf, null);
+            }
+            return out;
+        }
+    }
+
+    /** Immutable entry maps, one per stage tree, plus the presets both trees share. */
+    public record Snapshot(Map<String, Entry> global, Map<String, Entry> individual,
+                           Map<String, Preset> presets) {
 
         public static Snapshot empty() {
-            return new Snapshot(Map.of(), Map.of());
+            return new Snapshot(Map.of(), Map.of(), Map.of());
+        }
+
+        private Snapshot withTree(boolean individual, Map<String, Entry> tree) {
+            return individual ? new Snapshot(global, tree, presets) : new Snapshot(tree, this.individual, presets);
         }
 
         public Map<String, Entry> tree(boolean individual) {
@@ -120,7 +194,92 @@ public final class GraphStageData {
             Entry entry = tree(individual).get(stageId);
             if (entry == null) return new StageStyle();
             StageStyle perState = entry.styles == null ? null : entry.styles.get(state);
-            return StageStyle.overlay(entry.style, perState);
+            StageStyle own = StageStyle.overlay(entry.style, perState);
+            Preset preset = entry.preset == null ? null : presets.get(entry.preset);
+            // The stage wins field by field — its all-states value beats the preset's per-state
+            // one too, so "Boss, but blue" stays blue in every state.
+            return preset == null ? own : StageStyle.overlay(preset.style(state), own);
+        }
+
+        /** The preset's look in one state, or an empty style for no or an unknown preset. */
+        public StageStyle presetStyle(String presetId, NodeState state) {
+            Preset preset = presetId == null ? null : presets.get(presetId);
+            return preset == null ? new StageStyle() : preset.style(state);
+        }
+
+        /** Presets ordered by name, case-insensitively — the order every list shows them in. */
+        public List<Map.Entry<String, Preset>> presetsByName() {
+            List<Map.Entry<String, Preset>> out = new ArrayList<>(presets.entrySet());
+            out.sort(Comparator.comparing(e -> e.getValue().name == null
+                    ? "" : e.getValue().name.toLowerCase(Locale.ROOT)));
+            return out;
+        }
+
+        /** True when another preset already has this name, ignoring case and outer spaces. */
+        public boolean presetNameTaken(String name, String exceptId) {
+            String wanted = name == null ? "" : name.trim().toLowerCase(Locale.ROOT);
+            for (Map.Entry<String, Preset> e : presets.entrySet()) {
+                if (e.getKey().equals(exceptId)) continue;
+                String other = e.getValue().name == null ? "" : e.getValue().name.trim().toLowerCase(Locale.ROOT);
+                if (other.equals(wanted)) return true;
+            }
+            return false;
+        }
+
+        /** How many stages, in both trees, point at this preset. */
+        public int usageCount(String presetId) {
+            int count = 0;
+            for (Entry entry : global.values()) if (presetId.equals(entry.preset)) count++;
+            for (Entry entry : individual.values()) if (presetId.equals(entry.preset)) count++;
+            return count;
+        }
+
+        /** Adds or replaces one preset; the stages pointing at it are untouched. */
+        public Snapshot withPreset(String presetId, Preset preset) {
+            Map<String, Preset> copy = new LinkedHashMap<>(presets);
+            copy.put(presetId, preset.copy());
+            return new Snapshot(global, individual, copy);
+        }
+
+        /**
+         * Drops a preset and every reference to it. The stages keep their own values; one that
+         * held nothing but the reference goes, so the file does not fill up with empty objects.
+         */
+        public Snapshot withoutPreset(String presetId) {
+            Map<String, Preset> copy = new LinkedHashMap<>(presets);
+            copy.remove(presetId);
+            return new Snapshot(unlink(global, presetId), unlink(individual, presetId), copy);
+        }
+
+        private static Map<String, Entry> unlink(Map<String, Entry> tree, String presetId) {
+            Map<String, Entry> out = new LinkedHashMap<>();
+            for (Map.Entry<String, Entry> e : tree.entrySet()) {
+                Entry entry = e.getValue();
+                if (presetId.equals(entry.preset)) {
+                    Entry updated = withPresetId(entry, null);
+                    if (!updated.isEmpty()) out.put(e.getKey(), updated);
+                } else {
+                    out.put(e.getKey(), entry);
+                }
+            }
+            return out;
+        }
+
+        /** Points one stage at a preset, or at none with {@code presetId == null}. */
+        public Snapshot withAssignedPreset(String stageId, boolean individual, String presetId) {
+            Map<String, Entry> copy = new LinkedHashMap<>(tree(individual));
+            Entry existing = copy.get(stageId);
+            Entry updated = withPresetId(existing == null ? new Entry() : existing, presetId);
+            if (updated.isEmpty()) copy.remove(stageId);
+            else copy.put(stageId, updated);
+            return withTree(individual, copy);
+        }
+
+        private static Entry withPresetId(Entry entry, String presetId) {
+            Entry out = entry.copyStyles();
+            out.description = entry.description;
+            out.preset = presetId;
+            return out;
         }
 
         /**
@@ -138,6 +297,7 @@ public final class GraphStageData {
             updated.style = existing == null ? null : existing.style;
             updated.styles = existing == null ? null : existing.styles;
             updated.background = existing == null ? null : existing.background;
+            updated.preset = existing == null ? null : existing.preset;
 
             if (updated.isEmpty()) {
                 copy.remove(stageId);
@@ -145,9 +305,7 @@ public final class GraphStageData {
                 copy.put(stageId, updated);
             }
 
-            return individual
-                    ? new Snapshot(global(), copy)
-                    : new Snapshot(copy, individual());
+            return withTree(individual, copy);
         }
 
         /**
@@ -167,6 +325,7 @@ public final class GraphStageData {
                     ? null : source.styles.copy();
             updated.background = source == null || source.background == null
                     || source.background.isEmpty() ? null : source.background.copy();
+            updated.preset = source == null ? null : source.preset;
 
             if (updated.isEmpty()) {
                 copy.remove(stageId);
@@ -174,9 +333,7 @@ public final class GraphStageData {
                 copy.put(stageId, updated);
             }
 
-            return individual
-                    ? new Snapshot(global(), copy)
-                    : new Snapshot(copy, individual());
+            return withTree(individual, copy);
         }
     }
 
@@ -187,7 +344,7 @@ public final class GraphStageData {
             JsonElement root = JsonParser.parseString(json);
             if (root == null || !root.isJsonObject()) return Snapshot.empty();
             JsonObject obj = root.getAsJsonObject();
-            return new Snapshot(section(obj, "global"), section(obj, "individual"));
+            return new Snapshot(section(obj, "global"), section(obj, "individual"), presets(obj));
         } catch (Exception e) {
             // A hand-edited file with a typo must not take the graph down; the author sees no
             // descriptions/styles for now and can fix the file.
@@ -210,8 +367,45 @@ public final class GraphStageData {
         return out;
     }
 
+    private static Map<String, Preset> presets(JsonObject root) {
+        Map<String, Preset> out = new LinkedHashMap<>();
+        if (!root.has("presets") || !root.get("presets").isJsonObject()) return out;
+        for (Map.Entry<String, JsonElement> e : root.getAsJsonObject("presets").entrySet()) {
+            try {
+                Preset preset = GSON.fromJson(e.getValue(), Preset.class);
+                if (preset == null) continue;
+                // A hand-written preset without a name still needs something to show in a list.
+                if (preset.name == null || preset.name.isBlank()) preset.name = e.getKey();
+                out.put(e.getKey(), preset);
+            } catch (Exception ex) {
+                // Skip one malformed preset; the rest of the file must still load.
+            }
+        }
+        return out;
+    }
+
+    /**
+     * A new preset's id, made from its name: lower case, letters, digits and underscores only,
+     * numbered on a collision. Never changes afterwards, so renaming touches no stage.
+     */
+    public static String newPresetId(String name, Collection<String> taken) {
+        String base = (name == null ? "" : name).trim().toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9]+", "_").replaceAll("^_+|_+$", "");
+        if (base.isEmpty()) base = "preset";
+        if (!taken.contains(base)) return base;
+        int n = 2;
+        while (taken.contains(base + "_" + n)) n++;
+        return base + "_" + n;
+    }
+
     public static String toJson(Snapshot snapshot) {
         JsonObject root = new JsonObject();
+        JsonObject presets = new JsonObject();
+        // Sorted for the same stable diff as the stage sections.
+        for (Map.Entry<String, Preset> e : new TreeMap<>(snapshot.presets()).entrySet()) {
+            presets.add(e.getKey(), GSON.toJsonTree(e.getValue()));
+        }
+        root.add("presets", presets);
         root.add("global", writeSection(snapshot.global()));
         root.add("individual", writeSection(snapshot.individual()));
         return GSON.toJson(root);
