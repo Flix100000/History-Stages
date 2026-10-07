@@ -99,6 +99,16 @@ final class GraphInteraction {
         selection.clear();
     }
 
+    /** Every stage on the map; the unplaced ones in the sidebar are not part of it. */
+    void selectAll() {
+        if (model != null) selection.addAll(model.nodes().keySet());
+    }
+
+    /** True while the mouse is in the middle of something — a pan, a drag or a rubber band. */
+    boolean isBusy() {
+        return dragArmed || panning || band != null;
+    }
+
     // --- Drag state the screen and sidebar look at ---------------------------------------------
 
     /**

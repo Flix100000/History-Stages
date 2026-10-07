@@ -7,6 +7,7 @@ import net.bananemdnsa.historystages.client.cache.ClientIndividualStageCache;
 import net.bananemdnsa.historystages.client.cache.ClientPlayerStageCache;
 import net.bananemdnsa.historystages.client.cache.ClientZoneSelection;
 import net.bananemdnsa.historystages.client.cache.ClientZoneShapes;
+import net.bananemdnsa.historystages.client.editor.graph.GraphLayoutHistory;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -47,6 +48,9 @@ public class ClientDisconnectHandler {
         // world's zones are somebody else's.
         ClientZoneShapes.clear();
         ZoneBorderRenderer.forgetWall();
+        // Undo steps are snapshots of the last server's graph; replayed on the next one they
+        // would send that layout there.
+        GraphLayoutHistory.CLIENT.clear();
         // The server pushed its config values into our specs and never wrote our file, so our own
         // settings are only a memory away. Without this they would stay until the game restarts,
         // and the visual ones are visible the moment the next singleplayer world opens.

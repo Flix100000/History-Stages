@@ -195,17 +195,31 @@ final class GraphCamera {
 
     boolean scroll(double mx, double my, double scrollY, StageGraphModel model) {
         if (!within(mx, my)) return false;
+        zoomAround(mx, my, zoom + scrollY * ZOOM_STEP, model);
+        return true;
+    }
+
+    /** Keyboard zoom: the same step as one wheel notch, around the middle of the view. */
+    void zoomBy(int steps, StageGraphModel model) {
+        zoomAround(viewX + viewW / 2.0, viewY + viewH / 2.0, zoom + steps * ZOOM_STEP, model);
+    }
+
+    /** Back to the configured start zoom, keeping whatever is in the middle of the view there. */
+    void resetZoom(StageGraphModel model) {
+        zoomAround(viewX + viewW / 2.0, viewY + viewH / 2.0, GraphConfig.GRAPH.startZoom.get(), model);
+    }
+
+    /** Keeps the grid point under (mx, my) fixed on screen while the zoom changes. */
+    private void zoomAround(double mx, double my, double target, StageGraphModel model) {
         float old = zoom;
         double minZoomCfg = GraphConfig.GRAPH.minZoom.get();
         double maxZoomCfg = GraphConfig.GRAPH.maxZoom.get();
-        zoom = (float) Math.max(minZoomCfg, Math.min(maxZoomCfg, zoom + scrollY * ZOOM_STEP));
-        if (zoom == old) return true;   // already at a limit, leave the camera alone
-        // Zoom toward the cursor: keep the grid point currently under it fixed on screen.
+        zoom = (float) Math.max(minZoomCfg, Math.min(maxZoomCfg, target));
+        if (zoom == old) return;   // already at a limit, leave the camera alone
         panX = (float) (mx - ((mx - panX) / old) * zoom);
         panY = (float) (my - ((my - panY) / old) * zoom);
         clampPan(model);
         snapCameraToPixel();
-        return true;
     }
 
 }

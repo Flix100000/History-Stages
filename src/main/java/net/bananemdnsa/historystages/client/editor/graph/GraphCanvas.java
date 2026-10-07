@@ -82,6 +82,23 @@ public final class GraphCanvas {
         interaction.clearSelection();
     }
 
+    public void selectAll() {
+        interaction.selectAll();
+    }
+
+    /** True while a pan, drag or rubber band is in progress; keyboard shortcuts wait for it. */
+    public boolean isBusy() {
+        return interaction.isBusy();
+    }
+
+    public void zoomBy(int steps) {
+        camera.zoomBy(steps, model);
+    }
+
+    public void resetZoom() {
+        camera.resetZoom(model);
+    }
+
     /** Null draws graph.toml's background; the player view hands in its own. */
     public void setBackground(ResolvedCanvasBackground background) {
         this.background = background;

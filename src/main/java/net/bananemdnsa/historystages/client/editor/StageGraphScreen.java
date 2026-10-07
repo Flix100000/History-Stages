@@ -7,7 +7,12 @@ import net.bananemdnsa.historystages.client.editor.dialog.StageInfoTextScreen;
 import net.bananemdnsa.historystages.client.editor.graph.CanvasBackgrounds;
 import net.bananemdnsa.historystages.client.editor.graph.GraphCanvas;
 import net.bananemdnsa.historystages.client.editor.graph.GraphDetailScreen;
+import net.bananemdnsa.historystages.client.editor.graph.GraphKeys;
+import net.bananemdnsa.historystages.client.editor.graph.GraphLayoutHistory;
+import net.bananemdnsa.historystages.client.editor.graph.GraphLayoutHistory.Step;
+import net.bananemdnsa.historystages.client.editor.graph.GraphLayoutHistory.TreeState;
 import net.bananemdnsa.historystages.client.editor.graph.GraphLegend;
+import net.bananemdnsa.historystages.client.editor.graph.GraphShortcutPanel;
 import net.bananemdnsa.historystages.client.editor.graph.GraphSidebar;
 import net.bananemdnsa.historystages.client.editor.graph.GraphViewFilter;
 import net.bananemdnsa.historystages.client.editor.graph.StageGraphConfig;
@@ -17,6 +22,7 @@ import net.bananemdnsa.historystages.client.editor.toast.EditorToast;
 import net.bananemdnsa.historystages.client.editor.toast.EditorToastHandler;
 import net.bananemdnsa.historystages.client.editor.widget.ConfirmDialog;
 import net.bananemdnsa.historystages.client.editor.widget.ContextMenu;
+import net.bananemdnsa.historystages.client.editor.widget.EditorTooltip;
 import net.bananemdnsa.historystages.client.editor.widget.StyledButton;
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.StageManager;
@@ -28,6 +34,7 @@ import net.bananemdnsa.historystages.network.PacketHandler;
 import net.bananemdnsa.historystages.network.serverbound.RearrangeGraphPacket;
 import net.bananemdnsa.historystages.network.serverbound.SaveGraphPositionsPacket;
 import net.bananemdnsa.historystages.network.serverbound.SaveStageGraphStylePacket;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
@@ -39,6 +46,7 @@ import org.lwjgl.glfw.GLFW;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -88,6 +96,11 @@ public class StageGraphScreen extends Screen {
     private static final int REARRANGE_BUTTON_X = BACK_BUTTON_X + BACK_BUTTON_W + 6;
     private static final int REARRANGE_BUTTON_W = 90;
 
+    /** Undo, redo and "?" sit right in the top bar, away from Re-arrange on the left. */
+    private static final int ICON_BUTTON_W = 18;
+    private static final int ICON_BUTTON_GAP = 4;
+    private static final int TOP_BAR_RIGHT_MARGIN = 6;
+
     private static final int TITLE_COLOR = 0xFFFFFFFF;
     private static final int BACKGROUND_COLOR = 0xFF101010;
 
@@ -103,6 +116,38 @@ public class StageGraphScreen extends Screen {
 
     /** Fresh instance per open, exactly as {@code StageOverviewScreen} does it. Editor mode only. */
     private ContextMenu contextMenu;
+
+    private final GraphLayoutHistory history = GraphLayoutHistory.CLIENT;
+    private final EditorTooltip tooltip = new EditorTooltip();
+    private final GraphShortcutPanel shortcutPanel = new GraphShortcutPanel();
+    private boolean shortcutsOpen;
+    /** Editor mode only; null in the player view. */
+    private StyledButton undoButton;
+    private StyledButton redoButton;
+    private StyledButton helpButton;
+
+    /** How the history reads and restores a tree: the same packets a drag or Re-arrange sends. */
+    private final GraphLayoutHistory.Applier applier = new GraphLayoutHistory.Applier() {
+        @Override
+        public TreeState current(boolean individual) {
+            return capture(Set.of(individual)).get(individual);
+        }
+
+        @Override
+        public void apply(boolean individual, TreeState state) {
+            if (state.frozen()) {
+                sendPositions(individual, state.positions());
+                return;
+            }
+            // Back to before the first drag: the algorithm owns this tree again.
+            PacketHandler.sendToServer(new RearrangeGraphPacket(individual));
+            GraphLayoutData.Snapshot cur = GraphLayoutData.get();
+            GraphLayoutData.set(individual
+                    ? new GraphLayoutData.Snapshot(cur.global(), Map.of(), cur.globalFrozen(), false)
+                    : new GraphLayoutData.Snapshot(Map.of(), cur.individual(), false, cur.individualFrozen()));
+            StageManager.recomputeGraphLayout();
+        }
+    };
 
     /** Editor view — from {@code StageOverviewScreen}. Unfiltered, with the authoring tools. */
     public StageGraphScreen(Screen parent) {
@@ -218,6 +263,24 @@ public class StageGraphScreen extends Screen {
             // filtered-out stages leave real gaps rather than shrinking the layout.
             canvas.fitToContent();
         }
+
+        int iconX = this.width - TOP_BAR_RIGHT_MARGIN - ICON_BUTTON_W;
+        helpButton = this.addRenderableWidget(StyledButton.of(
+                Component.translatable("editor.historystages.graph.button.help"),
+                btn -> shortcutsOpen = !shortcutsOpen,
+                iconX, BACK_BUTTON_Y, ICON_BUTTON_W, BACK_BUTTON_H));
+        if (editorView) {
+            iconX -= ICON_BUTTON_W + ICON_BUTTON_GAP;
+            redoButton = this.addRenderableWidget(StyledButton.of(
+                    Component.translatable("editor.historystages.graph.button.redo"),
+                    btn -> travel(false),
+                    iconX, BACK_BUTTON_Y, ICON_BUTTON_W, BACK_BUTTON_H));
+            iconX -= ICON_BUTTON_W + ICON_BUTTON_GAP;
+            undoButton = this.addRenderableWidget(StyledButton.of(
+                    Component.translatable("editor.historystages.graph.button.undo"),
+                    btn -> travel(true),
+                    iconX, BACK_BUTTON_Y, ICON_BUTTON_W, BACK_BUTTON_H));
+        }
     }
 
     private StageGraphModel buildModel() {
@@ -304,16 +367,79 @@ public class StageGraphScreen extends Screen {
 
         g.drawCenteredString(this.font, this.title, this.width / 2, 8, TITLE_COLOR);
 
-        super.render(g, mouseX, mouseY, partialTick); // draws the back/re-arrange buttons, editor mode only
+        if (undoButton != null) undoButton.active = history.canUndo();
+        if (redoButton != null) redoButton.active = history.canRedo();
+        Component help = Component.translatable("editor.historystages.graph.button.help");
+        helpButton.setMessage(shortcutsOpen ? help.copy().withStyle(ChatFormatting.GOLD) : help);
 
-        // Rendered last, above everything above, with a z-translate — same convention as
-        // StageOverviewScreen's context menu.
-        if (contextMenu != null && contextMenu.isVisible()) {
+        super.render(g, mouseX, mouseY, partialTick); // the top-bar buttons
+
+        if (shortcutsOpen) {
+            shortcutPanel.layout(this.font, this.width - TOP_BAR_RIGHT_MARGIN, TOP_BAR_H + 2, mode == Mode.EDITOR);
+            // Item icons on the map are drawn around z 150, so anything lower lets them shine
+            // through. Same layer as the legend, the other panel floating over the map.
             g.pose().pushPose();
-            g.pose().translate(0, 0, 200);
-            contextMenu.render(g, this.font, mouseX, mouseY);
+            g.pose().translate(0, 0, 400);
+            shortcutPanel.render(g, this.font);
             g.pose().popPose();
         }
+
+        // Rendered last, above everything above, with a z-translate — same convention as
+        // StageOverviewScreen's context menu. Above the shortcut panel, which can sit under it.
+        if (contextMenu != null && contextMenu.isVisible()) {
+            g.pose().pushPose();
+            g.pose().translate(0, 0, 450);
+            contextMenu.render(g, this.font, mouseX, mouseY);
+            g.pose().popPose();
+        } else {
+            renderButtonTooltip(g, mouseX, mouseY);
+        }
+    }
+
+    /**
+     * The editor's own tooltip, not Minecraft's. Hover is worked out from the bounds directly,
+     * because a greyed-out button does not report hover — and "nothing to undo" is exactly when
+     * the tooltip is worth reading.
+     */
+    private void renderButtonTooltip(GuiGraphics g, int mouseX, int mouseY) {
+        String key = null;
+        String text = null;
+        if (over(undoButton, mouseX, mouseY)) {
+            key = "undo";
+            text = describe(history.peekUndo(), "undo") + "\n§8" + keyLabel("undo");
+        } else if (over(redoButton, mouseX, mouseY)) {
+            key = "redo";
+            text = describe(history.peekRedo(), "redo") + "\n§8" + keyLabel("redo");
+        } else if (over(helpButton, mouseX, mouseY)) {
+            key = "help";
+            text = Component.translatable("editor.historystages.graph.keys.title").getString()
+                    + "\n§8" + keyLabel("help");
+        }
+        tooltip.render(g, this.font, key, text, mouseX, mouseY, this.width, this.height);
+    }
+
+    private static boolean over(StyledButton button, int mx, int my) {
+        return button != null && button.visible
+                && mx >= button.getX() && mx < button.getX() + button.getWidth()
+                && my >= button.getY() && my < button.getY() + button.getHeight();
+    }
+
+    private static String keyLabel(String shortcut) {
+        return Component.translatable("editor.historystages.graph.keys." + shortcut + ".key").getString();
+    }
+
+    /** "Undo: moved 3 stages", or "Nothing to undo". */
+    private static String describe(Step step, String direction) {
+        String prefix = "editor.historystages.graph.history." + direction;
+        if (step == null) return Component.translatable(prefix + ".none").getString();
+        Component what = step.kind() == GraphLayoutHistory.Kind.REARRANGE
+                ? Component.translatable("editor.historystages.graph.history.rearrange")
+                : step.count() == 1
+                ? Component.translatable("editor.historystages.graph.history."
+                        + step.kind().name().toLowerCase(Locale.ROOT) + ".one")
+                : Component.translatable("editor.historystages.graph.history."
+                        + step.kind().name().toLowerCase(Locale.ROOT) + ".many", step.count());
+        return Component.translatable(prefix, what).getString();
     }
 
     // --- Input --------------------------------------------------------------------------------
@@ -331,6 +457,7 @@ public class StageGraphScreen extends Screen {
             contextMenu.mouseClicked(mouseX, mouseY, button);
             return true;
         }
+        if (shortcutsOpen && shortcutPanel.contains(mouseX, mouseY)) return true;
         if (sidebar != null && sidebar.mouseClicked(mouseX, mouseY, button)) return true;
         if (legend != null && legend.mouseClicked(mouseX, mouseY, button)) return true;
         if (mode == Mode.EDITOR && button == 1 && tryOpenContextMenu(mouseX, mouseY)) return true;
@@ -506,6 +633,7 @@ public class StageGraphScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (shortcutsOpen && shortcutPanel.contains(mouseX, mouseY)) return true;
         if (sidebar != null && sidebar.mouseScrolled(mouseX, mouseY, scrollY)) return true;
         if (canvas.mouseScrolled(mouseX, mouseY, scrollY)) return true;
         return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
@@ -522,13 +650,72 @@ public class StageGraphScreen extends Screen {
         // The sidebar only consumes ESC while its filter dropdown is open; otherwise it falls
         // through to super, whose default shouldCloseOnEsc()/onClose() closes this screen.
         if (sidebar != null && sidebar.keyPressed(keyCode)) return true;
-        // With a selection, the first Esc lets go of it and only the second leaves the graph.
-        if (keyCode == GLFW.GLFW_KEY_ESCAPE && !canvas.selection().isEmpty()
-                && (sidebar == null || !sidebar.isSearchFocused())) {
-            canvas.clearSelection();
-            return true;
+        boolean typing = sidebar != null && sidebar.isSearchFocused();
+        // Esc peels off one layer at a time: the overview, then the selection, then the graph.
+        if (keyCode == GLFW.GLFW_KEY_ESCAPE && !typing) {
+            if (shortcutsOpen) {
+                shortcutsOpen = false;
+                return true;
+            }
+            if (!canvas.selection().isEmpty()) {
+                canvas.clearSelection();
+                return true;
+            }
+        }
+        boolean menuOpen = contextMenu != null && contextMenu.isVisible();
+        if (!typing && !menuOpen && !canvas.isBusy()) {
+            GraphKeys.Action action = GraphKeys.resolve(keyCode, GLFW.glfwGetKeyName(keyCode, scanCode),
+                    hasControlDown(), hasShiftDown());
+            if (action != null && runShortcut(action)) return true;
         }
         return super.keyPressed(keyCode, scanCode, modifiers);
+    }
+
+    /** @return false when the key means nothing in this view, so it can fall through */
+    private boolean runShortcut(GraphKeys.Action action) {
+        switch (action) {
+            case SEARCH -> {
+                if (sidebar == null) return false;
+                sidebar.focusSearch();
+            }
+            case FIT -> canvas.fitToContent();
+            case ZOOM_IN -> canvas.zoomBy(1);
+            case ZOOM_OUT -> canvas.zoomBy(-1);
+            case ZOOM_RESET -> canvas.resetZoom();
+            case HELP -> shortcutsOpen = !shortcutsOpen;
+            default -> {
+                return mode == Mode.EDITOR && runEditorShortcut(action);
+            }
+        }
+        return true;
+    }
+
+    private boolean runEditorShortcut(GraphKeys.Action action) {
+        switch (action) {
+            case UNDO -> travel(true);
+            case REDO -> travel(false);
+            case SELECT_ALL -> canvas.selectAll();
+            case SELECT_NONE -> canvas.clearSelection();
+            case REMOVE -> {
+                Set<String> targets = keyboardTargets();
+                if (targets.isEmpty()) return false;
+                removeFromGraph(targets);
+            }
+            default -> {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * What Delete acts on: the selection, or else the stage last clicked. A plain click only
+     * marks a stage and opens its window — the selection is a Ctrl-click thing.
+     */
+    private Set<String> keyboardTargets() {
+        if (!canvas.selection().isEmpty()) return Set.copyOf(canvas.selection());
+        String focused = canvas.focusedKey();
+        return focused != null && model.nodes().containsKey(focused) ? Set.of(focused) : Set.of();
     }
 
     @Override
@@ -583,9 +770,11 @@ public class StageGraphScreen extends Screen {
 
     private void savePositions(Map<Boolean, Map<String, GraphPos>> positions, Runnable commit) {
         Runnable apply = () -> {
+            Map<Boolean, TreeState> before = capture(positions.keySet());
             commit.run();
             positions.forEach(this::sendPositions);
             reloadModel();
+            history.record(Step.between(before, capture(positions.keySet())));
         };
         boolean anyUnfrozen = false;
         for (boolean individual : positions.keySet()) {
@@ -637,6 +826,8 @@ public class StageGraphScreen extends Screen {
     }
 
     private void performRearrange() {
+        Set<Boolean> bothTrees = Set.of(false, true);
+        Map<Boolean, TreeState> before = capture(bothTrees);
         PacketHandler.sendToServer(new RearrangeGraphPacket(false));
         PacketHandler.sendToServer(new RearrangeGraphPacket(true));
 
@@ -648,8 +839,35 @@ public class StageGraphScreen extends Screen {
         // authoritative result.
         GraphLayoutData.set(GraphLayoutData.Snapshot.empty());
         StageManager.recomputeGraphLayout();
+        history.record(Step.rearrange(before, capture(bothTrees)));
 
         canvas.clearSelection();
         this.minecraft.setScreen(this);
+    }
+
+    // --- Undo/redo ---------------------------------------------------------------------------
+
+    private static Map<Boolean, TreeState> capture(Set<Boolean> trees) {
+        GraphLayoutData.Snapshot snap = GraphLayoutData.get();
+        Map<Boolean, TreeState> out = new HashMap<>();
+        for (boolean individual : trees) {
+            out.put(individual, TreeState.of(snap.isFrozen(individual), snap.tree(individual)));
+        }
+        return out;
+    }
+
+    /** Undo when {@code backwards}, redo otherwise. */
+    private void travel(boolean backwards) {
+        GraphLayoutHistory.Result result = backwards ? history.undo(applier) : history.redo(applier);
+        switch (result) {
+            case DONE -> {
+                canvas.clearSelection();
+                reloadModel();
+            }
+            case DISCARDED -> EditorToastHandler.show(EditorToast.Level.INFO,
+                    Component.translatable("editor.historystages.graph.history.discarded.title"),
+                    Component.translatable("editor.historystages.graph.history.discarded.message"));
+            case NOTHING -> { }
+        }
     }
 }

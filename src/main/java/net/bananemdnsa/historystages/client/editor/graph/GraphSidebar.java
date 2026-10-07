@@ -760,6 +760,13 @@ public final class GraphSidebar {
         searchBar.setFocused(false);
     }
 
+    /** Ctrl+F: opens a collapsed sidebar and puts the cursor in the search box. */
+    public void focusSearch() {
+        open = true;
+        openedForDrag = false;
+        searchBar.setFocused(true);
+    }
+
     /**
      * Toggling while a search is running would edit a set nothing is reading — the tree is
      * force-expanded until the box is cleared — and would land the player on a surprise state
