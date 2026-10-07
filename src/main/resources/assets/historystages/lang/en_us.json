@@ -624,6 +624,8 @@
   "editor.historystages.badge.dependencies": "[Dep]",
   "editor.historystages.badge.actions": "Actions",
   "editor.historystages.badge.recipes": "Recipes",
+  "editor.historystages.badge.nbt": "NBT",
+  "editor.historystages.badge.mod": "mod",
   "editor.historystages.edit.nothing_to_edit": "[HistoryStages] Nothing to edit for mod '%s' — no entities or structures available.",
   "editor.historystages.lock": "Lock",
   "editor.historystages.unlock": "Unlock",

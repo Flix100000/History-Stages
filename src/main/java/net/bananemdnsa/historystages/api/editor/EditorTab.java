@@ -76,12 +76,19 @@ public interface EditorTab<C> {
     }
 
     /**
-     * Short text drawn right-aligned on this row — a badge such as "[NBT]" — or null for none.
+     * Short text drawn right-aligned on this row as a {@link net.bananemdnsa.historystages.api.editor.widget.Badge}
+     * — such as "NBT" — or null for none. Surrounding brackets are dropped, the frame replaces them.
      *
      * <p>Honoured by both editors, after whatever badges the host declared for itself.
      */
     @Nullable
     default String badgeText(int index) {
+        return null;
+    }
+
+    /** Tooltip for the badge from {@link #badgeText}, shown on hover, or null for none. */
+    @Nullable
+    default String badgeTooltip(int index) {
         return null;
     }
 

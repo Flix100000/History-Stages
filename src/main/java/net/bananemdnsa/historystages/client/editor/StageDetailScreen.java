@@ -61,6 +61,7 @@ import net.bananemdnsa.historystages.client.editor.tab.TradeProfessionCategoryTa
 import net.bananemdnsa.historystages.api.editor.StringListCategoryTab;
 import net.bananemdnsa.historystages.api.editor.TabInputContext;
 import net.bananemdnsa.historystages.api.editor.TabRenderContext;
+import net.bananemdnsa.historystages.api.editor.widget.Badge;
 import net.bananemdnsa.historystages.api.editor.widget.EditorRowList;
 import net.bananemdnsa.historystages.client.editor.widget.EntityPreviewRenderer;
 import net.bananemdnsa.historystages.data.lock.category.LockCategories;
@@ -1516,7 +1517,7 @@ public class StageDetailScreen extends Screen {
         if (isItemsTab && itemTab.nbtByIndex().containsKey(index)
                 || isTagsTab && tagTab.nbtByIndex().containsKey(index)
                 || isExceptionsTab && modExceptionTab.nbtByIndex().containsKey(index)) {
-            row.badge("§6[NBT]", 0xFFCC00);
+            row.badge(Component.translatable("editor.historystages.badge.nbt").getString(), 0xFFCC00);
         }
 
         Map<Integer, List<String>> tabLockActions = getLockActionsMapForTab(activeTab);
@@ -1641,7 +1642,7 @@ public class StageDetailScreen extends Screen {
         if ((isEntityTab && editModLinked.contains(entry))
                 || (isTab(activeTab, CAT_STRUCTURES) && structureTab.modLinkedEntries().contains(entry))
                 || (isTab(activeTab, CAT_BIOMES) && biomeTab.modLinkedEntries().contains(entry))) {
-            row.badge("§7[mod]", 0x999999);
+            row.badge(Component.translatable("editor.historystages.badge.mod").getString(), 0x999999);
         }
 
         if (isTab(activeTab, CAT_STRUCTURES)) {
@@ -1658,7 +1659,7 @@ public class StageDetailScreen extends Screen {
         }
 
         String tabBadge = activeTabObject() == null ? null : activeTabObject().badgeText(index);
-        if (tabBadge != null) row.badge(tabBadge);
+        if (tabBadge != null) row.badge(tabBadge, 0xFFCC00, activeTabObject().badgeTooltip(index));
 
         // Text, with the dual-phase mark and its tooltip
         boolean dual = false;
@@ -1820,7 +1821,9 @@ public class StageDetailScreen extends Screen {
 
         // Individual badge
         if (isIndividual) {
-            guiGraphics.drawString(this.font, "\u00A77[Individual]", 10, 8, 0xBBBBBB, false);
+            Badge.draw(guiGraphics, this.font,
+                    Component.translatable("editor.historystages.stage_type.individual").getString(),
+                    10, 4, 0xBBBBBB);
         }
 
         // Thin separator between title and button row

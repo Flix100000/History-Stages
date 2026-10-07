@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.widget.list;
 
+import net.bananemdnsa.historystages.api.editor.widget.Badge;
 import net.bananemdnsa.historystages.api.editor.widget.ToggleControl;
 import net.bananemdnsa.historystages.api.editor.widget.ToggleGeometry;
 import net.bananemdnsa.historystages.client.editor.ConfigEditorScreen;
@@ -118,33 +119,26 @@ public class ConfigRowList {
     private static final int TAG_TEXT = 0xFFB48CFF;
     private static final int TAG_FRAME = 0xFF5B3D99;
     private static final int TAG_BG = 0xFF1E1530;
-    private static final int TAG_H = 12;
-
     /**
      * A small framed tag at the right end of the row naming where an inherited value comes from.
      * Right-aligned rather than after the label, where the label column has no room to spare.
+     * The shades are the hand-picked originals every other {@link Badge} is modelled on.
      */
     private static void drawInheritTag(GuiGraphics g, Font font, String tag, int right, int y) {
-        int[] r = inheritTagRect(font, tag, right, y);
-        g.fill(r[0], r[1], r[2], r[3], TAG_FRAME);
-        g.fill(r[0] + 1, r[1] + 1, r[2] - 1, r[3] - 1, TAG_BG);
-        g.drawString(font, tag, r[0] + 3, r[1] + 2, TAG_TEXT, false);
+        int w = Badge.width(font, tag);
+        Badge.draw(g, font, tag, right - 6 - w, inheritTagY(y), w, TAG_TEXT, TAG_FRAME, TAG_BG);
     }
 
-    /** {x1, y1, x2, y2} of a row's tag; shared by drawing and {@link #overInheritTag}. */
-    private static int[] inheritTagRect(Font font, String tag, int right, int y) {
-        int x2 = right - 6;
-        int x1 = x2 - font.width(tag) - 6;
-        int y1 = y + (ENTRY_HEIGHT - TAG_H) / 2;
-        return new int[]{x1, y1, x2, y1 + TAG_H};
+    private static int inheritTagY(int y) {
+        return y + (ENTRY_HEIGHT - Badge.HEIGHT) / 2;
     }
 
     /** True when the cursor is on the row's inherit tag, so the screen can explain it. */
     public static boolean overInheritTag(ConfigEditorScreen.ConfigEntry entry, int right, int y,
                                          double mouseX, double mouseY) {
         if (!entry.inherited || entry.inheritTag == null) return false;
-        int[] r = inheritTagRect(Minecraft.getInstance().font, entry.inheritTag, right, y);
-        return mouseX >= r[0] && mouseX < r[2] && mouseY >= r[1] && mouseY < r[3];
+        int w = Badge.width(Minecraft.getInstance().font, entry.inheritTag);
+        return Badge.contains(right - 6 - w, inheritTagY(y), w, mouseX, mouseY);
     }
 
     /** Left edge of the clear-to-inherit ×, in the gutter ahead of the label. */

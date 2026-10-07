@@ -156,7 +156,7 @@ public final class EditorRowList {
             return subtitle(subtitle);
         }
 
-        /** Short text at the right. Several stack right to left, in declaration order. */
+        /** A {@link Badge} at the right. Several stack right to left, in declaration order. */
         public Row badge(String text) {
             return badge(text, 0xFFCC00);
         }
@@ -165,9 +165,18 @@ public final class EditorRowList {
             return badge(text, colour, 0);
         }
 
-        /** A badge in a column at least {@code minWidth} wide, its text centred in it. */
+        /** A badge at least {@code minWidth} wide, its text centred, so a column of them lines up. */
         public Row badge(String text, int colour, int minWidth) {
-            slots.add(new Slot(text, colour, null, null, false, null, false, minWidth));
+            return badge(text, colour, minWidth, null);
+        }
+
+        /** A badge that explains itself when hovered. */
+        public Row badge(String text, int colour, @Nullable String tooltip) {
+            return badge(text, colour, 0, tooltip);
+        }
+
+        public Row badge(String text, int colour, int minWidth, @Nullable String tooltip) {
+            slots.add(new Slot(text, colour, tooltip, null, false, null, false, minWidth));
             return this;
         }
 
@@ -414,6 +423,8 @@ public final class EditorRowList {
             Slot slot = row.slots.get(i);
             int slotW = slot.isToggle()
                     ? ToggleControl.width(font)
+                    : slot.onClick() == null
+                    ? Math.max(slot.minWidth(), Badge.width(font, slot.text()))
                     : Math.max(slot.minWidth(), font.width(slot.text()) + 6 + (slot.caret() ? CARET_SLOT_W : 0));
             int slotX = right - used - slotW;
             if (slot.isToggle()) {
@@ -433,10 +444,12 @@ public final class EditorRowList {
                     ctx.tooltip("row." + index + ".slot." + i, slot.tooltip());
                 }
             } else if (slot.onClick() == null) {
-                // The slot carries the same 6px of padding as a button; a badge sized to its text
-                // keeps drawing flush left in it, as it always has.
-                int badgeX = slot.minWidth() > 0 ? slotX + (slotW - font.width(slot.text())) / 2 : slotX;
-                g.drawString(font, slot.text(), badgeX, textY, slot.colour(), false);
+                int badgeY = textY - 2;
+                Badge.draw(g, font, slot.text(), slotX, badgeY, slotW, slot.colour());
+                if (slot.tooltip() != null && !ctx.inputBlocked()
+                        && Badge.contains(slotX, badgeY, slotW, ctx.mouseX(), ctx.mouseY())) {
+                    ctx.tooltip("row." + index + ".slot." + i, slot.tooltip());
+                }
             } else {
                 boolean slotHovered = !ctx.inputBlocked()
                         && ctx.mouseX() >= slotX && ctx.mouseX() < slotX + slotW

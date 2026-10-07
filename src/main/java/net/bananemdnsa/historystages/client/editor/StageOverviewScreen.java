@@ -8,6 +8,7 @@ import net.bananemdnsa.historystages.client.editor.dialog.CreditsScreen;
 import net.bananemdnsa.historystages.client.editor.widget.ConfirmDialog;
 import net.bananemdnsa.historystages.client.editor.widget.ContextMenu;
 import net.bananemdnsa.historystages.api.editor.widget.AbstractInputScreen;
+import net.bananemdnsa.historystages.api.editor.widget.Badge;
 import net.bananemdnsa.historystages.api.editor.widget.InputField;
 import net.bananemdnsa.historystages.api.editor.widget.InputValues;
 import net.bananemdnsa.historystages.client.editor.folder.FolderNameScreen;
@@ -74,8 +75,6 @@ public class StageOverviewScreen extends Screen {
     /** How far the header caret turns per frame, as a fraction of the full flip. */
     private static final float MENU_CARET_SPEED = 0.18f;
     private static final String BREADCRUMB_SEPARATOR = " / ";
-    /** Colour code carrying the dependency badge's gold; the raw colour is the fallback. */
-    private static final String DEP_BADGE_PREFIX = "§6";
     private static final int DEP_BADGE_COLOR = 0xFFAA55;
 
     /** Width the organize checkbox column takes away from a row's content. */
@@ -783,7 +782,7 @@ public class StageOverviewScreen extends Screen {
             int iconColor = unlocked ? 0xFFCC00 : 0x888888;
             guiGraphics.drawString(this.font, icon, contentLeft + 5, entryTop + 6, iconColor, false);
 
-            // Mode badge (pill placed to the LEFT of the lock button, vertically centered)
+            // Mode badge (placed to the LEFT of the lock button, vertically centered)
             long remainingTicks = EditorDataCache.getTemporaryActiveTicks(stageId);
             int badgeWidth = modeBadgeWidth(entry, remainingTicks);
             int badgeY = entryTop + (ENTRY_HEIGHT - 12) / 2 - 1;
@@ -1989,7 +1988,7 @@ public class StageOverviewScreen extends Screen {
     private int modeBadgeWidth(StageEntry entry, long remainingTicks) {
         StageMode mode = entry.getMode();
         if (mode == StageMode.DEFAULT) return 0;
-        int w = this.font.width(modeBadgeLabel(entry, remainingTicks)) + 8;
+        int w = Badge.width(this.font, modeBadgeLabel(entry, remainingTicks));
         if (mode.usesAutoTrigger() && isAutoEmpty(entry)) {
             w += 3 + this.font.width(MODE_BADGE_WARN);
         }
@@ -1997,22 +1996,16 @@ public class StageOverviewScreen extends Screen {
     }
 
     /**
-     * Draws the monochrome pill badge for {@link StageMode#AUTO} / {@link StageMode#EXTERNAL}
+     * Draws the grey badge for {@link StageMode#AUTO} / {@link StageMode#EXTERNAL}
      * at (x, y). No-op for {@link StageMode#DEFAULT}. AUTO badges include the configured
      * trigger count (e.g. "Auto (3)"); empty AUTO badges additionally show a warn indicator.
      */
     private void drawModeBadge(GuiGraphics g, StageEntry entry, long remainingTicks, int x, int y) {
         StageMode mode = entry.getMode();
         if (mode == StageMode.DEFAULT) return;
-        String label = modeBadgeLabel(entry, remainingTicks);
-        int textW = this.font.width(label);
-        int pillW = textW + 8;
-        int pillH = 12;
-        g.fill(x, y, x + pillW, y + pillH, 0x20FFFFFF);
-        g.fill(x, y + pillH - 1, x + pillW, y + pillH, 0x30FFFFFF);
-        g.drawString(this.font, label, x + 4, y + 2, 0xFFAAAAAA, false);
+        int right = Badge.draw(g, this.font, modeBadgeLabel(entry, remainingTicks), x, y, 0xAAAAAA);
         if (mode.usesAutoTrigger() && isAutoEmpty(entry)) {
-            g.drawString(this.font, MODE_BADGE_WARN, x + pillW + 3, y + 2, 0xFFAA55, false);
+            g.drawString(this.font, MODE_BADGE_WARN, right + 3, y + 2, 0xFFAA55, false);
         }
     }
 
@@ -2020,29 +2013,27 @@ public class StageOverviewScreen extends Screen {
 
     /**
      * Marks a row whose stage is gated behind other stages ("[Dep]") or carries logic blocks
-     * ("[Logic]"). Unlike the mode and death badges these are plain text in the info line, not
-     * pills in the right-hand column: they describe the stage's definition, not its current state.
+     * ("[Logic]"). They sit in the info line rather than in the right-hand column with the mode and
+     * death badges: they describe the stage's definition, not its current state.
      *
      * @param info the info line they are placed behind, needed for its width
      */
     private void drawInfoBadges(GuiGraphics g, StageEntry entry, String info, int contentLeft, int y) {
         int x = contentLeft + 22 + this.font.width(info) + 6;
         if (entry.hasDependencies()) {
-            String label = DEP_BADGE_PREFIX
-                    + Component.translatable("editor.historystages.badge.dependencies").getString();
-            g.drawString(this.font, label, x, y, DEP_BADGE_COLOR, false);
-            x += this.font.width(label) + 4;
+            String label = Component.translatable("editor.historystages.badge.dependencies").getString();
+            x = Badge.draw(g, this.font, label, x, y - 2, DEP_BADGE_COLOR) + 4;
         }
         if (entry.hasLogic()) {
             String label = Component.translatable("editor.historystages.badge.logic").getString();
-            g.drawString(this.font, label, x, y, LOGIC_BADGE_COLOR, false);
+            Badge.draw(g, this.font, label, x, y - 2, LOGIC_BADGE_COLOR);
         }
     }
 
-    /** Rendered width of the lose-on-death pill, or 0 when the stage isn't flagged. */
+    /** Rendered width of the lose-on-death badge, or 0 when the stage isn't flagged. */
     private int deathBadgeWidth(StageEntry entry) {
         if (!entry.isLoseOnDeath()) return 0;
-        return this.font.width(deathBadgeLabel()) + 8;
+        return Badge.width(this.font, deathBadgeLabel());
     }
 
     private String deathBadgeLabel() {
@@ -2050,16 +2041,11 @@ public class StageOverviewScreen extends Screen {
     }
 
     /**
-     * Draws the lose-on-death pill at (x, y). Same shape as the mode badge but
-     * red-tinted, so a stage that can be taken away reads differently at a glance.
+     * Draws the lose-on-death badge at (x, y). Same shape as the mode badge but
+     * red, so a stage that can be taken away reads differently at a glance.
      */
     private void drawDeathBadge(GuiGraphics g, int x, int y) {
-        String label = deathBadgeLabel();
-        int pillW = this.font.width(label) + 8;
-        int pillH = 12;
-        g.fill(x, y, x + pillW, y + pillH, 0x20FF5555);
-        g.fill(x, y + pillH - 1, x + pillW, y + pillH, 0x40FF5555);
-        g.drawString(this.font, label, x + 4, y + 2, 0xFFFF7777, false);
+        Badge.draw(g, this.font, deathBadgeLabel(), x, y, 0xFF7777);
     }
 
     /**
