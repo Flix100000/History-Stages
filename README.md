@@ -45,9 +45,9 @@ See [CONTRIBUTORS.md](CONTRIBUTORS.md) for everyone who has helped improve Histo
 
 ## Translations
 
-Want to see History Stages in your language? Languages that already have a translation (currently Russian and Simplified Chinese) are kept up to date on [Crowdin](https://crowdin.com/project/history-stages), right in the browser. New texts show up there automatically with every update.
+Want to see History Stages in your language? Translations happen on [Crowdin](https://crowdin.com/project/history-stages), right in the browser. No coding, no JSON files and no pull request needed. New texts show up there automatically with every update.
 
-A new language starts as a pull request: copy `en_us.json`, translate it and send it in. Once a language has a translation, it can move to Crowdin so it stays up to date. [CONTRIBUTING.md](CONTRIBUTING.md#translations) explains both ways.
+If your language is not on Crowdin yet, you can ask for it or send the file as a pull request. [CONTRIBUTING.md](CONTRIBUTING.md#translations) explains both ways.
 
 ## License
 
