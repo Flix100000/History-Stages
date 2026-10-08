@@ -17,15 +17,23 @@ package net.bananemdnsa.historystages.api;
 public final class HistoryStagesAPI {
 
     /**
-     * The generation of this API surface, equal to the mod's major version.
+     * The generation of this API surface. Bumps whenever something under {@code api} is removed,
+     * renamed or changes signature, and only then.
      *
-     * <p>6.x is generation 6; a breaking change to anything under {@code api} waits for 7.0. That
-     * is what makes the loader the one place compatibility is checked: an addon writes
-     * {@code versionRange="[6.0,7.0)"} against {@code historystages} in its {@code mods.toml} and
-     * is refused at load time rather than at first call. This constant exists to be read in a log
-     * line or a crash report, not as a second gate.
+     * <p>Usually this matches the mod's major version, but it doesn't have to: a mod release such
+     * as 6.3.0 may rebuild part of the API and raise this to 7 on its own. The loader only knows
+     * the mod version, so an addon pins the mod versions it was built against in its
+     * {@code mods.toml}; the changelog names the mod release that raised the generation, which is
+     * where that range has to end. This constant exists to be read in a log line or a crash
+     * report, not as a gate.
      */
     public static final int API_VERSION = 6;
+
+    /**
+     * Additions within the current generation. Bumps when a release grows the API without
+     * breaking it, and starts again at 0 when {@link #API_VERSION} goes up.
+     */
+    public static final int API_MINOR = 1;
 
     private HistoryStagesAPI() {}
 }
