@@ -24,6 +24,11 @@ import net.minecraft.world.item.ItemStack;
 public final class RecipeCardRenderer {
 
     public static final int ACCENT_WIDTH = 2;
+    public static final int MARK_NONE = 0;
+    public static final int MARK_ONLY_LOCKED = 1;
+    public static final int MARK_ALTERNATIVE = 2;
+    public static final int MARK_LOCKED_COLOR = 0xFFFFCC00;
+    public static final int MARK_ALTERNATIVE_COLOR = 0xFFD9A441;
     private static final int WORKSTATION_SIZE = 18;
     private static final int ARROW_WIDTH = 10;
     private static final int GAP = 3;
@@ -63,6 +68,22 @@ public final class RecipeCardRenderer {
                               String fluidResult, List<RecipeFluids.Ref> fluids,
                               String typeId, String recipeId,
                               int x, int y, int width, boolean hovered, boolean selected) {
+        render(g, font, shape, result, fluidResult, fluids, typeId, recipeId, x, y, width,
+                hovered, selected, null);
+    }
+
+    /**
+     * As above, with an outline on chosen input slots.
+     *
+     * @param slotMarks one entry per slot of {@code shape}, or null for none:
+     *                  {@link #MARK_ONLY_LOCKED} draws a solid gold edge, {@link #MARK_ALTERNATIVE}
+     *                  a dashed amber one
+     */
+    public static void render(GuiGraphics g, Font font, RecipeShape shape, ItemStack result,
+                              String fluidResult, List<RecipeFluids.Ref> fluids,
+                              String typeId, String recipeId,
+                              int x, int y, int width, boolean hovered, boolean selected,
+                              int[] slotMarks) {
         RecipeCardLayout layout = shape.layout();
         int height = layout.cardHeight();
         RecipeTypeMeta meta = RecipeTypeMetas.get(typeId);
@@ -88,6 +109,7 @@ public final class RecipeCardRenderer {
             g.fill(sx, sy, sx + RecipeCardLayout.SLOT_SIZE, sy + RecipeCardLayout.SLOT_SIZE, SLOT_BG);
             ItemStack stack = shape.slots().get(i);
             if (!stack.isEmpty()) g.renderItem(stack, sx + 1, sy + 1);
+            if (slotMarks != null && i < slotMarks.length) drawMark(g, sx, sy, slotMarks[i]);
         }
 
         // A row of its own under the grid. A fluid has no position in the pattern, so putting
@@ -152,6 +174,16 @@ public final class RecipeCardRenderer {
      * <p>Positions come from the same helpers {@link #render} lays the card out with, so the two
      * cannot drift apart.
      */
+    /** Index of the input slot under the cursor, or -1. Same positions as {@link #stackAt}. */
+    public static int inputSlotAt(RecipeShape shape, int x, int y, int width,
+                                  double mouseX, double mouseY) {
+        RecipeCardLayout layout = shape.layout();
+        int height = layout.cardHeight();
+        if (mouseX < x || mouseX >= x + width || mouseY < y || mouseY >= y + height) return -1;
+        int midY = y + height / 2;
+        return layout.slotIndexAt(mouseX - inputLeft(x), mouseY - inputTop(midY, layout));
+    }
+
     public static ItemStack stackAt(RecipeShape shape, ItemStack result, int x, int y, int width,
                                     double mouseX, double mouseY) {
         RecipeCardLayout layout = shape.layout();
@@ -202,6 +234,22 @@ public final class RecipeCardRenderer {
             return fluidResult;
         }
         return "";
+    }
+
+    private static void drawMark(GuiGraphics g, int sx, int sy, int mark) {
+        int size = RecipeCardLayout.SLOT_SIZE;
+        if (mark == MARK_ONLY_LOCKED) {
+            g.renderOutline(sx, sy, size, size, MARK_LOCKED_COLOR);
+        } else if (mark == MARK_ALTERNATIVE) {
+            // Dashed so it reads as "partly" even for someone who can't tell gold from amber.
+            for (int d = 0; d < size; d += 4) {
+                int end = Math.min(d + 2, size);
+                g.fill(sx + d, sy, sx + end, sy + 1, MARK_ALTERNATIVE_COLOR);
+                g.fill(sx + d, sy + size - 1, sx + end, sy + size, MARK_ALTERNATIVE_COLOR);
+                g.fill(sx, sy + d, sx + 1, sy + end, MARK_ALTERNATIVE_COLOR);
+                g.fill(sx + size - 1, sy + d, sx + size, sy + end, MARK_ALTERNATIVE_COLOR);
+            }
+        }
     }
 
     private static int workstationLeft(int x) {

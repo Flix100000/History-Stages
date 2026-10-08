@@ -7,6 +7,7 @@ import net.bananemdnsa.historystages.client.editor.widget.ContextMenu;
 import net.bananemdnsa.historystages.client.editor.widget.MarqueeText;
 import net.bananemdnsa.historystages.client.editor.widget.popup.ModEntitySelectionPopup;
 import net.bananemdnsa.historystages.client.editor.widget.popup.ModEntrySelectionPopup;
+import net.bananemdnsa.historystages.client.editor.widget.popup.IngredientUsagePopup;
 import net.bananemdnsa.historystages.client.editor.widget.popup.GenerationLimitPopup;
 import net.bananemdnsa.historystages.client.editor.widget.popup.spawn.SpawnControlPopup;
 import net.bananemdnsa.historystages.client.editor.widget.popup.TradeLevelsPopup;
@@ -105,10 +106,13 @@ import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.bananemdnsa.historystages.util.AllRecipesCache;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.tags.TagKey;
 import org.joml.Quaternionf;
 
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -227,6 +231,9 @@ public class StageDetailScreen extends Screen {
     private ModEntitySelectionPopup modEntityPopup;
     private ModEntrySelectionPopup modStructurePopup;
     private ModEntrySelectionPopup modBiomePopup;
+    private IngredientUsagePopup ingredientUsagePopup;
+    /** Kept so the ingredient-usage popup can add recipes the way the recipe picker does. */
+    private StringListCategoryTab recipeTab;
     private GenerationLimitPopup generationLimitPopup;
     private SpawnControlPopup spawnControlPopup;
     private TradeLevelsPopup tradeLevelsPopup;
@@ -491,11 +498,12 @@ public class StageDetailScreen extends Screen {
                 (LockCategory<String>) LockCategories.byId("historystages:recipes");
         // Both scopes: the recipes tab is offered on individual stages too, and its picker then
         // filters to the recipe types a per-player gate can actually reach.
-        CategoryTab recipeTab = new StringListCategoryTab(recipeCategory,
+        StringListCategoryTab recipeTabLocal = new StringListCategoryTab(recipeCategory,
                 (onSelect, alreadyAdded) -> new SearchableRecipeList(onSelect, alreadyAdded, isIndividual),
                 () -> { hasChanges = true; updateMaxScroll(); });
-        recipeTab.load(e);
-        this.categoryTabs.put(5, recipeTab);
+        recipeTabLocal.load(e);
+        this.recipeTab = recipeTabLocal;
+        this.categoryTabs.put(5, recipeTabLocal);
         // Safe cast: the built-in dimensions category stores bare ids.
         @SuppressWarnings("unchecked")
         LockCategory<String> dimensionCategory =
@@ -873,6 +881,10 @@ public class StageDetailScreen extends Screen {
 
 
 
+        ingredientUsagePopup = new IngredientUsagePopup(
+                ids -> { ids.forEach(recipeTab::addIfAbsent); updateMaxScroll(); },
+                ids -> { ids.forEach(itemTab::addIfAbsent); updateMaxScroll(); });
+
         modStructurePopup = new ModEntrySelectionPopup(
                 Component.translatable("editor.historystages.popup.kind.structures"),
                 net.bananemdnsa.historystages.client.ClientStructureRegistry::get,
@@ -1089,6 +1101,7 @@ public class StageDetailScreen extends Screen {
                 || generationLimitPopup.isVisible()
                 || contextMenu.isVisible() || recipePopupVisible
                 || modEntityPopup.isVisible() || modStructurePopup.isVisible() || modBiomePopup.isVisible()
+                || ingredientUsagePopup.isVisible()
                 || actionOverlay() != null;
     }
 
@@ -2118,6 +2131,7 @@ public class StageDetailScreen extends Screen {
         modEntityPopup.render(guiGraphics, this.font, mouseX, mouseY);
         modStructurePopup.render(guiGraphics, this.font, mouseX, mouseY);
         modBiomePopup.render(guiGraphics, this.font, mouseX, mouseY);
+        ingredientUsagePopup.render(guiGraphics, this.font, mouseX, mouseY);
         if (recipePopupVisible) renderRecipePopup(guiGraphics, mouseX, mouseY);
         lockActionsPopup.render(guiGraphics, this.font, this.width, this.height, mouseX, mouseY);
         tradeLevelsPopup.render(guiGraphics, this.font, mouseX, mouseY);
@@ -2458,6 +2472,7 @@ public class StageDetailScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (ingredientUsagePopup.isVisible()) { return ingredientUsagePopup.mouseClicked(mouseX, mouseY); }
         if (modEntityPopup.isVisible()) { return modEntityPopup.mouseClicked(mouseX, mouseY); }
         if (modStructurePopup.isVisible()) { return modStructurePopup.mouseClicked(mouseX, mouseY); }
         if (modBiomePopup.isVisible()) { return modBiomePopup.mouseClicked(mouseX, mouseY); }
@@ -2626,6 +2641,8 @@ public class StageDetailScreen extends Screen {
                     if (isTab(tabIdx, CAT_ITEMS)) {
                         contextMenu.addEntry(Component.translatable("editor.historystages.context.edit_nbt").getString(),
                                 () -> openNbtEditScreen(entryIdx, entryValue));
+                        contextMenu.addEntry(Component.translatable("editor.historystages.context.ingredient_usage").getString(),
+                                () -> openIngredientUsage(entryValue));
                     }
                     if (isTab(tabIdx, CAT_TAGS)) {
                         contextMenu.addEntry(Component.translatable("editor.historystages.context.edit_nbt").getString(),
@@ -2856,6 +2873,29 @@ public class StageDetailScreen extends Screen {
         }));
     }
 
+    /**
+     * Opens "recipes using this item". Entries with NBT don't count as locked: they lock one
+     * variant, and a recipe slot asking for the plain item can still be filled.
+     */
+    private void openIngredientUsage(String itemId) {
+        Set<String> locked = new HashSet<>();
+        List<String> items = itemTab.entries();
+        for (int i = 0; i < items.size(); i++) {
+            if (!itemTab.nbtByIndex().containsKey(i)) locked.add(items.get(i));
+        }
+        List<String> tags = tagTab.entries();
+        for (int i = 0; i < tags.size(); i++) {
+            if (tagTab.nbtByIndex().containsKey(i)) continue;
+            String raw = tags.get(i).startsWith("#") ? tags.get(i).substring(1) : tags.get(i);
+            ResourceLocation tagId = ResourceLocation.tryParse(raw);
+            if (tagId == null) continue;
+            BuiltInRegistries.ITEM.getTag(TagKey.create(Registries.ITEM, tagId)).ifPresent(set ->
+                    set.forEach(holder -> locked.add(BuiltInRegistries.ITEM.getKey(holder.value()).toString())));
+        }
+        ingredientUsagePopup.show(itemId, locked, isIndividual,
+                recipeTab::entries, itemTab::entries, this.width, this.height);
+    }
+
     private void openNbtEditScreen(int entryIdx, String itemId) {
         com.google.gson.JsonObject currentNbt = itemTab.nbtByIndex().get(entryIdx);
         this.minecraft.setScreen(new NbtItemEditScreen(this, itemId, currentNbt, nbt -> {
@@ -2931,6 +2971,8 @@ public class StageDetailScreen extends Screen {
 
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+        if (ingredientUsagePopup.isVisible() && ingredientUsagePopup.mouseDragged(mouseX, mouseY))
+            return true;
         if (modEntityPopup.isVisible() && modEntityPopup.mouseDragged(mouseX, mouseY))
             return true;
         if (iconSearch != null && iconSearch.isVisible() && iconSearch.mouseDragged(mouseX, mouseY))
@@ -2961,6 +3003,8 @@ public class StageDetailScreen extends Screen {
 
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        if (ingredientUsagePopup.isVisible() && ingredientUsagePopup.mouseReleased())
+            return true;
         if (modEntityPopup.isVisible() && modEntityPopup.mouseReleased())
             return true;
         if (modBiomePopup.isVisible() && modBiomePopup.mouseReleased())
@@ -3025,6 +3069,7 @@ public class StageDetailScreen extends Screen {
                 return true;
             }
         }
+        if (ingredientUsagePopup.isVisible() && ingredientUsagePopup.mouseScrolled(mouseX, mouseY, scrollX, scrollY)) return true;
         if (modEntityPopup.isVisible() && modEntityPopup.mouseScrolled(mouseX, mouseY, scrollX, scrollY)) return true;
         if (modStructurePopup.isVisible() && modStructurePopup.mouseScrolled(mouseX, mouseY, scrollX, scrollY)) return true;
         if (modBiomePopup.isVisible() && modBiomePopup.mouseScrolled(mouseX, mouseY, scrollX, scrollY)) return true;
@@ -3061,6 +3106,7 @@ public class StageDetailScreen extends Screen {
             if (overrideTooltipField.isFocused() && overrideTooltipField.keyPressed(keyCode, scanCode, modifiers)) return true;
             return true;
         }
+        if (ingredientUsagePopup.isVisible() && ingredientUsagePopup.keyPressed(keyCode)) return true;
         if (modEntityPopup.isVisible() && modEntityPopup.keyPressed(keyCode)) return true;
         if (modStructurePopup.isVisible() && modStructurePopup.keyPressed(keyCode)) return true;
         if (modBiomePopup.isVisible() && modBiomePopup.keyPressed(keyCode)) return true;
@@ -3111,6 +3157,7 @@ public class StageDetailScreen extends Screen {
             if (overrideTooltipField.isFocused() && overrideTooltipField.charTyped(c, modifiers)) return true;
             return true;
         }
+        if (ingredientUsagePopup.isVisible() && ingredientUsagePopup.charTyped(c)) return true;
         if (spawnControlPopup.isVisible() && spawnControlPopup.charTyped(c)) return true;
         if (generationLimitPopup.isVisible() && generationLimitPopup.charTyped(c)) return true;
         if (actionOverlay() != null) return actionOverlay().charTyped(c);
