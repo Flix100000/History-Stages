@@ -8,6 +8,7 @@ import net.bananemdnsa.historystages.network.PacketHandler;
 import net.bananemdnsa.historystages.network.clientbound.StageUnlockedToastPacket;
 import net.bananemdnsa.historystages.network.clientbound.SyncIndividualStagesPacket;
 import net.bananemdnsa.historystages.network.clientbound.SyncStagesPacket;
+import net.bananemdnsa.historystages.data.relock.LostStages;
 import net.bananemdnsa.historystages.data.saveddata.IndividualStageData;
 import net.bananemdnsa.historystages.data.saveddata.StageData;
 import net.minecraft.ChatFormatting;
@@ -69,8 +70,15 @@ public final class StageStates {
      */
     public static boolean unlockGlobal(String stageId, ServerLevel level) {
         if (StageData.get(level).hasStage(stageId)) return false;
+        // Throttled: a conditional stage retries every second while its states hold.
+        if (LostStages.isLostGlobal(stageId, level)) {
+            DebugLogger.runtimeThrottled("Re-lock", "refused-lost:" + stageId,
+                    "Unlock of '" + stageId + "' refused: lost for good.");
+            return false;
+        }
         if (StageLogicGate.global(stageId).isBlocked()) {
-            DebugLogger.runtime("Stage Logic", "Unlock of '" + stageId + "' refused: blocked by its logic.");
+            DebugLogger.runtimeThrottled("Stage Logic", "refused-logic:" + stageId,
+                    "Unlock of '" + stageId + "' refused: blocked by its logic.");
             return false;
         }
         return applyUnlockGlobal(stageId, level);
@@ -78,6 +86,8 @@ public final class StageStates {
 
     /** Unlocks a global stage even while it is blocked. For commands and the editor. */
     public static UnlockOutcome forceUnlockGlobal(String stageId, ServerLevel level) {
+        // An admin unlock is the way back from a permanent loss, so it also forgets the loss.
+        LostStages.clearGlobal(stageId, level);
         boolean blocked = StageLogicGate.global(stageId).isBlocked();
         return new UnlockOutcome(applyUnlockGlobal(stageId, level), blocked);
     }
@@ -98,8 +108,11 @@ public final class StageStates {
         // Sync the unlocked-stages list to all players
         PacketHandler.sendToAll(new SyncStagesPacket(new ArrayList<>(data.getUnlockedStages())));
 
-        // Config-gated chat/actionbar/sound broadcast + toast
-        broadcastGlobalUnlock(level.getServer(), stageId, displayName, entry);
+        // A stage can opt out of its own messages (conditional stages do by default); the
+        // global config switches inside still apply on top.
+        if (entry == null || entry.resolvedNotify()) {
+            broadcastGlobalUnlock(level.getServer(), stageId, displayName, entry);
+        }
 
         invalidateLockCaches();
 
@@ -135,9 +148,14 @@ public final class StageStates {
      */
     public static boolean unlockIndividual(String stageId, ServerPlayer player) {
         if (IndividualStageData.get(player.serverLevel()).hasStage(player.getUUID(), stageId)) return false;
+        if (LostStages.isLostIndividual(stageId, player.getUUID(), player.serverLevel())) {
+            DebugLogger.runtimeThrottled("Re-lock", "refused-lost:" + stageId + ":" + player.getUUID(),
+                    "<" + player.getName().getString() + "> Unlock of '" + stageId + "' refused: lost for good.");
+            return false;
+        }
         if (StageLogicGate.individual(stageId, player.getUUID()).isBlocked()) {
-            DebugLogger.runtime("Stage Logic", player.getName().getString(),
-                    "Unlock of '" + stageId + "' refused: blocked by its logic.");
+            DebugLogger.runtimeThrottled("Stage Logic", "refused-logic:" + stageId + ":" + player.getUUID(),
+                    "<" + player.getName().getString() + "> Unlock of '" + stageId + "' refused: blocked by its logic.");
             return false;
         }
         return applyUnlockIndividual(stageId, player);
@@ -145,6 +163,8 @@ public final class StageStates {
 
     /** Unlocks an individual stage even while it is blocked. For commands and the editor. */
     public static UnlockOutcome forceUnlockIndividual(String stageId, ServerPlayer player) {
+        // An admin unlock is the way back from a permanent loss, so it also forgets the loss.
+        LostStages.clearIndividual(stageId, player);
         boolean blocked = StageLogicGate.individual(stageId, player.getUUID()).isBlocked();
         return new UnlockOutcome(applyUnlockIndividual(stageId, player), blocked);
     }
@@ -172,7 +192,9 @@ public final class StageStates {
         );
 
         // Config-gated chat/actionbar/sound/toast notification to the player
-        notifyIndividualUnlock(player, stageId, displayName, entry);
+        if (entry == null || entry.resolvedNotify()) {
+            notifyIndividualUnlock(player, stageId, displayName, entry);
+        }
 
         // Structures and biomes can be gated per player, so their caches go stale here too.
         // Recipes cannot — that category is global-only — so no reload belongs on this path.
@@ -205,7 +227,11 @@ public final class StageStates {
 
         // Config-gated chat/actionbar/sound broadcast — same "locked" feedback the
         // /stage lock command produces.
-        broadcastGlobalLock(level.getServer(), displayName);
+        // A stage can opt out of its own messages (conditional stages do by default); the
+        // global config switches inside still apply on top.
+        if (entry == null || entry.resolvedNotify()) {
+            broadcastGlobalLock(level.getServer(), displayName);
+        }
 
         invalidateLockCaches();
 
@@ -246,7 +272,11 @@ public final class StageStates {
         net.bananemdnsa.historystages.util.lock.StageLockHelper.dropLockedItemsForPlayer(player, stageId);
 
         // Config-gated "locked" feedback to the affected player.
-        notifyIndividualLock(player, displayName);
+        // A stage can opt out of its own messages (conditional stages do by default); the
+        // global config switches inside still apply on top.
+        if (entry == null || entry.resolvedNotify()) {
+            notifyIndividualLock(player, displayName);
+        }
 
         invalidateLockCaches();
         return true;

@@ -19,6 +19,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.annotations.JsonAdapter;
 import com.google.gson.annotations.SerializedName;
 import net.bananemdnsa.historystages.data.auto.AutoTrigger;
+import net.bananemdnsa.historystages.data.relock.LockTrigger;
 import net.bananemdnsa.historystages.data.temporary.TemporaryConfig;
 import net.bananemdnsa.historystages.research.TierMode;
 import org.jetbrains.annotations.Nullable;
@@ -37,13 +38,20 @@ public class StageEntry {
     private String displayName;
 
     @SerializedName("mode")
-    private String mode;   // "default" | "auto" | "external"; null → default
+    private String mode;   // "default" | "auto" | "external" | "temporary" | "conditional"; null → default
 
     @SerializedName("auto_trigger")
     private AutoTrigger autoTrigger;
 
     @SerializedName("temporary")
     private TemporaryConfig temporary; // only used when mode == "temporary"
+
+    @SerializedName("lock_trigger")
+    private LockTrigger lockTrigger;
+
+    /** Null = the mode's default: conditional stages stay quiet, everything else announces. */
+    @SerializedName("notify")
+    private Boolean notify;
 
     @SerializedName("research_time")
     private int researchTime; // 0 = use global config default
@@ -610,6 +618,16 @@ public class StageEntry {
         this.autoTrigger = autoTrigger;
     }
 
+    public LockTrigger getLockTrigger() { return lockTrigger; }
+    public void setLockTrigger(LockTrigger lockTrigger) { this.lockTrigger = lockTrigger; }
+    public Boolean getRawNotify() { return notify; }
+    public void setNotify(Boolean notify) { this.notify = notify; }
+
+    /** Whether unlock/lock messages for this stage are shown at all (the global config still applies). */
+    public boolean resolvedNotify() {
+        return notify != null ? notify : getMode() != StageMode.CONDITIONAL;
+    }
+
     /** Returns the temporary-mode config, or null if none is set. */
     public TemporaryConfig getTemporary() {
         return temporary;
@@ -821,6 +839,8 @@ public class StageEntry {
         copy.setDependencies(getDependencies().stream().map(DependencyGroup::copy).collect(Collectors.toList()));
         copy.mode = this.mode;
         copy.autoTrigger = (this.autoTrigger != null) ? this.autoTrigger.copy() : null;
+        copy.lockTrigger = (this.lockTrigger != null) ? this.lockTrigger.copy() : null;
+        copy.notify = this.notify;
         copy.temporary = (this.temporary != null) ? this.temporary.copy() : null;
         copy.hiddenDisplay = (this.hiddenDisplay != null) ? this.hiddenDisplay.copy() : null;
         copy.loseOnDeath = this.loseOnDeath;

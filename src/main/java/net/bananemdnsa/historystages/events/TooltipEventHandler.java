@@ -14,6 +14,7 @@ import net.bananemdnsa.historystages.research.ResearchBoosterRegistry;
 import net.bananemdnsa.historystages.client.display.HiddenDisplayResolver;
 import net.bananemdnsa.historystages.api.stage.StageScope;
 import net.bananemdnsa.historystages.api.stage.StageStateView;
+import net.bananemdnsa.historystages.client.cache.ClientLostStages;
 import net.bananemdnsa.historystages.client.cache.ClientStageStates;
 import net.bananemdnsa.historystages.client.display.BlockedLines;
 import net.bananemdnsa.historystages.client.display.RequiredStageLines;
@@ -250,8 +251,15 @@ public class TooltipEventHandler {
         tooltip.addAll(RequiredStageLines.lines(scope, ids(gating), state,
                 Config.VISUAL.showAllUntilComplete.get(),
                 Config.VISUAL.groupInterchangeableStages.get(), bulletColor,
-                id -> MutableComponent.create(new SearchHiddenContents(
-                        BlockedLines.displayName(id, scope == StageScope.INDIVIDUAL)))));
+                id -> {
+                    boolean individual = scope == StageScope.INDIVIDUAL;
+                    MutableComponent name = MutableComponent.create(new SearchHiddenContents(
+                            BlockedLines.displayName(id, individual)));
+                    // Lost stages can never be researched again; say so before the player tries.
+                    return ClientLostStages.isLost(id, individual)
+                            ? name.append(" ").append(Component.translatable("tooltip.historystages.stage_lost"))
+                            : name;
+                }));
     }
 
     /**

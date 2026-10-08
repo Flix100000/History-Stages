@@ -92,7 +92,7 @@ public class StageManager {
             "mod_exceptions", "recipes", "dimensions", "structures", "biomes", "zones", "entities", "trades",
             "dependencies", "icon",
             "min_pedestal_tier", "pedestal_tier_mode",
-            "mode", "auto_trigger", "temporary", "hidden_display", "lose_on_death", "interchangeable", "logic",
+            "mode", "auto_trigger", "lock_trigger", "notify", "temporary", "hidden_display", "lose_on_death", "interchangeable", "logic",
             "scroll_completion", "addons", "addon_settings", "fixed_lock_actions", "fixed_spawn_rule"
     );
 
@@ -902,7 +902,7 @@ public class StageManager {
         String rawMode = entry.getRawMode();
         if (rawMode != null && !StageMode.isKnown(rawMode)) {
             addMessage(MessageLevel.WARN, "Stage '" + stageId + "' has unknown mode '" + rawMode + "'. Defaulting to 'default'.");
-            DebugLogger.warn("Invalid Mode", "Stage '" + stageId + "' has unknown mode '" + rawMode + "'. Allowed: default, auto, external. Defaulting to 'default'.");
+            DebugLogger.warn("Invalid Mode", "Stage '" + stageId + "' has unknown mode '" + rawMode + "'. Allowed: default, auto, external, temporary, conditional. Defaulting to 'default'.");
         }
 
         StageMode resolvedMode = entry.getMode();
@@ -911,8 +911,11 @@ public class StageManager {
         if (resolvedMode.usesAutoTrigger()) {
             String modeName = resolvedMode.serialize();
             if (autoTrig == null || autoTrig.isEmpty()) {
-                addMessage(MessageLevel.WARN, "Stage '" + stageId + "' is mode=" + modeName + " but has no triggers. It will never auto-unlock.");
-                DebugLogger.warn("Empty AutoTrigger", "Stage '" + stageId + "' has mode=" + modeName + " with empty or missing 'auto_trigger.triggers'. It will never auto-unlock — must be unlocked via command or dependency cascade.");
+                boolean conditional = resolvedMode == StageMode.CONDITIONAL;
+                addMessage(MessageLevel.WARN, "Stage '" + stageId + "' is mode=" + modeName + " but has no triggers. It will never "
+                        + (conditional ? "open." : "auto-unlock."));
+                DebugLogger.warn("Empty AutoTrigger", "Stage '" + stageId + "' has mode=" + modeName + " with empty or missing 'auto_trigger.triggers'. "
+                        + (conditional ? "It will never open." : "It will never auto-unlock — must be unlocked via command or dependency cascade."));
             } else {
                 for (TriggerCondition t : autoTrig.getTriggers()) {
                     validateTriggerCondition(stageId, t);
@@ -927,7 +930,7 @@ public class StageManager {
             }
         } else if (autoTrig != null && !autoTrig.isEmpty()) {
             addMessage(MessageLevel.INFO, "Stage '" + stageId + "' has auto_trigger but mode=" + resolvedMode.serialize() + ". The auto_trigger will be ignored.");
-            DebugLogger.info("Unused AutoTrigger", "Stage '" + stageId + "' has an auto_trigger configured but its mode is '" + resolvedMode.serialize() + "'. The auto_trigger will be ignored (only mode=auto/temporary uses it).");
+            DebugLogger.info("Unused AutoTrigger", "Stage '" + stageId + "' has an auto_trigger configured but its mode is '" + resolvedMode.serialize() + "'. The auto_trigger will be ignored (only mode=auto/temporary/conditional uses it).");
         }
 
         // --- Temporary-mode config ---
@@ -957,6 +960,13 @@ public class StageManager {
             addMessage(MessageLevel.INFO, "Stage '" + stageId + "' has a 'temporary' config but mode=" + resolvedMode.serialize() + ". It will be ignored.");
             DebugLogger.info("Unused Temporary Config", "Stage '" + stageId + "' has a 'temporary' config but its mode is '" + resolvedMode.serialize() + "'. The config will be ignored (only mode=temporary uses it).");
         }
+
+        for (String msg : net.bananemdnsa.historystages.data.relock.RelockValidation.problems(
+                stageId, entry, StageScope.GLOBAL)) {
+            addMessage(MessageLevel.WARN, msg);
+            DebugLogger.warn("Re-lock", msg);
+        }
+        validateLockTriggers(stageId, entry);
 
         // Asked of the registry rather than added up here: this sum used to forget biomes, and it
         // would have called a stage empty when everything in it belonged to an addon.
@@ -1696,6 +1706,13 @@ public class StageManager {
             return;
         }
 
+        for (String msg : net.bananemdnsa.historystages.data.relock.RelockValidation.problems(
+                stageId, entry, StageScope.INDIVIDUAL)) {
+            addMessage(MessageLevel.WARN, msg);
+            DebugLogger.warn("Re-lock", msg);
+        }
+        validateLockTriggers(stageId, entry);
+
         trimDependencyGroups(stageId, entry);
         assignDependencyGroupIds(stageId, entry);
         // No-op today, because every built-in works at INDIVIDUAL scope. Here anyway, so a
@@ -2232,6 +2249,15 @@ public class StageManager {
         return INDIVIDUAL_STAGES.containsKey(stageId);
     }
 
+    /** Lock triggers get the same per-trigger checks as auto_trigger; a negation is checked by its inner trigger. */
+    private static void validateLockTriggers(String stageId, StageEntry entry) {
+        var lt = entry.getLockTrigger();
+        if (lt == null || !entry.getMode().allowsLockTrigger()) return;
+        for (TriggerCondition t : lt.getTriggers()) {
+            validateTriggerCondition(stageId, net.bananemdnsa.historystages.data.auto.NegatedTrigger.unwrap(t));
+        }
+    }
+
     private static void validateTriggerCondition(String stageId, TriggerCondition t) {
         if (t == null) {
             addMessage(MessageLevel.WARN, "Stage '" + stageId + "' has a null auto_trigger entry (skipped during load).");
@@ -2263,14 +2289,19 @@ public class StageManager {
                     DebugLogger.warn("Invalid AutoTrigger Days", "Playtime trigger in stage '" + stageId + "' has days=" + pt.days() + ". Negative values are clamped to 0 at runtime.");
                 }
             }
+            // negate=true in auto_trigger is reported by RelockValidation; the trigger inside
+            // still deserves the same checks.
+            case net.bananemdnsa.historystages.data.auto.NegatedTrigger n -> validateTriggerCondition(stageId, n.inner());
             // Not a warning: a trigger whose mod is absent is expected, is kept untouched, and
             // simply never fires. Calling it invalid would push someone to delete it.
-            default -> {
-                String msg = "Stage '" + stageId + "' has an auto_trigger of type '" + typeName
+            case net.bananemdnsa.historystages.data.auto.conditions.UnknownTrigger u -> {
+                String msg = "Stage '" + stageId + "' has a trigger of type '" + typeName
                         + "' that no loaded mod understands. It is kept unchanged and never fires.";
                 addMessage(MessageLevel.INFO, msg);
                 DebugLogger.info("Unknown AutoTrigger", msg);
             }
+            // Built-in states (weather, effect, ...) and addon types have nothing to check here.
+            default -> {}
         }
     }
 

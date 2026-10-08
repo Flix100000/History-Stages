@@ -40,6 +40,7 @@ import net.bananemdnsa.historystages.network.clientbound.SyncDependencyStatusPac
 import net.bananemdnsa.historystages.network.clientbound.SyncTemporaryCountsPacket;
 import net.bananemdnsa.historystages.network.clientbound.SyncIndividualStatesPacket;
 import net.bananemdnsa.historystages.network.clientbound.SyncIndividualStagesPacket;
+import net.bananemdnsa.historystages.network.clientbound.SyncLostStagesPacket;
 import net.bananemdnsa.historystages.network.clientbound.SyncConfigPacket;
 import net.bananemdnsa.historystages.network.clientbound.SyncGraphConfigPacket;
 import net.bananemdnsa.historystages.network.clientbound.SyncVisualConfigPacket;
@@ -83,6 +84,7 @@ public class PacketHandler {
         registrar.playToClient(SyncIndividualStagesPacket.TYPE, SyncIndividualStagesPacket.STREAM_CODEC, SyncIndividualStagesPacket::handle);
         registrar.playToClient(SyncTemporaryCountsPacket.TYPE, SyncTemporaryCountsPacket.STREAM_CODEC, SyncTemporaryCountsPacket::handle);
         registrar.playToClient(SyncIndividualStatesPacket.TYPE, SyncIndividualStatesPacket.STREAM_CODEC, SyncIndividualStatesPacket::handle);
+        registrar.playToClient(SyncLostStagesPacket.TYPE, SyncLostStagesPacket.STREAM_CODEC, SyncLostStagesPacket::handle);
         registrar.playToClient(OpenLecternScrollPacket.TYPE, OpenLecternScrollPacket.STREAM_CODEC, OpenLecternScrollPacket::handle);
 
         // Client → Server
@@ -208,6 +210,10 @@ public class PacketHandler {
     }
 
     public static void sendIndividualStagesToPlayer(SyncIndividualStagesPacket packet, ServerPlayer player) {
+        PacketDistributor.sendToPlayer(player, packet);
+    }
+
+    public static void sendLostStagesToPlayer(SyncLostStagesPacket packet, ServerPlayer player) {
         PacketDistributor.sendToPlayer(player, packet);
     }
 

@@ -4,6 +4,7 @@ import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.client.cache.ClientDependencyCache;
 import net.bananemdnsa.historystages.client.cache.ClientIndividualStageCache;
+import net.bananemdnsa.historystages.client.cache.ClientLostStages;
 import net.bananemdnsa.historystages.client.cache.ClientPlayerStageCache;
 import net.bananemdnsa.historystages.client.cache.ClientZoneSelection;
 import net.bananemdnsa.historystages.client.cache.ClientZoneShapes;
@@ -26,6 +27,8 @@ public class ClientDisconnectHandler {
         StageManager.load();
         ClientIndividualStageCache.clear();
         ClientPlayerStageCache.clear();
+        // Losses belong to the world just left; the next one sends its own on join.
+        ClientLostStages.clear();
         // Results are answers about the server just left, and a stage id means something else on
         // the next one. Missing here until 2026-08-23, which is why the stage graph could show a
         // stale requirement list for a whole client session.

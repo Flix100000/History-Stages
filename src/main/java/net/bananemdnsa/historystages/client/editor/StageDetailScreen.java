@@ -135,6 +135,10 @@ public class StageDetailScreen extends Screen {
     private net.bananemdnsa.historystages.research.TierMode editPedestalTierMode;
     private StageMode editMode;
     private AutoTrigger editAutoTrigger;
+    /** Copied like the auto trigger; kept across mode switches, the server ignores it where it does not apply. */
+    private net.bananemdnsa.historystages.data.relock.LockTrigger editLockTrigger;
+    /** Null = mode default (on, off for conditional stages). */
+    private Boolean editNotify;
     private net.bananemdnsa.historystages.data.temporary.TemporaryConfig editTemporary;
     private String editIcon;
     /** Empty means "follow the config default", the same convention {@link #editIcon} uses. */
@@ -413,6 +417,8 @@ public class StageDetailScreen extends Screen {
         this.editPedestalTierMode = e.getPedestalTierMode();
         this.editMode = e.getMode();
         this.editAutoTrigger = e.getAutoTrigger() != null ? e.getAutoTrigger().copy() : null;
+        this.editLockTrigger = e.getLockTrigger() != null ? e.getLockTrigger().copy() : null;
+        this.editNotify = e.getRawNotify();
         this.editTemporary = e.getTemporary() != null ? e.getTemporary().copy() : null;
         this.editHiddenDisplay = e.getHiddenDisplay().copy();
         this.editLoseOnDeath = e.isLoseOnDeath();
@@ -3139,7 +3145,7 @@ public class StageDetailScreen extends Screen {
                  newTemporary, newHidden, newLoseOnDeath, newInterchangeable,
                  newFixedItemActions, newFixedFluidActions, newFixedInteractionActions, newFixedSpawnRule,
                  newScrollCompletion,
-                 newAddonSettings) -> {
+                 newAddonSettings, newRelock) -> {
                     editStageId = newId;
                     editDisplayName = newName;
                     editResearchTime = newTime;
@@ -3157,12 +3163,15 @@ public class StageDetailScreen extends Screen {
                     editFixedSpawnRule = newFixedSpawnRule;
                     editScrollCompletion = newScrollCompletion == null ? "" : newScrollCompletion;
                     editAddonSettings = newAddonSettings;
+                    editLockTrigger = newRelock.lockTrigger();
+                    editNotify = newRelock.notifyMessages();
                     hasChanges = true;
                     // Saving in a sub-screen persists the whole stage, so the user never has to
                     // come back here and press Save again.
                     saveStage();
                 },
-                this::buildEntrySnapshot));
+                this::buildEntrySnapshot,
+                new StageSettingsScreen.RelockSettings(editLockTrigger, editNotify).copy()));
     }
 
     /** True when the stage's hidden-display config has at least one axis set to REPLACE. */
@@ -3350,6 +3359,8 @@ public class StageDetailScreen extends Screen {
         newEntry.setPedestalTierMode(editPedestalTierMode);
         newEntry.setMode(editMode);
         newEntry.setAutoTrigger(editAutoTrigger);
+        newEntry.setLockTrigger(editLockTrigger);
+        newEntry.setNotify(editNotify);
         newEntry.setTemporary(editTemporary);
         newEntry.setHiddenDisplay(editHiddenDisplay);
         newEntry.setLoseOnDeath(editLoseOnDeath);

@@ -17,6 +17,7 @@ import net.bananemdnsa.historystages.network.serverbound.DepositDependencyPacket
 import net.bananemdnsa.historystages.network.PacketHandler;
 import net.bananemdnsa.historystages.research.BoosterUtil;
 import net.bananemdnsa.historystages.research.TierMatcher;
+import net.bananemdnsa.historystages.client.cache.ClientLostStages;
 import net.bananemdnsa.historystages.client.cache.ClientStageCache;
 import net.bananemdnsa.historystages.client.cache.ClientIndividualStageCache;
 import net.bananemdnsa.historystages.client.cache.ClientDependencyCache;
@@ -136,6 +137,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
                 ? ClientIndividualStageCache.isStageUnlocked(stageId)
                 : ClientStageCache.isStageUnlocked(stageId);
         if (unlocked) return false;
+        if (ClientLostStages.isLost(stageId, individual)) return false;
 
         if (this.menu.data.get(7) == 1) return false;  // pedestal tier does not satisfy the stage
         return this.menu.data.get(4) == 1;             // requirements fulfilled
@@ -424,12 +426,19 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
                 }
                 boolean notResearchable = mode != null
                         && mode != StageMode.DEFAULT;
+                boolean lost = !isCreative && ClientLostStages.isLost(stageId, isIndividual);
 
                 if (alreadyUnlocked && finishDelay == 0) {
                     drawSplitLine(guiGraphics, PedestalLayout.LINE_1_Y,
                             Component.translatable("gui.historystages.pedestal.research", stageName),
                             SLAB_PRIMARY, speedLabel(), SLAB_SECONDARY);
                     drawCentred(guiGraphics, Component.translatable("screen.historystages.already_learned"),
+                            PedestalLayout.LINE_2_Y, SLAB_ERROR);
+                } else if (lost) {
+                    drawSplitLine(guiGraphics, PedestalLayout.LINE_1_Y,
+                            Component.translatable("gui.historystages.pedestal.stage", stageName),
+                            SLAB_PRIMARY, speedLabel(), SLAB_SECONDARY);
+                    drawCentred(guiGraphics, Component.translatable("screen.historystages.stage_lost"),
                             PedestalLayout.LINE_2_Y, SLAB_ERROR);
                 } else if (notResearchable) {
                     drawSplitLine(guiGraphics, PedestalLayout.LINE_1_Y,

@@ -7,8 +7,10 @@ import net.bananemdnsa.historystages.client.editor.anim.Timing;
 import net.bananemdnsa.historystages.client.editor.dialog.CreditsScreen;
 import net.bananemdnsa.historystages.client.editor.widget.ConfirmDialog;
 import net.bananemdnsa.historystages.client.editor.widget.ContextMenu;
+import net.bananemdnsa.historystages.client.editor.widget.EditorTooltip;
 import net.bananemdnsa.historystages.api.editor.widget.AbstractInputScreen;
 import net.bananemdnsa.historystages.api.editor.widget.Badge;
+import net.bananemdnsa.historystages.client.cache.ClientLostStages;
 import net.bananemdnsa.historystages.api.editor.widget.InputField;
 import net.bananemdnsa.historystages.api.editor.widget.InputValues;
 import net.bananemdnsa.historystages.client.editor.folder.FolderNameScreen;
@@ -19,6 +21,7 @@ import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.data.StageMode;
 import net.bananemdnsa.historystages.data.StagePaths;
 import net.bananemdnsa.historystages.data.auto.AutoTrigger;
+import net.bananemdnsa.historystages.data.relock.LockTrigger;
 import net.bananemdnsa.historystages.network.serverbound.CreateFolderPacket;
 import net.bananemdnsa.historystages.network.serverbound.DeleteFolderPacket;
 import net.bananemdnsa.historystages.network.serverbound.DeleteStagePacket;
@@ -681,6 +684,11 @@ public class StageOverviewScreen extends Screen {
         // a pointer that is not actually on it yet.
         int effectiveMouseX = overlayOpen || navigating ? -1 : mouseX;
         int effectiveMouseY = overlayOpen || navigating ? -1 : mouseY;
+        rowMouseX = effectiveMouseX;
+        // Rows scrolled under the header or bottom bar are clipped, so they must not react.
+        rowMouseY = effectiveMouseY >= listTop && effectiveMouseY <= listBottom ? effectiveMouseY : -1;
+        hoveredBadgeKey = null;
+        hoveredBadgeText = null;
 
         Map<String, StageEntry> stages = StageManager.getStages();
         Map<String, StageEntry> individualStages = StageManager.getIndividualStages();
@@ -834,7 +842,8 @@ public class StageOverviewScreen extends Screen {
             String info = Component.translatable("editor.historystages.entries", itemCount).getString();
             int infoColor = (int) (0x88 + progress * 0x33);
             guiGraphics.drawString(this.font, info, contentLeft + 22, entryTop + 15, (0xFF << 24) | (infoColor << 16) | (infoColor << 8) | infoColor, false);
-            drawInfoBadges(guiGraphics, entry, info, contentLeft, entryTop + 15);
+            drawInfoBadges(guiGraphics, entry, info, contentLeft, entryTop + 15,
+                    ClientLostStages.isLost(stageId, false));
 
             // Lock/Unlock toggle button (right side) - bounds already calculated above
             if (!organizeMode) {
@@ -1025,8 +1034,9 @@ public class StageOverviewScreen extends Screen {
                 int infoColor = (int) (0x88 + progress * 0x33);
                 guiGraphics.drawString(this.font, info, contentLeft + 22, entryTop + 15, (0xFF << 24) | (infoColor << 16) | (infoColor << 8) | infoColor, false);
                 // Individual stages carry dependencies just like global ones, so the marker
-                // belongs on these rows too.
-                drawInfoBadges(guiGraphics, entry, info, contentLeft, entryTop + 15);
+                // belongs on these rows too. No lost badge: these rows show the picked target's
+                // state, while the client only knows the local player's lost marks.
+                drawInfoBadges(guiGraphics, entry, info, contentLeft, entryTop + 15, false);
 
                 // Lock/Unlock toggle button, mirroring the global rows.
                 if (!organizeMode) {
@@ -1105,6 +1115,9 @@ public class StageOverviewScreen extends Screen {
         }
 
         super.render(guiGraphics, mouseX, mouseY, partialTick);
+
+        badgeTooltip.render(guiGraphics, this.font, hoveredBadgeKey, hoveredBadgeText,
+                mouseX, mouseY, this.width, this.height);
 
         // The shared context menu is also used for row right-clicks, so the caret only
         // tracks it while the header opened it.
@@ -1885,9 +1898,10 @@ public class StageOverviewScreen extends Screen {
             case AUTO -> Component.translatable("editor.historystages.mode.auto").getString();
             case TEMPORARY -> Component.translatable("editor.historystages.mode.temporary").getString();
             case EXTERNAL -> Component.translatable("editor.historystages.mode.external").getString();
+            case CONDITIONAL -> Component.translatable("editor.historystages.mode.conditional").getString();
             default -> Component.translatable("editor.historystages.mode.external").getString();
         };
-        // AUTO and TEMPORARY both use auto-triggers — show the configured count.
+        // AUTO, TEMPORARY and CONDITIONAL all use auto-triggers — show the configured count.
         if (mode.usesAutoTrigger()) {
             AutoTrigger at = entry.getAutoTrigger();
             int count = at == null ? 0 : at.getTriggers().size();
@@ -2018,7 +2032,8 @@ public class StageOverviewScreen extends Screen {
      *
      * @param info the info line they are placed behind, needed for its width
      */
-    private void drawInfoBadges(GuiGraphics g, StageEntry entry, String info, int contentLeft, int y) {
+    private void drawInfoBadges(GuiGraphics g, StageEntry entry, String info, int contentLeft, int y,
+                                boolean lost) {
         int x = contentLeft + 22 + this.font.width(info) + 6;
         if (entry.hasDependencies()) {
             String label = Component.translatable("editor.historystages.badge.dependencies").getString();
@@ -2026,8 +2041,38 @@ public class StageOverviewScreen extends Screen {
         }
         if (entry.hasLogic()) {
             String label = Component.translatable("editor.historystages.badge.logic").getString();
-            Badge.draw(g, this.font, label, x, y - 2, LOGIC_BADGE_COLOR);
+            x = Badge.draw(g, this.font, label, x, y - 2, LOGIC_BADGE_COLOR) + 4;
         }
+        LockTrigger lockTrigger = entry.getLockTrigger();
+        if (entry.getMode().allowsLockTrigger() && lockTrigger != null && !lockTrigger.isEmpty()) {
+            String label = Component.translatable("editor.historystages.relock.badge").getString();
+            if (Badge.contains(x, y - 2, Badge.width(this.font, label), rowMouseX, rowMouseY)) {
+                hoverBadge("relock:" + y, "editor.historystages.relock.badge.tooltip");
+            }
+            x = Badge.draw(g, this.font, label, x, y - 2, LOGIC_BADGE_COLOR) + 4;
+        }
+        if (lost) {
+            String label = Component.translatable("editor.historystages.badge.lost").getString();
+            if (Badge.contains(x, y - 2, Badge.width(this.font, label), rowMouseX, rowMouseY)) {
+                hoverBadge("lost:" + y, "editor.historystages.badge.lost.tooltip");
+            }
+            Badge.draw(g, this.font, label, x, y - 2, LOST_BADGE_COLOR);
+        }
+    }
+
+    private static final int LOST_BADGE_COLOR = 0xFF4444;
+
+    // Mouse position as the row drawing code may see it, and the badge under it this frame.
+    private int rowMouseX = -1;
+    private int rowMouseY = -1;
+    private String hoveredBadgeKey;
+    private String hoveredBadgeText;
+    private final EditorTooltip badgeTooltip = new EditorTooltip();
+
+    /** Keyed by badge and row, so moving to the next row restarts the tooltip delay. */
+    private void hoverBadge(String key, String langKey) {
+        hoveredBadgeKey = key;
+        hoveredBadgeText = Component.translatable(langKey).getString();
     }
 
     /** Rendered width of the lose-on-death badge, or 0 when the stage isn't flagged. */

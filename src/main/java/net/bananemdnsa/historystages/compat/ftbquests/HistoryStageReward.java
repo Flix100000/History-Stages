@@ -105,6 +105,8 @@ public class HistoryStageReward extends Reward {
         StageData data = StageData.get(player.serverLevel());
         var entry = StageManager.getStages().get(stage);
         String displayName = entry != null ? entry.getDisplayName() : stage;
+        // The stage's own notify switch, as on every StageStates path.
+        boolean announce = entry == null || entry.resolvedNotify();
 
         if (remove) {
             if (!data.hasStage(stage)) return;
@@ -118,13 +120,18 @@ public class HistoryStageReward extends Reward {
                         "history reload"
                 );
             }
-            broadcastLockEffects(player, displayName);
+            if (announce) broadcastLockEffects(player, displayName);
         } else {
             if (data.hasStage(stage)) return;
             // A quest reward is pack logic, not an admin action, so a logic block stops it.
             if (net.bananemdnsa.historystages.data.logic.StageLogicGate.global(stage).isBlocked()) {
                 net.bananemdnsa.historystages.util.DebugLogger.runtime("Stage Logic", player.getName().getString(),
                         "FTB Quests reward for '" + stage + "' refused: blocked by its logic.");
+                return;
+            }
+            if (net.bananemdnsa.historystages.data.relock.LostStages.isLostGlobal(stage, player.serverLevel())) {
+                net.bananemdnsa.historystages.util.DebugLogger.runtime("Re-lock", player.getName().getString(),
+                        "FTB Quests reward for '" + stage + "' refused: lost for good.");
                 return;
             }
             data.addStage(stage);
@@ -138,7 +145,7 @@ public class HistoryStageReward extends Reward {
                 );
             }
             String iconId = (entry != null && !entry.getIcon().isEmpty()) ? entry.getIcon() : Config.VISUAL.defaultStageIcon.get();
-            broadcastUnlockEffects(player, displayName, iconId);
+            if (announce) broadcastUnlockEffects(player, displayName, iconId);
         }
 
         PacketHandler.sendToAll(new SyncStagesPacket(data.getUnlockedStages()));
@@ -148,6 +155,7 @@ public class HistoryStageReward extends Reward {
         IndividualStageData data = IndividualStageData.get(player.serverLevel());
         var entry = StageManager.getIndividualStages().get(stage);
         String displayName = entry != null ? entry.getDisplayName() : stage;
+        boolean announce = entry == null || entry.resolvedNotify();
 
         if (remove) {
             if (!data.hasStage(player.getUUID(), stage)) return;
@@ -161,13 +169,13 @@ public class HistoryStageReward extends Reward {
             }
 
             // Notify only this player
-            if (Config.VISUAL.individualBroadcastChat.get()) {
+            if (announce && Config.VISUAL.individualBroadcastChat.get()) {
                 player.sendSystemMessage(
                         Component.literal("[HistoryStages] ").withStyle(ChatFormatting.RED)
                                 .append(Component.translatable("message.historystages.stage_forgotten", displayName).withStyle(ChatFormatting.WHITE))
                 );
             }
-            if (Config.VISUAL.individualUseSounds.get()) {
+            if (announce && Config.VISUAL.individualUseSounds.get()) {
                 player.playNotifySound(SoundEvents.NOTE_BLOCK_BASS.value(), SoundSource.MASTER, 0.75F, 0.5F);
             }
         } else {
@@ -177,12 +185,17 @@ public class HistoryStageReward extends Reward {
                         "FTB Quests reward for '" + stage + "' refused: blocked by its logic.");
                 return;
             }
+            if (net.bananemdnsa.historystages.data.relock.LostStages.isLostIndividual(stage, player.getUUID(), player.serverLevel())) {
+                net.bananemdnsa.historystages.util.DebugLogger.runtime("Re-lock", player.getName().getString(),
+                        "FTB Quests reward for '" + stage + "' refused: lost for good.");
+                return;
+            }
             data.addStage(player.getUUID(), stage);
             data.setDirty();
             NeoForge.EVENT_BUS.post(new StageEvent.IndividualUnlocked(stage, displayName, player.getUUID()));
 
             // Notify only this player
-            if (Config.VISUAL.individualBroadcastChat.get()) {
+            if (announce && Config.VISUAL.individualBroadcastChat.get()) {
                 String configChat = Config.VISUAL.individualUnlockMessageFormat.get();
                 String finalChat = configChat.replace("{stage}", displayName)
                         .replace("{player}", player.getName().getString())
@@ -192,17 +205,17 @@ public class HistoryStageReward extends Reward {
                                 .append(Component.literal(finalChat))
                 );
             }
-            if (Config.VISUAL.individualUseActionbar.get()) {
+            if (announce && Config.VISUAL.individualUseActionbar.get()) {
                 String configChat = Config.VISUAL.individualUnlockMessageFormat.get();
                 String finalChat = configChat.replace("{stage}", displayName)
                         .replace("{player}", player.getName().getString())
                         .replace("&", "\u00a7");
                 player.displayClientMessage(Component.literal(finalChat), true);
             }
-            if (Config.VISUAL.individualUseSounds.get()) {
+            if (announce && Config.VISUAL.individualUseSounds.get()) {
                 player.playNotifySound(SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundSource.MASTER, 0.75F, 1.0F);
             }
-            if (Config.VISUAL.individualUseToasts.get()) {
+            if (announce && Config.VISUAL.individualUseToasts.get()) {
                 var indEntry = StageManager.getIndividualStages().get(stage);
                 String indIconId = (indEntry != null && !indEntry.getIcon().isEmpty())
                         ? indEntry.getIcon() : Config.VISUAL.defaultStageIcon.get();

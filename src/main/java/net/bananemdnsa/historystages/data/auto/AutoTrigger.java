@@ -16,6 +16,12 @@ public class AutoTrigger {
     @SerializedName("triggers")
     private List<TriggerCondition> triggers;
 
+    /**
+     * Values the reader could not take at face value, e.g. {@code "negate": 1}. The reader has no
+     * stage id, so it only collects them; load validation reports them per stage. Never written.
+     */
+    private transient List<String> readProblems = new ArrayList<>();
+
     public AutoTrigger() {
         this.triggers = new ArrayList<>();
     }
@@ -41,6 +47,10 @@ public class AutoTrigger {
     public void setTriggers(List<TriggerCondition> triggers) {
         this.triggers = triggers != null ? new ArrayList<>(triggers) : new ArrayList<>();
     }
+
+    public List<String> getReadProblems() { return readProblems; }
+
+    public void addReadProblem(String problem) { readProblems.add(problem); }
 
     public boolean isEmpty() {
         return triggers == null || triggers.isEmpty();

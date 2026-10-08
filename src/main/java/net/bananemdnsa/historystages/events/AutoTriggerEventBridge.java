@@ -1,9 +1,9 @@
 package net.bananemdnsa.historystages.events;
-import net.bananemdnsa.historystages.events.lock.StructureLockHandler;
 
+import net.bananemdnsa.historystages.api.trigger.StateTrigger;
+import net.bananemdnsa.historystages.api.trigger.StateView;
 import net.bananemdnsa.historystages.data.auto.AutoTriggerManager;
 import net.bananemdnsa.historystages.data.auto.conditions.AdvancementTrigger;
-import net.bananemdnsa.historystages.data.auto.conditions.BiomeTrigger;
 import net.bananemdnsa.historystages.data.auto.conditions.BlockBreakTrigger;
 import net.bananemdnsa.historystages.data.auto.conditions.BlockPlaceTrigger;
 import net.bananemdnsa.historystages.data.auto.conditions.DayCountTrigger;
@@ -15,13 +15,8 @@ import net.bananemdnsa.historystages.data.auto.conditions.ItemTrigger;
 import net.bananemdnsa.historystages.data.auto.conditions.PlaytimeTrigger;
 import net.bananemdnsa.historystages.data.auto.conditions.StatCategory;
 import net.bananemdnsa.historystages.data.auto.conditions.StatTrigger;
-import net.bananemdnsa.historystages.data.auto.conditions.StructureTrigger;
-import net.bananemdnsa.historystages.data.auto.conditions.TimeOfDayTrigger;
-import net.bananemdnsa.historystages.data.auto.conditions.WeatherTrigger;
-import net.bananemdnsa.historystages.data.auto.conditions.XpLevelTrigger;
-import net.minecraft.core.Holder;
+import net.bananemdnsa.historystages.data.relock.RelockPolls;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -33,12 +28,9 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 
-import java.util.HashSet;
-import java.util.Set;
 import org.jetbrains.annotations.Nullable;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
@@ -107,22 +99,6 @@ public final class AutoTriggerEventBridge {
         ItemStack stack = event.getItemEntity().getItem();
         if (stack.isEmpty()) return;
         fireItemTrigger(player, stack);
-    }
-
-    private static void scanInventoryForItemTriggers(ServerPlayer player) {
-        var inv = player.getInventory();
-        // Dedupe by item id — a player with a stack of cobblestone in 9 slots
-        // shouldn't run the cobblestone trigger 9 times per container open.
-        Set<String> seen = new HashSet<>();
-        for (int i = 0; i < inv.getContainerSize(); i++) {
-            ItemStack s = inv.getItem(i);
-            if (s.isEmpty()) continue;
-            ResourceLocation key = BuiltInRegistries.ITEM.getKey(s.getItem());
-            if (key == null) continue;
-            String itemId = key.toString();
-            if (!seen.add(itemId)) continue;
-            fireItemTriggerForId(player, itemId);
-        }
     }
 
     private static void fireItemTrigger(ServerPlayer player, ItemStack stack) {
@@ -209,6 +185,7 @@ public final class AutoTriggerEventBridge {
     /** Called every server tick from {@code HistoryStages.onServerTick}. */
     public static void pollPlayers(MinecraftServer server, int tickCounter) {
         if (server == null) return;
+        if (tickCounter % 20 == 0) RelockPolls.pollWorld(server);
         // One pass over the flags before the loop, so a server whose pack uses none of the polled
         // types does no per-player work at all.
         if (!anyPollDue(tickCounter)) return;
@@ -225,7 +202,8 @@ public final class AutoTriggerEventBridge {
                 || AutoTriggerManager.hasType("stat")
                 || AutoTriggerManager.hasType("xp_level")
                 || AutoTriggerManager.hasType("weather")
-                || AutoTriggerManager.hasType("world_time"))) {
+                || AutoTriggerManager.hasType("world_time")
+                || RelockPolls.anyDue())) {
             return true;
         }
         return tickCounter % 100 == 0
@@ -244,67 +222,23 @@ public final class AutoTriggerEventBridge {
     public static void pollPlayer(ServerPlayer p, int tickCounter) {
         boolean second = tickCounter % 20 == 0;
         boolean fiveSeconds = tickCounter % 100 == 0;
-        if (second && AutoTriggerManager.hasType("biome")) pollBiome(p);
-        if (second && AutoTriggerManager.hasType("structure")) pollStructure(p);
-        if (second && AutoTriggerManager.hasType("item")) scanInventoryForItemTriggers(p);
+        // One view per player per poll: every stage asking "in the Nether?" shares one lookup,
+        // and whatever no stage asks for is never computed.
+        StateView view = second ? StateCapture.forPlayer(p) : null;
+        if (second && AutoTriggerManager.hasType("biome")) processState("biome", view, p);
+        if (second && AutoTriggerManager.hasType("structure")) processState("structure", view, p);
+        if (second && AutoTriggerManager.hasType("item")) processState("item", view, p);
         if (second && AutoTriggerManager.hasType("stat")) pollStat(p);
-        if (second && AutoTriggerManager.hasType("xp_level")) pollXpLevel(p);
-        if (second && AutoTriggerManager.hasType("weather")) pollWeather(p);
-        if (second && AutoTriggerManager.hasType("world_time")) pollWorldTime(p);
+        if (second && AutoTriggerManager.hasType("xp_level")) processState("xp_level", view, p);
+        if (second && AutoTriggerManager.hasType("weather")) processState("weather", view, p);
+        if (second && AutoTriggerManager.hasType("world_time")) processState("world_time", view, p);
         if (fiveSeconds && AutoTriggerManager.hasType("playtime")) pollPlaytime(p);
         if (fiveSeconds && AutoTriggerManager.hasType("day_count")) pollDayCount(p);
+        if (second) RelockPolls.pollPlayer(p, view);
     }
 
-    private static void pollBiome(ServerPlayer p) {
-        ServerLevel sl = p.serverLevel();
-        if (sl == null) return;
-        Holder<Biome> biomeHolder = sl.getBiome(p.blockPosition());
-        ResourceLocation biomeLoc = sl.registryAccess()
-                .registryOrThrow(Registries.BIOME)
-                .getKey(biomeHolder.value());
-        if (biomeLoc == null) return;
-        String biomeId = biomeLoc.toString();
-        AutoTriggerManager.process(
-                "biome",
-                t -> (t instanceof BiomeTrigger bt) && biomeId.equals(bt.id()),
-                p);
-    }
-
-    private static void pollStructure(ServerPlayer p) {
-        ServerLevel sl = p.serverLevel();
-        if (sl == null) return;
-        net.minecraft.core.BlockPos pos = p.blockPosition();
-
-        // Use the same cluster/shape detection as the structure lock so auto-unlock
-        // fires exactly when the player enters a lock zone — and support #tag entries.
-        int padding = net.bananemdnsa.historystages.Config.GAMEPLAY.structureLockPadding.get();
-        int clusterDistance = net.bananemdnsa.historystages.Config.GAMEPLAY.structureClusterDistance.get();
-        java.util.List<net.bananemdnsa.historystages.structure.StructureCluster> clusters =
-                net.bananemdnsa.historystages.structure.ClusterBuilder.collectClustersNear(
-                        sl, pos, StructureLockHandler.CHUNK_SCAN_RADIUS, padding, clusterDistance);
-        if (clusters.isEmpty()) return;
-
-        Set<String> presentIds = new HashSet<>();
-        Set<String> presentTags = new HashSet<>();
-        for (net.bananemdnsa.historystages.structure.StructureCluster c : clusters) {
-            if (!c.contains(pos)) continue;
-            Holder.Reference<net.minecraft.world.level.levelgen.structure.Structure> h = c.structure();
-            h.unwrapKey().ifPresent(k -> presentIds.add(k.location().toString()));
-            h.tags().forEach(tag -> presentTags.add(tag.location().toString()));
-        }
-        if (presentIds.isEmpty() && presentTags.isEmpty()) return;
-
-        AutoTriggerManager.process(
-                "structure",
-                t -> {
-                    if (!(t instanceof StructureTrigger st)) return false;
-                    String id = st.id();
-                    if (id == null || id.isEmpty()) return false;
-                    return id.startsWith("#")
-                            ? presentTags.contains(id.substring(1))
-                            : presentIds.contains(id);
-                },
-                p);
+    private static void processState(String type, StateView view, ServerPlayer p) {
+        AutoTriggerManager.process(type, t -> t instanceof StateTrigger st && st.holds(view), p);
     }
 
     private static void pollPlaytime(ServerPlayer p) {
@@ -370,35 +304,6 @@ public final class AutoTriggerEventBridge {
     private static Stat<EntityType<?>> entityStat(StatType<EntityType<?>> type, ResourceLocation id) {
         EntityType<?> entity = BuiltInRegistries.ENTITY_TYPE.get(id);
         return entity == null ? null : type.get(entity);
-    }
-
-    private static void pollXpLevel(ServerPlayer p) {
-        int level = p.experienceLevel;
-        AutoTriggerManager.process(
-                "xp_level",
-                t -> (t instanceof XpLevelTrigger xt) && xt.matches(level),
-                p);
-    }
-
-    private static void pollWeather(ServerPlayer p) {
-        ServerLevel sl = p.serverLevel();
-        if (sl == null) return;
-        boolean raining = sl.isRaining();
-        boolean thundering = sl.isThundering();
-        AutoTriggerManager.process(
-                "weather",
-                t -> (t instanceof WeatherTrigger wt) && wt.matches(raining, thundering),
-                p);
-    }
-
-    private static void pollWorldTime(ServerPlayer p) {
-        ServerLevel sl = p.serverLevel();
-        if (sl == null) return;
-        long dayTime = sl.getDayTime();
-        AutoTriggerManager.process(
-                "world_time",
-                t -> (t instanceof TimeOfDayTrigger tt) && tt.matches(dayTime),
-                p);
     }
 
     private static void pollDayCount(ServerPlayer p) {

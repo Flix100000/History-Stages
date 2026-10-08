@@ -1,6 +1,7 @@
 package net.bananemdnsa.historystages.data.auto.conditions;
 
-import net.bananemdnsa.historystages.api.trigger.TriggerCondition;
+import net.bananemdnsa.historystages.api.trigger.StateTrigger;
+import net.bananemdnsa.historystages.api.trigger.StateView;
 
 import com.google.gson.annotations.SerializedName;
 import org.jetbrains.annotations.Nullable;
@@ -11,7 +12,7 @@ import org.jetbrains.annotations.Nullable;
  * <p>{@code RAIN} matches a thunderstorm as well, because vanilla {@code Level.isRaining()} does.
  * The alternative would be a definition of "raining" that disagrees with the rest of the game.
  */
-public record WeatherTrigger(@SerializedName("state") String state) implements TriggerCondition {
+public record WeatherTrigger(@SerializedName("state") String state) implements StateTrigger {
 
     /** Null when this build does not know the state; such a trigger never fires. */
     @Nullable
@@ -26,6 +27,8 @@ public record WeatherTrigger(@SerializedName("state") String state) implements T
             case THUNDER -> thundering;
         };
     }
+
+    @Override public boolean holds(StateView view) { return matches(view.raining(), view.thundering()); }
 
     @Override public String type() { return "weather"; }
 

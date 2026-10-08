@@ -6,6 +6,9 @@ import net.bananemdnsa.historystages.compat.ScrollVariants;
 import net.bananemdnsa.historystages.data.ScrollCompletion;
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.logic.StageLogicGate;
+import net.bananemdnsa.historystages.data.relock.LockTriggerManager;
+import net.bananemdnsa.historystages.data.relock.LostStages;
+import net.minecraft.server.level.ServerLevel;
 import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.data.StageMode;
 import net.bananemdnsa.historystages.data.NbtMatcher;
@@ -669,7 +672,8 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
                     // EXTERNAL and AUTO scrolls are allowed in the slot but research
                     // is paused here so progress never accumulates; the GUI shows a
                     // "not researchable" message instead of the normal progress UI.
-                    if (stageEntry != null && stageEntry.getMode() != StageMode.DEFAULT) {
+                    if (stageEntry != null && (stageEntry.getMode() != StageMode.DEFAULT
+                            || entity.isLost(stageId, isIndividual))) {
                         stageEntry = null;
                     }
 
@@ -807,6 +811,14 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
         return f;
     }
 
+    /** A stage lost through its lock trigger cannot be researched again; same subject rule. */
+    private boolean isLost(String stageId, boolean isIndividual) {
+        if (!(this.level instanceof ServerLevel sl)) return false;
+        if (!isIndividual) return LostStages.isLostGlobal(stageId, sl);
+        UUID subject = this.ownerUUID != null ? this.ownerUUID : this.lastInteractingPlayer;
+        return LostStages.isLostIndividual(stageId, subject, sl);
+    }
+
     private boolean isLogicBlocked(String stageId, boolean isIndividual) {
         if (!isIndividual) return StageLogicGate.global(stageId).isBlocked();
         UUID subject = this.ownerUUID != null ? this.ownerUUID : this.lastInteractingPlayer;
@@ -926,6 +938,9 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
                         "history reload");
             }
 
+            // Same per-stage opt-out as StageStates.unlockGlobal.
+            if (stageEntry != null && !stageEntry.resolvedNotify()) return;
+
             String stagename = (stageEntry != null) ? stageEntry.getDisplayName() : stageId;
             String configChat = Config.VISUAL.unlockMessageFormat.get();
             String finalChat = configChat.replace("{stage}", stagename).replace("&", "\u00A7");
@@ -974,6 +989,9 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
                             SyncIndividualStagesPacket.of(data, ownerUUID),
                             ownerPlayer);
 
+                    // Same per-stage opt-out as StageStates.unlockIndividual.
+                    if (stageEntry != null && !stageEntry.resolvedNotify()) return;
+
                     String stagename = (stageEntry != null) ? stageEntry.getDisplayName() : stageId;
                     if (Config.VISUAL.individualBroadcastChat.get()) {
                         String configChat = Config.VISUAL.individualUnlockMessageFormat.get();
@@ -1012,12 +1030,20 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
         if (level.getServer() == null) return;
 
         StageData stageData = StageData.get(level);
+        // Writes the stages directly, so no StageEvent clears their lock progress; do it here.
+        ServerLevel serverLevel = (ServerLevel) level;
+        // The creative scroll counts as an admin unlock: it also forgets permanent losses.
+        var lost = net.bananemdnsa.historystages.data.saveddata.LostStagesData.get(level);
+        boolean lostCleared = false;
         for (String id : StageManager.getStages().keySet()) {
             if (!stageData.getUnlockedStages().contains(id)) {
+                lostCleared |= lost.clearGlobal(id);
+                LockTriggerManager.clearProgress(id, false, null, serverLevel);
                 stageData.addStage(id);
             }
         }
         stageData.setDirty();
+        if (lostCleared) LostStages.syncAll(serverLevel);
 
         level.getServer().getCommands().performPrefixedCommand(
                 level.getServer().createCommandSourceStack().withSuppressedOutput(),
@@ -1025,11 +1051,15 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
 
         IndividualStageData individualData = IndividualStageData.get(level);
         for (net.minecraft.server.level.ServerPlayer player : level.getServer().getPlayerList().getPlayers()) {
+            boolean playerLostCleared = false;
             for (String id : StageManager.getIndividualStages().keySet()) {
                 if (!individualData.hasStage(player.getUUID(), id)) {
+                    playerLostCleared |= lost.clearIndividual(player.getUUID(), id);
+                    LockTriggerManager.clearProgress(id, true, player.getUUID(), serverLevel);
                     individualData.addStage(player.getUUID(), id);
                 }
             }
+            if (playerLostCleared) LostStages.syncTo(player);
             PacketHandler.sendIndividualStagesToPlayer(
                     SyncIndividualStagesPacket.of(individualData, player.getUUID()),
                     player);
@@ -1138,7 +1168,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
                     ? StageManager.getIndividualStages().get(stageId)
                     : StageManager.getStages().get(stageId);
             // Only DEFAULT stages are researchable here; AUTO/EXTERNAL/TEMPORARY are not.
-            if (entry == null || entry.getMode() != StageMode.DEFAULT) return false;
+            if (entry == null || entry.getMode() != StageMode.DEFAULT || isLost(stageId, individual)) return false;
 
             // The same two conditions the screen greys the button out for. Without them a start
             // would latch `running` on and lock the scroll into a pedestal where progress can
