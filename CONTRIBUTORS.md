@@ -24,6 +24,8 @@ _Want to help? Translations happen on [Crowdin](https://crowdin.com/project/hist
 
 - **kuki2008** ([@kuki2008](https://github.com/kuki2008)) — Russian
 - **FunnyCarbendazim** ([@FunnyCarbendazim](https://github.com/FunnyCarbendazim)) — Simplified Chinese
+- **Tech3434** ([@Tech3434](https://github.com/Tech3434)) — Russian
+- **Максим Рязанов** ([VizzerPsaka on Crowdin](https://crowdin.com/profile/VizzerPsaka)) — Russian
 
 <!--
 - **Name** ([@github-handle](https://github.com/github-handle)) — Language
