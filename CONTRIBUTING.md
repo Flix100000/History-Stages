@@ -103,11 +103,15 @@ make sure `./gradlew build` passes locally before you open one.
 
 New languages are one of the most useful contributions, and they don't require any Java knowledge.
 
-### On Crowdin
+There are two ways in, depending on whether your language already has a translation.
 
-Translations are done on **[Crowdin](https://crowdin.com/project/history-stages)**. You translate in the
-browser, no JSON editing and no pull request needed. Crowdin collects the translations and sends them to this
-repository on its own, and new keys show up there automatically after every change to `en_us.json`.
+### Existing languages: Crowdin
+
+Languages that already have a translation are kept up to date on
+**[Crowdin](https://crowdin.com/project/history-stages)**. Right now that is Russian and Simplified Chinese.
+You translate in the browser, no JSON editing and no pull request needed. Crowdin collects the translations and
+sends them to this repository on its own, and new keys show up there automatically after every change to
+`en_us.json`.
 
 **Please don't open a pull request for a language that is on Crowdin.** Crowdin rewrites those files on every
 sync, so changes made directly in the repository get lost. If you already translated a file offline, attach it
@@ -116,10 +120,9 @@ and it will be uploaded to Crowdin for you.
 
 German is not on Crowdin, the maintainer keeps `de_de.json` up to date by hand.
 
-### Languages that are not on Crowdin yet
+### New languages: pull request
 
-Crowdin only lists the languages that are enabled there. If yours is missing, you can either ask for it in a
-Contribution Offer issue, or translate it the usual way and open a pull request:
+Crowdin's free plan only has room for a few languages, so a new language starts as a pull request:
 
 1. Copy `src/main/resources/assets/historystages/lang/en_us.json` to a new file named after the Minecraft locale
    code, for example `fr_fr.json` or `pt_br.json`.
@@ -129,7 +132,8 @@ Contribution Offer issue, or translate it the usual way and open a pull request:
 4. Keep the key order of `en_us.json` so future diffs stay readable.
 5. Leave keys you are unsure about untranslated rather than guessing — English is the fallback.
 
-If that language is added to Crowdin later, your file is uploaded there first, so nothing gets lost.
+Once your translation is merged, the language can move to Crowdin, where it is easier to keep up to date. Your
+file is uploaded there first, so nothing gets lost.
 
 The maintainer only speaks German and English and can therefore only verify `de_de.json` and `en_us.json`. Every
 other language file lives entirely on its contributors. If you add a language, it helps enormously if you keep

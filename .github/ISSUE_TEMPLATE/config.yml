@@ -5,4 +5,4 @@ contact_links:
     about: Join our Discord server to ask questions about configuring or using History Stages.
   - name: Translate History Stages
     url: https://crowdin.com/project/history-stages
-    about: Help translate the mod into your language on Crowdin, no issue or pull request needed.
+    about: Help keep the existing translations up to date on Crowdin. New languages start as a pull request, see CONTRIBUTING.md.
