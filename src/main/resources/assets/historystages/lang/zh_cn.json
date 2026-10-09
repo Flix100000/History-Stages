@@ -709,7 +709,6 @@
   "editor.historystages.unsaved": "未保存",
   "editor.historystages.tooltip.items": "在此阶段解锁前将被锁定的物品",
   "editor.historystages.tooltip.fluids": "在此阶段解锁前锁定的流体。通过承载它们的任何东西进行匹配，因此一个条目涵盖该流体的所有桶和储罐物品。",
-  "editor.historystages.tooltip.trades": "在此阶段解锁前锁定的商人报价。锁定报价会从列表中消失，而不是被划掉。交易指定单个报价；若要阻止某物品在任何地方被交易，请在物品标签页中为其添加交易操作。职业仅匹配村民——流浪商人和来自其他模组的商人没有职业，始终计为 1 级。",
   "editor.historystages.tooltip.tags": "将被锁定的物品标签（组）",
   "editor.historystages.tooltip.mods": "其物品将被锁定的整个模组",
   "editor.historystages.tooltip.exceptions": "从模组锁定中排除的物品（锁定模组的例外）",
