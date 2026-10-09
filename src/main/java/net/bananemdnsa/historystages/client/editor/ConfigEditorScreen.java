@@ -1122,6 +1122,9 @@ public class ConfigEditorScreen extends Screen {
 
         int y = listTop - Math.round(smoothScroll.value());
         List<ConfigSection> sections = getActiveSections();
+        // Per frame rather than on tab switch: the click path and the dropdown read the same
+        // column afterwards, and this also follows a language change without a hook of its own.
+        configRows.fitLabelColumn(sections.stream().flatMap(s -> s.entries.stream()).toList());
 
         // Track hover for tooltip
         String currentHovered = null;
