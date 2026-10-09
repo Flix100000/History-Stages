@@ -11,6 +11,7 @@ import net.bananemdnsa.historystages.util.DebugLogger;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.entity.npc.VillagerData;
@@ -18,6 +19,7 @@ import net.minecraft.world.entity.npc.VillagerProfession;
 import net.minecraft.world.entity.npc.VillagerTrades;
 import net.minecraft.world.entity.npc.VillagerType;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.trading.Merchant;
 import net.minecraft.world.item.trading.MerchantOffer;
 import net.minecraft.world.level.Level;
 
@@ -142,10 +144,15 @@ public final class TradeGoodsScanner {
         }
 
         trader.discard();
+        // Only a server will hand over a merchant's offers, so on a client this part is left to
+        // the server's answer.
+        int ownTableMerchants = level.isClientSide()
+                ? 0 : scanProfessionlessMerchants(level, offers, budget);
         // Timed because this runs while a screen opens, and "the game hiccuped once" is otherwise
         // a mystery nobody can attribute.
         DebugLogger.runtime("Trade Goods", "scan",
-                "ran " + recipes + " merchant recipes in " + (budget.now() - startedAt)
+                "ran " + recipes + " merchant recipes and asked " + ownTableMerchants
+                        + " merchants without a profession in " + (budget.now() - startedAt)
                         + "ms, found " + offers.size() + " distinct offers");
         if (budget.spent()) {
             DebugLogger.runtime("Trade Goods",
@@ -192,6 +199,72 @@ public final class TradeGoodsScanner {
             ran++;
         }
         return ran;
+    }
+
+    /**
+     * Merchants that have no profession and keep their trades to themselves, like Vinery's
+     * wandering winemaker. Their recipes live in a private table of their own, so the only way in
+     * is to make one and ask it — which is why this runs on the server only.
+     *
+     * <p>Nothing marks an entity type as a merchant, so every type is made once and looked at.
+     * Each one that turns out to be a merchant is then made a few more times, because it is dealt
+     * a random handful of its recipes and one roll would list only that handful.
+     *
+     * <p>The vanilla wandering trader is skipped: its recipes are already read above.
+     *
+     * @return how many merchant types were found
+     */
+    private static int scanProfessionlessMerchants(Level level, Map<String, TradePreview> offers,
+                                                   TradeScanBudget budget) {
+        int found = 0;
+        for (EntityType<?> type : BuiltInRegistries.ENTITY_TYPE) {
+            if (budget.spent()) break;
+            if (type == EntityType.VILLAGER || type == EntityType.WANDERING_TRADER) continue;
+            ResourceLocation typeId = BuiltInRegistries.ENTITY_TYPE.getKey(type);
+            if (typeId == null) continue;
+
+            Entity probe = createQuietly(type, level);
+            if (probe == null) continue;
+            if (!(probe instanceof Merchant) || probe instanceof Villager) {
+                probe.discard();
+                continue;
+            }
+            found++;
+            Entity merchant = probe;
+            for (int attempt = 0; attempt < RUNS_PER_LISTING; attempt++) {
+                if (attempt > 0) merchant = createQuietly(type, level);
+                if (merchant == null) break;
+                long runStartedAt = budget.now();
+                boolean answered = rollOffers((Merchant) merchant, typeId.toString(), offers);
+                merchant.discard();
+                if (!answered || budget.tooSlow(runStartedAt) || budget.spent()) break;
+            }
+        }
+        return found;
+    }
+
+    /** @return false when the merchant refused to deal its offers here */
+    private static boolean rollOffers(Merchant merchant, String merchantKey,
+                                      Map<String, TradePreview> offers) {
+        try {
+            for (MerchantOffer offer : merchant.getOffers()) {
+                TradePreview preview = previewOf(offer, merchantKey, 1);
+                if (preview != null) offers.putIfAbsent(preview.identity(), preview);
+            }
+            return true;
+        } catch (Exception offersRefused) {
+            return false;
+        }
+    }
+
+    /** One entity that never enters the world, or null when its type will not be made here. */
+    private static Entity createQuietly(EntityType<?> type, Level level) {
+        try {
+            return type.create(level);
+        } catch (Exception refused) {
+            // Some modded types will not be made outside a real spawn. Not a merchant we can ask.
+            return null;
+        }
     }
 
     /**

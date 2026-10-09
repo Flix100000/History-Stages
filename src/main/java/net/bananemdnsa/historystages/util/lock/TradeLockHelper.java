@@ -170,20 +170,11 @@ public final class TradeLockHelper {
     }
 
     /**
-     * The merchant's profession, or null when it has none.
-     *
-     * <p>Null is the honest answer for the wandering trader and for every merchant another mod
-     * writes. A profession entry can never catch those; they are gated by item or not at all,
-     * and the tab's tooltip says so.
-     */
-    /**
      * Who this merchant is, for naming one of its offers.
      *
      * <p>The profession for a villager. For anything without one, its entity type — which is what
      * lets a single wandering-trader offer, or a single offer from a merchant another mod wrote, be
-     * named at all. A profession <em>lock</em> still ignores those, because gating "the profession
-     * of a thing that has none" would mean nothing; naming one of its trades is a different
-     * question and has a good answer.
+     * named at all, and lets the professions list gate it whole by that same id.
      *
      * <p>Never null, so an offer entry always has something to compare against. A profession id
      * and an entity id could in principle collide, and the consequence would be that two
@@ -200,6 +191,7 @@ public final class TradeLockHelper {
         return "";
     }
 
+    /** The merchant's profession, or null for the wandering trader and every modded merchant. */
     @Nullable
     private static String professionIdOf(Merchant merchant) {
         if (!(merchant instanceof Villager villager)) return null;

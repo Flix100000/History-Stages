@@ -10,6 +10,7 @@ import net.bananemdnsa.historystages.api.editor.widget.AbstractSearchableList;
 import net.bananemdnsa.historystages.api.editor.widget.SearchBar;
 import net.bananemdnsa.historystages.api.editor.widget.TradeRowGeometry;
 import net.bananemdnsa.historystages.client.ClientTradeGoods;
+import net.bananemdnsa.historystages.client.scroll.OpenScrollNames;
 import net.bananemdnsa.historystages.data.lock.TradePreview;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -263,15 +264,7 @@ public class SearchableTradeList extends AbstractSearchableList<TradeRow> {
         return stack.isEmpty() ? itemId : stack.getHoverName().getString();
     }
 
-    /** The translated merchant name, falling back to the path of its id. */
     private static String merchantName(String merchantKey) {
-        ResourceLocation key = ResourceLocation.tryParse(merchantKey);
-        if (key == null) return merchantKey;
-        if (TradePreview.WANDERING_TRADER.equals(merchantKey)) {
-            return Component.translatable("entity.minecraft.wandering_trader").getString();
-        }
-        String langKey = "entity." + key.getNamespace() + ".villager." + key.getPath();
-        String translated = Component.translatable(langKey).getString();
-        return translated.equals(langKey) ? key.getPath() : translated;
+        return OpenScrollNames.merchant(merchantKey);
     }
 }

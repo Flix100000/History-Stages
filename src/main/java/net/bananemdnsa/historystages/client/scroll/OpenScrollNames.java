@@ -56,15 +56,36 @@ public final class OpenScrollNames {
     }
 
     /**
-     * A villager profession by the name its villager carries. The wandering trader is not a
-     * profession but stands in for one in trade locks, and has an entity name of its own.
+     * A villager profession by the name its villager carries. A merchant without a profession —
+     * the wandering trader, or one from another mod — stands in for one by its entity id, and
+     * has an entity name of its own.
      */
     public static String merchant(String id) {
-        if (TradePreview.WANDERING_TRADER.equals(id)) return creature(id);
+        String name = translatedMerchant(id);
+        return name != null ? name : prettify(id);
+    }
+
+    /** {@link #merchant}, or null when nothing translates the id. */
+    public static String translatedMerchant(String id) {
         ResourceLocation key = ResourceLocation.tryParse(id);
-        if (key == null) return prettify(id);
+        if (key == null) return null;
+        if (isProfessionlessMerchant(id)) {
+            return BuiltInRegistries.ENTITY_TYPE.get(key).getDescription().getString();
+        }
+        // Vanilla's own pattern, then the one mods like Vinery ship for their professions.
         String candidate = "entity." + key.getNamespace() + ".villager." + key.getPath();
-        return I18n.exists(candidate) ? I18n.get(candidate) : prettify(id);
+        if (I18n.exists(candidate)) return I18n.get(candidate);
+        String modded = "entity.minecraft.villager." + key.getNamespace() + "." + key.getPath();
+        return I18n.exists(modded) ? I18n.get(modded) : null;
+    }
+
+    /** Whether a merchant key names an entity type rather than a villager profession. */
+    public static boolean isProfessionlessMerchant(String id) {
+        if (TradePreview.WANDERING_TRADER.equals(id)) return true;
+        ResourceLocation key = ResourceLocation.tryParse(id);
+        return key != null
+                && !BuiltInRegistries.VILLAGER_PROFESSION.containsKey(key)
+                && BuiltInRegistries.ENTITY_TYPE.containsKey(key);
     }
 
     /** Novice through Master; vanilla ships these keys, so any other number is shown as it is. */

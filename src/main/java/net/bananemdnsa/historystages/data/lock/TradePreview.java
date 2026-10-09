@@ -34,8 +34,9 @@ public record TradePreview(String professionId, int level,
     /**
      * Stands in for the wandering trader, which has no profession.
      *
-     * <p>Not a real registry id, and deliberately not one: nothing looks it up, it only groups
-     * rows in the picker. A profession lock cannot catch a wandering trader in the first place.
+     * <p>Its entity id, which is also what a merchant without a profession is keyed by at
+     * runtime — see {@code TradeLockHelper.merchantKeyOf}. Other such merchants are keyed the
+     * same way, by their own entity id.
      */
     public static final String WANDERING_TRADER = "minecraft:wandering_trader";
 
