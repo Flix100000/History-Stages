@@ -305,7 +305,8 @@ public class AutoTriggerEditorScreen extends Screen {
         if (listSearchBar == null) {
             listSearchBar = new SearchBar(
                     Component.translatable("editor.historystages.auto_trigger.search").getString())
-                    .setLightStyle(true);
+                    .setLightStyle(true)
+                    .setEscapeReleasesFocus(true);
             // Bar is part of the persistent editor chrome — start unfocused so it doesn't
             // claim the blinking cursor while the user is interacting with the trigger list.
             listSearchBar.setFocused(false);

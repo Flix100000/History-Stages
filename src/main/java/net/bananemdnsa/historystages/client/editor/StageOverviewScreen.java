@@ -39,7 +39,7 @@ import net.bananemdnsa.historystages.network.serverbound.ToggleIndividualStageLo
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.bananemdnsa.historystages.client.editor.widget.StyledButton;
-import net.minecraft.client.gui.components.EditBox;
+import net.bananemdnsa.historystages.api.editor.widget.SearchBar;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
@@ -65,7 +65,11 @@ public class StageOverviewScreen extends Screen {
     private static final int INDIVIDUAL_FOLDER_HOVER_KEY = 30000;
     /** Width of the three bars marking a folder row, in pixels. */
     private static final int FOLDER_ICON_WIDTH = 7;
-    /** Header menu button in the top-right corner. Its height matches the search bar's. */
+    /** Search bar in the top-left corner; y is picked so it centres on the menu button's row. */
+    private static final int SEARCH_X = 10;
+    private static final int SEARCH_Y = 4;
+    private static final int SEARCH_W = 120;
+    /** Header menu button in the top-right corner, vertically centred with the search bar. */
     private static final int MENU_BUTTON_W = 30;
     private static final int MENU_BUTTON_H = 18;
     private static final int MENU_BUTTON_Y = 5;
@@ -100,7 +104,7 @@ public class StageOverviewScreen extends Screen {
     private List<String> individualStageOrder;
     private List<String> filteredStageOrder = new ArrayList<>();
     private List<String> filteredIndividualStageOrder = new ArrayList<>();
-    private EditBox searchBox;
+    private SearchBar searchBox;
     private String searchFilter = "";
     private int lastKnownStageCount = -1;
     private int lastKnownIndividualCount = -1;
@@ -259,17 +263,15 @@ public class StageOverviewScreen extends Screen {
         PacketHandler.sendToServer(new RequestIndividualStatesPacket());
 
         searchFilter = "";
-        int searchW = 120;
-        searchBox = new EditBox(this.font, 12, 8, searchW - 4, 14,
-                Component.translatable("editor.historystages.search"));
-        searchBox.setMaxLength(128);
-        searchBox.setBordered(false);
-        searchBox.setValue(searchFilter);
-        searchBox.setResponder(val -> {
-            searchFilter = val;
-            applyFilter();
-        });
-        this.addRenderableWidget(searchBox);
+        searchBox = new SearchBar(Component.translatable("editor.historystages.search").getString())
+                .setLightStyle(true)
+                .setEscapeReleasesFocus(true)
+                .onChange(val -> {
+                    searchFilter = val;
+                    applyFilter();
+                });
+        searchBox.setFocused(false);
+        searchBox.setPosition(SEARCH_X, SEARCH_Y, SEARCH_W);
 
         this.addRenderableWidget(StyledButton.of(
                 Component.translatable("editor.historystages.new_stage_or_folder"),
@@ -629,15 +631,7 @@ public class StageOverviewScreen extends Screen {
         guiGraphics.fill(0, 0, this.width, this.height, 0xE0101010);
         guiGraphics.drawCenteredString(this.font, this.title, this.width / 2, 10, 0xFFFFFF);
 
-        // Search bar (left side, same row as title)
-        int searchW = 120;
-        int searchX = 10;
-        guiGraphics.fill(searchX, 5, searchX + searchW, 23, 0x25FFFFFF);
-        guiGraphics.fill(searchX, 23, searchX + searchW, 24, searchBox.isFocused() ? 0xFFFFCC00 : 0xFF555555);
-        if (searchFilter.isEmpty() && !searchBox.isFocused()) {
-            guiGraphics.drawString(this.font, Component.translatable("editor.historystages.search").getString(),
-                    searchX + 4, 10, 0x888888, false);
-        }
+        searchBox.render(guiGraphics, this.font, mouseX, mouseY);
 
         guiGraphics.fill(10, HEADER_HEIGHT, this.width - 10, HEADER_HEIGHT + 1, 0xFF555555);
 
@@ -1160,15 +1154,14 @@ public class StageOverviewScreen extends Screen {
             return true;
         }
 
-        // Unfocus search box when clicking outside it
-        if (searchBox.isFocused() && !(mouseX >= 10 && mouseX <= 130 && mouseY >= 5 && mouseY <= 24)) {
-            searchBox.setFocused(false);
-        }
-
         if (contextMenu.isVisible()) {
+            searchBox.setFocused(false);
             contextMenu.mouseClicked(mouseX, mouseY, button);
             return true;
         }
+
+        if (searchBox.mouseClicked(mouseX, mouseY)) return true;
+        searchBox.setFocused(false);
 
         if (super.mouseClicked(mouseX, mouseY, button)) return true;
 
@@ -1868,12 +1861,14 @@ public class StageOverviewScreen extends Screen {
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (playerPicker != null && playerPicker.isExpanded() && playerPicker.keyPressed(keyCode)) return true;
+        if (searchBox.keyPressed(keyCode)) return true;
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
     @Override
     public boolean charTyped(char codePoint, int modifiers) {
         if (playerPicker != null && playerPicker.charTyped(codePoint)) return true;
+        if (searchBox.charTyped(codePoint)) return true;
         return super.charTyped(codePoint, modifiers);
     }
 
