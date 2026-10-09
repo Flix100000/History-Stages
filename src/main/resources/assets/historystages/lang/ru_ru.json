@@ -85,7 +85,7 @@
   "jei.historystages.research_booster.speed": "Множитель скорости: %s",
   "jei.historystages.research_booster.cost": "Уменьшение стоимости предмета: -%s%%",
   "jei.historystages.research_booster.usage": "Помести этот блок под пьедестал исследований, чтобы применить буст на активное исследование",
-  "creativetab.history_tab": "Стадии истории",
+  "creativetab.history_tab": "History Stages",
   "tooltip.historystages.research_scroll.info1": "Используй этот свиток на пьедестале исследований",
   "tooltip.historystages.research_scroll.info2": "для открытия новых технологий",
   "message.historystages.dimension_locked": "§cТы не достиг требуемой для посещения этого измерения эры!",
