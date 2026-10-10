@@ -14,13 +14,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class LockCategoriesTest {
 
     @Test
-    void theSixteenBuiltInsAreRegisteredInEditorTabOrder() {
+    void theEighteenBuiltInsAreRegisteredInEditorTabOrder() {
         List<String> ids = LockCategories.all().stream().map(LockCategory::id).toList();
         assertEquals(List.of(
                 "historystages:items",
                 // Next to items on purpose: it answers about the same subject, reading what the
                 // stack carries rather than what it is.
                 "historystages:fluids",
+                // Also read off the stack: what it is enchanted with, what potion it holds.
+                "historystages:enchantments",
+                "historystages:effects",
                 "historystages:tags",
                 "historystages:mods",
                 "historystages:mod_exceptions",

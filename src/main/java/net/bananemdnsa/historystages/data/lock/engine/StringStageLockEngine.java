@@ -49,15 +49,35 @@ public class StringStageLockEngine implements StageLockEngine {
      */
     private static final List<String> ITEM_CATEGORY_IDS =
             List.of("historystages:items", "historystages:fluids",
+                    "historystages:enchantments", "historystages:effects",
                     "historystages:mods", "historystages:tags");
+
+    /**
+     * What a stack carries that the item id cannot show, read once per question.
+     *
+     * <p>Decides whether the per-id memo may be used at all. Two stacks of one id can carry
+     * different fluids or potions, so a stack carrying anything never reads the memo and never
+     * writes it. Otherwise a water bottle asked first would hand its "free" to every potion after
+     * it, and an empty modded tank to the full one.
+     */
+    private record StackFacts(@Nullable String fluidId, StackContents contents) {
+        boolean memoUsable() { return fluidId == null && contents.isEmpty(); }
+    }
+
+    private static StackFacts factsOf(@Nullable ItemStack stack) {
+        return new StackFacts(fluidOf(stack), contentsOf(stack));
+    }
 
     @Override
     public List<String> gatingStagesForItem(String itemId, String modId,
                                             @Nullable ItemStack stack, StageScope scope) {
-        CategoryLockIndexes.ItemGating remembered =
-                CategoryLockIndexes.rememberedItemGating(itemId, scope);
-        if (remembered != null) return remembered.stages();
-        return computeItemGating(itemId, modId, stack, scope).stages();
+        StackFacts facts = factsOf(stack);
+        if (facts.memoUsable()) {
+            CategoryLockIndexes.ItemGating remembered =
+                    CategoryLockIndexes.rememberedItemGating(itemId, scope);
+            if (remembered != null) return remembered.stages();
+        }
+        return computeItemGating(itemId, modId, stack, scope, facts).stages();
     }
 
     /**
@@ -72,8 +92,10 @@ public class StringStageLockEngine implements StageLockEngine {
     @Override
     public boolean isItemLocked(String itemId, String modId, @Nullable ItemStack stack,
                                 StageScope scope, StageStateView state, @Nullable StageMask unlocked) {
-        CategoryLockIndexes.ItemGating gating = CategoryLockIndexes.rememberedItemGating(itemId, scope);
-        if (gating == null) gating = computeItemGating(itemId, modId, stack, scope);
+        StackFacts facts = factsOf(stack);
+        CategoryLockIndexes.ItemGating gating = facts.memoUsable()
+                ? CategoryLockIndexes.rememberedItemGating(itemId, scope) : null;
+        if (gating == null) gating = computeItemGating(itemId, modId, stack, scope, facts);
 
         if (unlocked != null && gating.hasBits()) {
             return gating.isLockedFor(unlocked);
@@ -90,24 +112,25 @@ public class StringStageLockEngine implements StageLockEngine {
      * mistake rather than a cache.
      */
     private CategoryLockIndexes.ItemGating computeItemGating(String itemId, String modId,
-                                                             @Nullable ItemStack stack, StageScope scope) {
+                                                             @Nullable ItemStack stack, StageScope scope,
+                                                             StackFacts facts) {
         Item item = stack != null ? stack.getItem() : BuiltInRegistries.ITEM.get(ResourceLocation.parse(itemId));
         // Resolved once and threaded through both uses: the capability lookup is not free, and
         // the four-argument ItemSubject constructor would repeat it.
-        String fluidId = fluidOf(stack);
+        String fluidId = facts.fluidId();
         Collection<String> candidates = scope == StageScope.GLOBAL
-                ? CategoryLockIndexes.globalCandidates(itemId, modId, item, fluidId)
-                : CategoryLockIndexes.individualCandidates(itemId, modId, item, fluidId);
+                ? CategoryLockIndexes.globalCandidates(itemId, modId, item, fluidId, facts.contents())
+                : CategoryLockIndexes.individualCandidates(itemId, modId, item, fluidId, facts.contents());
 
         Map<String, StageEntry> stages = stagesOf(scope);
         List<String> gating = candidates.isEmpty() ? List.of()
                 : CategoryLockResolver.gatingStages(itemCategories(),
-                        new LockSubjects.ItemSubject(itemId, modId, stack, item, fluidId),
+                        new LockSubjects.ItemSubject(itemId, modId, stack, item, fluidId, facts.contents()),
                         candidates, stages);
 
         CategoryLockIndexes.ItemGating answer = gatingMasks(gating, scope);
 
-        if (!dependsOnTheStack(candidates, stages, itemId, fluidId)) {
+        if (facts.memoUsable() && !dependsOnTheStack(candidates, stages, itemId, fluidId)) {
             CategoryLockIndexes.rememberItemGating(itemId, scope, answer);
         }
         return answer;
@@ -182,6 +205,29 @@ public class StringStageLockEngine implements StageLockEngine {
                 ? FluidContent.of(stack) : null;
     }
 
+    /**
+     * Enchantments and potion contents, read only when some stage could act on them.
+     *
+     * <p>Mod entries count, because a book or potion belongs to the mod of what it carries. They
+     * do not care about gear enchantments, so without an enchantment entry anywhere those are
+     * dropped and a plain enchanted sword keeps the per-id memo.
+     */
+    private static StackContents contentsOf(@Nullable ItemStack stack) {
+        if (stack == null) return StackContents.EMPTY;
+        boolean enchantments = CategoryLockIndexes.anyStageUses("historystages:enchantments");
+        boolean effects = CategoryLockIndexes.anyStageUses("historystages:effects");
+        boolean mods = CategoryLockIndexes.anyStageUses("historystages:mods");
+        if (!enchantments && !effects && !mods) return StackContents.EMPTY;
+
+        StackContents contents = StackContentsReader.of(stack);
+        if (!enchantments && !contents.enchantments().isEmpty()) {
+            contents = new StackContents(List.of(), contents.storedEnchantments(),
+                    contents.effects(), contents.potionIds());
+            if (contents.isEmpty()) return StackContents.EMPTY;
+        }
+        return contents;
+    }
+
     private static List<LockCategory<?>> itemCategories() {
         List<LockCategory<?>> categories = new ArrayList<>(ITEM_CATEGORY_IDS.size());
         for (String id : ITEM_CATEGORY_IDS) categories.add(category(id));
@@ -216,8 +262,10 @@ public class StringStageLockEngine implements StageLockEngine {
         if (gating.isEmpty()) return gating;
 
         Map<String, StageEntry> stages = stagesOf(scope);
+        StackFacts facts = factsOf(stack);
         LockSubjects.ItemSubject subject = new LockSubjects.ItemSubject(
-                itemId, modId, stack, stack != null ? stack.getItem() : null, fluidOf(stack));
+                itemId, modId, stack, stack != null ? stack.getItem() : null,
+                facts.fluidId(), facts.contents());
 
         List<String> narrowed = new ArrayList<>(gating.size());
         for (String stageId : gating) {
@@ -235,19 +283,20 @@ public class StringStageLockEngine implements StageLockEngine {
         if (res == null) return false;
         String itemId = res.toString();
         String modId = res.getNamespace();
-        String fluidId = fluidOf(stack);
+        StackFacts facts = factsOf(stack);
+        String fluidId = facts.fluidId();
 
         boolean global = scope == StageScope.GLOBAL;
         Collection<String> candidates = global
-                ? CategoryLockIndexes.globalCandidates(itemId, modId, stack.getItem(), fluidId)
-                : CategoryLockIndexes.individualCandidates(itemId, modId, stack.getItem(), fluidId);
+                ? CategoryLockIndexes.globalCandidates(itemId, modId, stack.getItem(), fluidId, facts.contents())
+                : CategoryLockIndexes.individualCandidates(itemId, modId, stack.getItem(), fluidId, facts.contents());
         // Nothing to ask, so nothing to build the question with. This is the answer for almost
         // every item, and the recipe path asks it once per furnace per tick.
         if (candidates.isEmpty()) return false;
 
         Map<String, StageEntry> stages = stagesOf(scope);
-        LockSubjects.ItemSubject subject =
-                new LockSubjects.ItemSubject(itemId, modId, stack, stack.getItem(), fluidId);
+        LockSubjects.ItemSubject subject = new LockSubjects.ItemSubject(
+                itemId, modId, stack, stack.getItem(), fluidId, facts.contents());
 
         return LockResolution.isLocked(scope, actionGating(candidates, stages, subject, action), state);
     }

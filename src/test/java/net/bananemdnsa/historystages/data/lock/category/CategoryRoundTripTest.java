@@ -107,6 +107,10 @@ class CategoryRoundTripTest {
                     ((LockCategory<net.bananemdnsa.historystages.data.FluidEntry>) category)
                             .write(stage, List.of(
                                     new net.bananemdnsa.historystages.data.FluidEntry("minecraft:lava")));
+            case "historystages:enchantments", "historystages:effects" ->
+                    ((LockCategory<net.bananemdnsa.historystages.data.LevelledLockEntry>) category)
+                            .write(stage, List.of(
+                                    new net.bananemdnsa.historystages.data.LevelledLockEntry("minecraft:sample", 3, false)));
             case "historystages:tags", "historystages:mods" ->
                     ((LockCategory<NamedLockEntry>) category)
                             .write(stage, List.of(new NamedLockEntry("minecraft:logs")));

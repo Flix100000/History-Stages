@@ -18,7 +18,7 @@ import net.bananemdnsa.historystages.data.lock.ZoneEntry;
 import net.bananemdnsa.historystages.data.lock.engine.LockSubjects;
 
 /**
- * The sixteen categories the mod ships with, in editor tab order.
+ * The eighteen categories the mod ships with, in editor tab order.
  *
  * <p>Each one is a thin adapter onto the typed accessors {@link StageEntry} already has. The
  * point is not to move data — it is to stop every consumer from naming all twelve fields.
@@ -71,6 +71,13 @@ final class BuiltInLockCategories {
                 NO_INDEX));
 
         categories.add(new FluidLock());
+
+        categories.add(new LevelledLock("enchantments", "enchantment",
+                StageEntry::getEnchantmentEntries, StageEntry::setEnchantmentEntries,
+                StageEntry::getAllEnchantmentIds, true));
+        categories.add(new LevelledLock("effects", "effect",
+                StageEntry::getEffectEntries, StageEntry::setEffectEntries,
+                StageEntry::getAllEffectIds, false));
 
         categories.add(new Simple<>("tags", "tags", "tag",
                 StageEntry::getTagEntries, StageEntry::setTagEntries,
@@ -332,6 +339,43 @@ final class BuiltInLockCategories {
     }
 
     /**
+     * Enchantments and potion effects: gated by what a stack carries rather than by what it is.
+     *
+     * <p>No index of its own. Like items, the relevance index narrows these, because one stack
+     * can carry several enchantments and the category lookup takes a single key.
+     */
+    private record LevelledLock(String name, String dualPhaseLabel,
+                                Function<StageEntry, List<net.bananemdnsa.historystages.data.LevelledLockEntry>> reader,
+                                BiConsumer<StageEntry, List<net.bananemdnsa.historystages.data.LevelledLockEntry>> writer,
+                                Function<StageEntry, List<String>> ids,
+                                boolean enchantments)
+            implements LockCategory<net.bananemdnsa.historystages.data.LevelledLockEntry> {
+
+        @Override public String id() { return "historystages:" + name; }
+        @Override public String tabLangKey() { return "editor.historystages.tab." + name; }
+        @Override public String tooltipLangKey() { return "editor.historystages.tooltip." + name; }
+
+        @Override public List<net.bananemdnsa.historystages.data.LevelledLockEntry> read(StageEntry stage) {
+            return reader.apply(stage);
+        }
+
+        @Override public void write(StageEntry stage,
+                                    List<net.bananemdnsa.historystages.data.LevelledLockEntry> entries) {
+            writer.accept(stage, entries);
+        }
+
+        @Override public List<String> globalDualPhaseIds(StageEntry stage) { return ids.apply(stage); }
+        @Override public List<String> individualDualPhaseIds(StageEntry stage) { return ids.apply(stage); }
+
+        @Override
+        public boolean matches(net.bananemdnsa.historystages.data.LevelledLockEntry entry, Object subject) {
+            if (!(subject instanceof LockSubjects.ItemSubject item)) return false;
+            return net.bananemdnsa.historystages.data.lock.engine.LevelledMatching.locksItem(entry,
+                    enchantments ? item.contents().allEnchantments() : item.contents().effects());
+        }
+    }
+
+    /**
      * Mod locks. Needs {@link LockCategory#gates} rather than only {@link LockCategory#matches}
      * because the veto lives on the stage: a mod entry gates every item of that mod
      * <em>except</em> the ones the stage's exception list carves out, and an entry on its own
@@ -359,7 +403,7 @@ final class BuiltInLockCategories {
          */
         @Override public boolean matches(NamedLockEntry entry, Object subject) {
             return subject instanceof LockSubjects.ItemSubject item
-                    && entry.getId().equals(item.modId());
+                    && BuiltInLockMatching.belongsToMod(entry.getId(), item);
         }
 
         @Override public boolean gates(StageEntry stage, Object subject) {

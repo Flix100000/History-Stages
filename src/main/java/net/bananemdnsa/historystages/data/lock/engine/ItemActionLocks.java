@@ -44,8 +44,22 @@ public final class ItemActionLocks {
             }
         }
 
+        // Then what the stack carries in enchantments and effects, for the same reason fluids sit
+        // here: it describes this exact stack. These entries carry no action list of their own,
+        // so the stage's fixed item actions decide.
+        for (net.bananemdnsa.historystages.data.LevelledLockEntry entry : stage.getEnchantmentEntries()) {
+            if (LevelledMatching.locksItem(entry, subject.contents().allEnchantments())) {
+                return isActionInList(stage.effectiveItemLockActions(null), action);
+            }
+        }
+        for (net.bananemdnsa.historystages.data.LevelledLockEntry entry : stage.getEffectEntries()) {
+            if (LevelledMatching.locksItem(entry, subject.contents().effects())) {
+                return isActionInList(stage.effectiveItemLockActions(null), action);
+            }
+        }
+
         for (NamedLockEntry modEntry : stage.getModEntries()) {
-            if (modEntry.getId().equals(subject.modId())
+            if (BuiltInLockMatching.belongsToMod(modEntry.getId(), subject)
                     && !stage.isModExcepted(subject.itemId(), subject.stack())) {
                 return isActionInList(stage.effectiveItemLockActions(modEntry.getLockActions()), action);
             }
