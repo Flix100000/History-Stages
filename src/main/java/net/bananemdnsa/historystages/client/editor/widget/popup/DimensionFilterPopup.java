@@ -1,5 +1,10 @@
 package net.bananemdnsa.historystages.client.editor.widget.popup;
 
+import java.util.function.Function;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.world.item.ItemStack;
+import org.jetbrains.annotations.Nullable;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -20,6 +25,9 @@ import java.util.function.BiConsumer;
  *
  * <p>On confirm it reports the entity id and the list of <em>allowed</em> (unchecked) dimensions.
  * An empty list means "no filter" — blocked in all dimensions (the default).
+ *
+ * <p>{@link #showChoices} reuses the same checklist for any set of ids — the item types a potion
+ * effect applies to — with its own title, hint, row labels and an optional item icon per row.
  */
 public class DimensionFilterPopup {
 
@@ -40,6 +48,12 @@ public class DimensionFilterPopup {
     private int scroll = 0;
     private int panelX, panelY, panelW, panelH;
 
+    private String titleKey = "editor.historystages.dimension_filter.title";
+    private String hintKey = "editor.historystages.dimension_filter.hint";
+    private Function<String, String> label = Function.identity();
+    @Nullable
+    private Function<String, String> iconItem;
+
     public DimensionFilterPopup(BiConsumer<String, List<String>> onConfirm) {
         this.onConfirm = onConfirm;
     }
@@ -49,9 +63,33 @@ public class DimensionFilterPopup {
     public void hide() { visible = false; }
 
     public void show(String entityId, List<String> currentAllowed, int centerX, int centerY) {
+        this.titleKey = "editor.historystages.dimension_filter.title";
+        this.hintKey = "editor.historystages.dimension_filter.hint";
+        this.label = Function.identity();
+        this.iconItem = null;
+        open(entityId, loadKnownDimensions(currentAllowed), currentAllowed, centerX, centerY);
+    }
+
+    /**
+     * The same checklist over any ids. Checked means the entry applies there; on confirm the
+     * unchecked ones are reported, exactly like the allowed dimensions.
+     */
+    public void showChoices(String subjectId, List<String> ids, List<String> currentAllowed,
+                            String titleKey, String hintKey, Function<String, String> label,
+                            @Nullable Function<String, String> iconItem, int centerX, int centerY) {
+        this.titleKey = titleKey;
+        this.hintKey = hintKey;
+        this.label = label;
+        this.iconItem = iconItem;
+        List<String> all = new ArrayList<>(ids);
+        if (currentAllowed != null) for (String id : currentAllowed) if (!all.contains(id)) all.add(id);
+        open(subjectId, all, currentAllowed, centerX, centerY);
+    }
+
+    private void open(String entityId, List<String> ids, List<String> currentAllowed, int centerX, int centerY) {
         this.entityId = entityId;
         this.scroll = 0;
-        this.allDims = loadKnownDimensions(currentAllowed);
+        this.allDims = ids;
         // Working set = blocked dims = all known dims minus the allowed ones stored on the entry.
         this.blocked = new ArrayList<>();
         for (String dim : allDims) {
@@ -96,13 +134,13 @@ public class DimensionFilterPopup {
         g.fill(panelX - 1, panelY - 1, panelX + panelW + 1, panelY + panelH + 1, 0xFF333333);
         g.fill(panelX, panelY, panelX + panelW, panelY + panelH, 0xFF1A1A1A);
 
-        g.drawCenteredString(font, Component.translatable("editor.historystages.dimension_filter.title"),
+        g.drawCenteredString(font, Component.translatable(titleKey),
                 panelX + panelW / 2, panelY + 6, 0xFFFFFFFF);
         int accentW = 40;
         int accentX = panelX + (panelW - accentW) / 2;
         g.fill(accentX, panelY + 17, accentX + accentW, panelY + 18, 0xFFFFCC00);
 
-        g.drawCenteredString(font, Component.translatable("editor.historystages.dimension_filter.hint"),
+        g.drawCenteredString(font, Component.translatable(hintKey),
                 panelX + panelW / 2, panelY + HEADER_H, 0x888888);
 
         int listY = panelY + HEADER_H + HINT_H + 3;
@@ -124,7 +162,15 @@ public class DimensionFilterPopup {
             g.fill(boxX, boxY, boxX + boxS, boxY + boxS, blk ? 0xFFFFCC00 : 0xFF555555);
             g.fill(boxX + 1, boxY + 1, boxX + boxS - 1, boxY + boxS - 1, 0xFF1A1A1A);
             if (blk) g.fill(boxX + 3, boxY + 3, boxX + boxS - 3, boxY + boxS - 3, 0xFFFFCC00);
-            g.drawString(font, dim, boxX + boxS + 6, ry + (ROW_H - font.lineHeight) / 2 + 1,
+            int textX = boxX + boxS + 6;
+            if (iconItem != null) {
+                ResourceLocation itemKey = ResourceLocation.tryParse(iconItem.apply(dim));
+                if (itemKey != null) {
+                    g.renderItem(new ItemStack(BuiltInRegistries.ITEM.get(itemKey)), textX, ry + 1);
+                }
+                textX += 20;
+            }
+            g.drawString(font, label.apply(dim), textX, ry + (ROW_H - font.lineHeight) / 2 + 1,
                     blk ? 0xFFFFFFFF : 0xFF888888, false);
         }
 

@@ -7,9 +7,7 @@ import net.bananemdnsa.historystages.data.LevelledLockEntry;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class LevelledRowsTest {
 
@@ -17,22 +15,24 @@ class LevelledRowsTest {
     private static final String MENDING = "minecraft:mending";
 
     @Test
-    void loadingKeepsLevelAndSwitchPerId() {
+    void loadingKeepsEverySettingPerId() {
         LevelledRows rows = new LevelledRows();
         List<String> ids = new ArrayList<>();
-        rows.load(List.of(new LevelledLockEntry(SHARPNESS, 4, true),
-                new LevelledLockEntry(MENDING, null, false)), ids);
+        rows.load(List.of(new LevelledLockEntry(SHARPNESS, 4, null, null),
+                new LevelledLockEntry(MENDING, null, List.of("anvil"), List.of("minecraft:book"))), ids);
 
         assertEquals(List.of(SHARPNESS, MENDING), ids);
         assertEquals(4, rows.minLevel(SHARPNESS));
-        assertFalse(rows.lockItems(MENDING));
+        assertEquals(List.of("anvil"), rows.lockActions(MENDING));
+        assertEquals(List.of("minecraft:book"), rows.excludedItemTypes(MENDING));
     }
 
     @Test
-    void aNewRowLocksEveryLevelAndItems() {
+    void aNewRowLocksEverything() {
         LevelledRows rows = new LevelledRows();
         assertNull(rows.minLevel(SHARPNESS));
-        assertTrue(rows.lockItems(SHARPNESS));
+        assertNull(rows.lockActions(SHARPNESS));
+        assertNull(rows.excludedItemTypes(SHARPNESS));
     }
 
     /** Level 1 is "every level", so it is stored as no minimum at all. */
@@ -45,26 +45,28 @@ class LevelledRowsTest {
         assertNull(rows.minLevel(SHARPNESS));
     }
 
+    /** Changing one setting keeps the others. */
     @Test
-    void toggleFlipsTheSwitch() {
+    void settingsAreIndependent() {
         LevelledRows rows = new LevelledRows();
-        rows.toggleLockItems(SHARPNESS);
-        assertFalse(rows.lockItems(SHARPNESS));
-        rows.toggleLockItems(SHARPNESS);
-        assertTrue(rows.lockItems(SHARPNESS));
+        rows.setMinLevel(SHARPNESS, 4);
+        rows.setLockActions(SHARPNESS, List.of("pickup"));
+        rows.setExcludedItemTypes(SHARPNESS, List.of("minecraft:book"));
+        assertEquals(4, rows.minLevel(SHARPNESS));
+        assertEquals(List.of("pickup"), rows.lockActions(SHARPNESS));
+        assertEquals(List.of("minecraft:book"), rows.excludedItemTypes(SHARPNESS));
     }
 
-    /** Stored in row order, and a removed row's settings do not come back with a re-add. */
     @Test
     void entriesAreRebuiltInRowOrderAndRemovalForgets() {
         LevelledRows rows = new LevelledRows();
         List<String> ids = new ArrayList<>(List.of(MENDING, SHARPNESS));
         rows.setMinLevel(SHARPNESS, 4);
-        rows.toggleLockItems(MENDING);
+        rows.setLockActions(MENDING, List.of("anvil"));
 
         List<LevelledLockEntry> built = rows.toEntries(ids);
         assertEquals(MENDING, built.get(0).getId());
-        assertFalse(built.get(0).isLockItems());
+        assertEquals(List.of("anvil"), built.get(0).getLockActions());
         assertEquals(4, built.get(1).getMinLevel());
 
         rows.forget(SHARPNESS);

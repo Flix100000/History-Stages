@@ -47,9 +47,13 @@ public abstract class BrewingStandMixin {
     private static boolean historystages$carriesLockedEffect(ItemStack potion) {
         PotionContents contents = potion.get(DataComponents.POTION_CONTENTS);
         if (contents == null) return false;
+        // The result's item type, so an entry that spares splash potions lets them be brewed.
+        String itemId = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(potion.getItem()).toString();
         for (MobEffectInstance effect : contents.getAllEffects()) {
             String id = effect.getEffect().unwrapKey().map(key -> key.location().toString()).orElse(null);
-            if (id != null && StageLockHelper.isEffectLockedForServer(id, effect.getAmplifier() + 1)) return true;
+            if (id != null && StageLockHelper.isEffectLockedForServer(id, effect.getAmplifier() + 1, itemId)) {
+                return true;
+            }
         }
         return false;
     }

@@ -34,8 +34,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * become V), so only the result knows what would actually come out. An empty result slot is also
  * all {@code onTake} and shift-clicking need — they find nothing to take.
  *
- * <p>Applies whatever an entry's {@code lock_items} says, because that switch is about items that
- * already exist, not about making new ones.
+ * <p>Asks for the {@code anvil} action, so an entry can allow the anvil and still refuse the table.
  */
 @Mixin(AnvilMenu.class)
 public abstract class AnvilMenuMixin {
@@ -83,7 +82,7 @@ public abstract class AnvilMenuMixin {
         for (Object2IntMap.Entry<Holder<Enchantment>> entry : enchantments.entrySet()) {
             String id = entry.getKey().unwrapKey().map(key -> key.location().toString()).orElse(null);
             if (id == null) continue;
-            if (StageLockHelper.isEnchantmentLockedForPlayer(id, entry.getIntValue(), player)) {
+            if (StageLockHelper.isEnchantmentLockedForPlayer(id, entry.getIntValue(), "anvil", player)) {
                 return id + " " + entry.getIntValue();
             }
         }

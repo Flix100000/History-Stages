@@ -65,7 +65,7 @@ public final class EnchantmentEffectLockTests {
     @GameTest(template = "empty")
     public static void aBookWithALockedEnchantmentIsLocked(GameTestHelper helper) {
         try {
-            enchantmentStage("ench_book", new LevelledLockEntry(SHARPNESS, 4, true));
+            enchantmentStage("ench_book", new LevelledLockEntry(SHARPNESS, 4, null, null));
             if (!StageLockHelper.isItemLockedForServer(book(helper, Enchantments.SHARPNESS, 5))) {
                 helper.fail("a Sharpness V book is free although Sharpness 4+ is gated");
                 return;
@@ -79,7 +79,7 @@ public final class EnchantmentEffectLockTests {
     @GameTest(template = "empty")
     public static void aLowerLevelStaysFree(GameTestHelper helper) {
         try {
-            enchantmentStage("ench_low", new LevelledLockEntry(SHARPNESS, 4, true));
+            enchantmentStage("ench_low", new LevelledLockEntry(SHARPNESS, 4, null, null));
             if (StageLockHelper.isItemLockedForServer(book(helper, Enchantments.SHARPNESS, 3))) {
                 helper.fail("a Sharpness III book is locked although only 4+ is gated");
                 return;
@@ -93,7 +93,7 @@ public final class EnchantmentEffectLockTests {
     @GameTest(template = "empty")
     public static void aBookWithTwoEnchantmentsIsLockedByEitherOne(GameTestHelper helper) {
         try {
-            enchantmentStage("ench_two", new LevelledLockEntry(SHARPNESS, 4, true));
+            enchantmentStage("ench_two", new LevelledLockEntry(SHARPNESS, 4, null, null));
             ItemStack book = book(helper, Enchantments.UNBREAKING, 1);
             book.update(net.minecraft.core.component.DataComponents.STORED_ENCHANTMENTS,
                     net.minecraft.world.item.enchantment.ItemEnchantments.EMPTY, enchantments -> {
@@ -114,7 +114,7 @@ public final class EnchantmentEffectLockTests {
     @GameTest(template = "empty")
     public static void gearCarryingALockedEnchantmentIsLocked(GameTestHelper helper) {
         try {
-            enchantmentStage("ench_gear", new LevelledLockEntry(SHARPNESS, 4, true));
+            enchantmentStage("ench_gear", new LevelledLockEntry(SHARPNESS, 4, null, null));
             ItemStack sword = new ItemStack(Items.DIAMOND_SWORD);
             sword.enchant(enchantment(helper, Enchantments.SHARPNESS), 5);
             if (!StageLockHelper.isItemLockedForServer(sword)) {
@@ -134,11 +134,11 @@ public final class EnchantmentEffectLockTests {
     @GameTest(template = "empty")
     public static void lockItemsOffLeavesGearFree(GameTestHelper helper) {
         try {
-            enchantmentStage("ench_gear_off", new LevelledLockEntry(SHARPNESS, 4, false));
+            enchantmentStage("ench_gear_off", new LevelledLockEntry(SHARPNESS, 4, List.of("enchanting_table", "anvil"), null));
             ItemStack sword = new ItemStack(Items.DIAMOND_SWORD);
             sword.enchant(enchantment(helper, Enchantments.SHARPNESS), 5);
             if (StageLockHelper.isItemLockedForServer(sword)) {
-                helper.fail("lock_items is off, but the sword carrying the enchantment is locked");
+                helper.fail("the entry locks only the stations, but the sword carrying the enchantment is locked");
                 return;
             }
             helper.succeed();
@@ -170,7 +170,7 @@ public final class EnchantmentEffectLockTests {
     @GameTest(template = "empty")
     public static void effectLevelThreshold(GameTestHelper helper) {
         try {
-            effectStage("eff_level", new LevelledLockEntry(SPEED, 2, true));
+            effectStage("eff_level", new LevelledLockEntry(SPEED, 2, null, null));
             if (StageLockHelper.isItemLockedForServer(potion(Items.POTION, Potions.SWIFTNESS))) {
                 helper.fail("Swiftness (Speed I) is locked although only Speed 2+ is gated");
                 return;
@@ -259,8 +259,8 @@ public final class EnchantmentEffectLockTests {
     @GameTest(template = "empty")
     public static void anvilRefusesALockedEnchantment(GameTestHelper helper) {
         try {
-            // lock_items off, so neither input is locked and only the anvil can be the one refusing
-            enchantmentStage("anvil_locked", new LevelledLockEntry(SHARPNESS, 4, false));
+            // stations only, so neither input is locked and only the anvil can be the one refusing
+            enchantmentStage("anvil_locked", new LevelledLockEntry(SHARPNESS, 4, List.of("enchanting_table", "anvil"), null));
             var player = GameTestPlayers.createConnected(helper);
             var menu = anvil(player, new ItemStack(Items.DIAMOND_SWORD), book(helper, Enchantments.SHARPNESS, 5));
             if (!menu.getSlot(2).getItem().isEmpty()) {
@@ -276,7 +276,7 @@ public final class EnchantmentEffectLockTests {
     @GameTest(template = "empty")
     public static void anvilAllowsAFreeLevel(GameTestHelper helper) {
         try {
-            enchantmentStage("anvil_free", new LevelledLockEntry(SHARPNESS, 4, false));
+            enchantmentStage("anvil_free", new LevelledLockEntry(SHARPNESS, 4, List.of("enchanting_table", "anvil"), null));
             var player = GameTestPlayers.createConnected(helper);
             var menu = anvil(player, new ItemStack(Items.DIAMOND_SWORD), book(helper, Enchantments.SHARPNESS, 3));
             if (menu.getSlot(2).getItem().isEmpty()) {
@@ -348,7 +348,7 @@ public final class EnchantmentEffectLockTests {
                 helper.fail("an enchantment of a locked mod is allowed at the enchanting table");
                 return;
             }
-            if (!StageLockHelper.isEffectLockedForServer("foo:buzz", 1)) {
+            if (!StageLockHelper.isEffectLockedForServer("foo:buzz", 1, "minecraft:potion")) {
                 helper.fail("an effect of a locked mod is allowed at the brewing stand");
                 return;
             }
@@ -378,7 +378,7 @@ public final class EnchantmentEffectLockTests {
     @GameTest(template = "empty")
     public static void theEnchantingTableAsksTheNewEntries(GameTestHelper helper) {
         try {
-            enchantmentStage("table", new LevelledLockEntry(SHARPNESS, 4, false));
+            enchantmentStage("table", new LevelledLockEntry(SHARPNESS, 4, List.of("enchanting_table", "anvil"), null));
             var player = GameTestPlayers.createConnected(helper);
             if (!StageLockHelper.isEnchantmentLockedForPlayer(SHARPNESS, 4, player.getUUID())) {
                 helper.fail("Sharpness IV is allowed at the table although 4+ is gated");
@@ -408,6 +408,116 @@ public final class EnchantmentEffectLockTests {
                 return;
             }
             helper.succeed();
+        } finally {
+            GameTestStages.removeAll();
+        }
+    }
+
+    // --- per-entry actions and item types --------------------------------------------------
+
+    @GameTest(template = "empty")
+    public static void aNarrowedEntryLocksOnlyItsActions(GameTestHelper helper) {
+        try {
+            enchantmentStage("act_pickup", new LevelledLockEntry(SHARPNESS, null, List.of("pickup"), null));
+            ItemStack sword = new ItemStack(Items.DIAMOND_SWORD);
+            sword.enchant(enchantment(helper, Enchantments.SHARPNESS), 5);
+            if (!StageLockHelper.isActionLockedForServer(sword, "pickup")) {
+                helper.fail("pickup is locked on the entry but a Sharpness sword may be picked up");
+                return;
+            }
+            if (StageLockHelper.isActionLockedForServer(sword, "attack")) {
+                helper.fail("only pickup is locked on the entry but attacking with the sword is refused");
+                return;
+            }
+            helper.succeed();
+        } finally {
+            GameTestStages.removeAll();
+        }
+    }
+
+    @GameTest(template = "empty")
+    public static void tableAndAnvilAreSeparateActions(GameTestHelper helper) {
+        try {
+            enchantmentStage("act_table", new LevelledLockEntry(SHARPNESS, null, List.of("enchanting_table"), null));
+            var player = GameTestPlayers.createConnected(helper);
+            if (!StageLockHelper.isEnchantmentLockedForPlayer(SHARPNESS, 3, "enchanting_table", player.getUUID())) {
+                helper.fail("the entry locks the enchanting table but it is allowed");
+                return;
+            }
+            var menu = anvil(player, new ItemStack(Items.DIAMOND_SWORD), book(helper, Enchantments.SHARPNESS, 3));
+            if (menu.getSlot(2).getItem().isEmpty()) {
+                helper.fail("the entry leaves the anvil alone but the anvil refused");
+                return;
+            }
+            helper.succeed();
+        } finally {
+            GameTestStages.removeAll();
+        }
+    }
+
+    /** A stage that fixes "anvil" off overrides an entry that locks everything. */
+    @GameTest(template = "empty")
+    public static void fixedActionsReachTheStations(GameTestHelper helper) {
+        try {
+            GameTestStages.global("act_fixed", stage -> {
+                stage.setEnchantmentEntries(List.of(new LevelledLockEntry(SHARPNESS)));
+                stage.setFixedEnchantmentLockActions(java.util.Map.of("anvil", false));
+            });
+            var player = GameTestPlayers.createConnected(helper);
+            if (StageLockHelper.isEnchantmentLockedForPlayer(SHARPNESS, 3, "anvil", player.getUUID())) {
+                helper.fail("the stage fixes the anvil as allowed but the anvil is refused");
+                return;
+            }
+            if (!StageLockHelper.isEnchantmentLockedForPlayer(SHARPNESS, 3, "enchanting_table", player.getUUID())) {
+                helper.fail("only the anvil is fixed, the enchanting table must stay locked");
+                return;
+            }
+            helper.succeed();
+        } finally {
+            GameTestStages.removeAll();
+        }
+    }
+
+    @GameTest(template = "empty")
+    public static void aSparedItemTypeIsFree(GameTestHelper helper) {
+        try {
+            effectStage("types_arrow", new LevelledLockEntry(SPEED, null, null, List.of("minecraft:tipped_arrow")));
+            if (StageLockHelper.isItemLockedForServer(potion(Items.TIPPED_ARROW, Potions.SWIFTNESS))
+                    || StageLockHelper.isActionLockedForServer(potion(Items.TIPPED_ARROW, Potions.SWIFTNESS), "pickup")) {
+                helper.fail("tipped arrows are spared but an arrow of Swiftness is locked");
+                return;
+            }
+            if (!StageLockHelper.isItemLockedForServer(potion(Items.POTION, Potions.SWIFTNESS))) {
+                helper.fail("only tipped arrows are spared but a potion of Swiftness is free");
+                return;
+            }
+            helper.succeed();
+        } finally {
+            GameTestStages.removeAll();
+        }
+    }
+
+    @GameTest(template = "empty")
+    public static void brewingFollowsActionsAndItemTypes(GameTestHelper helper) {
+        try {
+            effectStage("brew_types", new LevelledLockEntry(SPEED, null, null, List.of("minecraft:splash_potion")));
+            if (brewable(helper, new ItemStack(Items.SUGAR), potion(Items.POTION, Potions.AWKWARD))) {
+                helper.fail("a normal potion of Swiftness would be brewed although only splash potions are spared");
+                return;
+            }
+            if (!brewable(helper, new ItemStack(Items.SUGAR), potion(Items.SPLASH_POTION, Potions.AWKWARD))) {
+                helper.fail("splash potions are spared but a splash potion of Swiftness is not brewed");
+                return;
+            }
+            GameTestStages.removeAll();
+            effectStage("brew_off", new LevelledLockEntry(SPEED, null, List.of("use", "pickup"), null));
+            if (!brewable(helper, new ItemStack(Items.SUGAR), potion(Items.POTION, Potions.AWKWARD))) {
+                helper.fail("the entry does not lock brewing but the brewing stand refused");
+                return;
+            }
+            helper.succeed();
+        } catch (ReflectiveOperationException e) {
+            helper.fail("could not ask the brewing stand: " + e);
         } finally {
             GameTestStages.removeAll();
         }

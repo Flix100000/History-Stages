@@ -13,61 +13,71 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class LevelledMatchingTest {
 
     private static final String SHARPNESS = "minecraft:sharpness";
+    private static final String POTION = "minecraft:potion";
+    private static final String ARROW = "minecraft:tipped_arrow";
 
     private static List<StackContents.Levelled> carrying(String id, int level) {
         return List.of(new StackContents.Levelled(id, level));
     }
 
+    private static LevelledLockEntry entry(Integer min, List<String> actions, List<String> excluded) {
+        return new LevelledLockEntry(SHARPNESS, min, actions, excluded);
+    }
+
     @Test
     void anEntryWithoutAMinimumMatchesEveryLevel() {
-        LevelledLockEntry entry = new LevelledLockEntry(SHARPNESS, null, true);
-        assertTrue(LevelledMatching.matches(entry, carrying(SHARPNESS, 1)));
-        assertTrue(LevelledMatching.matches(entry, carrying(SHARPNESS, 5)));
+        LevelledLockEntry e = new LevelledLockEntry(SHARPNESS);
+        assertTrue(LevelledMatching.matches(e, carrying(SHARPNESS, 1)));
+        assertTrue(LevelledMatching.matches(e, carrying(SHARPNESS, 5)));
     }
 
     @Test
     void theMinimumIsInclusiveAndLowerLevelsStayFree() {
-        LevelledLockEntry entry = new LevelledLockEntry(SHARPNESS, 4, true);
-        assertFalse(LevelledMatching.matches(entry, carrying(SHARPNESS, 3)));
-        assertTrue(LevelledMatching.matches(entry, carrying(SHARPNESS, 4)));
-        assertTrue(LevelledMatching.matches(entry, carrying(SHARPNESS, 5)));
+        LevelledLockEntry e = entry(4, null, null);
+        assertFalse(LevelledMatching.matches(e, carrying(SHARPNESS, 3)));
+        assertTrue(LevelledMatching.matches(e, carrying(SHARPNESS, 4)));
     }
 
     @Test
     void anotherIdNeverMatches() {
-        LevelledLockEntry entry = new LevelledLockEntry(SHARPNESS, null, true);
-        assertFalse(LevelledMatching.matches(entry, carrying("minecraft:smite", 5)));
+        assertFalse(LevelledMatching.matches(new LevelledLockEntry(SHARPNESS), carrying("minecraft:smite", 5)));
     }
 
-    /** A book with two enchantments is locked as soon as either one is. */
     @Test
     void anyCarriedEntryIsEnough() {
-        LevelledLockEntry entry = new LevelledLockEntry(SHARPNESS, 4, true);
         List<StackContents.Levelled> both = List.of(
                 new StackContents.Levelled("minecraft:unbreaking", 1),
                 new StackContents.Levelled(SHARPNESS, 5));
-        assertTrue(LevelledMatching.matches(entry, both));
+        assertTrue(LevelledMatching.matches(entry(4, null, null), both));
+    }
+
+    /** An entry left with nothing but stations says nothing about the items themselves. */
+    @Test
+    void onlyStationActionsLeaveItemsFree() {
+        LevelledLockEntry stationsOnly = entry(null, List.of("enchanting_table", "anvil"), null);
+        assertFalse(LevelledMatching.locksItem(stationsOnly, carrying(SHARPNESS, 5), POTION));
+        assertTrue(LevelledMatching.locksItem(entry(null, List.of("pickup"), null),
+                carrying(SHARPNESS, 5), POTION));
     }
 
     @Test
-    void lockItemsOffKeepsTheItemFreeButStillLocksTheStation() {
-        LevelledLockEntry entry = new LevelledLockEntry(SHARPNESS, null, false);
-        assertFalse(LevelledMatching.locksItem(entry, carrying(SHARPNESS, 5)));
-        assertTrue(LevelledMatching.locksStation(entry, SHARPNESS, 5));
+    void anExcludedItemTypeIsFree() {
+        LevelledLockEntry e = entry(null, null, List.of(ARROW));
+        assertFalse(LevelledMatching.locksItem(e, carrying(SHARPNESS, 1), ARROW));
+        assertTrue(LevelledMatching.locksItem(e, carrying(SHARPNESS, 1), POTION));
     }
 
     @Test
-    void theStationRuleHonoursTheMinimum() {
-        LevelledLockEntry entry = new LevelledLockEntry(SHARPNESS, 4, true);
-        assertFalse(LevelledMatching.locksStation(entry, SHARPNESS, 3));
-        assertTrue(LevelledMatching.locksStation(entry, SHARPNESS, 4));
-        assertFalse(LevelledMatching.locksStation(entry, "minecraft:smite", 5));
+    void aStationIsRefusedOnlyWhenItsActionIsLocked() {
+        LevelledLockEntry e = entry(4, null, null);
+        List<String> tableOnly = List.of("enchanting_table");
+        assertTrue(LevelledMatching.locksStation(e, tableOnly, SHARPNESS, 4, "enchanting_table"));
+        assertFalse(LevelledMatching.locksStation(e, tableOnly, SHARPNESS, 4, "anvil"));
+        assertTrue(LevelledMatching.locksStation(e, null, SHARPNESS, 5, "anvil"));
+        assertFalse(LevelledMatching.locksStation(e, null, SHARPNESS, 3, "anvil"));
+        assertFalse(LevelledMatching.locksStation(e, null, "minecraft:smite", 5, "anvil"));
     }
 
-    /**
-     * Books and potions count as "from" a mod by what they carry; gear does not, so a vanilla
-     * sword with a modded enchantment stays outside that mod's lock.
-     */
     @Test
     void modLockNamespacesCoverBooksAndPotionsButNotGear() {
         StackContents contents = new StackContents(
@@ -75,7 +85,6 @@ class LevelledMatchingTest {
                 carrying("book:enchant", 1),
                 carrying("effect:speedy", 1),
                 List.of("potion:brew"));
-
         assertEquals(Set.of("book", "effect", "potion"), contents.namespacesForModLock());
     }
 

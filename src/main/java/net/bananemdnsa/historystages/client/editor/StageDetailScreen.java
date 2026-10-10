@@ -159,6 +159,8 @@ public class StageDetailScreen extends Screen {
     private Map<String, Boolean> editFixedItemLockActions;
     private Map<String, Boolean> editFixedFluidLockActions;
     private Map<String, Boolean> editFixedInteractionLockActions;
+    private Map<String, Boolean> editFixedEnchantmentLockActions;
+    private Map<String, Boolean> editFixedEffectLockActions;
     /** SpawnControl rows fixed for every mob of this stage; null = none. Immutable. */
     private net.bananemdnsa.historystages.data.lock.spawn.FixedSpawnRule editFixedSpawnRule;
     /** Logic blocks as the raw array; the logic screen edits it, unknown blocks pass through. */
@@ -437,6 +439,8 @@ public class StageDetailScreen extends Screen {
         this.editFixedItemLockActions = copyOrNull(e.getFixedItemLockActions());
         this.editFixedFluidLockActions = copyOrNull(e.getFixedFluidLockActions());
         this.editFixedInteractionLockActions = copyOrNull(e.getFixedInteractionLockActions());
+        this.editFixedEnchantmentLockActions = copyOrNull(e.getFixedEnchantmentLockActions());
+        this.editFixedEffectLockActions = copyOrNull(e.getFixedEffectLockActions());
         this.editFixedSpawnRule = e.getFixedSpawnRule();
         this.editLogic = e.getLogic() != null ? e.getLogic().deepCopy() : null;
         // Safe cast: the built-in items category stores ItemEntry.
@@ -2367,6 +2371,8 @@ public class StageDetailScreen extends Screen {
     private Map<String, Boolean> fixedLockActionsForTab(int tab) {
         if (isAnyTab(tab, CAT_ITEMS, CAT_TAGS, CAT_MODS)) return editFixedItemLockActions;
         if (isTab(tab, CAT_FLUIDS)) return editFixedFluidLockActions;
+        if (isTab(tab, "historystages:enchantments")) return editFixedEnchantmentLockActions;
+        if (isTab(tab, "historystages:effects")) return editFixedEffectLockActions;
         return null;
     }
 
@@ -2400,6 +2406,38 @@ public class StageDetailScreen extends Screen {
             }
             hasChanges = true;
         });
+    }
+
+    /**
+     * The actions popup for an enchantment or effect row. Same handling of fixed actions as
+     * {@link #openLockActionsPopup}: the entry keeps its own value for anything the stage fixes.
+     */
+    private void openLevelledActionsPopup(int tab, LevelledEntryCategoryTab levelled, int idx) {
+        List<String> vocabulary = levelled.vocabulary();
+        Map<String, Boolean> fixed = fixedLockActionsForTab(tab);
+        List<String> own = levelled.lockActions(idx);
+        lockActionsPopup.show(vocabulary, own, fixed, blocked -> {
+            List<String> keep = new ArrayList<>(blocked);
+            if (fixed != null) {
+                for (String action : fixed.keySet()) {
+                    boolean ownBlocked = own == null || own.contains(action);
+                    keep.remove(action);
+                    if (ownBlocked) keep.add(action);
+                }
+            }
+            levelled.setLockActions(idx, keep);
+        });
+    }
+
+    /** Which potion-carrying item types an effect row applies to. Checked = locked. */
+    private void openItemTypesPopup(LevelledEntryCategoryTab levelled, int idx, String effectId) {
+        net.bananemdnsa.historystages.client.editor.widget.popup.DimensionFilterPopup popup =
+                new net.bananemdnsa.historystages.client.editor.widget.popup.DimensionFilterPopup(
+                        (id, spared) -> levelled.setExcludedItemTypes(idx, spared));
+        popup.showChoices(effectId, PotionItemTypes.all(), levelled.excludedItemTypes(idx),
+                "editor.historystages.item_types.title", "editor.historystages.item_types.hint",
+                PotionItemTypes::displayName, id -> id, this.width / 2, this.height / 2);
+        actionOverlay = net.bananemdnsa.historystages.client.editor.tab.PopupOverlays.wrapShown(popup);
     }
 
     // ===== Spawn sources popup =====
@@ -2701,13 +2739,14 @@ public class StageDetailScreen extends Screen {
                         contextMenu.addEntry(Component.translatable("editor.historystages.context.min_level").getString(),
                                 () -> this.minecraft.setScreen(new CountInputScreen(this,
                                         Component.translatable("editor.historystages.dialog.min_level"),
-                                        entryValue, levelled.minLevel(entryIdx), 1, 255,
+                                        Component.translatable("editor.historystages.dialog.min_level.hint").getString(),
+                                        levelled.minLevel(entryIdx), 1, 255,
                                         level -> levelled.setMinLevel(entryIdx, level))));
-                        if (levelled.hasLockItemsSwitch()) {
-                            contextMenu.addEntry(Component.translatable(levelled.lockItems(entryIdx)
-                                            ? "editor.historystages.context.lock_items_off"
-                                            : "editor.historystages.context.lock_items_on").getString(),
-                                    () -> levelled.toggleLockItems(entryIdx));
+                        contextMenu.addEntry(Component.translatable("editor.historystages.context.lock_actions").getString(),
+                                () -> openLevelledActionsPopup(tabIdx, levelled, entryIdx));
+                        if (levelled.hasItemTypes()) {
+                            contextMenu.addEntry(Component.translatable("editor.historystages.context.item_types").getString(),
+                                    () -> openItemTypesPopup(levelled, entryIdx, entryValue));
                         }
                     }
                     addDeclaredEntryActions(tabIdx, entryIdx);
@@ -3172,11 +3211,13 @@ public class StageDetailScreen extends Screen {
                 editMinPedestalTier, editPedestalTierMode, editMode, editAutoTrigger, editTemporary,
                 editHiddenDisplay.copy(), editLoseOnDeath, editInterchangeable,
                 editFixedItemLockActions, editFixedFluidLockActions, editFixedInteractionLockActions,
+                new StageSettingsScreen.FixedContentActions(editFixedEnchantmentLockActions, editFixedEffectLockActions),
                 editFixedSpawnRule, editScrollCompletion,
                 editAddonSettings, isNewStage, isIndividual,
                 (newId, newName, newTime, newTier, newTierMode, newStageMode, newAutoTrigger,
                  newTemporary, newHidden, newLoseOnDeath, newInterchangeable,
-                 newFixedItemActions, newFixedFluidActions, newFixedInteractionActions, newFixedSpawnRule,
+                 newFixedItemActions, newFixedFluidActions, newFixedInteractionActions,
+                 newFixedContentActions, newFixedSpawnRule,
                  newScrollCompletion,
                  newAddonSettings, newRelock) -> {
                     editStageId = newId;
@@ -3193,6 +3234,8 @@ public class StageDetailScreen extends Screen {
                     editFixedItemLockActions = copyOrNull(newFixedItemActions);
                     editFixedFluidLockActions = copyOrNull(newFixedFluidActions);
                     editFixedInteractionLockActions = copyOrNull(newFixedInteractionActions);
+                    editFixedEnchantmentLockActions = copyOrNull(newFixedContentActions.enchantments());
+                    editFixedEffectLockActions = copyOrNull(newFixedContentActions.effects());
                     editFixedSpawnRule = newFixedSpawnRule;
                     editScrollCompletion = newScrollCompletion == null ? "" : newScrollCompletion;
                     editAddonSettings = newAddonSettings;
@@ -3401,6 +3444,8 @@ public class StageDetailScreen extends Screen {
         newEntry.setFixedItemLockActions(editFixedItemLockActions);
         newEntry.setFixedFluidLockActions(editFixedFluidLockActions);
         newEntry.setFixedInteractionLockActions(editFixedInteractionLockActions);
+        newEntry.setFixedEnchantmentLockActions(editFixedEnchantmentLockActions);
+        newEntry.setFixedEffectLockActions(editFixedEffectLockActions);
         newEntry.setFixedSpawnRule(editFixedSpawnRule);
         newEntry.setLogic(editLogic != null ? editLogic.deepCopy() : null);
         newEntry.setIcon(editIcon);

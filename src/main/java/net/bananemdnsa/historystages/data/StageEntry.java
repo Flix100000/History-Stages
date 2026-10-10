@@ -86,7 +86,7 @@ public class StageEntry {
      * Gated enchantments. Read off the stack like fluids, so one entry covers every book and every
      * piece of gear carrying it, and the stations that would apply it.
      */
-    @JsonAdapter(LevelledLockEntryListAdapter.class)
+    @JsonAdapter(LevelledLockEntryListAdapter.Enchantments.class)
     private List<LevelledLockEntry> enchantments;
 
     /**
@@ -95,7 +95,7 @@ public class StageEntry {
      * <p>Both lists stay null while empty, so a stage that uses neither gains no bytes on disk or
      * on the wire; the save packet has a hard size limit.
      */
-    @JsonAdapter(LevelledLockEntryListAdapter.class)
+    @JsonAdapter(LevelledLockEntryListAdapter.Effects.class)
     private List<LevelledLockEntry> effects;
 
     private List<String> recipes;
@@ -475,24 +475,53 @@ public class StageEntry {
         return fixedLockActions != null ? fixedLockActions.getInteractions() : null;
     }
 
+    /** Fixed actions for enchantment entries (true = locked, false = allowed), or null. */
+    @Nullable
+    public Map<String, Boolean> getFixedEnchantmentLockActions() {
+        return fixedLockActions != null ? fixedLockActions.getEnchantments() : null;
+    }
+
+    /** Fixed actions for potion-effect entries (true = locked, false = allowed), or null. */
+    @Nullable
+    public Map<String, Boolean> getFixedEffectLockActions() {
+        return fixedLockActions != null ? fixedLockActions.getEffects() : null;
+    }
+
     /** null or empty fixes nothing for items, tags and mods. */
     public void setFixedItemLockActions(@Nullable Map<String, Boolean> actions) {
-        setFixedLockActions(actions, getFixedFluidLockActions(), getFixedInteractionLockActions());
+        setFixedLockActions(actions, getFixedFluidLockActions(), getFixedInteractionLockActions(),
+                getFixedEnchantmentLockActions(), getFixedEffectLockActions());
     }
 
     /** null or empty fixes nothing for fluids. */
     public void setFixedFluidLockActions(@Nullable Map<String, Boolean> actions) {
-        setFixedLockActions(getFixedItemLockActions(), actions, getFixedInteractionLockActions());
+        setFixedLockActions(getFixedItemLockActions(), actions, getFixedInteractionLockActions(),
+                getFixedEnchantmentLockActions(), getFixedEffectLockActions());
     }
 
     /** null or empty fixes nothing for interaction-locked mobs. */
     public void setFixedInteractionLockActions(@Nullable Map<String, Boolean> actions) {
-        setFixedLockActions(getFixedItemLockActions(), getFixedFluidLockActions(), actions);
+        setFixedLockActions(getFixedItemLockActions(), getFixedFluidLockActions(), actions,
+                getFixedEnchantmentLockActions(), getFixedEffectLockActions());
+    }
+
+    /** null or empty fixes nothing for enchantment entries. */
+    public void setFixedEnchantmentLockActions(@Nullable Map<String, Boolean> actions) {
+        setFixedLockActions(getFixedItemLockActions(), getFixedFluidLockActions(),
+                getFixedInteractionLockActions(), actions, getFixedEffectLockActions());
+    }
+
+    /** null or empty fixes nothing for potion-effect entries. */
+    public void setFixedEffectLockActions(@Nullable Map<String, Boolean> actions) {
+        setFixedLockActions(getFixedItemLockActions(), getFixedFluidLockActions(),
+                getFixedInteractionLockActions(), getFixedEnchantmentLockActions(), actions);
     }
 
     private void setFixedLockActions(@Nullable Map<String, Boolean> items, @Nullable Map<String, Boolean> fluids,
-                                     @Nullable Map<String, Boolean> interactions) {
-        FixedLockActions next = new FixedLockActions(items, fluids, interactions);
+                                     @Nullable Map<String, Boolean> interactions,
+                                     @Nullable Map<String, Boolean> enchantments,
+                                     @Nullable Map<String, Boolean> effects) {
+        FixedLockActions next = new FixedLockActions(items, fluids, interactions, enchantments, effects);
         // No empty object in the file for a stage that never used this.
         this.fixedLockActions = next.isEmpty() ? null : next;
     }
@@ -506,6 +535,20 @@ public class StageEntry {
     public List<String> effectiveItemLockActions(@Nullable List<String> entryActions) {
         return FixedLockActions.apply(entryActions, getFixedItemLockActions(),
                 net.bananemdnsa.historystages.api.lock.LockActions.ITEM);
+    }
+
+    /** {@link #effectiveItemLockActions} for enchantment entries. */
+    @Nullable
+    public List<String> effectiveEnchantmentLockActions(@Nullable List<String> entryActions) {
+        return FixedLockActions.apply(entryActions, getFixedEnchantmentLockActions(),
+                net.bananemdnsa.historystages.api.lock.LockActions.ENCHANTMENT);
+    }
+
+    /** {@link #effectiveItemLockActions} for potion-effect entries. */
+    @Nullable
+    public List<String> effectiveEffectLockActions(@Nullable List<String> entryActions) {
+        return FixedLockActions.apply(entryActions, getFixedEffectLockActions(),
+                net.bananemdnsa.historystages.api.lock.LockActions.EFFECT);
     }
 
     /** {@link #effectiveItemLockActions} for interaction-locked mobs. */

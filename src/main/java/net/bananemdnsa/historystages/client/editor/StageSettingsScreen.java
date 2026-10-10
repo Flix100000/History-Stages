@@ -74,8 +74,16 @@ public class StageSettingsScreen extends Screen {
                     boolean interchangeable,
                     Map<String, Boolean> fixedItemLockActions, Map<String, Boolean> fixedFluidLockActions,
                     Map<String, Boolean> fixedInteractionLockActions,
+                    FixedContentActions fixedContentActions,
                     FixedSpawnRule fixedSpawnRule, String scrollCompletion, Map<String, SettingsValues> addonSettings,
                     RelockSettings relock);
+    }
+
+    /** The fixed actions for enchantment and effect entries, handed in and out as one piece. */
+    public record FixedContentActions(Map<String, Boolean> enchantments, Map<String, Boolean> effects) {
+        public FixedContentActions copy() {
+            return new FixedContentActions(copyOrNull(enchantments), copyOrNull(effects));
+        }
     }
 
     /** The re-lock part of a stage, handed in and out as one piece so the long signatures stop growing. */
@@ -149,6 +157,8 @@ public class StageSettingsScreen extends Screen {
     private Map<String, Boolean> editFixedItemActions;
     private Map<String, Boolean> editFixedFluidActions;
     private Map<String, Boolean> editFixedInteractionActions;
+    private Map<String, Boolean> editFixedEnchantmentActions;
+    private Map<String, Boolean> editFixedEffectActions;
     /** Only ever opened in fixing mode here; the per-mob confirm is never reached. */
     private final InteractionActionsPopup interactionActionsPopup = new InteractionActionsPopup((id, actions) -> {});
     private final LockActionsPopup lockActionsPopup = new LockActionsPopup();
@@ -203,8 +213,9 @@ public class StageSettingsScreen extends Screen {
     private int lockCardX, lockCardY, lockCardW, lockCardH;
     private int interchangeableRowY, interchangeableToggleX;
     /** Rows for the fixed actions; their buttons share the toggle column with interchangeable. */
-    private int fixedItemActionsRowY, fixedFluidActionsRowY;
-    private StyledButton fixedItemActionsButton, fixedFluidActionsButton;
+    private int fixedItemActionsRowY, fixedFluidActionsRowY, fixedEnchantmentActionsRowY, fixedEffectActionsRowY;
+    private StyledButton fixedItemActionsButton, fixedFluidActionsButton,
+            fixedEnchantmentActionsButton, fixedEffectActionsButton;
     private int fixedInteractionRowY, fixedSpawnRowY;
     private StyledButton fixedInteractionButton, fixedSpawnButton;
     private static final int LOCK_ROW_GAP = 8;
@@ -309,6 +320,7 @@ public class StageSettingsScreen extends Screen {
                                boolean interchangeable,
                                Map<String, Boolean> fixedItemLockActions, Map<String, Boolean> fixedFluidLockActions,
                                Map<String, Boolean> fixedInteractionLockActions,
+                               FixedContentActions fixedContentActions,
                                FixedSpawnRule fixedSpawnRule, String scrollCompletion, Map<String, SettingsValues> addonSettings,
                                boolean isNewStage, boolean isIndividual, SaveCallback onSave,
                                Supplier<StageEntry> lockSnapshot, RelockSettings relock) {
@@ -333,6 +345,10 @@ public class StageSettingsScreen extends Screen {
         this.editFixedItemActions = copyOrNull(fixedItemLockActions);
         this.editFixedFluidActions = copyOrNull(fixedFluidLockActions);
         this.editFixedInteractionActions = copyOrNull(fixedInteractionLockActions);
+        if (fixedContentActions != null) {
+            this.editFixedEnchantmentActions = copyOrNull(fixedContentActions.enchantments());
+            this.editFixedEffectActions = copyOrNull(fixedContentActions.effects());
+        }
         this.editFixedSpawnRule = fixedSpawnRule;
         this.editAddonSettings = copyAddonSettings(addonSettings);
         RelockSettings relockCopy = relock != null ? relock.copy() : new RelockSettings(null, null);
@@ -457,9 +473,13 @@ public class StageSettingsScreen extends Screen {
         addContentWidget(descriptionButton);
 
         fixedItemActionsButton = addContentWidget(StyledButton.of(Component.empty(),
-                btn -> openFixedActionsPopup(false), 0, 0, 10, FIELD_HEIGHT - 4));
+                btn -> openFixedActionsPopup(FixedKind.ITEMS), 0, 0, 10, FIELD_HEIGHT - 4));
         fixedFluidActionsButton = addContentWidget(StyledButton.of(Component.empty(),
-                btn -> openFixedActionsPopup(true), 0, 0, 10, FIELD_HEIGHT - 4));
+                btn -> openFixedActionsPopup(FixedKind.FLUIDS), 0, 0, 10, FIELD_HEIGHT - 4));
+        fixedEnchantmentActionsButton = addContentWidget(StyledButton.of(Component.empty(),
+                btn -> openFixedActionsPopup(FixedKind.ENCHANTMENTS), 0, 0, 10, FIELD_HEIGHT - 4));
+        fixedEffectActionsButton = addContentWidget(StyledButton.of(Component.empty(),
+                btn -> openFixedActionsPopup(FixedKind.EFFECTS), 0, 0, 10, FIELD_HEIGHT - 4));
         fixedInteractionButton = addContentWidget(StyledButton.of(Component.empty(),
                 btn -> interactionActionsPopup.showFixing(editFixedInteractionActions, fixed -> {
                     editFixedInteractionActions = fixed.isEmpty() ? null : fixed;
@@ -1128,7 +1148,9 @@ public class StageSettingsScreen extends Screen {
         interchangeableRowY = lockCardY + INDIV_BODY_TOP;
         fixedItemActionsRowY = interchangeableRowY + rowStep;
         fixedFluidActionsRowY = fixedItemActionsRowY + rowStep;
-        fixedInteractionRowY = fixedFluidActionsRowY + rowStep;
+        fixedEnchantmentActionsRowY = fixedFluidActionsRowY + rowStep;
+        fixedEffectActionsRowY = fixedEnchantmentActionsRowY + rowStep;
+        fixedInteractionRowY = fixedEffectActionsRowY + rowStep;
         fixedSpawnRowY = fixedInteractionRowY + rowStep;
 
         // One column for the switch and the buttons, so the controls line up.
@@ -1136,14 +1158,20 @@ public class StageSettingsScreen extends Screen {
                 this.font.width(Component.translatable("editor.historystages.locks.interchangeable")),
                 Math.max(this.font.width(Component.translatable("editor.historystages.locks.fixed_actions.items")),
                         Math.max(this.font.width(Component.translatable("editor.historystages.locks.fixed_actions.fluids")),
+                        Math.max(this.font.width(Component.translatable("editor.historystages.locks.fixed_actions.enchantments")),
+                        Math.max(this.font.width(Component.translatable("editor.historystages.locks.fixed_actions.effects")),
                                 Math.max(this.font.width(Component.translatable("editor.historystages.locks.fixed_interactions")),
-                                        this.font.width(Component.translatable("editor.historystages.locks.fixed_spawn"))))));
+                                        this.font.width(Component.translatable("editor.historystages.locks.fixed_spawn"))))))));
         interchangeableToggleX = lockCardX + 12 + labelW + 8;
 
         layoutFixedActionsButton(fixedItemActionsButton, editFixedItemActions != null ? editFixedItemActions.size() : 0,
                 fixedItemActionsRowY);
         layoutFixedActionsButton(fixedFluidActionsButton, editFixedFluidActions != null ? editFixedFluidActions.size() : 0,
                 fixedFluidActionsRowY);
+        layoutFixedActionsButton(fixedEnchantmentActionsButton,
+                editFixedEnchantmentActions != null ? editFixedEnchantmentActions.size() : 0, fixedEnchantmentActionsRowY);
+        layoutFixedActionsButton(fixedEffectActionsButton,
+                editFixedEffectActions != null ? editFixedEffectActions.size() : 0, fixedEffectActionsRowY);
         layoutFixedActionsButton(fixedInteractionButton,
                 editFixedInteractionActions != null ? editFixedInteractionActions.size() : 0, fixedInteractionRowY);
         layoutFixedActionsButton(fixedSpawnButton, editFixedSpawnRule != null ? editFixedSpawnRule.rows().size() : 0,
@@ -1158,12 +1186,30 @@ public class StageSettingsScreen extends Screen {
         button.setPosition(interchangeableToggleX, rowY + (INDIV_TOGGLE_H - button.getHeight()) / 2);
     }
 
-    private void openFixedActionsPopup(boolean fluids) {
-        List<String> vocabulary = fluids ? LockActions.FLUID : LockActions.ITEM;
-        lockActionsPopup.showFixing(vocabulary, fluids ? editFixedFluidActions : editFixedItemActions, fixed -> {
+    /** Which fixed-actions row a popup belongs to. */
+    private enum FixedKind { ITEMS, FLUIDS, ENCHANTMENTS, EFFECTS }
+
+    private void openFixedActionsPopup(FixedKind kind) {
+        List<String> vocabulary = switch (kind) {
+            case ITEMS -> LockActions.ITEM;
+            case FLUIDS -> LockActions.FLUID;
+            case ENCHANTMENTS -> LockActions.ENCHANTMENT;
+            case EFFECTS -> LockActions.EFFECT;
+        };
+        Map<String, Boolean> current = switch (kind) {
+            case ITEMS -> editFixedItemActions;
+            case FLUIDS -> editFixedFluidActions;
+            case ENCHANTMENTS -> editFixedEnchantmentActions;
+            case EFFECTS -> editFixedEffectActions;
+        };
+        lockActionsPopup.showFixing(vocabulary, current, fixed -> {
             Map<String, Boolean> value = fixed.isEmpty() ? null : fixed;
-            if (fluids) editFixedFluidActions = value;
-            else editFixedItemActions = value;
+            switch (kind) {
+                case ITEMS -> editFixedItemActions = value;
+                case FLUIDS -> editFixedFluidActions = value;
+                case ENCHANTMENTS -> editFixedEnchantmentActions = value;
+                case EFFECTS -> editFixedEffectActions = value;
+            }
             hasChanges = true;
             layoutLockCard();
         });
@@ -1229,7 +1275,7 @@ public class StageSettingsScreen extends Screen {
     private int computeLockCardHeight() {
         int row = INDIV_TOGGLE_H + INDIV_HINT_GAP + INDIV_HINT_H;
         // Individual stages have no spawn locks, so no SpawnControl row either.
-        int rows = isIndividual ? 4 : 5;
+        int rows = isIndividual ? 6 : 7;
         return INDIV_BODY_TOP + rows * row + (rows - 1) * LOCK_ROW_GAP + INDIV_BOTTOM_PAD;
     }
 
@@ -1472,7 +1518,9 @@ public class StageSettingsScreen extends Screen {
         onSave.onSave(editStageId, editDisplayName, editResearchTime, editMinTier, editTierMode,
                 editMode, editAutoTrigger, editTemporary, editHiddenDisplay, editLoseOnDeath,
                 editInterchangeable, copyOrNull(editFixedItemActions), copyOrNull(editFixedFluidActions),
-                copyOrNull(editFixedInteractionActions), editFixedSpawnRule,
+                copyOrNull(editFixedInteractionActions),
+                new FixedContentActions(editFixedEnchantmentActions, editFixedEffectActions).copy(),
+                editFixedSpawnRule,
                 editScrollCompletion, copyAddonSettings(editAddonSettings),
                 new RelockSettings(lockTriggerToSave(), editNotify).copy());
 
@@ -1957,6 +2005,8 @@ public class StageSettingsScreen extends Screen {
 
         renderFixedActionsRow(g, fixedItemActionsRowY, "editor.historystages.locks.fixed_actions.items");
         renderFixedActionsRow(g, fixedFluidActionsRowY, "editor.historystages.locks.fixed_actions.fluids");
+        renderFixedActionsRow(g, fixedEnchantmentActionsRowY, "editor.historystages.locks.fixed_actions.enchantments");
+        renderFixedActionsRow(g, fixedEffectActionsRowY, "editor.historystages.locks.fixed_actions.effects");
         renderFixedActionsRow(g, fixedInteractionRowY, "editor.historystages.locks.fixed_interactions");
         if (!isIndividual) renderFixedActionsRow(g, fixedSpawnRowY, "editor.historystages.locks.fixed_spawn");
     }

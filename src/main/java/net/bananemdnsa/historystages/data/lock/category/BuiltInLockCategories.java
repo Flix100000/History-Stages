@@ -355,6 +355,11 @@ final class BuiltInLockCategories {
         @Override public String tabLangKey() { return "editor.historystages.tab." + name; }
         @Override public String tooltipLangKey() { return "editor.historystages.tooltip." + name; }
 
+        @Override public List<String> lockActions() {
+            return enchantments ? net.bananemdnsa.historystages.api.lock.LockActions.ENCHANTMENT
+                    : net.bananemdnsa.historystages.api.lock.LockActions.EFFECT;
+        }
+
         @Override public List<net.bananemdnsa.historystages.data.LevelledLockEntry> read(StageEntry stage) {
             return reader.apply(stage);
         }
@@ -371,7 +376,8 @@ final class BuiltInLockCategories {
         public boolean matches(net.bananemdnsa.historystages.data.LevelledLockEntry entry, Object subject) {
             if (!(subject instanceof LockSubjects.ItemSubject item)) return false;
             return net.bananemdnsa.historystages.data.lock.engine.LevelledMatching.locksItem(entry,
-                    enchantments ? item.contents().allEnchantments() : item.contents().effects());
+                    enchantments ? item.contents().allEnchantments() : item.contents().effects(),
+                    item.itemId());
         }
     }
 

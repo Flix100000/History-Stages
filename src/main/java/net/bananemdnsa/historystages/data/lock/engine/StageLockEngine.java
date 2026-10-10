@@ -112,12 +112,19 @@ public interface StageLockEngine {
         return List.of();
     }
 
+    /** The enchanting table's question; see the four-argument form for the anvil. */
     default List<String> gatingStagesForEnchantment(String enchantmentId, int level, StageScope scope) {
+        return gatingStagesForEnchantment(enchantmentId, level, "enchanting_table", scope);
+    }
+
+    /** Stages that keep this station ({@code enchanting_table} or {@code anvil}) from applying it. */
+    default List<String> gatingStagesForEnchantment(String enchantmentId, int level, String station,
+                                                    StageScope scope) {
         return List.of();
     }
 
-    /** Stages that keep the brewing stand from producing this effect at this level. */
-    default List<String> gatingStagesForEffect(String effectId, int level, StageScope scope) {
+    /** Stages that keep the brewing stand from producing this effect at this level on this item. */
+    default List<String> gatingStagesForEffect(String effectId, int level, String itemId, StageScope scope) {
         return List.of();
     }
 

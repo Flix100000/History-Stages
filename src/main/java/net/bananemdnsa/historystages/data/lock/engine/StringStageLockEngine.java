@@ -388,39 +388,37 @@ public class StringStageLockEngine implements StageLockEngine {
     }
 
     @Override
-    public List<String> gatingStagesForEnchantment(String enchantmentId, int level, StageScope scope) {
+    public List<String> gatingStagesForEnchantment(String enchantmentId, int level, String station,
+                                                   StageScope scope) {
         List<String> found = new ArrayList<>();
         for (Map.Entry<String, StageEntry> entry : stagesOf(scope).entrySet()) {
             StageEntry stage = entry.getValue();
-            if (EnchantmentLockMatcher.locksEnchantment(stage, enchantmentId, level)
-                    || locksAtStation(stage.getEnchantmentEntries(), enchantmentId, level)
-                    || modGatesStation(stage, enchantmentId)) {
-                found.add(entry.getKey());
+            boolean gated = EnchantmentLockMatcher.locksEnchantment(stage, enchantmentId, level)
+                    || modGatesStation(stage, enchantmentId);
+            for (var e : stage.getEnchantmentEntries()) {
+                if (gated) break;
+                gated = LevelledMatching.locksStation(e, stage.effectiveEnchantmentLockActions(e.getLockActions()),
+                        enchantmentId, level, station);
             }
+            if (gated) found.add(entry.getKey());
         }
         return found;
     }
 
     @Override
-    public List<String> gatingStagesForEffect(String effectId, int level, StageScope scope) {
+    public List<String> gatingStagesForEffect(String effectId, int level, String itemId, StageScope scope) {
         List<String> found = new ArrayList<>();
         for (Map.Entry<String, StageEntry> entry : stagesOf(scope).entrySet()) {
             StageEntry stage = entry.getValue();
-            if (locksAtStation(stage.getEffectEntries(), effectId, level)
-                    || modGatesStation(stage, effectId)) {
-                found.add(entry.getKey());
+            boolean gated = modGatesStation(stage, effectId);
+            for (var e : stage.getEffectEntries()) {
+                if (gated) break;
+                gated = !e.excludes(itemId) && LevelledMatching.locksStation(e,
+                        stage.effectiveEffectLockActions(e.getLockActions()), effectId, level, "brew");
             }
+            if (gated) found.add(entry.getKey());
         }
         return found;
-    }
-
-    /** A station is refused whatever {@code lock_items} says; that switch is about existing items. */
-    private static boolean locksAtStation(List<net.bananemdnsa.historystages.data.LevelledLockEntry> entries,
-                                          String id, int level) {
-        for (var entry : entries) {
-            if (LevelledMatching.locksStation(entry, id, level)) return true;
-        }
-        return false;
     }
 
     /**

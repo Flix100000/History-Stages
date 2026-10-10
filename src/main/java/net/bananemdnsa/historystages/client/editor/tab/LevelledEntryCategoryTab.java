@@ -1,5 +1,7 @@
 package net.bananemdnsa.historystages.client.editor.tab;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Function;
 
 import net.bananemdnsa.historystages.api.editor.AbstractCategoryTab;
@@ -10,12 +12,12 @@ import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * The enchantment or the effect section: ids picked from a list, each with a lowest locked level
- * and, for enchantments, whether items already carrying it are locked too.
+ * The enchantment or the effect section: ids picked from a list, each with a level from which it
+ * is locked, the actions it locks and — for effects — the item types it spares.
  *
  * <p>The host draws the rows. This tab answers what goes on them — an icon, the localised name,
- * and a badge for whatever differs from "every level, items too" — and the screen's right-click
- * menu changes the two settings through {@link #setMinLevel} and {@link #toggleLockItems}.
+ * and a badge for whatever differs from "every level, every action, every item" — and the
+ * screen's right-click menu changes the settings through the setters here.
  */
 public final class LevelledEntryCategoryTab extends AbstractCategoryTab {
 
@@ -23,17 +25,17 @@ public final class LevelledEntryCategoryTab extends AbstractCategoryTab {
     private final LevelledRows rows = new LevelledRows();
     private final String iconItemId;
     private final Function<String, String> displayName;
-    private final boolean hasLockItemsSwitch;
+    private final boolean hasItemTypes;
 
     public LevelledEntryCategoryTab(LockCategory<LevelledLockEntry> category,
                                     PickerFactory pickerFactory, Runnable onChanged,
                                     String iconItemId, Function<String, String> displayName,
-                                    boolean hasLockItemsSwitch) {
+                                    boolean hasItemTypes) {
         super(category, pickerFactory, onChanged);
         this.category = category;
         this.iconItemId = iconItemId;
         this.displayName = displayName;
-        this.hasLockItemsSwitch = hasLockItemsSwitch;
+        this.hasItemTypes = hasItemTypes;
     }
 
     @Override
@@ -53,8 +55,13 @@ public final class LevelledEntryCategoryTab extends AbstractCategoryTab {
         super.removeAt(index);
     }
 
-    public boolean hasLockItemsSwitch() {
-        return hasLockItemsSwitch;
+    /** Effects spare item types; enchantments are judged by what they are on, not what carries them. */
+    public boolean hasItemTypes() {
+        return hasItemTypes;
+    }
+
+    public List<String> vocabulary() {
+        return category.lockActions();
     }
 
     /** 1 when every level is locked. */
@@ -68,12 +75,26 @@ public final class LevelledEntryCategoryTab extends AbstractCategoryTab {
         markChanged();
     }
 
-    public boolean lockItems(int index) {
-        return rows.lockItems(entries().get(index));
+    /** null when every action is locked. */
+    @Nullable
+    public List<String> lockActions(int index) {
+        return rows.lockActions(entries().get(index));
     }
 
-    public void toggleLockItems(int index) {
-        rows.toggleLockItems(entries().get(index));
+    /** All locked is what an entry means without a list, so it is stored as no list. */
+    public void setLockActions(int index, List<String> locked) {
+        rows.setLockActions(entries().get(index),
+                locked.size() == vocabulary().size() ? null : new ArrayList<>(locked));
+        markChanged();
+    }
+
+    public List<String> excludedItemTypes(int index) {
+        List<String> excluded = rows.excludedItemTypes(entries().get(index));
+        return excluded != null ? excluded : List.of();
+    }
+
+    public void setExcludedItemTypes(int index, List<String> excluded) {
+        rows.setExcludedItemTypes(entries().get(index), excluded.isEmpty() ? null : excluded);
         markChanged();
     }
 
@@ -92,15 +113,22 @@ public final class LevelledEntryCategoryTab extends AbstractCategoryTab {
     @Override
     @Nullable
     public String badgeText(int index) {
-        String id = entries().get(index);
-        Integer min = rows.minLevel(id);
-        String level = min == null ? null
-                : Component.translatable("editor.historystages.levelled.from_level",
-                        Component.translatable("enchantment.level." + min)).getString();
-        String items = hasLockItemsSwitch && !rows.lockItems(id)
-                ? Component.translatable("editor.historystages.levelled.items_free").getString() : null;
-        if (level == null) return items;
-        return items == null ? level : level + " · " + items;
+        List<String> parts = new ArrayList<>(3);
+        int min = minLevel(index);
+        if (min > 1) {
+            parts.add(Component.translatable("editor.historystages.levelled.from_level",
+                    Component.translatable("enchantment.level." + min)).getString());
+        }
+        List<String> actions = lockActions(index);
+        if (actions != null) {
+            parts.add(Component.translatable("editor.historystages.levelled.badge.actions",
+                    actions.size(), vocabulary().size()).getString());
+        }
+        int spared = excludedItemTypes(index).size();
+        if (spared > 0) {
+            parts.add(Component.translatable("editor.historystages.levelled.badge.types", spared).getString());
+        }
+        return parts.isEmpty() ? null : String.join(" · ", parts);
     }
 
     @Override

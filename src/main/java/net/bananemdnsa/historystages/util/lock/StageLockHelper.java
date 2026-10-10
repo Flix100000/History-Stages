@@ -380,11 +380,18 @@ public class StageLockHelper {
     // ENCHANTMENT LOCK CHECKS
     // =============================================
 
+    /** The enchanting table's question. */
     public static boolean isEnchantmentLockedForPlayer(String enchantmentId, int level, UUID playerUuid) {
+        return isEnchantmentLockedForPlayer(enchantmentId, level, "enchanting_table", playerUuid);
+    }
+
+    /** Whether this station ({@code enchanting_table} or {@code anvil}) may not apply it. */
+    public static boolean isEnchantmentLockedForPlayer(String enchantmentId, int level, String station,
+                                                       UUID playerUuid) {
         return LockResolution.isLocked(
-                StageLocks.engine().gatingStagesForEnchantment(enchantmentId, level, StageScope.GLOBAL),
+                StageLocks.engine().gatingStagesForEnchantment(enchantmentId, level, station, StageScope.GLOBAL),
                 StageLocks.serverGlobal(),
-                StageLocks.engine().gatingStagesForEnchantment(enchantmentId, level, StageScope.INDIVIDUAL),
+                StageLocks.engine().gatingStagesForEnchantment(enchantmentId, level, station, StageScope.INDIVIDUAL),
                 StageLocks.serverIndividual(playerUuid));
     }
 
@@ -392,9 +399,9 @@ public class StageLockHelper {
      * Whether the brewing stand may not produce this effect. Global stages only: the stand brews
      * with nobody standing at it, so there is no player whose individual stages could count.
      */
-    public static boolean isEffectLockedForServer(String effectId, int level) {
+    public static boolean isEffectLockedForServer(String effectId, int level, String itemId) {
         return LockResolution.isLocked(StageScope.GLOBAL,
-                StageLocks.engine().gatingStagesForEffect(effectId, level, StageScope.GLOBAL),
+                StageLocks.engine().gatingStagesForEffect(effectId, level, itemId, StageScope.GLOBAL),
                 StageLocks.serverGlobal());
     }
 

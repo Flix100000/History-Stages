@@ -62,6 +62,45 @@ public final class PopupOverlays {
         };
     }
 
+    /** A popup the caller already placed and showed; the host's {@code show} then does nothing. */
+    public static PickerOverlay wrapShown(DimensionFilterPopup popup) {
+        return new Adapter() {
+            @Override
+            public void show(int centerX, int centerY, int parentWidth) {
+            }
+
+            @Override
+            public boolean isVisible() {
+                return popup.isVisible();
+            }
+
+            @Override
+            public void hide() {
+                popup.hide();
+            }
+
+            @Override
+            public void render(GuiGraphics g, Font font, int mouseX, int mouseY) {
+                popup.render(g, font, mouseX, mouseY);
+            }
+
+            @Override
+            public boolean mouseClicked(double mouseX, double mouseY) {
+                return popup.mouseClicked(mouseX, mouseY);
+            }
+
+            @Override
+            public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+                return popup.mouseScrolled(mouseX, mouseY, scrollY);
+            }
+
+            @Override
+            public boolean keyPressed(int keyCode) {
+                return popup.keyPressed(keyCode);
+            }
+        };
+    }
+
     public static PickerOverlay wrap(SpawnSourcesPopup popup, String entryId, java.util.List<String> current) {
         return new Adapter() {
             @Override

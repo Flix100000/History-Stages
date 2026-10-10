@@ -52,6 +52,24 @@ public final class LockActions {
     );
 
     /**
+     * What an enchantment entry can lock: the item actions that mean something for a stack
+     * carrying it (books, tools, weapons, armour — never a placed block), and the two stations
+     * that put enchantments on things.
+     */
+    public static final List<String> ENCHANTMENT = List.of(
+            "use", "attack", "equip", "pickup", "trade", "loot", "recipe", "icon",
+            "enchanting_table", "anvil"
+    );
+
+    /**
+     * What a potion-effect entry can lock: the item actions that mean something for a potion,
+     * splash potion or tipped arrow, and the brewing stand.
+     */
+    public static final List<String> EFFECT = List.of(
+            "use", "pickup", "trade", "loot", "recipe", "icon", "brew"
+    );
+
+    /**
      * Every action any category recognises.
      *
      * <p>Read by the loader to spot a typo in a hand-edited stage file, and therefore the union:

@@ -45,16 +45,18 @@ public final class ItemActionLocks {
         }
 
         // Then what the stack carries in enchantments and effects, for the same reason fluids sit
-        // here: it describes this exact stack. These entries carry no action list of their own,
-        // so the stage's fixed item actions decide.
+        // here: it describes this exact stack. A spared item type is not matched at all, so an
+        // entry further down still gets its say.
         for (net.bananemdnsa.historystages.data.LevelledLockEntry entry : stage.getEnchantmentEntries()) {
-            if (LevelledMatching.locksItem(entry, subject.contents().allEnchantments())) {
-                return isActionInList(stage.effectiveItemLockActions(null), action);
+            if (!entry.excludes(subject.itemId())
+                    && LevelledMatching.matches(entry, subject.contents().allEnchantments())) {
+                return isActionInList(stage.effectiveEnchantmentLockActions(entry.getLockActions()), action);
             }
         }
         for (net.bananemdnsa.historystages.data.LevelledLockEntry entry : stage.getEffectEntries()) {
-            if (LevelledMatching.locksItem(entry, subject.contents().effects())) {
-                return isActionInList(stage.effectiveItemLockActions(null), action);
+            if (!entry.excludes(subject.itemId())
+                    && LevelledMatching.matches(entry, subject.contents().effects())) {
+                return isActionInList(stage.effectiveEffectLockActions(entry.getLockActions()), action);
             }
         }
 

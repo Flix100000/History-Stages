@@ -35,18 +35,26 @@ final class LevelledRows {
         return get(id).getMinLevel();
     }
 
-    boolean lockItems(String id) {
-        return get(id).isLockItems();
-    }
-
     void setMinLevel(String id, int level) {
-        LevelledLockEntry current = get(id);
-        settings.put(id, new LevelledLockEntry(id, level > 1 ? level : null, current.isLockItems()));
+        settings.put(id, get(id).withMinLevel(level > 1 ? level : null));
     }
 
-    void toggleLockItems(String id) {
-        LevelledLockEntry current = get(id);
-        settings.put(id, new LevelledLockEntry(id, current.getMinLevel(), !current.isLockItems()));
+    @Nullable
+    List<String> lockActions(String id) {
+        return get(id).getLockActions();
+    }
+
+    void setLockActions(String id, @Nullable List<String> actions) {
+        settings.put(id, get(id).withLockActions(actions));
+    }
+
+    @Nullable
+    List<String> excludedItemTypes(String id) {
+        return get(id).getExcludedItemTypes();
+    }
+
+    void setExcludedItemTypes(String id, @Nullable List<String> excluded) {
+        settings.put(id, get(id).withExcludedItemTypes(excluded));
     }
 
     void forget(String id) {
