@@ -382,16 +382,25 @@ public class StageLockHelper {
 
     /** The enchanting table's question. */
     public static boolean isEnchantmentLockedForPlayer(String enchantmentId, int level, UUID playerUuid) {
-        return isEnchantmentLockedForPlayer(enchantmentId, level, "enchanting_table", playerUuid);
+        return isEnchantmentLockedForPlayer(enchantmentId, level, "enchanting_table", null, playerUuid);
     }
 
-    /** Whether this station ({@code enchanting_table} or {@code anvil}) may not apply it. */
+    /** Whether this station may not apply it, without knowing which item it goes on. */
     public static boolean isEnchantmentLockedForPlayer(String enchantmentId, int level, String station,
                                                        UUID playerUuid) {
+        return isEnchantmentLockedForPlayer(enchantmentId, level, station, null, playerUuid);
+    }
+
+    /**
+     * Whether this station ({@code enchanting_table} or {@code anvil}) may not put it on this item.
+     * An entry that spares the item type lets it through.
+     */
+    public static boolean isEnchantmentLockedForPlayer(String enchantmentId, int level, String station,
+                                                       @Nullable String itemId, UUID playerUuid) {
         return LockResolution.isLocked(
-                StageLocks.engine().gatingStagesForEnchantment(enchantmentId, level, station, StageScope.GLOBAL),
+                StageLocks.engine().gatingStagesForEnchantment(enchantmentId, level, station, itemId, StageScope.GLOBAL),
                 StageLocks.serverGlobal(),
-                StageLocks.engine().gatingStagesForEnchantment(enchantmentId, level, station, StageScope.INDIVIDUAL),
+                StageLocks.engine().gatingStagesForEnchantment(enchantmentId, level, station, itemId, StageScope.INDIVIDUAL),
                 StageLocks.serverIndividual(playerUuid));
     }
 

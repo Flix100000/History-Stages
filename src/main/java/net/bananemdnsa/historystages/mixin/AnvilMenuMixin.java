@@ -62,9 +62,10 @@ public abstract class AnvilMenuMixin {
         ItemStack result = self.getSlot(self.getResultSlot()).getItem();
         if (result.isEmpty()) return;
 
-        String locked = historystages$firstLocked(result.get(DataComponents.ENCHANTMENTS), player.getUUID());
+        String itemId = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(result.getItem()).toString();
+        String locked = historystages$firstLocked(result.get(DataComponents.ENCHANTMENTS), itemId, player.getUUID());
         if (locked == null) {
-            locked = historystages$firstLocked(result.get(DataComponents.STORED_ENCHANTMENTS), player.getUUID());
+            locked = historystages$firstLocked(result.get(DataComponents.STORED_ENCHANTMENTS), itemId, player.getUUID());
         }
         if (locked == null) return;
 
@@ -77,12 +78,13 @@ public abstract class AnvilMenuMixin {
 
     @Unique
     @Nullable
-    private static String historystages$firstLocked(@Nullable ItemEnchantments enchantments, UUID player) {
+    private static String historystages$firstLocked(@Nullable ItemEnchantments enchantments, String itemId,
+                                                    UUID player) {
         if (enchantments == null || enchantments.isEmpty()) return null;
         for (Object2IntMap.Entry<Holder<Enchantment>> entry : enchantments.entrySet()) {
             String id = entry.getKey().unwrapKey().map(key -> key.location().toString()).orElse(null);
             if (id == null) continue;
-            if (StageLockHelper.isEnchantmentLockedForPlayer(id, entry.getIntValue(), "anvil", player)) {
+            if (StageLockHelper.isEnchantmentLockedForPlayer(id, entry.getIntValue(), "anvil", itemId, player)) {
                 return id + " " + entry.getIntValue();
             }
         }

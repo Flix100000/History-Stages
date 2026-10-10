@@ -13,7 +13,7 @@ import org.jetbrains.annotations.Nullable;
 
 /**
  * The enchantment or the effect section: ids picked from a list, each with a level from which it
- * is locked, the actions it locks and — for effects — the item types it spares.
+ * is locked, the actions it locks and the item types it spares.
  *
  * <p>The host draws the rows. This tab answers what goes on them — an icon, the localised name,
  * and a badge for whatever differs from "every level, every action, every item" — and the
@@ -25,17 +25,17 @@ public final class LevelledEntryCategoryTab extends AbstractCategoryTab {
     private final LevelledRows rows = new LevelledRows();
     private final String iconItemId;
     private final Function<String, String> displayName;
-    private final boolean hasItemTypes;
+    private final boolean isEnchantments;
 
     public LevelledEntryCategoryTab(LockCategory<LevelledLockEntry> category,
                                     PickerFactory pickerFactory, Runnable onChanged,
                                     String iconItemId, Function<String, String> displayName,
-                                    boolean hasItemTypes) {
+                                    boolean isEnchantments) {
         super(category, pickerFactory, onChanged);
         this.category = category;
         this.iconItemId = iconItemId;
         this.displayName = displayName;
-        this.hasItemTypes = hasItemTypes;
+        this.isEnchantments = isEnchantments;
     }
 
     @Override
@@ -55,9 +55,14 @@ public final class LevelledEntryCategoryTab extends AbstractCategoryTab {
         super.removeAt(index);
     }
 
-    /** Effects spare item types; enchantments are judged by what they are on, not what carries them. */
-    public boolean hasItemTypes() {
-        return hasItemTypes;
+    /** True for the enchantment section; it decides which item types and levels to offer. */
+    public boolean isEnchantments() {
+        return isEnchantments;
+    }
+
+    /** The levels the level menu offers; see {@link LevelChoices}. */
+    public List<Integer> levelChoices(int max, int current) {
+        return LevelChoices.of(max, current);
     }
 
     public List<String> vocabulary() {

@@ -389,7 +389,7 @@ public class StringStageLockEngine implements StageLockEngine {
 
     @Override
     public List<String> gatingStagesForEnchantment(String enchantmentId, int level, String station,
-                                                   StageScope scope) {
+                                                   @Nullable String itemId, StageScope scope) {
         List<String> found = new ArrayList<>();
         for (Map.Entry<String, StageEntry> entry : stagesOf(scope).entrySet()) {
             StageEntry stage = entry.getValue();
@@ -397,7 +397,8 @@ public class StringStageLockEngine implements StageLockEngine {
                     || modGatesStation(stage, enchantmentId);
             for (var e : stage.getEnchantmentEntries()) {
                 if (gated) break;
-                gated = LevelledMatching.locksStation(e, stage.effectiveEnchantmentLockActions(e.getLockActions()),
+                gated = (itemId == null || !e.excludes(itemId))
+                        && LevelledMatching.locksStation(e, stage.effectiveEnchantmentLockActions(e.getLockActions()),
                         enchantmentId, level, station);
             }
             if (gated) found.add(entry.getKey());

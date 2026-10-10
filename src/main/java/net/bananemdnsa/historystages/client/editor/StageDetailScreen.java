@@ -2428,15 +2428,46 @@ public class StageDetailScreen extends Screen {
         });
     }
 
-    /** Which potion-carrying item types an effect row applies to. Checked = locked. */
-    private void openItemTypesPopup(LevelledEntryCategoryTab levelled, int idx, String effectId) {
+    /**
+     * Which item types a row applies to. Checked = locked. An enchantment offers the items it can
+     * go on plus the book; an effect offers the item types that carry potions.
+     */
+    private void openItemTypesPopup(LevelledEntryCategoryTab levelled, int idx, String id) {
+        List<String> types = levelled.isEnchantments()
+                ? net.bananemdnsa.historystages.data.lock.ItemTypeChoices.forEnchantment(
+                        this.minecraft.level.registryAccess(), id)
+                : net.bananemdnsa.historystages.data.lock.ItemTypeChoices.forEffect();
         net.bananemdnsa.historystages.client.editor.widget.popup.DimensionFilterPopup popup =
                 new net.bananemdnsa.historystages.client.editor.widget.popup.DimensionFilterPopup(
-                        (id, spared) -> levelled.setExcludedItemTypes(idx, spared));
-        popup.showChoices(effectId, PotionItemTypes.all(), levelled.excludedItemTypes(idx),
+                        (subject, spared) -> levelled.setExcludedItemTypes(idx, spared));
+        popup.showChoices(id, types, levelled.excludedItemTypes(idx),
                 "editor.historystages.item_types.title", "editor.historystages.item_types.hint",
-                PotionItemTypes::displayName, id -> id, this.width / 2, this.height / 2);
+                net.bananemdnsa.historystages.data.lock.ItemTypeChoices::displayName, item -> item,
+                this.width / 2, this.height / 2);
         actionOverlay = net.bananemdnsa.historystages.client.editor.tab.PopupOverlays.wrapShown(popup);
+    }
+
+    /** "Every level", then "from level II" up to what the game knows, as a pick list. */
+    private void openLevelChoices(LevelledEntryCategoryTab levelled, int idx, String id) {
+        int max = levelled.isEnchantments()
+                ? net.bananemdnsa.historystages.data.lock.ItemTypeChoices.maxEnchantmentLevel(
+                        this.minecraft.level.registryAccess(), id)
+                : net.bananemdnsa.historystages.data.lock.ItemTypeChoices.maxEffectLevel(id);
+        int current = levelled.minLevel(idx);
+        List<net.bananemdnsa.historystages.api.editor.widget.ChoiceOverlay.Option> options = new ArrayList<>();
+        for (int level : levelled.levelChoices(max, current)) {
+            String label = level == 1
+                    ? Component.translatable("editor.historystages.levelled.every_level").getString()
+                    : Component.translatable("editor.historystages.levelled.from_level",
+                            Component.translatable("enchantment.level." + level)).getString();
+            if (level == current) label = "\u2714 " + label;
+            options.add(net.bananemdnsa.historystages.api.editor.widget.ChoiceOverlay.Option.of(label,
+                    () -> levelled.setMinLevel(idx, level)));
+        }
+        var overlay = new net.bananemdnsa.historystages.api.editor.widget.ChoiceOverlay(
+                Component.translatable("editor.historystages.dialog.min_level").getString(), options);
+        overlay.show(this.width / 2, this.height / 2, this.width);
+        actionOverlay = overlay;
     }
 
     // ===== Spawn sources popup =====
@@ -2736,17 +2767,11 @@ public class StageDetailScreen extends Screen {
                     }
                     if (sectionAt(tabIdx) instanceof LevelledEntryCategoryTab levelled) {
                         contextMenu.addEntry(Component.translatable("editor.historystages.context.min_level").getString(),
-                                () -> this.minecraft.setScreen(new CountInputScreen(this,
-                                        Component.translatable("editor.historystages.dialog.min_level"),
-                                        Component.translatable("editor.historystages.dialog.min_level.hint").getString(),
-                                        levelled.minLevel(entryIdx), 1, 255,
-                                        level -> levelled.setMinLevel(entryIdx, level))));
+                                () -> openLevelChoices(levelled, entryIdx, entryValue));
                         contextMenu.addEntry(Component.translatable("editor.historystages.context.lock_actions").getString(),
                                 () -> openLevelledActionsPopup(tabIdx, levelled, entryIdx));
-                        if (levelled.hasItemTypes()) {
-                            contextMenu.addEntry(Component.translatable("editor.historystages.context.item_types").getString(),
-                                    () -> openItemTypesPopup(levelled, entryIdx, entryValue));
-                        }
+                        contextMenu.addEntry(Component.translatable("editor.historystages.context.item_types").getString(),
+                                () -> openItemTypesPopup(levelled, entryIdx, entryValue));
                     }
                     addDeclaredEntryActions(tabIdx, entryIdx);
                     contextMenu.addEntry(Component.translatable("editor.historystages.copy_id").getString(), () -> { Minecraft.getInstance().keyboardHandler.setClipboard(entryValue); EditorToastHandler.copiedToClipboard(entryValue); });

@@ -522,4 +522,91 @@ public final class EnchantmentEffectLockTests {
             GameTestStages.removeAll();
         }
     }
+
+    // --- level presets, item types per enchantment, ammo -------------------------------------
+
+    @GameTest(template = "empty")
+    public static void levelsComeFromTheGame(GameTestHelper helper) {
+        var access = helper.getLevel().registryAccess();
+        int sharpness = net.bananemdnsa.historystages.data.lock.ItemTypeChoices.maxEnchantmentLevel(access, SHARPNESS);
+        int speed = net.bananemdnsa.historystages.data.lock.ItemTypeChoices.maxEffectLevel(SPEED);
+        if (sharpness != 5) {
+            helper.fail("Sharpness should go up to V, got " + sharpness);
+            return;
+        }
+        if (speed != 2) {
+            helper.fail("potions give Speed up to II, got " + speed);
+            return;
+        }
+        helper.succeed();
+    }
+
+    /** An enchantment offers the items it can go on, and the book; never potions. */
+    @GameTest(template = "empty")
+    public static void enchantmentItemTypesAreTheItemsItFits(GameTestHelper helper) {
+        List<String> types = net.bananemdnsa.historystages.data.lock.ItemTypeChoices.forEnchantment(
+                helper.getLevel().registryAccess(), SHARPNESS);
+        if (!types.contains("minecraft:enchanted_book") || !types.contains("minecraft:diamond_sword")) {
+            helper.fail("Sharpness should offer the book and swords, got " + types);
+            return;
+        }
+        if (types.contains("minecraft:bow") || types.contains("minecraft:potion")) {
+            helper.fail("Sharpness offers items it cannot go on: " + types);
+            return;
+        }
+        List<String> potions = net.bananemdnsa.historystages.data.lock.ItemTypeChoices.forEffect();
+        if (!potions.contains("minecraft:tipped_arrow") || potions.contains("minecraft:diamond_sword")) {
+            helper.fail("effects should offer the potion carriers only, got " + potions);
+            return;
+        }
+        helper.succeed();
+    }
+
+    /** A spared item type is spared at the anvil too: Sharpness V may go on a sword. */
+    @GameTest(template = "empty")
+    public static void theAnvilHonoursASparedItemType(GameTestHelper helper) {
+        try {
+            enchantmentStage("types_anvil", new LevelledLockEntry(SHARPNESS, 4,
+                    List.of("enchanting_table", "anvil"), List.of("minecraft:diamond_sword")));
+            var player = GameTestPlayers.createConnected(helper);
+            var menu = anvil(player, new ItemStack(Items.DIAMOND_SWORD), book(helper, Enchantments.SHARPNESS, 5));
+            if (menu.getSlot(2).getItem().isEmpty()) {
+                helper.fail("diamond swords are spared but the anvil refused Sharpness V on one");
+                return;
+            }
+            var axe = anvil(player, new ItemStack(Items.DIAMOND_AXE), book(helper, Enchantments.SHARPNESS, 5));
+            if (!axe.getSlot(2).getItem().isEmpty()) {
+                helper.fail("only swords are spared but the anvil put Sharpness V on an axe");
+                return;
+            }
+            helper.succeed();
+        } finally {
+            GameTestStages.removeAll();
+        }
+    }
+
+    /** A locked arrow is skipped; the bow takes the next one it may use. */
+    @GameTest(template = "empty")
+    public static void aBowSkipsALockedArrow(GameTestHelper helper) {
+        try {
+            effectStage("ammo", new LevelledLockEntry(SPEED));
+            var player = GameTestPlayers.createConnected(helper);
+            player.getInventory().setItem(0, new ItemStack(Items.BOW));
+            player.getInventory().setItem(1, potion(Items.TIPPED_ARROW, Potions.SWIFTNESS));
+            player.getInventory().setItem(2, new ItemStack(Items.ARROW));
+            ItemStack ammo = player.getProjectile(new ItemStack(Items.BOW));
+            if (!ammo.is(Items.ARROW)) {
+                helper.fail("the bow picked " + ammo + " although the Swiftness arrow is locked and a plain one is there");
+                return;
+            }
+            player.getInventory().setItem(2, ItemStack.EMPTY);
+            if (!player.getProjectile(new ItemStack(Items.BOW)).isEmpty()) {
+                helper.fail("with only a locked arrow left the bow still found ammo");
+                return;
+            }
+            helper.succeed();
+        } finally {
+            GameTestStages.removeAll();
+        }
+    }
 }

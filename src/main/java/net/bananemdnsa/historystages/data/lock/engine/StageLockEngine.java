@@ -114,11 +114,15 @@ public interface StageLockEngine {
 
     /** The enchanting table's question; see the four-argument form for the anvil. */
     default List<String> gatingStagesForEnchantment(String enchantmentId, int level, StageScope scope) {
-        return gatingStagesForEnchantment(enchantmentId, level, "enchanting_table", scope);
+        return gatingStagesForEnchantment(enchantmentId, level, "enchanting_table", null, scope);
     }
 
-    /** Stages that keep this station ({@code enchanting_table} or {@code anvil}) from applying it. */
+    /**
+     * Stages that keep this station ({@code enchanting_table} or {@code anvil}) from putting it on
+     * this item. {@code itemId} null skips the item-type check, for callers that do not know it.
+     */
     default List<String> gatingStagesForEnchantment(String enchantmentId, int level, String station,
+                                                    @org.jetbrains.annotations.Nullable String itemId,
                                                     StageScope scope) {
         return List.of();
     }

@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.events.lock;
 
+import java.util.List;
 import java.util.Set;
 
 import net.bananemdnsa.historystages.Config;
@@ -232,6 +233,40 @@ public class ItemUseLockHandler {
             }
             showMessage(player);
         }
+    }
+
+    /**
+     * Skips locked ammo. A bow, crossbow or any weapon built the same way asks for its projectile
+     * here; a locked one is passed over for the next it may use, the same order the game searches
+     * in, and with none left the weapon simply has no ammo. Shooting an arrow counts as using it,
+     * so the {@code use} action decides.
+     */
+    @SubscribeEvent
+    public static void onGetProjectile(net.neoforged.neoforge.event.entity.living.LivingGetProjectileEvent event) {
+        if (!(event.getEntity() instanceof Player player)) return;
+        ItemStack ammo = event.getProjectileItemStack();
+        if (ammo.isEmpty() || !isActionLocked(ammo, player, "use")) return;
+        ItemStack weapon = event.getProjectileWeaponItemStack();
+        event.setProjectileItemStack(weapon.getItem() instanceof net.minecraft.world.item.ProjectileWeaponItem launcher
+                ? firstFreeAmmo(player, weapon, launcher) : ItemStack.EMPTY);
+    }
+
+    private static ItemStack firstFreeAmmo(Player player, ItemStack weapon,
+                                           net.minecraft.world.item.ProjectileWeaponItem launcher) {
+        java.util.function.Predicate<ItemStack> held = launcher.getSupportedHeldProjectiles(weapon);
+        for (ItemStack hand : List.of(player.getOffhandItem(), player.getMainHandItem())) {
+            if (held.test(hand) && !isActionLocked(hand, player, "use")) return hand;
+        }
+        java.util.function.Predicate<ItemStack> any = launcher.getAllSupportedProjectiles(weapon);
+        for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
+            ItemStack stack = player.getInventory().getItem(i);
+            if (any.test(stack) && !isActionLocked(stack, player, "use")) return stack;
+        }
+        if (player.getAbilities().instabuild) {
+            ItemStack creative = launcher.getDefaultCreativeAmmo(player, weapon);
+            if (!isActionLocked(creative, player, "use")) return creative;
+        }
+        return ItemStack.EMPTY;
     }
 
     private static boolean isActionLocked(ItemStack item, Player player, String action) {
