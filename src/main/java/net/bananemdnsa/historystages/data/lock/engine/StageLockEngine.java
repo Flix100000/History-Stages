@@ -116,6 +116,11 @@ public interface StageLockEngine {
         return List.of();
     }
 
+    /** Stages that keep the brewing stand from producing this effect at this level. */
+    default List<String> gatingStagesForEffect(String effectId, int level, StageScope scope) {
+        return List.of();
+    }
+
     /** Fast-out for the per-tick structure handler: is any structure gated at all? */
     default boolean anyStructureLocks() {
         return false;

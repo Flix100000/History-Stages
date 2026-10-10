@@ -51,7 +51,7 @@ public record StackContents(List<Levelled> enchantments, List<Levelled> storedEn
         return namespaces;
     }
 
-    private static String namespaceOf(String id) {
+    public static String namespaceOf(String id) {
         int colon = id.indexOf(':');
         return colon < 0 ? "minecraft" : id.substring(0, colon);
     }

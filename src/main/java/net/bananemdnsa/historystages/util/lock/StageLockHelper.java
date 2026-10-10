@@ -388,6 +388,16 @@ public class StageLockHelper {
                 StageLocks.serverIndividual(playerUuid));
     }
 
+    /**
+     * Whether the brewing stand may not produce this effect. Global stages only: the stand brews
+     * with nobody standing at it, so there is no player whose individual stages could count.
+     */
+    public static boolean isEffectLockedForServer(String effectId, int level) {
+        return LockResolution.isLocked(StageScope.GLOBAL,
+                StageLocks.engine().gatingStagesForEffect(effectId, level, StageScope.GLOBAL),
+                StageLocks.serverGlobal());
+    }
+
     private static boolean isItemInStage(String itemId, String modId, ItemStack stack, StageEntry entry) {
         for (ItemEntry itemEntry : entry.getItemEntries()) {
             if (itemEntry.getId().equals(itemId)) {

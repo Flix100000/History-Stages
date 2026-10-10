@@ -389,15 +389,53 @@ public class StringStageLockEngine implements StageLockEngine {
 
     @Override
     public List<String> gatingStagesForEnchantment(String enchantmentId, int level, StageScope scope) {
-        Map<String, StageEntry> stages = scope == StageScope.GLOBAL
-                ? StageManager.getStages() : StageManager.getIndividualStages();
         List<String> found = new ArrayList<>();
-        for (Map.Entry<String, StageEntry> entry : stages.entrySet()) {
-            if (EnchantmentLockMatcher.locksEnchantment(entry.getValue(), enchantmentId, level)) {
+        for (Map.Entry<String, StageEntry> entry : stagesOf(scope).entrySet()) {
+            StageEntry stage = entry.getValue();
+            if (EnchantmentLockMatcher.locksEnchantment(stage, enchantmentId, level)
+                    || locksAtStation(stage.getEnchantmentEntries(), enchantmentId, level)
+                    || modGatesStation(stage, enchantmentId)) {
                 found.add(entry.getKey());
             }
         }
         return found;
+    }
+
+    @Override
+    public List<String> gatingStagesForEffect(String effectId, int level, StageScope scope) {
+        List<String> found = new ArrayList<>();
+        for (Map.Entry<String, StageEntry> entry : stagesOf(scope).entrySet()) {
+            StageEntry stage = entry.getValue();
+            if (locksAtStation(stage.getEffectEntries(), effectId, level)
+                    || modGatesStation(stage, effectId)) {
+                found.add(entry.getKey());
+            }
+        }
+        return found;
+    }
+
+    /** A station is refused whatever {@code lock_items} says; that switch is about existing items. */
+    private static boolean locksAtStation(List<net.bananemdnsa.historystages.data.LevelledLockEntry> entries,
+                                          String id, int level) {
+        for (var entry : entries) {
+            if (LevelledMatching.locksStation(entry, id, level)) return true;
+        }
+        return false;
+    }
+
+    /**
+     * A mod entry refuses its mod's enchantments and effects at a station only while it locks
+     * making things. An entry narrowed to, say, pickup says nothing about the enchanting table,
+     * and reading it as a full lock is the mistake Issue #117 was about.
+     */
+    private static boolean modGatesStation(StageEntry stage, String id) {
+        String namespace = StackContents.namespaceOf(id);
+        for (var mod : stage.getModEntries()) {
+            if (!mod.getId().equals(namespace)) continue;
+            List<String> actions = stage.effectiveItemLockActions(mod.getLockActions());
+            if (actions == null || actions.contains("recipe")) return true;
+        }
+        return false;
     }
 
     @Override

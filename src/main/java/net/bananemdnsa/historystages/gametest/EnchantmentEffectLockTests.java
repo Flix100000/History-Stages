@@ -243,4 +243,173 @@ public final class EnchantmentEffectLockTests {
             GameTestStages.removeAll();
         }
     }
+
+    // --- stations ---------------------------------------------------------------------------
+
+    private static net.minecraft.world.inventory.AnvilMenu anvil(net.minecraft.server.level.ServerPlayer player,
+                                                                ItemStack left, ItemStack right) {
+        var menu = new net.minecraft.world.inventory.AnvilMenu(1, player.getInventory(),
+                net.minecraft.world.inventory.ContainerLevelAccess.NULL);
+        menu.getSlot(0).set(left);
+        menu.getSlot(1).set(right);
+        menu.createResult();
+        return menu;
+    }
+
+    @GameTest(template = "empty")
+    public static void anvilRefusesALockedEnchantment(GameTestHelper helper) {
+        try {
+            // lock_items off, so neither input is locked and only the anvil can be the one refusing
+            enchantmentStage("anvil_locked", new LevelledLockEntry(SHARPNESS, 4, false));
+            var player = GameTestPlayers.createConnected(helper);
+            var menu = anvil(player, new ItemStack(Items.DIAMOND_SWORD), book(helper, Enchantments.SHARPNESS, 5));
+            if (!menu.getSlot(2).getItem().isEmpty()) {
+                helper.fail("the anvil produced a Sharpness V sword although Sharpness 4+ is gated");
+                return;
+            }
+            helper.succeed();
+        } finally {
+            GameTestStages.removeAll();
+        }
+    }
+
+    @GameTest(template = "empty")
+    public static void anvilAllowsAFreeLevel(GameTestHelper helper) {
+        try {
+            enchantmentStage("anvil_free", new LevelledLockEntry(SHARPNESS, 4, false));
+            var player = GameTestPlayers.createConnected(helper);
+            var menu = anvil(player, new ItemStack(Items.DIAMOND_SWORD), book(helper, Enchantments.SHARPNESS, 3));
+            if (menu.getSlot(2).getItem().isEmpty()) {
+                helper.fail("the anvil refused Sharpness III although only 4+ is gated");
+                return;
+            }
+            helper.succeed();
+        } finally {
+            GameTestStages.removeAll();
+        }
+    }
+
+    private static boolean brewable(GameTestHelper helper, ItemStack ingredient, ItemStack potion)
+            throws ReflectiveOperationException {
+        var items = net.minecraft.core.NonNullList.withSize(5, ItemStack.EMPTY);
+        items.set(0, potion);
+        items.set(3, ingredient);
+        var method = net.minecraft.world.level.block.entity.BrewingStandBlockEntity.class.getDeclaredMethod(
+                "isBrewable", net.minecraft.world.item.alchemy.PotionBrewing.class, net.minecraft.core.NonNullList.class);
+        method.setAccessible(true);
+        return (boolean) method.invoke(null, helper.getLevel().potionBrewing(), items);
+    }
+
+    @GameTest(template = "empty")
+    public static void brewingStandWillNotBrewALockedEffect(GameTestHelper helper) {
+        try {
+            effectStage("brew_locked", new LevelledLockEntry(SPEED));
+            if (brewable(helper, new ItemStack(Items.SUGAR), potion(Items.POTION, Potions.AWKWARD))) {
+                helper.fail("the brewing stand would brew Swiftness although Speed is gated globally");
+                return;
+            }
+            if (!brewable(helper, new ItemStack(Items.GLISTERING_MELON_SLICE), potion(Items.POTION, Potions.AWKWARD))) {
+                helper.fail("the brewing stand refused Healing although only Speed is gated");
+                return;
+            }
+            helper.succeed();
+        } catch (ReflectiveOperationException e) {
+            helper.fail("could not ask the brewing stand: " + e);
+        } finally {
+            GameTestStages.removeAll();
+        }
+    }
+
+    /** The stand brews with nobody standing at it, so only global stages can stop it. */
+    @GameTest(template = "empty")
+    public static void brewingStandIgnoresIndividualLocks(GameTestHelper helper) {
+        try {
+            GameTestStages.individual("brew_individual",
+                    stage -> stage.setEffectEntries(List.of(new LevelledLockEntry(SPEED))));
+            if (!brewable(helper, new ItemStack(Items.SUGAR), potion(Items.POTION, Potions.AWKWARD))) {
+                helper.fail("an individual Speed lock stopped the brewing stand, which has no player to ask");
+                return;
+            }
+            helper.succeed();
+        } catch (ReflectiveOperationException e) {
+            helper.fail("could not ask the brewing stand: " + e);
+        } finally {
+            GameTestStages.removeAll();
+        }
+    }
+
+    @GameTest(template = "empty")
+    public static void stationsRefuseEnchantmentsAndEffectsOfALockedMod(GameTestHelper helper) {
+        try {
+            GameTestStages.global("station_mod",
+                    stage -> stage.setModEntries(List.of(new NamedLockEntry("foo"))));
+            var player = GameTestPlayers.createConnected(helper);
+            if (!StageLockHelper.isEnchantmentLockedForPlayer("foo:zap", 1, player.getUUID())) {
+                helper.fail("an enchantment of a locked mod is allowed at the enchanting table");
+                return;
+            }
+            if (!StageLockHelper.isEffectLockedForServer("foo:buzz", 1)) {
+                helper.fail("an effect of a locked mod is allowed at the brewing stand");
+                return;
+            }
+            helper.succeed();
+        } finally {
+            GameTestStages.removeAll();
+        }
+    }
+
+    /** A mod entry narrowed away from making things must not start refusing stations. */
+    @GameTest(template = "empty")
+    public static void aModEntryWithoutRecipeLeavesStationsAlone(GameTestHelper helper) {
+        try {
+            GameTestStages.global("station_mod_narrow", stage -> stage.setModEntries(List.of(
+                    new NamedLockEntry("foo", List.of("pickup")))));
+            var player = GameTestPlayers.createConnected(helper);
+            if (StageLockHelper.isEnchantmentLockedForPlayer("foo:zap", 1, player.getUUID())) {
+                helper.fail("a mod entry that only locks pickup refuses that mod's enchantments");
+                return;
+            }
+            helper.succeed();
+        } finally {
+            GameTestStages.removeAll();
+        }
+    }
+
+    @GameTest(template = "empty")
+    public static void theEnchantingTableAsksTheNewEntries(GameTestHelper helper) {
+        try {
+            enchantmentStage("table", new LevelledLockEntry(SHARPNESS, 4, false));
+            var player = GameTestPlayers.createConnected(helper);
+            if (!StageLockHelper.isEnchantmentLockedForPlayer(SHARPNESS, 4, player.getUUID())) {
+                helper.fail("Sharpness IV is allowed at the table although 4+ is gated");
+                return;
+            }
+            if (StageLockHelper.isEnchantmentLockedForPlayer(SHARPNESS, 3, player.getUUID())) {
+                helper.fail("Sharpness III is refused at the table although only 4+ is gated");
+                return;
+            }
+            helper.succeed();
+        } finally {
+            GameTestStages.removeAll();
+        }
+    }
+
+    /** The old way of locking an enchantment, a book entry with NBT, keeps doing what it did. */
+    @GameTest(template = "empty")
+    public static void anOldEnchantedBookEntryStillLocksTheTable(GameTestHelper helper) {
+        try {
+            com.google.gson.JsonObject nbt = com.google.gson.JsonParser.parseString(
+                    "{\"StoredEnchantments\":[{\"id\":\"minecraft:sharpness\"}]}").getAsJsonObject();
+            GameTestStages.global("old_book", stage -> stage.setItemEntries(new java.util.ArrayList<>(List.of(
+                    new net.bananemdnsa.historystages.data.ItemEntry("minecraft:enchanted_book", nbt, null)))));
+            var player = GameTestPlayers.createConnected(helper);
+            if (!StageLockHelper.isEnchantmentLockedForPlayer(SHARPNESS, 2, player.getUUID())) {
+                helper.fail("an old enchanted_book NBT entry no longer locks the enchanting table");
+                return;
+            }
+            helper.succeed();
+        } finally {
+            GameTestStages.removeAll();
+        }
+    }
 }
