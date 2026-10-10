@@ -651,6 +651,8 @@ public class ConfigEditorScreen extends Screen {
                 Config.GAMEPLAY.structureBlockLeftClick.get().toString(), false, "true"));
         structureLock.add(new ConfigEntry("structure_lock.blockProjectiles", "structureBlockProjectiles", ConfigType.BOOLEAN,
                 Config.GAMEPLAY.structureBlockProjectiles.get().toString(), false, "true"));
+        structureLock.add(new ConfigEntry("structure_lock.blockExplosions", "structureBlockExplosions", ConfigType.BOOLEAN,
+                Config.GAMEPLAY.structureBlockExplosions.get().toString(), false, "true"));
         structureLock.add(new ConfigEntry("structure_lock.lockPadding", "structureLockPadding", ConfigType.INTEGER,
                 Config.GAMEPLAY.structureLockPadding.get().toString(), false, "0", 0, 16));
         structureLock.add(new ConfigEntry("structure_lock.clusterDistance", "structureClusterDistance", ConfigType.INTEGER,
@@ -686,6 +688,8 @@ public class ConfigEditorScreen extends Screen {
                 Config.GAMEPLAY.biomeBlockLeftClick.get().toString(), false, "true"));
         biomeLock.add(new ConfigEntry("biome_lock.blockProjectiles", "biomeBlockProjectiles", ConfigType.BOOLEAN,
                 Config.GAMEPLAY.biomeBlockProjectiles.get().toString(), false, "true"));
+        biomeLock.add(new ConfigEntry("biome_lock.blockExplosions", "biomeBlockExplosions", ConfigType.BOOLEAN,
+                Config.GAMEPLAY.biomeBlockExplosions.get().toString(), false, "true"));
         gameplaySections.add(biomeLock);
 
         // One row, because a zone keeps every other switch in its own entry rather than here.
