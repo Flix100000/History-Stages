@@ -1830,12 +1830,12 @@ public class StageDetailScreen extends Screen {
                 : editDisplayName + " (" + originalStageId + ")";
         guiGraphics.drawCenteredString(this.font, titleText, this.width / 2, 6, 0xFFFFFF);
 
-        // Individual badge
-        if (isIndividual) {
-            Badge.draw(guiGraphics, this.font,
-                    Component.translatable("editor.historystages.stage_type.individual").getString(),
-                    10, 4, 0xBBBBBB);
-        }
+        // Stage type badge
+        Badge.draw(guiGraphics, this.font,
+                Component.translatable(isIndividual
+                        ? "editor.historystages.stage_type.individual"
+                        : "editor.historystages.stage_type.global").getString(),
+                10, 4, 0xBBBBBB);
 
         // Thin separator between title and button row
         guiGraphics.fill(10, 19, this.width - 10, 20, 0x40FFFFFF);
