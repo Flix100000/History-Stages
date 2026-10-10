@@ -46,6 +46,10 @@ import net.bananemdnsa.historystages.data.lock.FluidRecipeScanner;
 import net.bananemdnsa.historystages.client.editor.recipe.RecipeTypeMetas;
 import net.bananemdnsa.historystages.client.editor.tab.CategoryEditors;
 import net.bananemdnsa.historystages.api.editor.CompositeCategoryTab;
+import net.bananemdnsa.historystages.api.editor.widget.CountInputScreen;
+import net.bananemdnsa.historystages.client.editor.tab.LevelledEntryCategoryTab;
+import net.bananemdnsa.historystages.client.editor.widget.list.SearchableEffectList;
+import net.bananemdnsa.historystages.client.editor.widget.list.SearchableEnchantmentList;
 import net.bananemdnsa.historystages.api.editor.CategoryTab;
 import net.bananemdnsa.historystages.client.editor.tab.EntityCategoryTab;
 import net.bananemdnsa.historystages.api.editor.EditorTab;
@@ -475,7 +479,7 @@ public class StageDetailScreen extends Screen {
                         NAMED_LOCK_ENTRY_ADAPTER);
         tagTabLocal.load(e);
         this.tagTab = tagTabLocal;
-        this.categoryTabs.put(2, tagTabLocal);
+        this.categoryTabs.put(3, tagTabLocal);
         // Safe cast: the built-in mod-exceptions category stores ItemEntry.
         @SuppressWarnings("unchecked")
         LockCategory<net.bananemdnsa.historystages.data.ItemEntry> exceptionCategory =
@@ -491,7 +495,7 @@ public class StageDetailScreen extends Screen {
         exceptionTabLocal.setRebuildPickerOnOpen(true);
         exceptionTabLocal.load(e);
         this.modExceptionTab = exceptionTabLocal;
-        this.categoryTabs.put(4, exceptionTabLocal);
+        this.categoryTabs.put(5, exceptionTabLocal);
         // Safe cast: the built-in recipes category stores bare ids.
         @SuppressWarnings("unchecked")
         LockCategory<String> recipeCategory =
@@ -503,7 +507,7 @@ public class StageDetailScreen extends Screen {
                 () -> { hasChanges = true; updateMaxScroll(); });
         recipeTabLocal.load(e);
         this.recipeTab = recipeTabLocal;
-        this.categoryTabs.put(5, recipeTabLocal);
+        this.categoryTabs.put(6, recipeTabLocal);
         // Safe cast: the built-in dimensions category stores bare ids.
         @SuppressWarnings("unchecked")
         LockCategory<String> dimensionCategory =
@@ -516,7 +520,7 @@ public class StageDetailScreen extends Screen {
                 },
                 () -> { hasChanges = true; updateMaxScroll(); });
         dimensionTab.load(e);
-        this.categoryTabs.put(6, dimensionTab);
+        this.categoryTabs.put(7, dimensionTab);
         // Safe cast: the built-in structures category stores bare ids.
         @SuppressWarnings("unchecked")
         LockCategory<String> structureCategory =
@@ -530,7 +534,7 @@ public class StageDetailScreen extends Screen {
                 () -> { hasChanges = true; updateMaxScroll(); });
         structureTabLocal.load(e);
         this.structureTab = structureTabLocal;
-        this.categoryTabs.put(9, structureTabLocal);
+        this.categoryTabs.put(10, structureTabLocal);
         // Safe cast: the built-in biomes category stores bare ids.
         @SuppressWarnings("unchecked")
         LockCategory<String> biomeCategory =
@@ -545,7 +549,7 @@ public class StageDetailScreen extends Screen {
                 StageEntry::getBiomeModLinked, StageEntry::setBiomeModLinked);
         biomeTabLocal.load(e);
         this.biomeTab = biomeTabLocal;
-        this.categoryTabs.put(10, biomeTabLocal);
+        this.categoryTabs.put(11, biomeTabLocal);
         // Beside the biomes, because both answer "where"; the difference is that a zone is drawn
         // rather than named. Its rows open a screen of their own, so the host hands it the way to
         // do that instead of the tab reaching for Minecraft itself.
@@ -557,7 +561,7 @@ public class StageDetailScreen extends Screen {
                 () -> { hasChanges = true; updateMaxScroll(); },
                 factory -> this.minecraft.setScreen(factory.apply(this)));
         zoneTabLocal.load(e);
-        this.categoryTabs.put(11, zoneTabLocal);
+        this.categoryTabs.put(12, zoneTabLocal);
         // Which of the two stage maps this screen is editing. Read by every tab that has sections,
         // because a section whose category does not serve this scope is greyed rather than shown.
         StageScope loadScope = isIndividual ? StageScope.INDIVIDUAL : StageScope.GLOBAL;
@@ -630,7 +634,7 @@ public class StageDetailScreen extends Screen {
                                 "editor.historystages.trades.section.levels")),
                 loadScope);
         tradesTabLocal.load(e);
-        this.categoryTabs.put(8, tradesTabLocal);
+        this.categoryTabs.put(9, tradesTabLocal);
         // Fluids sit at index 1, beside items, because that is where someone looks for them.
         // The tab index is a position in the strip and nothing treats it as an identity — every
         // behavioural question goes through isTab against the category id — so putting a tab in
@@ -652,6 +656,42 @@ public class StageDetailScreen extends Screen {
                         FLUID_ENTRY_ADAPTER);
         fluidTabLocal.load(e);
         this.categoryTabs.put(1, fluidTabLocal);
+        // Beside fluids, because all three gate an item by what it carries rather than by what it
+        // is. One tab with two sections, like trades: the questions come up together.
+        @SuppressWarnings("unchecked")
+        LockCategory<net.bananemdnsa.historystages.data.LevelledLockEntry> enchantmentCategory =
+                (LockCategory<net.bananemdnsa.historystages.data.LevelledLockEntry>)
+                        LockCategories.byId("historystages:enchantments");
+        @SuppressWarnings("unchecked")
+        LockCategory<net.bananemdnsa.historystages.data.LevelledLockEntry> effectCategory =
+                (LockCategory<net.bananemdnsa.historystages.data.LevelledLockEntry>)
+                        LockCategories.byId("historystages:effects");
+        LevelledEntryCategoryTab enchantmentTab = new LevelledEntryCategoryTab(enchantmentCategory,
+                (onSelect, alreadyAdded) -> {
+                    SearchableEnchantmentList list = new SearchableEnchantmentList(onSelect, alreadyAdded);
+                    list.setMultiSelect(true);
+                    return list;
+                },
+                () -> { hasChanges = true; updateMaxScroll(); },
+                "minecraft:enchanted_book", SearchableEnchantmentList::displayName, true);
+        LevelledEntryCategoryTab effectTab = new LevelledEntryCategoryTab(effectCategory,
+                (onSelect, alreadyAdded) -> {
+                    SearchableEffectList list = new SearchableEffectList(onSelect, alreadyAdded);
+                    list.setMultiSelect(true);
+                    return list;
+                },
+                () -> { hasChanges = true; updateMaxScroll(); },
+                "minecraft:potion", SearchableEffectList::displayName, false);
+        CompositeCategoryTab enchantEffectTab = new CompositeCategoryTab(
+                enchantmentCategory.id(), "editor.historystages.tab.enchant_effects",
+                "editor.historystages.tooltip.enchant_effects",
+                List.of(new CompositeCategoryTab.Section(enchantmentTab,
+                                "editor.historystages.enchant_effects.section.enchantments"),
+                        new CompositeCategoryTab.Section(effectTab,
+                                "editor.historystages.enchant_effects.section.effects")),
+                loadScope);
+        enchantEffectTab.load(e);
+        this.categoryTabs.put(2, enchantEffectTab);
         this.editIcon = e.getIcon();
         this.editScrollCompletion = e.getScrollCompletion();
         entityState.load(e);
@@ -679,7 +719,7 @@ public class StageDetailScreen extends Screen {
         //
         // No load(e) here: entityState.load(e) above already filled all three lists, and that is
         // the only thing an entity tab's load does.
-        this.categoryTabs.put(7, new CompositeCategoryTab(
+        this.categoryTabs.put(8, new CompositeCategoryTab(
                 attackCategory.id(), "editor.historystages.tab.entities",
                 "editor.historystages.tooltip.entities",
                 List.of(new CompositeCategoryTab.Section(attackTab,
@@ -720,7 +760,7 @@ public class StageDetailScreen extends Screen {
                         NAMED_LOCK_ENTRY_ADAPTER);
         modTabLocal.load(e);
         this.modTab = modTabLocal;
-        this.categoryTabs.put(3, modTabLocal);
+        this.categoryTabs.put(4, modTabLocal);
 
         // Addon categories take their place in the strip after the built-ins, provided they
         // registered an editor. One without an editor still gates and still stores — it simply
@@ -2656,6 +2696,19 @@ public class StageDetailScreen extends Screen {
                         contextMenu.addEntry(Component.translatable("editor.historystages.context.trade_levels").getString(),
                                 () -> tradeLevelsPopup.show(entryValue,
                                         tradeProfessionTab.levelsFor(entryValue)));
+                    }
+                    if (sectionAt(tabIdx) instanceof LevelledEntryCategoryTab levelled) {
+                        contextMenu.addEntry(Component.translatable("editor.historystages.context.min_level").getString(),
+                                () -> this.minecraft.setScreen(new CountInputScreen(this,
+                                        Component.translatable("editor.historystages.dialog.min_level"),
+                                        entryValue, levelled.minLevel(entryIdx), 1, 255,
+                                        level -> levelled.setMinLevel(entryIdx, level))));
+                        if (levelled.hasLockItemsSwitch()) {
+                            contextMenu.addEntry(Component.translatable(levelled.lockItems(entryIdx)
+                                            ? "editor.historystages.context.lock_items_off"
+                                            : "editor.historystages.context.lock_items_on").getString(),
+                                    () -> levelled.toggleLockItems(entryIdx));
+                        }
                     }
                     addDeclaredEntryActions(tabIdx, entryIdx);
                     contextMenu.addEntry(Component.translatable("editor.historystages.copy_id").getString(), () -> { Minecraft.getInstance().keyboardHandler.setClipboard(entryValue); EditorToastHandler.copiedToClipboard(entryValue); });
