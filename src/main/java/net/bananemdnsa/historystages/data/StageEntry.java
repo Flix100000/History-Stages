@@ -82,6 +82,22 @@ public class StageEntry {
     @JsonAdapter(FluidEntryListAdapter.class)
     private List<FluidEntry> fluids;
 
+    /**
+     * Gated enchantments. Read off the stack like fluids, so one entry covers every book and every
+     * piece of gear carrying it, and the stations that would apply it.
+     */
+    @JsonAdapter(LevelledLockEntryListAdapter.class)
+    private List<LevelledLockEntry> enchantments;
+
+    /**
+     * Gated potion effects, matched on potion items and at the brewing stand only.
+     *
+     * <p>Both lists stay null while empty, so a stage that uses neither gains no bytes on disk or
+     * on the wire; the save packet has a hard size limit.
+     */
+    @JsonAdapter(LevelledLockEntryListAdapter.class)
+    private List<LevelledLockEntry> effects;
+
     private List<String> recipes;
     private List<String> dimensions;
 
@@ -237,6 +253,24 @@ public class StageEntry {
     /** Returns the full fluid entries. */
     public List<FluidEntry> getFluidEntries() {
         return fluids != null ? fluids : new ArrayList<>();
+    }
+
+    public List<LevelledLockEntry> getEnchantmentEntries() {
+        return enchantments != null ? enchantments : new ArrayList<>();
+    }
+
+    public List<String> getAllEnchantmentIds() {
+        return getEnchantmentEntries().stream().map(LevelledLockEntry::getId)
+                .collect(Collectors.toCollection(ArrayList::new));
+    }
+
+    public List<LevelledLockEntry> getEffectEntries() {
+        return effects != null ? effects : new ArrayList<>();
+    }
+
+    public List<String> getAllEffectIds() {
+        return getEffectEntries().stream().map(LevelledLockEntry::getId)
+                .collect(Collectors.toCollection(ArrayList::new));
     }
 
     /** Fluid IDs only — for the reverse index, the overview counters and the debug log. */
@@ -663,6 +697,14 @@ public class StageEntry {
         this.items = items != null ? new ArrayList<>(items) : new ArrayList<>();
     }
 
+    public void setEnchantmentEntries(List<LevelledLockEntry> entries) {
+        this.enchantments = entries != null && !entries.isEmpty() ? new ArrayList<>(entries) : null;
+    }
+
+    public void setEffectEntries(List<LevelledLockEntry> entries) {
+        this.effects = entries != null && !entries.isEmpty() ? new ArrayList<>(entries) : null;
+    }
+
     /** Sets the gated fluids. */
     public void setFluidEntries(List<FluidEntry> fluids) {
         this.fluids = fluids != null ? new ArrayList<>(fluids) : new ArrayList<>();
@@ -815,6 +857,8 @@ public class StageEntry {
         copy.setModEntries(getModEntries().stream().map(NamedLockEntry::copy).collect(Collectors.toList()));
         copy.setModExceptionEntries(getModExceptionEntries().stream().map(ItemEntry::copy).collect(Collectors.toList()));
         copy.setFluidEntries(getFluidEntries().stream().map(FluidEntry::copy).collect(Collectors.toList()));
+        copy.setEnchantmentEntries(getEnchantmentEntries().stream().map(LevelledLockEntry::copy).collect(Collectors.toList()));
+        copy.setEffectEntries(getEffectEntries().stream().map(LevelledLockEntry::copy).collect(Collectors.toList()));
         copy.setRecipes(getRecipes());
         copy.setDimensions(getDimensions());
         copy.setStructures(getStructures());
