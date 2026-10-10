@@ -37,7 +37,7 @@ public class InteractionActionsPopup {
     private static final String[] ACTION_KEYS = EntityInteractionLockEntry.ALL_ACTIONS.toArray(new String[0]);
 
     private static final int PAD       = 8;
-    private static final int WIDTH     = 300;
+    private static final int MIN_WIDTH = 300;
     private static final int COLS      = 2;
     private static final int HEADER_H  = 18;
     private static final int HINT_H    = 10;
@@ -127,7 +127,7 @@ public class InteractionActionsPopup {
         int rows = (ACTION_KEYS.length + COLS - 1) / COLS;
         int contentH = rows * TOGGLE_H + (rows - 1) * TOGGLE_GAP;
 
-        int popupW = WIDTH;
+        int popupW = popupWidth(font, g.guiWidth());
         int descMaxWidth = popupW - 2 * PAD - 4;
 
         // Reserve enough vertical space for the longest possible description (any action).
@@ -258,6 +258,27 @@ public class InteractionActionsPopup {
         g.drawCenteredString(font,
                 Component.translatable("editor.historystages.lock_actions.btn_done"),
                 doneX + doneW / 2, btnY + 3, doneHov ? 0xFFFFFF : 0xEEEEEE);
+    }
+
+    /**
+     * Wide enough for the title, the hint lines and the status line, which are drawn on one line
+     * each. The descriptions wrap, so they do not count. The fixing hints are the long ones.
+     */
+    private int popupWidth(Font font, int screenW) {
+        int maxLineW = font.width(Component.translatable("editor.historystages.interaction_actions.title"));
+        if (fixing) {
+            maxLineW = Math.max(maxLineW, font.width(Component.translatable("editor.historystages.lock_actions.hint_fixing")));
+            maxLineW = Math.max(maxLineW, font.width(Component.translatable("editor.historystages.lock_actions.hint_fixing_effect")));
+            maxLineW = Math.max(maxLineW, font.width(Component.translatable(
+                    "editor.historystages.lock_actions.fixed_status", ACTION_KEYS.length, ACTION_KEYS.length)));
+        } else {
+            maxLineW = Math.max(maxLineW, font.width(Component.translatable("editor.historystages.interaction_actions.hint")));
+            maxLineW = Math.max(maxLineW, font.width(Component.translatable(
+                    "editor.historystages.interaction_actions.status", ACTION_KEYS.length, ACTION_KEYS.length)));
+        }
+        int needed = Math.max(MIN_WIDTH, maxLineW + 2 * PAD);
+        // Screen-centered, so never wider than the screen.
+        return Math.min(needed, screenW - 8);
     }
 
     private int hintHeight() {
