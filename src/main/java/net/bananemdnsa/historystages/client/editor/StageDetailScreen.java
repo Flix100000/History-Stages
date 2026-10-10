@@ -1834,17 +1834,16 @@ public class StageDetailScreen extends Screen {
                 : editDisplayName + " (" + originalStageId + ")";
         guiGraphics.drawCenteredString(this.font, titleText, this.width / 2, 6, 0xFFFFFF);
 
-        // Stage type badge
-        Badge.draw(guiGraphics, this.font,
-                Component.translatable(isIndividual
-                        ? "editor.historystages.stage_type.individual"
-                        : "editor.historystages.stage_type.global").getString(),
-                10, 4, 0xBBBBBB);
-
         // Thin separator between title and button row
         guiGraphics.fill(10, 19, this.width - 10, 20, 0x40FFFFFF);
 
         // Right-side indicators inline with the button row (y=22..40)
+        String typeLabel = Component.translatable(isIndividual
+                ? "editor.historystages.stage_type.individual"
+                : "editor.historystages.stage_type.global").getString();
+        Badge.draw(guiGraphics, this.font, typeLabel,
+                this.width - 10 - Badge.width(this.font, typeLabel),
+                22 + (FIELD_HEIGHT - Badge.HEIGHT) / 2, 0xBBBBBB);
 
         guiGraphics.fill(10, tabY - 2, this.width - 10, tabY - 1, 0xFF555555);
 
