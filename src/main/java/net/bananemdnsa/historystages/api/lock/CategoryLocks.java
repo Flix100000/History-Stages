@@ -71,7 +71,8 @@ public final class CategoryLocks {
      * whether this player already has its stage. Empty when nothing matches.
      *
      * <p>For an addon whose entries do more than lock: one where the most specific entry wins, or
-     * where an entry can also grant. Raw facts, not a verdict; see {@link LockHit}.
+     * where an entry can also grant. Each hit says both whether its stage is unlocked and whether
+     * it still locks the subject once interchangeable stages are counted in; see {@link LockHit}.
      */
     public static <T> List<LockHit<T>> hits(LockCategory<T> category, Object subject, UUID playerUuid) {
         Object normalized = CategorySubjects.normalize(category.id(), subject);

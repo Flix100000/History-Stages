@@ -153,25 +153,43 @@ public final class CategoryLockResolver {
 
     /**
      * Every entry of {@code category} that matches {@code subject}, stage by stage in
-     * {@code stages}' iteration order, each marked with whether {@code state} has its stage.
+     * {@code stages}' iteration order, each marked with whether {@code state} has its stage and
+     * whether that stage still locks the subject.
      *
      * <p>A stage only contributes when {@link LockCategory#gates} says it gates the subject at
      * all. That keeps the stage-level vetoes in force: an item excepted on a stage reports no hit
      * from that stage's mod entry. The reverse case, a stage gating through a neighbouring
      * category, has no entry of its own to report and therefore yields nothing here.
+     *
+     * <p>"Still locks" follows {@link LockResolution}, so it agrees with {@link #missingStages}:
+     * once an interchangeable stage gating the subject is unlocked, the other interchangeable
+     * stages stop counting. The group is judged over every stage that gates the subject, not only
+     * over the ones with an entry to report, for the same reason.
      */
     public static <T> List<LockHit<T>> hits(
             LockCategory<T> category, Object subject,
             Map<String, StageEntry> stages, StageScope scope, StageStateView state) {
+        java.util.Set<String> flagged = InterchangeableStages.of(scope);
+        boolean groupMet = false;
+        if (!flagged.isEmpty()) {
+            for (String stageId : gatingStages(category, subject, stages)) {
+                if (flagged.contains(stageId) && state.isUnlocked(stageId)) {
+                    groupMet = true;
+                    break;
+                }
+            }
+        }
+
         List<LockHit<T>> found = null;
         for (Map.Entry<String, StageEntry> stage : stages.entrySet()) {
             if (!category.gates(stage.getValue(), subject)) continue;
-            boolean unlocked = state.isUnlocked(stage.getKey());
+            String stageId = stage.getKey();
+            boolean unlocked = state.isUnlocked(stageId);
+            boolean locks = !unlocked && !(groupMet && flagged.contains(stageId));
             for (T entry : category.read(stage.getValue())) {
                 if (!category.matches(entry, subject)) continue;
                 if (found == null) found = new ArrayList<>(2);
-                found.add(new LockHit<>(
-                        stage.getKey(), scope, entry, unlocked));
+                found.add(new LockHit<>(stageId, scope, entry, unlocked, locks));
             }
         }
         return found == null ? List.of() : found;
