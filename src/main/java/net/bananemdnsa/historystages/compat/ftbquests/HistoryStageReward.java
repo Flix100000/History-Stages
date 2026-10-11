@@ -1,5 +1,7 @@
 package net.bananemdnsa.historystages.compat.ftbquests;
 
+import net.bananemdnsa.historystages.data.StageCauses;
+import net.bananemdnsa.historystages.api.stage.StageChangeCause;
 import dev.ftb.mods.ftblibrary.config.ConfigGroup;
 import dev.ftb.mods.ftblibrary.icon.Icon;
 import dev.ftb.mods.ftblibrary.icon.ItemIcon;
@@ -9,26 +11,15 @@ import dev.ftb.mods.ftbquests.quest.reward.RewardType;
 import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.StageManager;
-import net.bananemdnsa.historystages.api.stage.StageEvent;
-import net.bananemdnsa.historystages.network.PacketHandler;
-import net.bananemdnsa.historystages.network.clientbound.StageUnlockedToastPacket;
-import net.bananemdnsa.historystages.network.clientbound.SyncIndividualStagesPacket;
-import net.bananemdnsa.historystages.network.clientbound.SyncStagesPacket;
-import net.bananemdnsa.historystages.data.saveddata.IndividualStageData;
-import net.bananemdnsa.historystages.data.saveddata.StageData;
+import net.bananemdnsa.historystages.api.stage.StageStates;
 import net.bananemdnsa.historystages.util.DebugLogger;
 import net.bananemdnsa.historystages.util.HsRuntimeCategories;
-import net.bananemdnsa.historystages.util.lock.StageLockHelper;
-import net.minecraft.ChatFormatting;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
-import net.neoforged.neoforge.common.NeoForge;
 
 public class HistoryStageReward extends Reward {
     private String stage = "";
@@ -103,187 +94,31 @@ public class HistoryStageReward extends Reward {
         }
     }
 
+    /**
+     * Through {@link StageStates}, like every other unlock. This used to be a hand copy of it,
+     * and the copy drifted: it reloaded every datapack on each claim instead of only when hidden
+     * recipes changed, left the structure and biome caches stale, and was the only relock that
+     * honoured {@code dropOnRevoke}. A quest reward is pack logic, not an admin action, so the
+     * normal unlock is the right one: a logic block or a permanent loss stops it.
+     */
     private void claimGlobal(ServerPlayer player) {
-        StageData data = StageData.get(player.serverLevel());
-        var entry = StageManager.getStages().get(stage);
-        String displayName = entry != null ? entry.getDisplayName() : stage;
-        // The stage's own notify switch, as on every StageStates path.
-        boolean announce = entry == null || entry.resolvedNotify();
-
-        if (remove) {
-            if (!data.hasStage(stage)) return;
-            data.removeStage(stage);
-            data.setDirty();
+        boolean changed = StageCauses.with(StageChangeCause.QUEST, () -> remove
+                ? StageStates.relockGlobal(stage, player.serverLevel())
+                : StageStates.unlockGlobal(stage, player.serverLevel()));
+        if (changed) {
             DebugLogger.runtime(HsRuntimeCategories.STAGE, player.getName().getString(),
-                    "Global stage '" + stage + "' locked by an FTB Quests reward");
-            NeoForge.EVENT_BUS.post(new StageEvent.Locked(stage, displayName));
-
-            if (player.server != null) {
-                player.server.getCommands().performPrefixedCommand(
-                        player.server.createCommandSourceStack().withSuppressedOutput(),
-                        "history reload"
-                );
-            }
-            if (announce) broadcastLockEffects(player, displayName);
-        } else {
-            if (data.hasStage(stage)) return;
-            // A quest reward is pack logic, not an admin action, so a logic block stops it.
-            if (net.bananemdnsa.historystages.data.logic.StageLogicGate.global(stage).isBlocked()) {
-                DebugLogger.runtime(HsRuntimeCategories.STAGE_LOGIC, player.getName().getString(),
-                        "FTB Quests reward for '" + stage + "' refused: blocked by its logic.");
-                return;
-            }
-            if (net.bananemdnsa.historystages.data.relock.LostStages.isLostGlobal(stage, player.serverLevel())) {
-                DebugLogger.runtime(HsRuntimeCategories.RELOCK, player.getName().getString(),
-                        "FTB Quests reward for '" + stage + "' refused: lost for good.");
-                return;
-            }
-            data.addStage(stage);
-            data.setDirty();
-            DebugLogger.runtime(HsRuntimeCategories.STAGE, player.getName().getString(),
-                    "Global stage '" + stage + "' unlocked by an FTB Quests reward");
-            NeoForge.EVENT_BUS.post(new StageEvent.Unlocked(stage, displayName));
-
-            if (player.server != null) {
-                player.server.getCommands().performPrefixedCommand(
-                        player.server.createCommandSourceStack().withSuppressedOutput(),
-                        "history reload"
-                );
-            }
-            String iconId = (entry != null && !entry.getIcon().isEmpty()) ? entry.getIcon() : Config.VISUAL.defaultStageIcon.get();
-            if (announce) broadcastUnlockEffects(player, displayName, iconId);
+                    "Global stage '" + stage + "' " + (remove ? "locked" : "unlocked") + " by an FTB Quests reward");
         }
-
-        PacketHandler.sendToAll(new SyncStagesPacket(data.getUnlockedStages()));
     }
 
     private void claimIndividual(ServerPlayer player) {
-        IndividualStageData data = IndividualStageData.get(player.serverLevel());
-        var entry = StageManager.getIndividualStages().get(stage);
-        String displayName = entry != null ? entry.getDisplayName() : stage;
-        boolean announce = entry == null || entry.resolvedNotify();
-
-        if (remove) {
-            if (!data.hasStage(player.getUUID(), stage)) return;
-            data.removeStage(player.getUUID(), stage);
-            data.setDirty();
+        boolean changed = StageCauses.with(StageChangeCause.QUEST, () -> remove
+                ? StageStates.relockIndividual(stage, player)
+                : StageStates.unlockIndividual(stage, player));
+        if (changed) {
             DebugLogger.runtime(HsRuntimeCategories.STAGE, player.getName().getString(),
-                    "Individual stage '" + stage + "' locked by an FTB Quests reward");
-            NeoForge.EVENT_BUS.post(new StageEvent.IndividualLocked(stage, displayName, player.getUUID()));
-
-            // Drop locked items from inventory
-            if (Config.GAMEPLAY.individualDropOnRevoke.get()) {
-                StageLockHelper.dropLockedItemsForPlayer(player, stage);
-            }
-
-            // Notify only this player
-            if (announce && Config.VISUAL.individualBroadcastChat.get()) {
-                player.sendSystemMessage(
-                        Component.literal("[HistoryStages] ").withStyle(ChatFormatting.RED)
-                                .append(Component.translatable("message.historystages.stage_forgotten", displayName).withStyle(ChatFormatting.WHITE))
-                );
-            }
-            if (announce && Config.VISUAL.individualUseSounds.get()) {
-                player.playNotifySound(SoundEvents.NOTE_BLOCK_BASS.value(), SoundSource.MASTER, 0.75F, 0.5F);
-            }
-        } else {
-            if (data.hasStage(player.getUUID(), stage)) return;
-            if (net.bananemdnsa.historystages.data.logic.StageLogicGate.individual(stage, player.getUUID()).isBlocked()) {
-                DebugLogger.runtime(HsRuntimeCategories.STAGE_LOGIC, player.getName().getString(),
-                        "FTB Quests reward for '" + stage + "' refused: blocked by its logic.");
-                return;
-            }
-            if (net.bananemdnsa.historystages.data.relock.LostStages.isLostIndividual(stage, player.getUUID(), player.serverLevel())) {
-                DebugLogger.runtime(HsRuntimeCategories.RELOCK, player.getName().getString(),
-                        "FTB Quests reward for '" + stage + "' refused: lost for good.");
-                return;
-            }
-            data.addStage(player.getUUID(), stage);
-            data.setDirty();
-            DebugLogger.runtime(HsRuntimeCategories.STAGE, player.getName().getString(),
-                    "Individual stage '" + stage + "' unlocked by an FTB Quests reward");
-            NeoForge.EVENT_BUS.post(new StageEvent.IndividualUnlocked(stage, displayName, player.getUUID()));
-
-            // Notify only this player
-            if (announce && Config.VISUAL.individualBroadcastChat.get()) {
-                String configChat = Config.VISUAL.individualUnlockMessageFormat.get();
-                String finalChat = configChat.replace("{stage}", displayName)
-                        .replace("{player}", player.getName().getString())
-                        .replace("&", "\u00a7");
-                player.sendSystemMessage(
-                        Component.literal("[HistoryStages] ").withStyle(ChatFormatting.GRAY)
-                                .append(Component.literal(finalChat))
-                );
-            }
-            if (announce && Config.VISUAL.individualUseActionbar.get()) {
-                String configChat = Config.VISUAL.individualUnlockMessageFormat.get();
-                String finalChat = configChat.replace("{stage}", displayName)
-                        .replace("{player}", player.getName().getString())
-                        .replace("&", "\u00a7");
-                player.displayClientMessage(Component.literal(finalChat), true);
-            }
-            if (announce && Config.VISUAL.individualUseSounds.get()) {
-                player.playNotifySound(SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundSource.MASTER, 0.75F, 1.0F);
-            }
-            if (announce && Config.VISUAL.individualUseToasts.get()) {
-                var indEntry = StageManager.getIndividualStages().get(stage);
-                String indIconId = (indEntry != null && !indEntry.getIcon().isEmpty())
-                        ? indEntry.getIcon() : Config.VISUAL.defaultStageIcon.get();
-                PacketHandler.sendToastToPlayer(new StageUnlockedToastPacket(displayName, indIconId), player);
-            }
+                    "Individual stage '" + stage + "' " + (remove ? "locked" : "unlocked") + " by an FTB Quests reward");
         }
-
-        // Sync individual stages to this player only
-        PacketHandler.sendIndividualStagesToPlayer(
-                SyncIndividualStagesPacket.of(data, player.getUUID()),
-                player
-        );
-        // No recipe reload needed for individual stages
-    }
-
-    private void broadcastUnlockEffects(ServerPlayer source, String stageName, String iconId) {
-        String configChat = Config.VISUAL.unlockMessageFormat.get();
-        String finalChat = configChat.replace("{stage}", stageName).replace("&", "\u00a7");
-
-        source.server.getPlayerList().getPlayers().forEach(player -> {
-            if (Config.VISUAL.broadcastChat.get()) {
-                player.sendSystemMessage(
-                        Component.literal("[HistoryStages] ")
-                                .withStyle(ChatFormatting.GRAY)
-                                .append(Component.literal(finalChat))
-                );
-            }
-            if (Config.VISUAL.useActionbar.get()) {
-                player.displayClientMessage(
-                        Component.translatable("message.historystages.new_era_unlocked", stageName), true
-                );
-            }
-            if (Config.VISUAL.useSounds.get()) {
-                player.playNotifySound(SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundSource.MASTER, 0.75F, 1.0F);
-            }
-        });
-
-        if (Config.VISUAL.useToasts.get()) {
-            PacketHandler.sendToastToAll(new StageUnlockedToastPacket(stageName, iconId));
-        }
-    }
-
-    private void broadcastLockEffects(ServerPlayer source, String stageName) {
-        Component chatMsg = Component.literal("[HistoryStages] ").withStyle(ChatFormatting.RED)
-                .append(Component.translatable("message.historystages.stage_forgotten", stageName).withStyle(ChatFormatting.WHITE));
-        Component actionMsg = Component.translatable("message.historystages.stage_locked_action", stageName);
-
-        source.server.getPlayerList().getPlayers().forEach(player -> {
-            if (Config.VISUAL.broadcastChat.get()) {
-                player.sendSystemMessage(chatMsg);
-            }
-            if (Config.VISUAL.useActionbar.get()) {
-                player.displayClientMessage(actionMsg, true);
-            }
-            if (Config.VISUAL.useSounds.get()) {
-                player.playNotifySound(SoundEvents.BEACON_DEACTIVATE, SoundSource.MASTER, 0.75F, 1.0F);
-            }
-        });
     }
 
     @Override

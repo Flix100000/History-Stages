@@ -1,5 +1,7 @@
 package net.bananemdnsa.historystages.data.relock;
 
+import net.bananemdnsa.historystages.data.StageCauses;
+import net.bananemdnsa.historystages.api.stage.StageChangeCause;
 import net.bananemdnsa.historystages.api.stage.StageScope;
 import net.bananemdnsa.historystages.api.stage.StageStates;
 import net.bananemdnsa.historystages.api.trigger.StateView;
@@ -172,8 +174,12 @@ public final class LockTriggerManager {
         if (lose) {
             if (individual) LostStages.markIndividual(stageId, player); else LostStages.markGlobal(stageId, level);
         }
-        boolean locked = individual ? StageStates.relockIndividual(stageId, player)
-                                    : StageStates.relockGlobal(stageId, level);
+        boolean locked = StageCauses.with(StageChangeCause.LOCK_TRIGGER, () -> {
+            boolean done = individual ? StageStates.relockIndividual(stageId, player)
+                                      : StageStates.relockGlobal(stageId, level);
+            if (done && lose) LostStages.announce(stageId, individual ? player.getUUID() : null);
+            return done;
+        });
         if (!locked) {
             if (lose) {
                 if (individual) LostStages.clearIndividual(stageId, player); else LostStages.clearGlobal(stageId, level);

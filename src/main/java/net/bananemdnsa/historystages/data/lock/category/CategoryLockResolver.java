@@ -1,6 +1,7 @@
 package net.bananemdnsa.historystages.data.lock.category;
 
 import net.bananemdnsa.historystages.api.lock.LockCategory;
+import net.bananemdnsa.historystages.api.lock.LockHit;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -145,6 +146,32 @@ public final class CategoryLockResolver {
                     found.add(stageId);
                     break;
                 }
+            }
+        }
+        return found == null ? List.of() : found;
+    }
+
+    /**
+     * Every entry of {@code category} that matches {@code subject}, stage by stage in
+     * {@code stages}' iteration order, each marked with whether {@code state} has its stage.
+     *
+     * <p>A stage only contributes when {@link LockCategory#gates} says it gates the subject at
+     * all. That keeps the stage-level vetoes in force: an item excepted on a stage reports no hit
+     * from that stage's mod entry. The reverse case, a stage gating through a neighbouring
+     * category, has no entry of its own to report and therefore yields nothing here.
+     */
+    public static <T> List<LockHit<T>> hits(
+            LockCategory<T> category, Object subject,
+            Map<String, StageEntry> stages, StageScope scope, StageStateView state) {
+        List<LockHit<T>> found = null;
+        for (Map.Entry<String, StageEntry> stage : stages.entrySet()) {
+            if (!category.gates(stage.getValue(), subject)) continue;
+            boolean unlocked = state.isUnlocked(stage.getKey());
+            for (T entry : category.read(stage.getValue())) {
+                if (!category.matches(entry, subject)) continue;
+                if (found == null) found = new ArrayList<>(2);
+                found.add(new LockHit<>(
+                        stage.getKey(), scope, entry, unlocked));
             }
         }
         return found == null ? List.of() : found;

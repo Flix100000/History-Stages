@@ -1,5 +1,7 @@
 package net.bananemdnsa.historystages.data.auto;
 
+import net.bananemdnsa.historystages.data.StageCauses;
+import net.bananemdnsa.historystages.api.stage.StageChangeCause;
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.data.StageMode;
@@ -233,11 +235,13 @@ public final class AutoTriggerManager {
 
     private static void unlockStage(String stageId, boolean isIndividual,
                                     ServerPlayer player, ServerLevel level) {
-        if (isIndividual) {
-            StageStates.unlockIndividual(stageId, player);
-        } else {
-            StageStates.unlockGlobal(stageId, level);
-        }
+        StageCauses.run(StageChangeCause.AUTO_TRIGGER, () -> {
+            if (isIndividual) {
+                StageStates.unlockIndividual(stageId, player);
+            } else {
+                StageStates.unlockGlobal(stageId, level);
+            }
+        });
     }
 
     public static void clearProgress(String stageId, boolean isIndividual,

@@ -1,5 +1,7 @@
 package net.bananemdnsa.historystages.data.saveddata;
 
+import net.bananemdnsa.historystages.data.StageCauses;
+import net.bananemdnsa.historystages.api.stage.StageChangeCause;
 import net.bananemdnsa.historystages.api.stage.StageStates;
 import net.bananemdnsa.historystages.data.temporary.TemporaryConfig;
 import net.minecraft.core.HolderLookup;
@@ -165,7 +167,7 @@ public class TemporaryStageData extends SavedData {
             }
             for (String stageId : expired) {
                 globalActive.remove(stageId);
-                StageStates.relockGlobal(stageId, level);
+                StageCauses.run(StageChangeCause.TEMPORARY, () -> StageStates.relockGlobal(stageId, level));
                 long cd = cooldownIfMoreUnlocksLeft(lookup, stageId, getGlobalCount(stageId));
                 if (cd > 0) globalCooldown.put(stageId, cd);
             }
@@ -202,7 +204,7 @@ public class TemporaryStageData extends SavedData {
                 }
                 for (String stageId : expired) {
                     active.remove(stageId);
-                    StageStates.relockIndividual(stageId, player);
+                    StageCauses.run(StageChangeCause.TEMPORARY, () -> StageStates.relockIndividual(stageId, player));
                     long cd = cooldownIfMoreUnlocksLeft(lookup, stageId, getIndividualCount(uuid, stageId));
                     if (cd > 0) {
                         playerCooldown.computeIfAbsent(uuid, p -> new ConcurrentHashMap<>()).put(stageId, cd);
