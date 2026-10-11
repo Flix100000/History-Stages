@@ -300,6 +300,7 @@ public class DebugLogger {
         pw.println("  Research time: " + (s.getResearchTime() > 0 ? s.getResearchTime() + "s (custom)" : "global default"));
         if (!s.getIcon().isEmpty()) pw.println("  Icon: " + s.getIcon());
         if (s.isLoseOnDeath()) pw.println("  Lose on death: yes");
+        if (s.isShareWithTeam()) pw.println("  Share with team: yes" + (s.getMode().allowsTeamSharing() ? "" : " (ignored in this mode)"));
         if (s.isInterchangeable()) pw.println("  Interchangeable: yes");
         // These win over the [lock: ...] each entry below shows for itself (true = locked).
         if (s.getFixedItemLockActions() != null) {

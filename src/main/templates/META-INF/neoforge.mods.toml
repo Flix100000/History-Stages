@@ -57,6 +57,13 @@ ordering="AFTER"
 side="BOTH"
 
 [[dependencies.${mod_id}]]
+modId="ftbteams"
+type="optional"
+versionRange="[2101,)"
+ordering="AFTER"
+side="BOTH"
+
+[[dependencies.${mod_id}]]
 modId="ftbquests"
 type="optional"
 versionRange="[2101,)"

@@ -71,7 +71,7 @@ public class StageSettingsScreen extends Screen {
                     int minPedestalTier, TierMode pedestalTierMode,
                     StageMode mode, AutoTrigger autoTrigger, TemporaryConfig temporary,
                     HiddenDisplayConfig hiddenDisplay, boolean loseOnDeath,
-                    boolean interchangeable,
+                    boolean shareWithTeam, boolean interchangeable,
                     Map<String, Boolean> fixedItemLockActions, Map<String, Boolean> fixedFluidLockActions,
                     Map<String, Boolean> fixedInteractionLockActions,
                     FixedContentActions fixedContentActions,
@@ -149,6 +149,7 @@ public class StageSettingsScreen extends Screen {
     private TemporaryConfig editTemporary;
     private final HiddenDisplayConfig editHiddenDisplay;
     private boolean editLoseOnDeath;
+    private boolean editShareWithTeam;
     private boolean editInterchangeable;
     /**
      * Actions fixed for every item/tag/mod and every fluid, each with its value (true = locked).
@@ -223,6 +224,8 @@ public class StageSettingsScreen extends Screen {
     // Individual card state (only laid out and rendered when isIndividual).
     private int indivCardX, indivCardY, indivCardW, indivCardH;
     private int loseRowY, loseToggleX, loseToggleW;
+    /** Second row; its switch shares the lose-on-death column so the two line up. */
+    private int shareRowY;
     // Individual-card vertical metrics (kept in sync with computeIndividualCardHeight()).
     private static final int INDIV_BODY_TOP = 28;
     /** The switch decides its own height; the card lays out around whatever that is. */
@@ -299,6 +302,7 @@ public class StageSettingsScreen extends Screen {
     /** Animation state of the two card switches. */
     private final ToggleControl.State lockHintsToggle = new ToggleControl.State();
     private final ToggleControl.State loseToggle = new ToggleControl.State();
+    private final ToggleControl.State shareToggle = new ToggleControl.State();
     private final ToggleControl.State interchangeableToggle = new ToggleControl.State();
     /** One state for both notify switches: only one of them is ever on screen. */
     private final ToggleControl.State notifyToggle = new ToggleControl.State();
@@ -317,7 +321,7 @@ public class StageSettingsScreen extends Screen {
                                int minPedestalTier, TierMode pedestalTierMode,
                                StageMode mode, AutoTrigger autoTrigger, TemporaryConfig temporary,
                                HiddenDisplayConfig hiddenDisplay, boolean loseOnDeath,
-                               boolean interchangeable,
+                               boolean shareWithTeam, boolean interchangeable,
                                Map<String, Boolean> fixedItemLockActions, Map<String, Boolean> fixedFluidLockActions,
                                Map<String, Boolean> fixedInteractionLockActions,
                                FixedContentActions fixedContentActions,
@@ -341,6 +345,7 @@ public class StageSettingsScreen extends Screen {
         this.editTemporary = temporary;
         this.editHiddenDisplay = hiddenDisplay != null ? hiddenDisplay : new HiddenDisplayConfig();
         this.editLoseOnDeath = loseOnDeath;
+        this.editShareWithTeam = shareWithTeam;
         this.editInterchangeable = interchangeable;
         this.editFixedItemActions = copyOrNull(fixedItemLockActions);
         this.editFixedFluidActions = copyOrNull(fixedFluidLockActions);
@@ -1227,8 +1232,11 @@ public class StageSettingsScreen extends Screen {
         indivCardH = computeIndividualCardHeight();
 
         loseRowY = indivCardY + INDIV_BODY_TOP;
-        String label = Component.translatable("editor.historystages.individual.lose_on_death").getString();
-        loseToggleX = indivCardX + 12 + this.font.width(label) + 8;
+        shareRowY = loseRowY + INDIV_TOGGLE_H + INDIV_HINT_GAP + INDIV_HINT_H + LOCK_ROW_GAP;
+        int labelW = Math.max(
+                this.font.width(Component.translatable("editor.historystages.individual.lose_on_death").getString()),
+                this.font.width(Component.translatable("editor.historystages.individual.share_with_team").getString()));
+        loseToggleX = indivCardX + 12 + labelW + 8;
         loseToggleW = ToggleControl.width(this.font);
     }
 
@@ -1279,9 +1287,10 @@ public class StageSettingsScreen extends Screen {
         return INDIV_BODY_TOP + rows * row + (rows - 1) * LOCK_ROW_GAP + INDIV_BOTTOM_PAD;
     }
 
-    /** Individual-card height (scroll-invariant): one toggle row plus its hint line. */
+    /** Individual-card height (scroll-invariant): two toggle rows, each with its hint line. */
     private int computeIndividualCardHeight() {
-        return INDIV_BODY_TOP + INDIV_TOGGLE_H + INDIV_HINT_GAP + INDIV_HINT_H + INDIV_BOTTOM_PAD;
+        int row = INDIV_TOGGLE_H + INDIV_HINT_GAP + INDIV_HINT_H;
+        return INDIV_BODY_TOP + 2 * row + LOCK_ROW_GAP + INDIV_BOTTOM_PAD;
     }
 
     /**
@@ -1517,7 +1526,7 @@ public class StageSettingsScreen extends Screen {
         // abandons by closing without saving. Copy it out, same as it was copied in.
         onSave.onSave(editStageId, editDisplayName, editResearchTime, editMinTier, editTierMode,
                 editMode, editAutoTrigger, editTemporary, editHiddenDisplay, editLoseOnDeath,
-                editInterchangeable, copyOrNull(editFixedItemActions), copyOrNull(editFixedFluidActions),
+                editShareWithTeam, editInterchangeable, copyOrNull(editFixedItemActions), copyOrNull(editFixedFluidActions),
                 copyOrNull(editFixedInteractionActions),
                 new FixedContentActions(editFixedEnchantmentActions, editFixedEffectActions).copy(),
                 editFixedSpawnRule,
@@ -2035,6 +2044,21 @@ public class StageSettingsScreen extends Screen {
         drawSmallText(g,
                 Component.translatable("editor.historystages.individual.lose_on_death.hint").getString(),
                 labelX, loseRowY + INDIV_TOGGLE_H + INDIV_HINT_GAP, 0x888888);
+
+        // Temporary and conditional stages never share, so the switch goes grey there, the same
+        // way the re-unlock switch does without lock triggers.
+        boolean canShare = editMode.allowsTeamSharing();
+        g.drawString(this.font,
+                Component.translatable("editor.historystages.individual.share_with_team").getString(),
+                labelX, shareRowY + 3, canShare ? 0xAAAAAA : 0x666666, false);
+        shareToggle.update(editShareWithTeam, canShare
+                ? ToggleControl.segmentAt(this.font, loseToggleX, shareRowY, mouseX, mouseY) : null);
+        ToggleControl.draw(g, this.font, loseToggleX, shareRowY, editShareWithTeam, shareToggle, !canShare);
+        drawSmallText(g,
+                Component.translatable(canShare
+                        ? "editor.historystages.individual.share_with_team.hint"
+                        : "editor.historystages.individual.share_with_team.hint_mode").getString(),
+                labelX, shareRowY + INDIV_TOGGLE_H + INDIV_HINT_GAP, canShare ? 0x888888 : 0xFFAA00);
     }
 
     /**
@@ -2180,6 +2204,14 @@ public class StageSettingsScreen extends Screen {
             // underneath it that should get it instead.
             if (editLoseOnDeath != losePicked) {
                 editLoseOnDeath = losePicked;
+                onDisplayChanged();
+            }
+            return true;
+        }
+        if (losePicked != null && mouseY >= shareRowY && mouseY < shareRowY + INDIV_TOGGLE_H) {
+            // Greyed out in temporary and conditional mode: swallow the click, change nothing.
+            if (editMode.allowsTeamSharing() && editShareWithTeam != losePicked) {
+                editShareWithTeam = losePicked;
                 onDisplayChanged();
             }
             return true;

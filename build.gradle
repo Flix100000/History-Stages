@@ -178,8 +178,9 @@ dependencies {
 
     // FTB Quests targets MC 1.21.1 (2101.x). FTBQuests for MC 1.21 (2100.x) never left beta and
     // has broken tooltips for custom tasks/rewards. Teams has to be on the compile classpath too:
-    // quest team data hands out FTB Teams types. Architectury is only there because FTB Quests
-    // will not start without it.
+    // quest team data hands out FTB Teams types, and team stage sharing asks FTB Teams directly.
+    // Architectury is on the compile classpath because FTB Teams' events are Architectury events.
+    compileOnly "curse.maven:architectury-api-419699:8492726"
     compileOnly "curse.maven:ftb-library-forge-404465:8569579"
     compileOnly "curse.maven:ftb-teams-forge-404468:8724782"
     compileOnly "curse.maven:ftb-quests-forge-289412:8730556"
