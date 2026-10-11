@@ -9,6 +9,7 @@ import net.bananemdnsa.historystages.data.ItemEntry;
 import net.bananemdnsa.historystages.data.NbtMatcher;
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.StageManager;
+import net.bananemdnsa.historystages.data.StagePaths;
 import net.bananemdnsa.historystages.data.lock.engine.CategoryLockIndexes;
 import net.bananemdnsa.historystages.data.display.TextOverrideHolder;
 import net.bananemdnsa.historystages.data.lock.NamedLockEntry;
@@ -31,8 +32,9 @@ import java.util.function.Predicate;
  * <p>The hidden-display mode is stage-wide; only the REPLACE text varies per item via
  * overrides. When an item is locked by several stages, name and tooltip are resolved
  * <b>independently</b>; for each axis the winner is the stage that matches the item most
- * specifically — explicit item entry (3) &gt; tag (2) &gt; mod (1) — with ties broken on
- * stage iteration order, where global stages are visited first. A per-item REPLACE override
+ * specifically — explicit item entry (3) &gt; tag (2) &gt; mod (1). On a tie a global stage
+ * beats an individual one, and within a scope the stage that sorts first by folder path and
+ * id wins, the same order the overview shows. A per-item REPLACE override
  * only applies when that axis won via an explicit item entry.</p>
  *
  * <p>Lock hints are resolved independently of name and tooltip: any matching locked stage
@@ -78,9 +80,10 @@ public final class HiddenDisplayResolver {
         Accumulator acc = new Accumulator();
         // Global stages run first, so on an equal match score the global stage keeps the win.
         collect(CategoryLockIndexes.globalCandidates(itemId, modId, item),
-                StageManager.getStages(), ClientStageCache::isStageUnlocked, itemId, modId, stack, acc);
+                StageManager.getStages(), false, ClientStageCache::isStageUnlocked,
+                itemId, modId, stack, acc);
         collect(CategoryLockIndexes.individualCandidates(itemId, modId, item),
-                StageManager.getIndividualStages(), ClientIndividualStageCache::isStageUnlocked,
+                StageManager.getIndividualStages(), true, ClientIndividualStageCache::isStageUnlocked,
                 itemId, modId, stack, acc);
 
         if (acc.nameMode == DisplayMode.OFF && acc.tooltipMode == DisplayMode.OFF && acc.showLockHints) {
@@ -93,6 +96,8 @@ public final class HiddenDisplayResolver {
     private static final class Accumulator {
         int bestNameScore;
         int bestTooltipScore;
+        String bestNameRank;
+        String bestTooltipRank;
         DisplayMode nameMode = DisplayMode.OFF;
         String nameText = "";
         DisplayMode tooltipMode = DisplayMode.OFF;
@@ -102,6 +107,7 @@ public final class HiddenDisplayResolver {
 
     private static void collect(Collection<String> candidateIds,
                                 Map<String, StageEntry> stages,
+                                boolean individual,
                                 Predicate<String> isUnlocked,
                                 String itemId, String modId, ItemStack stack,
                                 Accumulator acc) {
@@ -133,18 +139,33 @@ public final class HiddenDisplayResolver {
 
             if (!cfg.isShowLockHints()) acc.showLockHints = false;
 
-            // Strict > keeps the first stage on ties (iteration order).
-            if (cfg.getNameMode() != DisplayMode.OFF && score > acc.bestNameScore) {
+            // The candidates arrive in hash-map order, so a tie can't go to "whoever came first"
+            // or the winner would change between reloads. It goes to the stage that sorts first
+            // in the overview instead, and the scope prefix keeps a global stage ahead of any
+            // individual one.
+            String rank = (individual ? "1:" : "0:")
+                    + StagePaths.join(StageManager.getStageFolder(stageId, individual), stageId);
+            if (cfg.getNameMode() != DisplayMode.OFF
+                    && beats(score, rank, acc.bestNameScore, acc.bestNameRank)) {
                 acc.bestNameScore = score;
+                acc.bestNameRank = rank;
                 acc.nameMode = cfg.getNameMode();
                 acc.nameText = resolveText(cfg.getNameText(), holder.getNameTextOverride());
             }
-            if (cfg.getTooltipMode() != DisplayMode.OFF && score > acc.bestTooltipScore) {
+            if (cfg.getTooltipMode() != DisplayMode.OFF
+                    && beats(score, rank, acc.bestTooltipScore, acc.bestTooltipRank)) {
                 acc.bestTooltipScore = score;
+                acc.bestTooltipRank = rank;
                 acc.tooltipMode = cfg.getTooltipMode();
                 acc.tooltipText = resolveText(cfg.getTooltipText(), holder.getTooltipTextOverride());
             }
         }
+    }
+
+    /** Higher score wins; on equal score the lower rank does. A null best rank means no winner yet. */
+    private static boolean beats(int score, String rank, int bestScore, String bestRank) {
+        if (score != bestScore) return score > bestScore;
+        return bestRank == null || rank.compareTo(bestRank) < 0;
     }
 
     /** Override wins over the stage default; either may be empty. */

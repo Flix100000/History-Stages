@@ -7,6 +7,7 @@ import net.bananemdnsa.historystages.data.ItemEntry;
 import net.bananemdnsa.historystages.data.NbtMatcher;
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.StageManager;
+import net.bananemdnsa.historystages.data.StagePaths;
 import net.bananemdnsa.historystages.data.lock.engine.CategoryLockIndexes;
 import net.bananemdnsa.historystages.research.BoosterUtil;
 import net.bananemdnsa.historystages.research.ResearchBooster;
@@ -38,6 +39,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -150,7 +152,7 @@ public class TooltipEventHandler {
 
         List<GatingStage> totalRequiredStages = gatingStages(
                 CategoryLockIndexes.globalCandidates(itemID, modID, item),
-                StageManager.getStages(), itemID, modID, stack);
+                StageManager.getStages(), false, itemID, modID, stack);
         boolean isCurrentlyLocked = isLocked(StageScope.GLOBAL, totalRequiredStages, ClientStageStates.global());
 
         // Dual-phase phase-1 indicator
@@ -171,7 +173,7 @@ public class TooltipEventHandler {
         // --- INDIVIDUAL STAGES TOOLTIP ---
         List<GatingStage> individualRequiredStages = gatingStages(
                 CategoryLockIndexes.individualCandidates(itemID, modID, item),
-                StageManager.getIndividualStages(), itemID, modID, stack);
+                StageManager.getIndividualStages(), true, itemID, modID, stack);
         boolean isIndividuallyLocked = isLocked(StageScope.INDIVIDUAL, individualRequiredStages,
                 ClientStageStates.individual());
 
@@ -193,7 +195,7 @@ public class TooltipEventHandler {
      * that turns out not to match, never omit one that does. {@link #listsItem} settles it.
      */
     private static List<GatingStage> gatingStages(Collection<String> candidateIds,
-                                                  Map<String, StageEntry> stages,
+                                                  Map<String, StageEntry> stages, boolean individual,
                                                   String itemID, String modID, ItemStack stack) {
         if (candidateIds.isEmpty()) return List.of();
 
@@ -203,6 +205,12 @@ public class TooltipEventHandler {
             if (stage != null && listsItem(stage, itemID, modID, stack)) {
                 found.add(new GatingStage(stageID, stage));
             }
+        }
+        // The candidates come in hash-map order, which would reshuffle the "you still need"
+        // lines after a reload. Show them in the order the overview lists them.
+        if (found.size() > 1) {
+            found.sort(Comparator.comparing(entry -> StagePaths.join(
+                    StageManager.getStageFolder(entry.id(), individual), entry.id())));
         }
         return found;
     }
