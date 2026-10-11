@@ -1,6 +1,7 @@
 package net.bananemdnsa.historystages.data.lock.engine;
 
 import net.bananemdnsa.historystages.util.DebugLogger;
+import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
@@ -68,7 +69,7 @@ public final class FluidContent {
             return stack.getCapability(Capabilities.FluidHandler.ITEM);
         } catch (Exception e) {
             ResourceLocation item = BuiltInRegistries.ITEM.getKey(stack.getItem());
-            DebugLogger.runtimeThrottled("Fluid Locks", "fluid-cap-" + item,
+            DebugLogger.runtimeThrottled(HsRuntimeCategories.FLUID_CONTENT, "fluid-cap-" + item,
                     "Asking " + item + " what fluid it holds failed: " + e
                             + ". Treated as holding none.");
             return null;

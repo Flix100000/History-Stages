@@ -4,6 +4,7 @@ import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.util.DebugLogger;
+import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import net.bananemdnsa.historystages.util.lock.LootLocks;
 import net.bananemdnsa.historystages.data.saveddata.StageData;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -55,7 +56,7 @@ public class MobLootLockHandler {
 
         if (replacedCount > 0) {
             ResourceLocation entityType = BuiltInRegistries.ENTITY_TYPE.getKey(event.getEntity().getType());
-            DebugLogger.runtimeThrottled("Mob Loot Lock", "mobloot_" + entityType,
+            DebugLogger.runtimeThrottled(HsRuntimeCategories.MOB_LOOT_LOCK, "mobloot_" + entityType,
                     "Replaced " + replacedCount + " locked drop(s) from '" + entityType + "' [action: loot]");
         }
     }

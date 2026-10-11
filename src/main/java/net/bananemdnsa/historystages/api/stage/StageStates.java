@@ -22,8 +22,10 @@ import net.neoforged.neoforge.common.NeoForge;
 
 import net.bananemdnsa.historystages.data.logic.StageLogicGate;
 import net.bananemdnsa.historystages.util.DebugLogger;
+import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Reading and setting stage state — the named place the parent design asks for in §6.3.
@@ -61,6 +63,13 @@ public final class StageStates {
      */
     public record UnlockOutcome(boolean unlocked, boolean wasBlocked) {}
 
+    /** Every loaded stage definition, global first, then individual. A read-only snapshot. */
+    public static List<StageEntry> loadedStages() {
+        List<StageEntry> out = new ArrayList<>(StageManager.getStages().values());
+        out.addAll(StageManager.getIndividualStages().values());
+        return List.copyOf(out);
+    }
+
     /**
      * Unlocks a global stage. No-op if already unlocked, and refused while the stage is blocked
      * by its logic (see {@link StageLogicGate}). Returns true if the stage was newly unlocked.
@@ -72,12 +81,12 @@ public final class StageStates {
         if (StageData.get(level).hasStage(stageId)) return false;
         // Throttled: a conditional stage retries every second while its states hold.
         if (LostStages.isLostGlobal(stageId, level)) {
-            DebugLogger.runtimeThrottled("Re-lock", "refused-lost:" + stageId,
+            DebugLogger.runtimeThrottled(HsRuntimeCategories.RELOCK, "refused-lost:" + stageId,
                     "Unlock of '" + stageId + "' refused: lost for good.");
             return false;
         }
         if (StageLogicGate.global(stageId).isBlocked()) {
-            DebugLogger.runtimeThrottled("Stage Logic", "refused-logic:" + stageId,
+            DebugLogger.runtimeThrottled(HsRuntimeCategories.STAGE_LOGIC, "refused-logic:" + stageId,
                     "Unlock of '" + stageId + "' refused: blocked by its logic.");
             return false;
         }
@@ -102,6 +111,10 @@ public final class StageStates {
 
         StageEntry entry = StageManager.getStages().get(stageId);
         String displayName = entry != null ? entry.getDisplayName() : stageId;
+        // Logged here rather than by each caller, so research, triggers, scripts and addons all
+        // show up — before, only the commands wrote a line.
+        DebugLogger.runtime(HsRuntimeCategories.STAGE,
+                "Global stage '" + stageId + "' (" + displayName + ") unlocked");
 
         NeoForge.EVENT_BUS.post(new StageEvent.Unlocked(stageId, displayName));
 
@@ -149,12 +162,12 @@ public final class StageStates {
     public static boolean unlockIndividual(String stageId, ServerPlayer player) {
         if (IndividualStageData.get(player.serverLevel()).hasStage(player.getUUID(), stageId)) return false;
         if (LostStages.isLostIndividual(stageId, player.getUUID(), player.serverLevel())) {
-            DebugLogger.runtimeThrottled("Re-lock", "refused-lost:" + stageId + ":" + player.getUUID(),
+            DebugLogger.runtimeThrottled(HsRuntimeCategories.RELOCK, "refused-lost:" + stageId + ":" + player.getUUID(),
                     "<" + player.getName().getString() + "> Unlock of '" + stageId + "' refused: lost for good.");
             return false;
         }
         if (StageLogicGate.individual(stageId, player.getUUID()).isBlocked()) {
-            DebugLogger.runtimeThrottled("Stage Logic", "refused-logic:" + stageId + ":" + player.getUUID(),
+            DebugLogger.runtimeThrottled(HsRuntimeCategories.STAGE_LOGIC, "refused-logic:" + stageId + ":" + player.getUUID(),
                     "<" + player.getName().getString() + "> Unlock of '" + stageId + "' refused: blocked by its logic.");
             return false;
         }
@@ -184,6 +197,8 @@ public final class StageStates {
 
         StageEntry entry = StageManager.getIndividualStages().get(stageId);
         String displayName = entry != null ? entry.getDisplayName() : stageId;
+        DebugLogger.runtime(HsRuntimeCategories.STAGE, player.getName().getString(),
+                "Individual stage '" + stageId + "' (" + displayName + ") unlocked");
 
         // Posted with the player at hand, so a "revoke when" reacting to it reaches this very
         // player object rather than having to look it up by UUID.
@@ -225,6 +240,8 @@ public final class StageStates {
 
         StageEntry entry = StageManager.getStages().get(stageId);
         String displayName = entry != null ? entry.getDisplayName() : stageId;
+        DebugLogger.runtime(HsRuntimeCategories.STAGE,
+                "Global stage '" + stageId + "' (" + displayName + ") locked again");
 
         NeoForge.EVENT_BUS.post(new StageEvent.Locked(stageId, displayName));
 
@@ -265,6 +282,8 @@ public final class StageStates {
 
         StageEntry entry = StageManager.getIndividualStages().get(stageId);
         String displayName = entry != null ? entry.getDisplayName() : stageId;
+        DebugLogger.runtime(HsRuntimeCategories.STAGE, player.getName().getString(),
+                "Individual stage '" + stageId + "' (" + displayName + ") locked again");
 
         net.bananemdnsa.historystages.events.StageLogicRevocationHandler.withActor(player, () ->
                 NeoForge.EVENT_BUS.post(new StageEvent.IndividualLocked(stageId, displayName, player.getUUID())));

@@ -3,6 +3,7 @@ package net.bananemdnsa.historystages.events.lock;
 import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.util.DebugLogger;
+import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import net.bananemdnsa.historystages.util.lock.LockFeedback;
 import net.bananemdnsa.historystages.util.lock.LockGate;
 import net.bananemdnsa.historystages.util.lock.LockMessages;
@@ -39,7 +40,7 @@ public class EnchantmentLockHandler {
         if (locked) {
             event.setCanceled(true);
 
-            DebugLogger.runtimeThrottled("Enchantment Lock", "anvil_" + serverPlayer.getUUID(),
+            DebugLogger.runtimeThrottled(HsRuntimeCategories.ENCHANTMENT_LOCK, "anvil_" + serverPlayer.getUUID(),
                     "<" + serverPlayer.getName().getString() + "> Anvil use blocked: right slot contains locked item '"
                             + BuiltInRegistries.ITEM.getKey(right.getItem()) + "'");
 

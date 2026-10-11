@@ -11,6 +11,7 @@ import net.bananemdnsa.historystages.client.cache.ClientStageStates;
 import net.bananemdnsa.historystages.network.clientbound.LockFeedbackPacket;
 import net.bananemdnsa.historystages.network.PacketHandler;
 import net.bananemdnsa.historystages.util.DebugLogger;
+import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
@@ -102,7 +103,7 @@ public class InteractionLockHandler {
 
         if (isClient || !(interactor instanceof ServerPlayer player)) return;
 
-        DebugLogger.runtimeThrottled("Entity Interaction Lock", "entity_interact_" + player.getUUID() + "_" + entityId,
+        DebugLogger.runtimeThrottled(HsRuntimeCategories.ENTITY_INTERACTION_LOCK, "entity_interact_" + player.getUUID() + "_" + entityId,
                 "<" + player.getName().getString() + "> Interaction [" + action + "] with '" + entityId + "' blocked — missing stages: " + lockedStages);
 
         long now = System.currentTimeMillis();

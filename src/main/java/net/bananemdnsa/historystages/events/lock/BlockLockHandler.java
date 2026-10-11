@@ -3,6 +3,7 @@ package net.bananemdnsa.historystages.events.lock;
 import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.util.DebugLogger;
+import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import net.bananemdnsa.historystages.util.lock.LockFeedback;
 import net.bananemdnsa.historystages.util.lock.LockGate;
 import net.bananemdnsa.historystages.util.lock.LockMessages;
@@ -57,7 +58,7 @@ public class BlockLockHandler {
             boolean isClient = event.getEntity().level().isClientSide();
             boolean hasGui = !isClient && state.getMenuProvider(event.getEntity().level(), pos) != null;
             if (hasGui && event.getEntity() instanceof ServerPlayer sp) {
-                DebugLogger.runtimeThrottled("Block Lock", "gui_" + sp.getUUID() + "_" + BuiltInRegistries.BLOCK.getKey(block),
+                DebugLogger.runtimeThrottled(HsRuntimeCategories.BLOCK_LOCK, "gui_" + sp.getUUID() + "_" + BuiltInRegistries.BLOCK.getKey(block),
                         "<" + sp.getName().getString() + "> GUI open of '" + BuiltInRegistries.BLOCK.getKey(block) + "' at " + pos.toShortString() + " blocked [action: gui]");
                 LockFeedback.sendActionbar(sp, FEEDBACK_CATEGORY, LockMessages.blockLocked());
             }
@@ -117,7 +118,7 @@ public class BlockLockHandler {
 
         if (locked) {
             event.setCanceled(true);
-            DebugLogger.runtimeThrottled("Block Lock", "break_" + sp.getUUID() + "_" + state.getBlock(),
+            DebugLogger.runtimeThrottled(HsRuntimeCategories.BLOCK_LOCK, "break_" + sp.getUUID() + "_" + state.getBlock(),
                     "<" + sp.getName().getString() + "> Break of '" + BuiltInRegistries.BLOCK.getKey(state.getBlock()) + "' at " + event.getPos().toShortString() + " blocked — no drops [action: break]");
 
             // Manually remove block without drops

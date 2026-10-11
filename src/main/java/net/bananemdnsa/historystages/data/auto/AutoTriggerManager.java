@@ -17,6 +17,7 @@ import net.bananemdnsa.historystages.data.saveddata.IndividualStageData;
 import net.bananemdnsa.historystages.data.saveddata.LostStagesData;
 import net.bananemdnsa.historystages.data.saveddata.StageData;
 import net.bananemdnsa.historystages.util.DebugLogger;
+import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -261,7 +262,7 @@ public final class AutoTriggerManager {
         // load looks deleted.
         if (StageManager.getLoadingMessages().stream()
                 .anyMatch(m -> m.level() == StageManager.MessageLevel.ERROR)) {
-            DebugLogger.runtime("Re-lock", "Lock progress and lost-stage marks not pruned: the last stage load had errors.");
+            DebugLogger.runtime(HsRuntimeCategories.RELOCK, "Lock progress and lost-stage marks not pruned: the last stage load had errors.");
             return;
         }
         LockTriggerManager.pruneOrphans(level);

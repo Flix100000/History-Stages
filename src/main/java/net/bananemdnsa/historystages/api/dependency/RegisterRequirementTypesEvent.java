@@ -1,5 +1,8 @@
 package net.bananemdnsa.historystages.api.dependency;
 
+import net.bananemdnsa.historystages.data.diagnostics.AddonRegistrations;
+import net.bananemdnsa.historystages.data.diagnostics.ApiExtension;
+import net.bananemdnsa.historystages.data.diagnostics.ApiOwners;
 import net.bananemdnsa.historystages.data.dependency.RequirementTypes;
 
 import net.bananemdnsa.historystages.api.dependency.Requirement;
@@ -34,5 +37,6 @@ public class RegisterRequirementTypesEvent extends Event implements IModBusEvent
 
     public void register(Requirement requirement) {
         RequirementTypes.register(requirement);
+        AddonRegistrations.record(ApiOwners.active(), requirement.id(), ApiExtension.REQUIREMENT);
     }
 }

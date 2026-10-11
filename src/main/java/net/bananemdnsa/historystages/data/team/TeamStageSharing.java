@@ -9,6 +9,7 @@ import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.data.saveddata.IndividualStageData;
 import net.bananemdnsa.historystages.data.saveddata.TeamSharePending;
 import net.bananemdnsa.historystages.util.DebugLogger;
+import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -94,12 +95,12 @@ public final class TeamStageSharing {
             if (player == null) {
                 if (!IndividualStageData.get(server.overworld()).hasStage(mate, stageId)) {
                     pending.addGrant(mate, stageId);
-                    DebugLogger.runtime("Team Share", "Queued '" + stageId + "' for offline teammate " + mate + ".");
+                    DebugLogger.runtime(HsRuntimeCategories.TEAM_SHARE, "Queued '" + stageId + "' for offline teammate " + mate + ".");
                 }
                 continue;
             }
             if (withoutSharing(() -> StageStates.unlockIndividual(stageId, player))) {
-                DebugLogger.runtime("Team Share", player.getName().getString(),
+                DebugLogger.runtime(HsRuntimeCategories.TEAM_SHARE, player.getName().getString(),
                         "Received '" + stageId + "' from teammate " + event.getPlayerUUID() + ".");
             }
         }
@@ -123,7 +124,7 @@ public final class TeamStageSharing {
             }
             // A normal relock, never a permanent loss: the teammate did not trip the lock trigger.
             if (withoutSharing(() -> StageStates.relockIndividual(stageId, player))) {
-                DebugLogger.runtime("Team Share", player.getName().getString(),
+                DebugLogger.runtime(HsRuntimeCategories.TEAM_SHARE, player.getName().getString(),
                         "Lost '" + stageId + "' together with teammate " + event.getPlayerUUID() + ".");
             }
         }
@@ -169,7 +170,7 @@ public final class TeamStageSharing {
                 if (!isShared(stageId) || data.hasStage(player.getUUID(), stageId)) continue;
                 boolean teamHasIt = mates.stream().anyMatch(mate -> data.hasStage(mate, stageId));
                 if (teamHasIt && StageStates.unlockIndividual(stageId, player)) {
-                    DebugLogger.runtime("Team Share", player.getName().getString(),
+                    DebugLogger.runtime(HsRuntimeCategories.TEAM_SHARE, player.getName().getString(),
                             "Caught up on '" + stageId + "' from the team.");
                 }
             }

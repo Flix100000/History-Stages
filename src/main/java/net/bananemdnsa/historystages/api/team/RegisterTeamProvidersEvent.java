@@ -1,5 +1,8 @@
 package net.bananemdnsa.historystages.api.team;
 
+import net.bananemdnsa.historystages.data.diagnostics.AddonRegistrations;
+import net.bananemdnsa.historystages.data.diagnostics.ApiExtension;
+import net.bananemdnsa.historystages.data.diagnostics.ApiOwners;
 import net.bananemdnsa.historystages.data.team.TeamProviders;
 
 import net.neoforged.bus.api.Event;
@@ -26,5 +29,6 @@ public class RegisterTeamProvidersEvent extends Event implements IModBusEvent {
      */
     public void register(String id, TeamProvider provider) {
         TeamProviders.register(id, provider);
+        AddonRegistrations.record(ApiOwners.active(), id, ApiExtension.TEAM_PROVIDER);
     }
 }

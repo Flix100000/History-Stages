@@ -35,7 +35,7 @@ class ApiLoaderLeakGuardTest {
             "RegisterRequirementEditorsEvent", "RegisterTriggerEditorsEvent",
             "RegisterCustomFieldScreensEvent", "RegisterRecipeTypeMetaEvent",
             "RegisterIndividualRecipeSupportEvent",
-            "RegisterTeamProvidersEvent",
+            "RegisterTeamProvidersEvent", "RegisterStageChecksEvent", "RegisterReportSectionsEvent",
             "StageEvent", "StageStates");
 
     @Test

@@ -8,6 +8,7 @@ import net.bananemdnsa.historystages.data.lock.engine.StageLocks;
 import net.bananemdnsa.historystages.data.saveddata.IndividualStageData;
 import net.bananemdnsa.historystages.data.saveddata.StageData;
 import net.bananemdnsa.historystages.util.DebugLogger;
+import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import net.bananemdnsa.historystages.util.lock.BiomeEffectRegistry;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
@@ -253,7 +254,7 @@ public class BiomeLockHandler {
             player.displayClientMessage(msg, true);
         }
 
-        DebugLogger.runtime("Biome Lock", player.getName().getString(),
+        DebugLogger.runtime(HsRuntimeCategories.BIOME_LOCK, player.getName().getString(),
                 "Inside locked biome '" + biomeId + "' — missing stages: " + state.currentLockedStageIds);
     }
 

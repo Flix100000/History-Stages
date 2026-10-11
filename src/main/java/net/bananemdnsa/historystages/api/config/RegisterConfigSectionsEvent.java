@@ -1,5 +1,8 @@
 package net.bananemdnsa.historystages.api.config;
 
+import net.bananemdnsa.historystages.data.diagnostics.AddonRegistrations;
+import net.bananemdnsa.historystages.data.diagnostics.ApiExtension;
+import net.bananemdnsa.historystages.data.diagnostics.ApiOwners;
 import net.bananemdnsa.historystages.data.config.AddonConfigSections;
 
 import net.bananemdnsa.historystages.api.config.AddonConfigSection;
@@ -28,5 +31,6 @@ public class RegisterConfigSectionsEvent extends Event implements IModBusEvent {
 
     public void register(AddonConfigSection section) {
         AddonConfigSections.register(section);
+        AddonRegistrations.record(ApiOwners.active(), section.id(), ApiExtension.CONFIG_SECTION);
     }
 }

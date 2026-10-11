@@ -9,6 +9,7 @@ import net.bananemdnsa.historystages.api.stage.StageScope;
 import net.bananemdnsa.historystages.network.clientbound.LockFeedbackPacket;
 import net.bananemdnsa.historystages.network.PacketHandler;
 import net.bananemdnsa.historystages.util.DebugLogger;
+import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
@@ -53,7 +54,7 @@ public class MobLockHandler {
 
         if (!lockedStages.isEmpty()) {
             event.setCanceled(true);
-            DebugLogger.runtimeThrottled("Mob Attack Lock", "mob_attack_" + player.getUUID() + "_" + entityId,
+            DebugLogger.runtimeThrottled(HsRuntimeCategories.MOB_ATTACK_LOCK, "mob_attack_" + player.getUUID() + "_" + entityId,
                     "<" + player.getName().getString() + "> Attack on '" + entityId + "' blocked — missing stages: " + lockedStages);
 
             long now = System.currentTimeMillis();

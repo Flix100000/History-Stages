@@ -2,6 +2,7 @@ package net.bananemdnsa.historystages.events.lock;
 
 import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.util.DebugLogger;
+import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import net.bananemdnsa.historystages.util.lock.StageLockHelper;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -38,7 +39,7 @@ public class CuriosEquipLockHandler {
         event.setEquipResult(TriState.FALSE);
         if (!isClient) {
             ResourceLocation itemRL = BuiltInRegistries.ITEM.getKey(stack.getItem());
-            DebugLogger.runtime("Curios Lock", player.getName().getString(),
+            DebugLogger.runtime(HsRuntimeCategories.CURIOS_LOCK, player.getName().getString(),
                     "Equipping locked item '" + itemRL + "' in curio slot '"
                             + event.getSlotContext().identifier() + "' — blocked");
             showMessage((ServerPlayer) player);

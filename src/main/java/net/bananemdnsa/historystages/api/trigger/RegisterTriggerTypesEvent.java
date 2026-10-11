@@ -1,5 +1,8 @@
 package net.bananemdnsa.historystages.api.trigger;
 
+import net.bananemdnsa.historystages.data.diagnostics.AddonRegistrations;
+import net.bananemdnsa.historystages.data.diagnostics.ApiExtension;
+import net.bananemdnsa.historystages.data.diagnostics.ApiOwners;
 import net.bananemdnsa.historystages.data.auto.TriggerTypes;
 
 import net.bananemdnsa.historystages.api.trigger.TriggerCondition;
@@ -31,6 +34,7 @@ public class RegisterTriggerTypesEvent extends Event implements IModBusEvent {
 
     public void register(String type, Class<? extends TriggerCondition> conditionClass) {
         TriggerTypes.register(type, conditionClass);
+        AddonRegistrations.record(ApiOwners.active(), type, ApiExtension.TRIGGER_TYPE);
     }
 
     /**
@@ -41,6 +45,7 @@ public class RegisterTriggerTypesEvent extends Event implements IModBusEvent {
     public void register(String type, Class<? extends TriggerCondition> conditionClass,
                          StageScope... scopes) {
         TriggerTypes.register(type, conditionClass, scopes);
+        AddonRegistrations.record(ApiOwners.active(), type, ApiExtension.TRIGGER_TYPE);
     }
 
     /**
@@ -51,10 +56,12 @@ public class RegisterTriggerTypesEvent extends Event implements IModBusEvent {
     public void register(String type, Class<? extends TriggerCondition> conditionClass,
                          TriggerKind kind, StageScope... scopes) {
         TriggerTypes.register(type, conditionClass, kind, scopes);
+        AddonRegistrations.record(ApiOwners.active(), type, ApiExtension.TRIGGER_TYPE);
     }
 
     /** Registers a trigger type of the given kind for both global and individual stages. */
     public void register(String type, Class<? extends TriggerCondition> conditionClass, TriggerKind kind) {
         TriggerTypes.register(type, conditionClass, kind);
+        AddonRegistrations.record(ApiOwners.active(), type, ApiExtension.TRIGGER_TYPE);
     }
 }

@@ -2,6 +2,7 @@ package net.bananemdnsa.historystages.mixin;
 
 import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.util.DebugLogger;
+import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import net.bananemdnsa.historystages.util.lock.LockFeedback;
 import net.bananemdnsa.historystages.util.lock.LockMessages;
 import net.bananemdnsa.historystages.util.lock.StageLockHelper;
@@ -61,7 +62,7 @@ public class EnchantmentMenuMixin {
                 itemId, serverPlayer.getUUID())) {
             cir.setReturnValue(false);
 
-            DebugLogger.runtimeThrottled("Enchantment Lock", "enchant_table_" + serverPlayer.getUUID(),
+            DebugLogger.runtimeThrottled(HsRuntimeCategories.ENCHANTMENT_LOCK, "enchant_table_" + serverPlayer.getUUID(),
                     "<" + serverPlayer.getName().getString() + "> Enchanting table blocked: enchantment '"
                             + enchantRL + "' level " + level + " is locked");
 

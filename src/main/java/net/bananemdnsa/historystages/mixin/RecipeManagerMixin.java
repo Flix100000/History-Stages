@@ -125,13 +125,8 @@ public class RecipeManagerMixin implements RecipeResolutionFilter {
         List<net.bananemdnsa.historystages.data.lock.RecipeIdAudit.MissingRecipe> missing =
                 net.bananemdnsa.historystages.data.lock.RecipeIdAudit.missing(byStage, loaded);
 
-        for (var entry : missing) {
-            net.bananemdnsa.historystages.util.DebugLogger.warn("Recipe Locks",
-                    "Stage '" + entry.stageId() + "' gates recipe '" + entry.recipeId()
-                            + "', which is not loaded. The lock does nothing. Script-generated "
-                            + "ids change when the script is reordered.");
-        }
-
+        // Not logged here: the debug report reads this back in StageManager's registry pass, so
+        // it survives a /history reload and is not added again on every datapack reload.
         net.bananemdnsa.historystages.data.lock.MissingRecipeIds.set(missing);
 
         auditIndividualRecipeTypes();

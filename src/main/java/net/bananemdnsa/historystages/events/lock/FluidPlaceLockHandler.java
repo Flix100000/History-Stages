@@ -4,6 +4,7 @@ import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.data.lock.engine.CategoryLockIndexes;
 import net.bananemdnsa.historystages.data.lock.engine.FluidContent;
 import net.bananemdnsa.historystages.util.DebugLogger;
+import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import net.bananemdnsa.historystages.util.lock.LockFeedback;
 import net.bananemdnsa.historystages.util.lock.LockMessages;
 import net.bananemdnsa.historystages.util.lock.StageLockHelper;
@@ -115,7 +116,7 @@ public class FluidPlaceLockHandler {
 
     private static void report(Player player, String fluidId, String where) {
         if (!(player instanceof ServerPlayer sp)) return;
-        DebugLogger.runtimeThrottled("Fluid Lock", "place_" + sp.getUUID() + "_" + fluidId,
+        DebugLogger.runtimeThrottled(HsRuntimeCategories.FLUID_LOCK, "place_" + sp.getUUID() + "_" + fluidId,
                 "<" + sp.getName().getString() + "> placing '" + fluidId + "' " + where
                         + " blocked [action: place]");
         LockFeedback.sendActionbar(sp, FEEDBACK_CATEGORY, LockMessages.fluidLocked());

@@ -16,6 +16,7 @@ import net.bananemdnsa.historystages.network.clientbound.SyncStageDefinitionsPac
 import net.bananemdnsa.historystages.network.clientbound.SyncStagesPacket;
 import net.bananemdnsa.historystages.screen.ResearchPedestalScreen;
 import net.bananemdnsa.historystages.util.DebugLogger;
+import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import net.bananemdnsa.historystages.data.saveddata.IndividualStageData;
 import net.bananemdnsa.historystages.data.saveddata.StageData;
 import net.bananemdnsa.historystages.util.lock.StageLockHelper;
@@ -109,30 +110,39 @@ public class HistoryStages {
         // registry closes for good.
         modEventBus.addListener((net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent event) ->
                 event.enqueueWork(() -> {
-                    net.neoforged.fml.ModLoader.postEvent(
+                    // Wrapped, so ModLoadingContext names the mod whose listener is running —
+                    // that is how the debug report knows which addons registered what.
+                    net.neoforged.fml.ModLoader.postEventWrapContainerInModOrder(
                             new net.bananemdnsa.historystages.api.lock.RegisterLockCategoriesEvent());
                     net.bananemdnsa.historystages.data.lock.category.LockCategories.freeze();
-                    net.neoforged.fml.ModLoader.postEvent(
+                    net.neoforged.fml.ModLoader.postEventWrapContainerInModOrder(
                             new net.bananemdnsa.historystages.api.trigger.RegisterTriggerTypesEvent());
                     net.bananemdnsa.historystages.data.auto.TriggerTypes.freeze();
-                    net.neoforged.fml.ModLoader.postEvent(
+                    net.neoforged.fml.ModLoader.postEventWrapContainerInModOrder(
                             new net.bananemdnsa.historystages.api.dependency.RegisterRequirementTypesEvent());
                     net.bananemdnsa.historystages.data.dependency.RequirementTypes.freeze();
-                    net.neoforged.fml.ModLoader.postEvent(
+                    net.neoforged.fml.ModLoader.postEventWrapContainerInModOrder(
                             new net.bananemdnsa.historystages.api.settings.RegisterStageSettingsGroupsEvent());
                     net.bananemdnsa.historystages.data.settings.StageSettingsGroups.freeze();
-                    net.neoforged.fml.ModLoader.postEvent(
+                    net.neoforged.fml.ModLoader.postEventWrapContainerInModOrder(
                             new net.bananemdnsa.historystages.api.config.RegisterConfigSectionsEvent());
                     // The freeze is what makes the section list safe to read from the config
                     // packets, which now go to AddonConfigSections directly rather than through a
                     // registry the values had to be copied into first.
                     net.bananemdnsa.historystages.data.config.AddonConfigSections.freeze();
-                    net.neoforged.fml.ModLoader.postEvent(
+                    net.neoforged.fml.ModLoader.postEventWrapContainerInModOrder(
                             new net.bananemdnsa.historystages.api.lock.RegisterIndividualRecipeSupportEvent());
                     net.bananemdnsa.historystages.data.lock.IndividualRecipeSupport.freeze();
-                    net.neoforged.fml.ModLoader.postEvent(
+                    net.neoforged.fml.ModLoader.postEventWrapContainerInModOrder(
                             new net.bananemdnsa.historystages.api.team.RegisterTeamProvidersEvent());
                     net.bananemdnsa.historystages.data.team.TeamProviders.freeze();
+                    net.neoforged.fml.ModLoader.postEventWrapContainerInModOrder(
+                            new net.bananemdnsa.historystages.api.diagnostics.RegisterStageChecksEvent());
+                    net.bananemdnsa.historystages.data.diagnostics.StageChecks.freeze();
+                    net.bananemdnsa.historystages.util.DebugLogger.registerBuiltInSections();
+                    net.neoforged.fml.ModLoader.postEventWrapContainerInModOrder(
+                            new net.bananemdnsa.historystages.api.diagnostics.RegisterReportSectionsEvent());
+                    net.bananemdnsa.historystages.data.diagnostics.ReportSections.freeze();
 
                     // Logged here rather than inside freeze(): LockCategories is unit-tested, and
                     // the test runtime classpath has no Minecraft or NeoForge on it. This line is
@@ -320,7 +330,7 @@ public class HistoryStages {
                     net.bananemdnsa.historystages.network.clientbound.SyncStructureRegistryPacket.fromServer(player),
                     player);
 
-            DebugLogger.runtime("Player Login", player.getName().getString(),
+            DebugLogger.runtime(HsRuntimeCategories.PLAYER_LOGIN, player.getName().getString(),
                     "Synced " + StageManager.getStages().size() + " stage definitions, "
                     + data.getUnlockedStages().size() + " unlocked stages, "
                     + individualData.getUnlockedStages(player.getUUID()).size() + " individual stages");
@@ -376,8 +386,8 @@ public class HistoryStages {
                         shown++;
                     }
 
-                    player.sendSystemMessage(Component.literal("  §8Full report: config/historystages/logs/"));
-                    player.sendSystemMessage(Component.literal("  §8(Disable debug messages in the common config)"));
+                    player.sendSystemMessage(Component.translatable("message.historystages.debug.report"));
+                    player.sendSystemMessage(Component.translatable("message.historystages.debug.disable"));
                 }
             }
         }
@@ -408,7 +418,7 @@ public class HistoryStages {
                 DebugLogger.writeLogFile(StageManager.getStages(), StageManager.getIndividualStages());
 
                 DebugLogger.initRuntimeSession();
-                DebugLogger.runtime("Server", "Server started — cache initialized with "
+                DebugLogger.runtime(HsRuntimeCategories.SERVER, "Server started — cache initialized with "
                         + data.getUnlockedStages().size() + " unlocked stages, "
                         + StageManager.getStages().size() + " stages loaded");
             }
@@ -420,7 +430,7 @@ public class HistoryStages {
         serverInitialized = false;
         // Rolled from the trade hooks this server registered; the next one may register others.
         net.bananemdnsa.historystages.data.lock.TradeGoodsScanner.clearCache();
-        DebugLogger.runtime("Server", "Server stopping — flushing runtime log");
+        DebugLogger.runtime(HsRuntimeCategories.SERVER, "Server stopping — flushing runtime log");
         DebugLogger.flushRuntimeBuffer();
     }
 
@@ -501,7 +511,7 @@ public class HistoryStages {
                 && StageLockHelper.isActionLockedByIndividualStage(stack, player.getUUID(), "pickup")) {
             event.setCanPickup(TriState.FALSE);
             ResourceLocation itemRL = BuiltInRegistries.ITEM.getKey(stack.getItem());
-            DebugLogger.runtimeThrottled("Inventory", "pickup_blocked_" + player.getUUID() + "_" + itemRL,
+            DebugLogger.runtimeThrottled(HsRuntimeCategories.INVENTORY, "pickup_blocked_" + player.getUUID() + "_" + itemRL,
                     "<" + player.getName().getString() + "> Pickup of '" + itemRL + "' blocked [action: pickup]");
             return;
         }
@@ -509,7 +519,7 @@ public class HistoryStages {
         // Global stages: log only (existing behavior)
         if (StageLockHelper.isItemLockedForServer(stack)) {
             ResourceLocation itemRL = BuiltInRegistries.ITEM.getKey(stack.getItem());
-            DebugLogger.runtimeThrottled("Inventory", "pickup_" + player.getUUID() + "_" + itemRL,
+            DebugLogger.runtimeThrottled(HsRuntimeCategories.INVENTORY, "pickup_" + player.getUUID() + "_" + itemRL,
                     "<" + player.getName().getString() + "> Picked up locked '" + itemRL + "' x" + stack.getCount() + " [action: pickup]");
         }
     }
@@ -525,7 +535,7 @@ public class HistoryStages {
             }
         }
         if (!lockedItems.isEmpty()) {
-            DebugLogger.runtime("Inventory", player.getName().getString(),
+            DebugLogger.runtime(HsRuntimeCategories.INVENTORY, player.getName().getString(),
                     "Has " + lockedItems.size() + " locked item stack(s) in inventory: " + String.join(", ", lockedItems));
         }
     }

@@ -3,6 +3,7 @@ package net.bananemdnsa.historystages.events.lock;
 import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.util.DebugLogger;
+import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import net.bananemdnsa.historystages.util.lock.StageLockHelper;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -37,7 +38,7 @@ public class EntityItemLockHandler {
             if (!displayedItem.isEmpty() && isItemLockedForContext(displayedItem, event.getEntity(), isClient)) {
                 event.setCanceled(true);
                 if (!isClient) {
-                    DebugLogger.runtimeThrottled("Entity Item Lock", "frame_interact_" + event.getEntity().getUUID(),
+                    DebugLogger.runtimeThrottled(HsRuntimeCategories.ENTITY_ITEM_LOCK, "frame_interact_" + event.getEntity().getUUID(),
                             "<" + event.getEntity().getName().getString() + "> Interaction with item frame (locked item) blocked");
                     showMessage(event.getEntity());
                 }
@@ -55,7 +56,7 @@ public class EntityItemLockHandler {
             if (hasLockedItem(armorStand, event.getEntity(), isClient)) {
                 event.setCanceled(true);
                 if (!isClient) {
-                    DebugLogger.runtimeThrottled("Entity Item Lock", "stand_interact_" + event.getEntity().getUUID(),
+                    DebugLogger.runtimeThrottled(HsRuntimeCategories.ENTITY_ITEM_LOCK, "stand_interact_" + event.getEntity().getUUID(),
                             "<" + event.getEntity().getName().getString() + "> Interaction with armor stand (locked item) blocked");
                     showMessage(event.getEntity());
                 }
@@ -74,7 +75,7 @@ public class EntityItemLockHandler {
             if (!displayedItem.isEmpty() && isItemLockedForContext(displayedItem, event.getEntity(), isClient)) {
                 event.setCanceled(true);
                 if (!isClient) {
-                    DebugLogger.runtimeThrottled("Entity Item Lock", "frame_attack_" + event.getEntity().getUUID(),
+                    DebugLogger.runtimeThrottled(HsRuntimeCategories.ENTITY_ITEM_LOCK, "frame_attack_" + event.getEntity().getUUID(),
                             "<" + event.getEntity().getName().getString() + "> Attack on item frame (locked item) blocked");
                     showMessage(event.getEntity());
                 }
@@ -83,7 +84,7 @@ public class EntityItemLockHandler {
             if (hasLockedItem(armorStand, event.getEntity(), isClient)) {
                 event.setCanceled(true);
                 if (!isClient) {
-                    DebugLogger.runtimeThrottled("Entity Item Lock", "stand_attack_" + event.getEntity().getUUID(),
+                    DebugLogger.runtimeThrottled(HsRuntimeCategories.ENTITY_ITEM_LOCK, "stand_attack_" + event.getEntity().getUUID(),
                             "<" + event.getEntity().getName().getString() + "> Attack on armor stand (locked item) blocked");
                     showMessage(event.getEntity());
                 }

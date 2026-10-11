@@ -17,8 +17,10 @@ public final class MissingRecipeIds {
     private MissingRecipeIds() {}
 
     private static volatile Set<String> missing = Set.of();
+    private static volatile List<RecipeIdAudit.MissingRecipe> entries = List.of();
 
     public static void set(List<RecipeIdAudit.MissingRecipe> entries) {
+        MissingRecipeIds.entries = List.copyOf(entries);
         missing = entries.stream()
                 .map(RecipeIdAudit.MissingRecipe::recipeId)
                 .collect(Collectors.toUnmodifiableSet());
@@ -26,6 +28,14 @@ public final class MissingRecipeIds {
 
     public static boolean isMissing(String recipeId) {
         return missing.contains(recipeId);
+    }
+
+    /**
+     * The whole result, for the debug report. It re-reads this on every registry pass rather than
+     * being told once at recipe load: a /history reload clears the report but applies no recipes.
+     */
+    public static List<RecipeIdAudit.MissingRecipe> entries() {
+        return entries;
     }
 
     /** Empty until the first recipe load; the editor cannot be open before that anyway. */
