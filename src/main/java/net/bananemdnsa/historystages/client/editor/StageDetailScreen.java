@@ -2437,14 +2437,12 @@ public class StageDetailScreen extends Screen {
                 ? net.bananemdnsa.historystages.data.lock.ItemTypeChoices.forEnchantment(
                         this.minecraft.level.registryAccess(), id)
                 : net.bananemdnsa.historystages.data.lock.ItemTypeChoices.forEffect();
-        net.bananemdnsa.historystages.client.editor.widget.popup.DimensionFilterPopup popup =
-                new net.bananemdnsa.historystages.client.editor.widget.popup.DimensionFilterPopup(
-                        (subject, spared) -> levelled.setExcludedItemTypes(idx, spared));
-        popup.showChoices(id, types, levelled.excludedItemTypes(idx),
-                "editor.historystages.item_types.title", "editor.historystages.item_types.hint",
-                net.bananemdnsa.historystages.data.lock.ItemTypeChoices::displayName, item -> item,
-                this.width / 2, this.height / 2);
-        actionOverlay = net.bananemdnsa.historystages.client.editor.tab.PopupOverlays.wrapShown(popup);
+        String name = levelled.isEnchantments()
+                ? SearchableEnchantmentList.displayName(id) : SearchableEffectList.displayName(id);
+        var popup = new net.bananemdnsa.historystages.client.editor.widget.popup.ItemTypesPopup(
+                name, types, levelled.excludedItemTypes(idx), spared -> levelled.setExcludedItemTypes(idx, spared));
+        popup.show(this.width / 2, this.height / 2, this.width);
+        actionOverlay = popup;
     }
 
     /** "Every level", then "from level II" up to what the game knows, as a pick list. */
