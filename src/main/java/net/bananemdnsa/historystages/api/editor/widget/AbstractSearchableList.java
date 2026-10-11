@@ -244,6 +244,18 @@ public abstract class AbstractSearchableList<T> implements PickerOverlay {
     }
 
     /**
+     * A click on a row, before it selects anything. Return true to keep the click.
+     *
+     * <p>For a row with a control of its own inside it, such as the caret of a tree: without
+     * this, opening a branch would also pick it.
+     *
+     * @param rowX left edge of the row as drawn
+     */
+    protected boolean onRowClicked(T entry, int index, double mouseX, int rowX) {
+        return false;
+    }
+
+    /**
      * Whether the row at this index is a caption rather than something to pick.
      *
      * <p>A caption is measured, drawn and scrolled past like any other row — it just cannot be
@@ -456,6 +468,20 @@ public abstract class AbstractSearchableList<T> implements PickerOverlay {
         resetListAnim();
         // re-fire the current filter via setText (always fires onChange)
         searchBar.setText(searchBar.getText() == null ? "" : searchBar.getText());
+    }
+
+    /**
+     * Like {@link #reloadEntries()}, but the list stays where it was scrolled to. For a change
+     * that keeps most rows in place – a tree branch opening – where jumping to the top would
+     * lose the row that was just clicked.
+     */
+    protected final void reloadEntriesKeepingScroll() {
+        int keep = scrollRow;
+        allEntries.clear();
+        allEntries.addAll(loadEntries());
+        searchBar.setText(searchBar.getText() == null ? "" : searchBar.getText());
+        scrollRow = Math.min(keep, maxScrollRow);
+        scrollAnim.set(scrollRow);
     }
 
     // =============================================
@@ -1115,6 +1141,9 @@ public abstract class AbstractSearchableList<T> implements PickerOverlay {
                 if (!isSelectedTabActive() && isHeaderRow(index)) return true;
                 Minecraft.getInstance().getSoundManager()
                         .play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
+                if (!isSelectedTabActive() && onRowClicked(filteredEntries.get(index), index, mouseX, listX)) {
+                    return true;
+                }
                 if (isSelectedTabActive()) {
                     // Toggle against the live selection; the snapshot stays put on purpose.
                     Sel<T> ref = selectedView.get(index);
