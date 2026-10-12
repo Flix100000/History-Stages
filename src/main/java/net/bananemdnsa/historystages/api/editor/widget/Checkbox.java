@@ -28,10 +28,11 @@ public final class Checkbox {
     /** The tick's ramp, held by whoever draws the box so a list of them animates separately. */
     public static final class State {
         private final Anim check = new Anim();
-        private Mark mark = Mark.OFF;
+        // What a box fading out still shows: a bar unticked keeps fading as a bar, not as a tick.
+        private Mark shown = Mark.ON;
 
         public void update(Mark mark) {
-            this.mark = mark;
+            if (mark != Mark.OFF) shown = mark;
             check.ramp(mark != Mark.OFF, Timing.HOVER_IN_MS, Timing.HOVER_OUT_MS);
         }
     }
@@ -40,10 +41,11 @@ public final class Checkbox {
     }
 
     /**
-     * @param dimmed for a box whose answer comes from somewhere above it – drawn at half strength,
-     *               so it reads as "covered" rather than "ticked here"
+     * @param dimmed for a box whose answer comes from somewhere above it – drawn at a little under
+     *               half strength, so it reads as "covered" rather than "ticked here"
      */
     public static void draw(GuiGraphics g, int x, int y, Mark mark, State state, boolean dimmed) {
+        if (mark == Mark.OFF) mark = state.shown;
         float check = Ease.outCubic(state.check.value());
         float strength = dimmed ? 0.45f : 1.0f;
         g.fill(x, y, x + SIZE, y + SIZE, Fade.alpha(Fade.mix(FRAME_OFF, FRAME_ON, check), strength));

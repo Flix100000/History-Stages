@@ -131,6 +131,9 @@ public abstract class AbstractSearchableList<T> implements PickerOverlay {
      *
      * <p>For a picker that edits a set in place rather than adding to one, where the only things
      * left to say are "keep this" and "start over".
+     *
+     * <p>Asked every frame, but the panel's height is fixed when it opens: keep the number of
+     * buttons the same while the picker is up.
      */
     protected List<FooterButton> footerButtons() {
         return List.of();
