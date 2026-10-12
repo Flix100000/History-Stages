@@ -120,6 +120,25 @@ public abstract class AbstractSearchableList<T> implements PickerOverlay {
     /** {@link #selectedSnapshot} filtered by the current query. */
     private final List<Sel<T>> selectedView = new ArrayList<>();
     private final Anim addHover = new Anim();
+    private final Map<Integer, Anim> footerHover = new HashMap<>();
+
+    /** A button an addon puts at the bottom of its picker, such as "Done" or "Default". */
+    public record FooterButton(String label, Runnable onClick) {}
+
+    /**
+     * Buttons along the bottom edge, left to right. Empty by default. Only drawn when multi-select
+     * is off: multi-select already owns the bottom row with its Add button.
+     *
+     * <p>For a picker that edits a set in place rather than adding to one, where the only things
+     * left to say are "keep this" and "start over".
+     */
+    protected List<FooterButton> footerButtons() {
+        return List.of();
+    }
+
+    private boolean hasFooter() {
+        return !multiSelect && !footerButtons().isEmpty();
+    }
 
     private record Sel<E>(String value, E entry) {}
 
@@ -346,7 +365,7 @@ public abstract class AbstractSearchableList<T> implements PickerOverlay {
         panelH = getTabBarHeight() + SearchBar.HEIGHT + PADDING * 2 + visibleRows() * ROW_HEIGHT + PADDING + 4
                 + selectAllRowH()
                 + stickyCaptionH()
-                + (multiSelect ? ADD_BTN_H + PADDING : 0);
+                + (multiSelect || hasFooter() ? ADD_BTN_H + PADDING : 0);
         panelX = centerX - panelW / 2;
         panelY = centerY - panelH / 2;
         if (panelX < 4) panelX = 4;
@@ -822,6 +841,23 @@ public abstract class AbstractSearchableList<T> implements PickerOverlay {
                 && mouseY >= addButtonY() && mouseY < addButtonY() + ADD_BTN_H;
     }
 
+    private int footerButtonX(int index, int count) {
+        int total = count * ADD_BTN_W + (count - 1) * PADDING;
+        return panelX + (panelW - total) / 2 + index * (ADD_BTN_W + PADDING);
+    }
+
+    private void renderFooter(GuiGraphics g, Font font, int mouseX, int mouseY) {
+        List<FooterButton> buttons = footerButtons();
+        int y = addButtonY();
+        for (int i = 0; i < buttons.size(); i++) {
+            int x = footerButtonX(i, buttons.size());
+            boolean hovered = mouseX >= x && mouseX < x + ADD_BTN_W && mouseY >= y && mouseY < y + ADD_BTN_H;
+            float hp = Ease.outCubic(footerHover.computeIfAbsent(i, k -> new Anim())
+                    .ramp(hovered, Timing.HOVER_IN_MS, Timing.HOVER_OUT_MS));
+            SearchPanelChrome.renderStyledButton(g, font, x, y, ADD_BTN_W, ADD_BTN_H, buttons.get(i).label(), hp);
+        }
+    }
+
     private boolean canConfirm() {
         return multiSelect && !selected.isEmpty();
     }
@@ -1019,6 +1055,7 @@ public abstract class AbstractSearchableList<T> implements PickerOverlay {
         }
 
         if (multiSelect) renderAddButton(g, font, mouseX, mouseY);
+        else if (hasFooter()) renderFooter(g, font, mouseX, mouseY);
 
         afterRender(g, font, mouseX, mouseY);
 
@@ -1102,6 +1139,20 @@ public abstract class AbstractSearchableList<T> implements PickerOverlay {
         if (multiSelect && isAddButtonAt(mouseX, mouseY)) {
             confirmAndAdd();
             return true;
+        }
+
+        if (hasFooter()) {
+            List<FooterButton> buttons = footerButtons();
+            int y = addButtonY();
+            for (int i = 0; i < buttons.size(); i++) {
+                int x = footerButtonX(i, buttons.size());
+                if (mouseX >= x && mouseX < x + ADD_BTN_W && mouseY >= y && mouseY < y + ADD_BTN_H) {
+                    Minecraft.getInstance().getSoundManager()
+                            .play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
+                    buttons.get(i).onClick().run();
+                    return true;
+                }
+            }
         }
 
         int listX = listLeftX();
