@@ -29,6 +29,7 @@ public class ModCreativeTabs {
                         output.accept(ModItems.RESEARCH_PEDESTAL_TIER_2_ITEM.get());
                         output.accept(ModItems.RESEARCH_PEDESTAL_TIER_3_ITEM.get());
                         output.accept(ModItems.RESEARCH_PEDESTAL_TIER_4_ITEM.get());
+                        ModItems.SCROLL_SHELF_ITEMS.values().forEach(shelf -> output.accept(shelf.get()));
 
                         ItemStack creativeScroll = new ItemStack(ModItems.CREATIVE_SCROLL.get());
                         CompoundTag creativeNbt = new CompoundTag();

@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "key": {
+    "#": {
+      "item": "minecraft:cherry_planks"
+    },
+    "X": {
+      "item": "minecraft:cherry_slab"
+    },
+    "P": {
+      "item": "minecraft:paper"
+    }
+  },
+  "pattern": [
+    "###",
+    "XPX",
+    "###"
+  ],
+  "result": {
+    "count": 1,
+    "id": "historystages:cherry_scroll_shelf"
+  }
+}

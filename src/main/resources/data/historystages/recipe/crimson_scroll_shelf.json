@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "key": {
+    "#": {
+      "item": "minecraft:crimson_planks"
+    },
+    "X": {
+      "item": "minecraft:crimson_slab"
+    },
+    "P": {
+      "item": "minecraft:paper"
+    }
+  },
+  "pattern": [
+    "###",
+    "XPX",
+    "###"
+  ],
+  "result": {
+    "count": 1,
+    "id": "historystages:crimson_scroll_shelf"
+  }
+}

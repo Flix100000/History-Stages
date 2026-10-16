@@ -1,0 +1,31 @@
+{
+  "values": {
+    "historystages:oak_scroll_shelf": {
+      "burn_time": 300
+    },
+    "historystages:spruce_scroll_shelf": {
+      "burn_time": 300
+    },
+    "historystages:birch_scroll_shelf": {
+      "burn_time": 300
+    },
+    "historystages:jungle_scroll_shelf": {
+      "burn_time": 300
+    },
+    "historystages:acacia_scroll_shelf": {
+      "burn_time": 300
+    },
+    "historystages:dark_oak_scroll_shelf": {
+      "burn_time": 300
+    },
+    "historystages:mangrove_scroll_shelf": {
+      "burn_time": 300
+    },
+    "historystages:cherry_scroll_shelf": {
+      "burn_time": 300
+    },
+    "historystages:bamboo_scroll_shelf": {
+      "burn_time": 300
+    }
+  }
+}

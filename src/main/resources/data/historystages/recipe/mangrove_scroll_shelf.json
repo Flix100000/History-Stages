@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "key": {
+    "#": {
+      "item": "minecraft:mangrove_planks"
+    },
+    "X": {
+      "item": "minecraft:mangrove_slab"
+    },
+    "P": {
+      "item": "minecraft:paper"
+    }
+  },
+  "pattern": [
+    "###",
+    "XPX",
+    "###"
+  ],
+  "result": {
+    "count": 1,
+    "id": "historystages:mangrove_scroll_shelf"
+  }
+}
