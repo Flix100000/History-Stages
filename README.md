@@ -20,6 +20,12 @@ Stages can unlock **server-wide** (global), **per player** (individual), or use 
 - [Modrinth](https://modrinth.com/mod/history-stages)
 - [CurseForge](https://www.curseforge.com/minecraft/mc-mods/history-stages)
 
+## Addons
+
+- **[HSTG: Permissions](https://www.curseforge.com/minecraft/mc-mods/hstg-permissions)**: lock and grant commands per stage, with ranks and a Commands tab in the editor.
+
+Want to build your own? See [Addon Development](https://historystages.github.io/api/addon-development).
+
 ## Documentation
 
 Full documentation, configuration details, and usage examples are available on the [Wiki](https://historystages.github.io/).
