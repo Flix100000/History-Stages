@@ -301,6 +301,7 @@ public class HistoryStages {
     @SubscribeEvent
     public void onRegisterCommands(RegisterCommandsEvent event) {
         StageCommand.register(event.getDispatcher());
+        net.bananemdnsa.historystages.commands.ReloadLabCommand.register(event.getDispatcher());
     }
 
     @SubscribeEvent

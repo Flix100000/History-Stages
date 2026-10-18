@@ -1,4 +1,5 @@
 package net.bananemdnsa.historystages.network;
+import net.bananemdnsa.historystages.reload.LightReload;
 import net.bananemdnsa.historystages.network.serverbound.RequestClusterShapesPacket;
 import net.bananemdnsa.historystages.network.serverbound.ToggleStructureVizPacket;
 import net.bananemdnsa.historystages.network.serverbound.RequestStructureDebugPacket;
@@ -286,7 +287,20 @@ public class PacketHandler {
             return;
         }
 
+        // PROTOTYPE: /hsreloadlab mode picks what happens here; FULL is the shipped behaviour.
+        LightReload.Mode mode = LightReload.mode();
+        if (mode != LightReload.Mode.FULL) {
+            LightReload.run(server, mode == LightReload.Mode.LIGHT_TAGS);
+            // A full reload ends by sending clients the recipe list again; this has to as well.
+            resyncRecipes(server);
+            return;
+        }
+
+        long start = System.nanoTime();
         server.reloadResources(server.getPackRepository().getSelectedIds())
+                .thenRun(() -> com.mojang.logging.LogUtils.getLogger().info(
+                        "[HistoryStages/LightReload] Full datapack reload after a stage change took {} ms",
+                        (System.nanoTime() - start) / 1_000_000))
                 .exceptionally(e -> {
                     DebugLogger.warn("Recipe Locks",
                             "Reloading datapacks after a stage change failed: " + e.getMessage()
@@ -311,7 +325,7 @@ public class PacketHandler {
      * puts in this packet — and because {@code getRecipes} is gated on the server now, so sending
      * it would take the locked recipes off every client and out of their recipe book.
      */
-    private static void resyncRecipes(MinecraftServer server) {
+    public static void resyncRecipes(MinecraftServer server) {
         ClientboundUpdateRecipesPacket recipePacket = new ClientboundUpdateRecipesPacket(
                 server.getRecipeManager().getOrderedRecipes());
         for (ServerPlayer p : server.getPlayerList().getPlayers()) {
