@@ -3,6 +3,7 @@ package net.bananemdnsa.historystages.compat.lootr;
 import java.util.UUID;
 
 import net.bananemdnsa.historystages.util.DebugLogger;
+import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import net.bananemdnsa.historystages.util.lock.LootLocks;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
@@ -42,7 +43,7 @@ public final class StageLootFilter {
         }
 
         if (replacedCount > 0) {
-            DebugLogger.runtime("Loot Lock", player != null ? player.getName().getString() : "-",
+            DebugLogger.runtime(HsRuntimeCategories.LOOT_LOCK, player != null ? player.getName().getString() : "-",
                     "Replaced " + replacedCount + " locked item(s) while rolling Lootr loot [action: loot]");
         }
         return replacedCount;

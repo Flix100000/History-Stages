@@ -42,6 +42,32 @@ public final class ConfigSpecCodec {
         return out;
     }
 
+    /**
+     * Every value in the spec with its default beside it, keyed by dotted path: {@code [current,
+     * default]}. For the debug report, which only lists what a pack actually changed.
+     */
+    public static Map<String, String[]> collectWithDefaults(ForgeConfigSpec spec) {
+        Map<String, String[]> out = new LinkedHashMap<>();
+        collectWithDefaults(spec.getValues(), "", out);
+        return out;
+    }
+
+    private static void collectWithDefaults(UnmodifiableConfig config, String prefix, Map<String, String[]> out) {
+        for (UnmodifiableConfig.Entry entry : config.entrySet()) {
+            String path = prefix.isEmpty() ? entry.getKey() : prefix + "." + entry.getKey();
+            Object raw = entry.getRawValue();
+            if (raw instanceof UnmodifiableConfig nested) {
+                collectWithDefaults(nested, path, out);
+            } else if (raw instanceof ForgeConfigSpec.ConfigValue<?> value) {
+                Object current = value.get();
+                Object fallback = value.getDefault();
+                out.put(path, new String[] {
+                        current == null ? "" : encode(current),
+                        fallback == null ? "" : encode(fallback)});
+            }
+        }
+    }
+
     private static void collect(UnmodifiableConfig config, String prefix, Map<String, String> out) {
         for (UnmodifiableConfig.Entry entry : config.entrySet()) {
             String path = prefix.isEmpty() ? entry.getKey() : prefix + "." + entry.getKey();

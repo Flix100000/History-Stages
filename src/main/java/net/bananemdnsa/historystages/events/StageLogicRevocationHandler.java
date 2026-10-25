@@ -1,5 +1,7 @@
 package net.bananemdnsa.historystages.events;
 
+import net.bananemdnsa.historystages.data.StageCauses;
+import net.bananemdnsa.historystages.api.stage.StageChangeCause;
 import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.api.stage.StageEvent;
@@ -17,6 +19,7 @@ import net.bananemdnsa.historystages.data.saveddata.StageData;
 import net.bananemdnsa.historystages.network.PacketHandler;
 import net.bananemdnsa.historystages.network.clientbound.EditorFeedbackPacket;
 import net.bananemdnsa.historystages.util.DebugLogger;
+import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -148,10 +151,10 @@ public final class StageLogicRevocationHandler {
             if (!StageData.get(level).hasStage(target)) continue;
             if (!StageLogic.revokeFires(e.getValue().getLogicBlocks(), StageScope.GLOBAL,
                     globalBefore, StageStateView.NONE_UNLOCKED, globalAfter, StageStateView.NONE_UNLOCKED)) continue;
-            DebugLogger.runtime("Stage Logic", "Revoking global stage '" + target + "' because '" + changed
+            DebugLogger.runtime(HsRuntimeCategories.STAGE_LOGIC, "Revoking global stage '" + target + "' because '" + changed
                     + "' is now " + (nowUnlocked ? "unlocked" : "locked") + ".");
             count(target, true);
-            if (StageStates.relockGlobal(target, level)) {
+            if (StageCauses.with(StageChangeCause.LOGIC, () -> StageStates.relockGlobal(target, level))) {
                 for (ServerPlayer player : server.getPlayerList().getPlayers()) {
                     toast(player, target, false, changed, false, nowUnlocked);
                 }
@@ -204,13 +207,13 @@ public final class StageLogicRevocationHandler {
         if (player == null) {
             // Offline: owed, and carried out at the next login.
             LogicPendingRevocations.get(server.overworld()).add(uuid, target);
-            DebugLogger.runtime("Stage Logic", "Queued revocation of '" + target + "' for offline player " + uuid + ".");
+            DebugLogger.runtime(HsRuntimeCategories.STAGE_LOGIC, "Queued revocation of '" + target + "' for offline player " + uuid + ".");
             return;
         }
-        DebugLogger.runtime("Stage Logic", player.getName().getString(),
+        DebugLogger.runtime(HsRuntimeCategories.STAGE_LOGIC, player.getName().getString(),
                 "Revoking individual stage '" + target + "' because '" + changed + "' is now "
                         + (nowUnlocked ? "unlocked" : "locked") + ".");
-        if (StageStates.relockIndividual(target, player)) {
+        if (StageCauses.with(StageChangeCause.LOGIC, () -> StageStates.relockIndividual(target, player))) {
             toast(player, target, true, changed, changedIndividual, nowUnlocked);
         }
     }
@@ -222,7 +225,7 @@ public final class StageLogicRevocationHandler {
         Set<String> owed = LogicPendingRevocations.get(player.serverLevel()).take(player.getUUID());
         for (String target : owed) {
             if (!IndividualStageData.get(player.serverLevel()).hasStage(player.getUUID(), target)) continue;
-            if (StageStates.relockIndividual(target, player)) toast(player, target, true, null, false, false);
+            if (StageCauses.with(StageChangeCause.LOGIC, () -> StageStates.relockIndividual(target, player))) toast(player, target, true, null, false, false);
         }
     }
 

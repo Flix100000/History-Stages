@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.network.serverbound;
-
+import net.bananemdnsa.historystages.data.StageCauses;
+import net.bananemdnsa.historystages.api.stage.StageChangeCause;
 import net.bananemdnsa.historystages.network.PacketHandler;
 import net.bananemdnsa.historystages.network.clientbound.EditorFeedbackPacket;
 import net.bananemdnsa.historystages.Config;
@@ -49,7 +50,8 @@ public class ToggleStageLockPacket {
             net.bananemdnsa.historystages.events.StageLogicRevocationHandler.reportTo(player, () -> {
                 if (msg.unlock) {
                     // The editor toggle is an admin override: a logic block is reported, not obeyed.
-                    StageStates.UnlockOutcome outcome = StageStates.forceUnlockGlobal(msg.stageId, player.serverLevel());
+                    StageStates.UnlockOutcome outcome = StageCauses.with(StageChangeCause.EDITOR,
+                            () -> StageStates.forceUnlockGlobal(msg.stageId, player.serverLevel()));
                     if (outcome.wasBlocked()
                             && net.bananemdnsa.historystages.Config.GAMEPLAY.warnOnForcedUnlock.get()) {
                         PacketHandler.sendEditorFeedback(EditorFeedbackPacket.info(
@@ -57,7 +59,7 @@ public class ToggleStageLockPacket {
                                 "editor.historystages.toast.forced_unlock.message", displayName), player);
                     }
                 } else {
-                    StageStates.relockGlobal(msg.stageId, player.serverLevel());
+                    StageCauses.run(StageChangeCause.EDITOR, () -> StageStates.relockGlobal(msg.stageId, player.serverLevel()));
                 }
                 return null;
             });

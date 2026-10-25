@@ -58,7 +58,7 @@ public class FilterDropdown {
     private final Anim buttonHover = new Anim();
     private final Map<Integer, Anim> rowHover = new HashMap<>();
     /** Per-option tick progress, so a checkbox fills in rather than flipping. */
-    private final Map<Integer, Anim> checkAnim = new HashMap<>();
+    private final Map<Integer, Checkbox.State> checkStates = new HashMap<>();
 
     public FilterDropdown(Runnable onChange) {
         this.onChange = onChange;
@@ -182,28 +182,13 @@ public class FilterDropdown {
                     .ramp(rowHovered, Timing.HOVER_IN_MS, Timing.HOVER_OUT_MS));
             DropdownChrome.drawRowHighlight(g, px + 2, rowY, pw - 4, ROW_HEIGHT, rh);
 
-            // The tick grows in instead of appearing, which makes it obvious which box the
-            // click actually landed on when several rows sit close together.
-            float check = Ease.outCubic(checkAnim.computeIfAbsent(i, k -> new Anim())
-                    .ramp(opt.active, Timing.HOVER_IN_MS, Timing.HOVER_OUT_MS));
-
+            Checkbox.State box = checkStates.computeIfAbsent(i, k -> new Checkbox.State());
+            Checkbox.Mark mark = opt.active ? Checkbox.Mark.ON : Checkbox.Mark.OFF;
+            box.update(mark);
             int boxX = px + 6;
             int boxY = rowY + 3;
-            int boxSize = 10;
-            g.fill(boxX, boxY, boxX + boxSize, boxY + boxSize, Fade.mix(0xFF666666, 0xFFFFCC00, check));
-            g.fill(boxX + 1, boxY + 1, boxX + boxSize - 1, boxY + boxSize - 1,
-                    Fade.mix(0xFF0D0D0D, 0xFF2A2510, check));
-            if (check > 0.001f) {
-                int tick = Fade.rgba(0xFFCC00, check);
-                // Drawn left to right so the stroke reads as being written on.
-                int steps = Math.max(1, Math.round(5 * check));
-                if (steps > 0) g.fill(boxX + 3, boxY + 5, boxX + 4, boxY + 8, tick);
-                if (steps > 1) g.fill(boxX + 4, boxY + 6, boxX + 5, boxY + 9, tick);
-                if (steps > 2) g.fill(boxX + 5, boxY + 5, boxX + 6, boxY + 8, tick);
-                if (steps > 3) g.fill(boxX + 6, boxY + 4, boxX + 7, boxY + 7, tick);
-                if (steps > 4) g.fill(boxX + 7, boxY + 3, boxX + 8, boxY + 6, tick);
-            }
-            g.drawString(font, opt.label, boxX + boxSize + 5 + Math.round(rh * 2.0f), rowY + 4,
+            Checkbox.draw(g, boxX, boxY, mark, box, false);
+            g.drawString(font, opt.label, boxX + Checkbox.SIZE + 5 + Math.round(rh * 2.0f), rowY + 4,
                     0xFFEEEEEE, false);
         }
         DropdownChrome.end(g);

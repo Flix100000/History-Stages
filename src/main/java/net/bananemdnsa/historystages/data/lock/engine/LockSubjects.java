@@ -39,7 +39,8 @@ public final class LockSubjects {
      */
     public record ItemSubject(String itemId, String modId,
                               @Nullable ItemStack stack, @Nullable Item item,
-                              @Nullable String fluidId, StackContents contents) {
+                              @Nullable String fluidId, StackContents contents)
+            implements net.bananemdnsa.historystages.api.lock.LockSubject {
 
         public ItemSubject(String itemId, String modId, @Nullable ItemStack stack,
                            @Nullable Item item, @Nullable String fluidId) {
@@ -68,8 +69,10 @@ public final class LockSubjects {
      * in this dimension at all", which is what the {@code EntityJoinLevel} fallback asks when no
      * spawn reason is available.
      */
-    public record SpawnSubject(String entityId, @Nullable String source, String dimension) {}
+    public record SpawnSubject(String entityId, @Nullable String source, String dimension)
+            implements net.bananemdnsa.historystages.api.lock.LockSubject {}
 
     /** An interaction with an entity, including what the player is holding. */
-    public record InteractionSubject(String entityId, String action, ItemStack held) {}
+    public record InteractionSubject(String entityId, String action, ItemStack held)
+            implements net.bananemdnsa.historystages.api.lock.LockSubject {}
 }

@@ -19,6 +19,7 @@
     "BrewingStandMixin",
     "MerchantOffersMixin",
     "MerchantMenuAccessor",
+    "CommandSourceStackAccessor",
     "MerchantContainerMixin",
     "lootr.ChestDataMixin",
     "fastsuite.AuxRecipeManagerMixin",

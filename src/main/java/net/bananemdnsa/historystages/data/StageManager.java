@@ -35,6 +35,7 @@ import net.bananemdnsa.historystages.data.auto.conditions.BlockBreakTrigger;
 import net.bananemdnsa.historystages.data.auto.conditions.AdvancementTrigger;
 import net.bananemdnsa.historystages.data.auto.conditions.PlaytimeTrigger;
 import net.bananemdnsa.historystages.util.DebugLogger;
+import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -139,44 +140,11 @@ public class StageManager {
         File configDir = treeRoot(false);
 
         for (String relFile : collectStageFiles(false)) {
-            File file = new File(configDir, relFile.replace('/', File.separatorChar));
-            String id = file.getName().substring(0, file.getName().length() - ".json".length());
-            String folder = StagePaths.parent(relFile);
-
-            if (STAGE_PATHS.containsKey(id)) {
-                String kept = StagePaths.join(STAGE_PATHS.get(id), id + ".json");
-                String msg = "Duplicate stage name: '" + relFile + "' collides with '" + kept
-                        + "'. Stage IDs are file names and must be unique across all folders — '"
-                        + relFile + "' was skipped.";
-                addMessage(MessageLevel.ERROR, msg);
-                DebugLogger.error("Stage Loading", msg);
-                continue;
-            }
-
-            validateFileName(id, file.getName());
-
+            DebugLogger.beginSource("global/" + relFile);
             try {
-                byte[] raw = java.nio.file.Files.readAllBytes(file.toPath());
-                StageFileGuard.recordLoaded(id, StageScope.GLOBAL, raw);
-                String content = new String(raw);
-                detectUnknownKeys(id, content);
-
-                StageEntry entry = GSON.fromJson(content, StageEntry.class);
-
-                if (entry != null) {
-                    validateAndAdd(id, entry);
-                    // Only a stage that actually made it into the map gets a path. A rejected
-                    // one must not be counted by the folder rows or synced to clients.
-                    if (STAGES.containsKey(id)) STAGE_PATHS.put(id, folder);
-                } else {
-                    String msg = "File '" + relFile + "' parsed as null (empty or invalid JSON)";
-                    addMessage(MessageLevel.ERROR, msg);
-                    DebugLogger.error("Stage Loading", msg);
-                }
-            } catch (Exception e) {
-                String msg = "Error in file: " + relFile + " (Invalid JSON syntax, stage skipped)";
-                addMessage(MessageLevel.ERROR, msg);
-                DebugLogger.error("Stage Loading", msg + " — " + e.getMessage());
+                loadGlobalFile(configDir, relFile);
+            } finally {
+                DebugLogger.endSource();
             }
         }
 
@@ -198,6 +166,51 @@ public class StageManager {
         }
         for (String problem : net.bananemdnsa.historystages.data.disguise.Disguises.unknownIds()) {
             addMessage(MessageLevel.WARN, "Disguise: " + problem);
+        }
+
+        org.slf4j.LoggerFactory.getLogger("HistoryStages").info("Loaded {} global and {} individual stages",
+                STAGES.size(), INDIVIDUAL_STAGES.size());
+    }
+
+    private static void loadGlobalFile(File configDir, String relFile) {
+        File file = new File(configDir, relFile.replace('/', File.separatorChar));
+        String id = file.getName().substring(0, file.getName().length() - ".json".length());
+        String folder = StagePaths.parent(relFile);
+
+        if (STAGE_PATHS.containsKey(id)) {
+            String kept = StagePaths.join(STAGE_PATHS.get(id), id + ".json");
+            String msg = "Duplicate stage name: '" + relFile + "' collides with '" + kept
+                    + "'. Stage IDs are file names and must be unique across all folders — '"
+                    + relFile + "' was skipped.";
+            addMessage(MessageLevel.ERROR, msg);
+            DebugLogger.error("Stage Loading", msg);
+            return;
+        }
+
+        validateFileName(id, file.getName());
+
+        try {
+            byte[] raw = java.nio.file.Files.readAllBytes(file.toPath());
+            StageFileGuard.recordLoaded(id, StageScope.GLOBAL, raw);
+            String content = new String(raw);
+            detectUnknownKeys(id, content);
+
+            StageEntry entry = GSON.fromJson(content, StageEntry.class);
+
+            if (entry != null) {
+                validateAndAdd(id, entry);
+                // Only a stage that actually made it into the map gets a path. A rejected
+                // one must not be counted by the folder rows or synced to clients.
+                if (STAGES.containsKey(id)) STAGE_PATHS.put(id, folder);
+            } else {
+                String msg = "File '" + relFile + "' parsed as null (empty or invalid JSON)";
+                addMessage(MessageLevel.ERROR, msg);
+                DebugLogger.error("Stage Loading", msg);
+            }
+        } catch (Exception e) {
+            String msg = "Error in file: " + relFile + " (Invalid JSON syntax, stage skipped)";
+            addMessage(MessageLevel.ERROR, msg);
+            DebugLogger.error("Stage Loading", msg + " — " + e.getMessage());
         }
     }
 
@@ -379,18 +392,23 @@ public class StageManager {
     private static void warnAboutLogicReferences(Map<String, StageEntry> stages, StageScope scope) {
         for (Map.Entry<String, StageEntry> e : stages.entrySet()) {
             if (!e.getValue().hasLogic()) continue;
-            for (var problem : net.bananemdnsa.historystages.data.logic.LogicReferences.problems(
-                    e.getKey(), scope, e.getValue().getLogicBlocks(), STAGES.keySet(), INDIVIDUAL_STAGES.keySet())) {
-                String what = switch (problem.kind()) {
-                    case MISSING -> "refers to stage '" + problem.stageId() + "', which does not exist. The term counts as not unlocked.";
-                    case SCOPE -> "is global but refers to individual stage '" + problem.stageId() + "'. Global stages can only look at global stages; the term counts as not unlocked.";
-                    case SELF -> "refers to itself. That term can never change the outcome.";
-                    case UNKNOWN_TYPE -> "has a logic block of unknown type '" + problem.stageId() + "'. It is kept in the file but does nothing in this version.";
-                    case UNKNOWN_NODE -> "has a logic block with a condition this version cannot read. The block is kept but does nothing.";
-                };
-                String msg = "Stage '" + e.getKey() + "' (logic block " + (problem.blockIndex() + 1) + ") " + what;
-                addMessage(MessageLevel.WARN, msg);
-                DebugLogger.warn("Stage Logic", msg);
+            DebugLogger.beginSource(stageFile(e.getKey(), scope == StageScope.INDIVIDUAL));
+            try {
+                for (var problem : net.bananemdnsa.historystages.data.logic.LogicReferences.problems(
+                        e.getKey(), scope, e.getValue().getLogicBlocks(), STAGES.keySet(), INDIVIDUAL_STAGES.keySet())) {
+                    String what = switch (problem.kind()) {
+                        case MISSING -> "refers to stage '" + problem.stageId() + "', which does not exist. The term counts as not unlocked.";
+                        case SCOPE -> "is global but refers to individual stage '" + problem.stageId() + "'. Global stages can only look at global stages; the term counts as not unlocked.";
+                        case SELF -> "refers to itself. That term can never change the outcome.";
+                        case UNKNOWN_TYPE -> "has a logic block of unknown type '" + problem.stageId() + "'. It is kept in the file but does nothing in this version.";
+                        case UNKNOWN_NODE -> "has a logic block with a condition this version cannot read. The block is kept but does nothing.";
+                    };
+                    String msg = "Stage '" + e.getKey() + "' (logic block " + (problem.blockIndex() + 1) + ") " + what;
+                    addMessage(MessageLevel.WARN, msg);
+                    DebugLogger.warn("Stage Logic", msg);
+                }
+            } finally {
+                DebugLogger.endSource();
             }
         }
     }
@@ -413,6 +431,12 @@ public class StageManager {
             addMessage(MessageLevel.WARN, msg);
             DebugLogger.warn("Dependency Scope", msg);
         }
+    }
+
+    /** Where a loaded stage's file lives, relative to {@code config/historystages/}, for the debug report. */
+    public static String stageFile(String stageId, boolean individual) {
+        String folder = (individual ? INDIVIDUAL_STAGE_PATHS : STAGE_PATHS).getOrDefault(stageId, "");
+        return (individual ? "individual/" : "global/") + StagePaths.join(folder, stageId + ".json");
     }
 
     private static void validateFileName(String id, String fileName) {
@@ -979,7 +1003,6 @@ public class StageManager {
 
         STAGES.put(stageId, entry);
         stagesChanged();
-        System.out.println("[HistoryStages] Stage geladen: " + stageId);
     }
 
     private static void removeEmptyItemEntries(List<ItemEntry> list, String stageId) {
@@ -1229,8 +1252,31 @@ public class StageManager {
      * Must be called AFTER registries are fully loaded (e.g. on world load).
      */
     public static void validateAgainstRegistries() {
+        DebugLogger.beginRegistryPass();
+        net.bananemdnsa.historystages.data.diagnostics.AddonRegistrations.clearProblems();
+        try {
+            checkRegistryReferences();
+        } finally {
+            DebugLogger.endSource();
+            DebugLogger.endRegistryPass();
+        }
+    }
+
+    /** Addon checks for one stage; their problems go to this stage's file and count for the addon. */
+    private static void runAddonChecks(String stageId, StageScope scope, StageEntry entry) {
+        String source = stageFile(stageId, scope == StageScope.INDIVIDUAL);
+        net.bananemdnsa.historystages.data.diagnostics.StageChecks.runAll(stageId, scope, entry,
+                (checkId, level, category, message) -> {
+                    DebugLogger.log(category, level, message, source);
+                    net.bananemdnsa.historystages.data.diagnostics.AddonRegistrations.problem(
+                            net.bananemdnsa.historystages.data.diagnostics.ApiExtension.STAGE_CHECK, checkId, level);
+                });
+    }
+
+    private static void checkRegistryReferences() {
         for (Map.Entry<String, StageEntry> stageEntry : STAGES.entrySet()) {
             String stageId = stageEntry.getKey();
+            DebugLogger.beginSource(stageFile(stageId, false));
             StageEntry entry = stageEntry.getValue();
 
             for (String itemId : entry.getAllItemIds()) {
@@ -1280,11 +1326,13 @@ public class StageManager {
                     DebugLogger.warn("Unknown Entities", "Entity '" + entityId + "' does not exist in the entity registry (Stage: " + stageId + ", spawnlock). Typo or missing mod?");
                 }
             }
+            runAddonChecks(stageId, StageScope.GLOBAL, entry);
         }
 
         // Validate individual stages against registries
         for (Map.Entry<String, StageEntry> indEntry : INDIVIDUAL_STAGES.entrySet()) {
             String indId = indEntry.getKey();
+            DebugLogger.beginSource(stageFile(indId, true));
             StageEntry indData = indEntry.getValue();
 
             for (String itemId : indData.getAllItemIds()) {
@@ -1325,6 +1373,14 @@ public class StageManager {
                 }
                 validateInteractionItemsAgainstRegistry(inEntry, indId, "Individual Stage");
             }
+            runAddonChecks(indId, StageScope.INDIVIDUAL, indData);
+        }
+
+        // Recipes gate globally only, so the file is the global one when the stage exists there.
+        for (var missing : net.bananemdnsa.historystages.data.lock.MissingRecipeIds.entries()) {
+            boolean individual = !STAGES.containsKey(missing.stageId());
+            DebugLogger.log("Recipe Locks", DebugLogger.Level.WARN, missing.message(),
+                    stageFile(missing.stageId(), individual));
         }
     }
 
@@ -1449,7 +1505,7 @@ public class StageManager {
             STAGES.put(stageId, entry);
             stagesChanged();
             STAGE_PATHS.put(stageId, folder);
-            DebugLogger.runtime("Stage Save", "Saved stage '" + stageId + "' to "
+            DebugLogger.runtime(HsRuntimeCategories.STAGE_SAVE, "Saved stage '" + stageId + "' to "
                     + StagePaths.join(folder, file.getName()));
             // Re-read what actually landed on disk so the overwrite guard stays correct even
             // if a future caller forgets to reload. The save already succeeded, so a failure
@@ -1463,7 +1519,6 @@ public class StageManager {
             }
             return true;
         } catch (Exception e) {
-            System.err.println("[HistoryStages] Failed to save stage: " + stageId + " - " + e.getMessage());
             DebugLogger.error("Stage Saving", "Failed to save stage '" + stageId + "': " + e.getMessage());
             DebugLogger.writeLogFile(STAGES, INDIVIDUAL_STAGES);
             return false;
@@ -1485,7 +1540,7 @@ public class StageManager {
             STAGES.remove(stageId);
             stagesChanged();
             STAGE_PATHS.remove(stageId);
-            DebugLogger.runtime("Stage Delete", "Deleted stage '" + stageId + "'");
+            DebugLogger.runtime(HsRuntimeCategories.STAGE_DELETE, "Deleted stage '" + stageId + "'");
             return true;
         }
         return false;
@@ -1510,46 +1565,11 @@ public class StageManager {
         File configDir = treeRoot(true);
 
         for (String relFile : collectStageFiles(true)) {
-            File file = new File(configDir, relFile.replace('/', File.separatorChar));
-            String id = file.getName().substring(0, file.getName().length() - ".json".length());
-            String folder = StagePaths.parent(relFile);
-
-            if (INDIVIDUAL_STAGE_PATHS.containsKey(id)) {
-                String kept = StagePaths.join(INDIVIDUAL_STAGE_PATHS.get(id), id + ".json");
-                String msg = "Duplicate individual stage name: '" + relFile + "' collides with '"
-                        + kept + "'. Stage IDs are file names and must be unique across all folders — '"
-                        + relFile + "' was skipped.";
-                addMessage(MessageLevel.ERROR, msg);
-                DebugLogger.error("Individual Stage Loading", msg);
-                continue;
-            }
-
-            validateFileName(id, file.getName());
-
+            DebugLogger.beginSource("individual/" + relFile);
             try {
-                byte[] raw = java.nio.file.Files.readAllBytes(file.toPath());
-                StageFileGuard.recordLoaded(id, StageScope.INDIVIDUAL, raw);
-                String content = new String(raw);
-                detectUnknownKeys(id, content);
-
-                StageEntry entry = GSON.fromJson(content, StageEntry.class);
-
-                if (entry != null) {
-                    stripUnsupportedIndividualCategories(id, entry);
-                    warnUnsupportedScopeSettingsGroups(id, entry);
-                    warnUnsupportedScopeTriggers(id, entry);
-                    validateAndAddIndividual(id, entry);
-                    // See load(): a rejected stage leaves no path entry behind.
-                    if (INDIVIDUAL_STAGES.containsKey(id)) INDIVIDUAL_STAGE_PATHS.put(id, folder);
-                } else {
-                    String msg = "Individual file '" + relFile + "' parsed as null (empty or invalid JSON)";
-                    addMessage(MessageLevel.ERROR, msg);
-                    DebugLogger.error("Individual Stage Loading", msg);
-                }
-            } catch (Exception e) {
-                String msg = "Error in individual file: " + relFile + " (Invalid JSON syntax, stage skipped)";
-                addMessage(MessageLevel.ERROR, msg);
-                DebugLogger.error("Individual Stage Loading", msg + " — " + e.getMessage());
+                loadIndividualFile(configDir, relFile);
+            } finally {
+                DebugLogger.endSource();
             }
         }
 
@@ -1560,10 +1580,52 @@ public class StageManager {
         net.bananemdnsa.historystages.util.lock.StructureGenerationGate.rebuild();
         net.bananemdnsa.historystages.util.lock.SpawnControlGate.rebuild();
 
-        System.out.println("[HistoryStages] Individual Stages geladen: " + INDIVIDUAL_STAGES.size());
-
         // Check for circular dependencies across all stages
         checkCircularDependencies();
+    }
+
+    private static void loadIndividualFile(File configDir, String relFile) {
+        File file = new File(configDir, relFile.replace('/', File.separatorChar));
+        String id = file.getName().substring(0, file.getName().length() - ".json".length());
+        String folder = StagePaths.parent(relFile);
+
+        if (INDIVIDUAL_STAGE_PATHS.containsKey(id)) {
+            String kept = StagePaths.join(INDIVIDUAL_STAGE_PATHS.get(id), id + ".json");
+            String msg = "Duplicate individual stage name: '" + relFile + "' collides with '"
+                    + kept + "'. Stage IDs are file names and must be unique across all folders — '"
+                    + relFile + "' was skipped.";
+            addMessage(MessageLevel.ERROR, msg);
+            DebugLogger.error("Individual Stage Loading", msg);
+            return;
+        }
+
+        validateFileName(id, file.getName());
+
+        try {
+            byte[] raw = java.nio.file.Files.readAllBytes(file.toPath());
+            StageFileGuard.recordLoaded(id, StageScope.INDIVIDUAL, raw);
+            String content = new String(raw);
+            detectUnknownKeys(id, content);
+
+            StageEntry entry = GSON.fromJson(content, StageEntry.class);
+
+            if (entry != null) {
+                stripUnsupportedIndividualCategories(id, entry);
+                warnUnsupportedScopeSettingsGroups(id, entry);
+                warnUnsupportedScopeTriggers(id, entry);
+                validateAndAddIndividual(id, entry);
+                // See load(): a rejected stage leaves no path entry behind.
+                if (INDIVIDUAL_STAGES.containsKey(id)) INDIVIDUAL_STAGE_PATHS.put(id, folder);
+            } else {
+                String msg = "Individual file '" + relFile + "' parsed as null (empty or invalid JSON)";
+                addMessage(MessageLevel.ERROR, msg);
+                DebugLogger.error("Individual Stage Loading", msg);
+            }
+        } catch (Exception e) {
+            String msg = "Error in individual file: " + relFile + " (Invalid JSON syntax, stage skipped)";
+            addMessage(MessageLevel.ERROR, msg);
+            DebugLogger.error("Individual Stage Loading", msg + " — " + e.getMessage());
+        }
     }
 
     /**
@@ -1838,7 +1900,6 @@ public class StageManager {
 
         INDIVIDUAL_STAGES.put(stageId, entry);
         stagesChanged();
-        System.out.println("[HistoryStages] Individual Stage geladen: " + stageId);
     }
 
     /**
@@ -1895,7 +1956,7 @@ public class StageManager {
             INDIVIDUAL_STAGES.put(stageId, entry);
             stagesChanged();
             INDIVIDUAL_STAGE_PATHS.put(stageId, folder);
-            DebugLogger.runtime("Individual Stage Save", "Saved individual stage '" + stageId + "' to "
+            DebugLogger.runtime(HsRuntimeCategories.STAGE_SAVE, "Saved individual stage '" + stageId + "' to "
                     + StagePaths.join(folder, file.getName()));
             // Re-read what actually landed on disk so the overwrite guard stays correct even
             // if a future caller forgets to reload. The save already succeeded, so a failure
@@ -1909,7 +1970,6 @@ public class StageManager {
             }
             return true;
         } catch (Exception e) {
-            System.err.println("[HistoryStages] Failed to save individual stage: " + stageId + " - " + e.getMessage());
             DebugLogger.error("Individual Stage Saving", "Failed to save individual stage '" + stageId + "': " + e.getMessage());
             return false;
         }
@@ -1928,7 +1988,7 @@ public class StageManager {
             INDIVIDUAL_STAGES.remove(stageId);
             stagesChanged();
             INDIVIDUAL_STAGE_PATHS.remove(stageId);
-            DebugLogger.runtime("Individual Stage Delete", "Deleted individual stage '" + stageId + "'");
+            DebugLogger.runtime(HsRuntimeCategories.STAGE_DELETE, "Deleted individual stage '" + stageId + "'");
             return true;
         }
         return false;
@@ -1983,7 +2043,7 @@ public class StageManager {
             return false;
         }
         (individual ? INDIVIDUAL_FOLDERS : FOLDERS).add(path);
-        DebugLogger.runtime("Stage Folders", "Created folder '" + path + "'");
+        DebugLogger.runtime(HsRuntimeCategories.STAGE_FOLDERS, "Created folder '" + path + "'");
         return true;
     }
 
@@ -2007,7 +2067,7 @@ public class StageManager {
             DebugLogger.error("Stage Folders", "Could not rename folder '" + path + "' to '" + newName + "'.");
             return false;
         }
-        DebugLogger.runtime("Stage Folders", "Renamed folder '" + path + "' to '" + targetPath + "'");
+        DebugLogger.runtime(HsRuntimeCategories.STAGE_FOLDERS, "Renamed folder '" + path + "' to '" + targetPath + "'");
         return true;
     }
 
@@ -2047,7 +2107,7 @@ public class StageManager {
             DebugLogger.error("Stage Folders", "Folder '" + path + "' could not be removed after emptying it.");
             return false;
         }
-        DebugLogger.runtime("Stage Folders", "Deleted folder '" + path + "', content moved one level up");
+        DebugLogger.runtime(HsRuntimeCategories.STAGE_FOLDERS, "Deleted folder '" + path + "', content moved one level up");
         return true;
     }
 
@@ -2122,7 +2182,7 @@ public class StageManager {
             }
 
             paths.put(stageId, targetFolder);
-            DebugLogger.runtime("Stage Folders", "Moved stage '" + stageId + "' to '" + targetFolder + "'");
+            DebugLogger.runtime(HsRuntimeCategories.STAGE_FOLDERS, "Moved stage '" + stageId + "' to '" + targetFolder + "'");
         }
 
         return allMoved;
@@ -2182,7 +2242,7 @@ public class StageManager {
             return false;
         }
 
-        DebugLogger.runtime("Stage Folders", "Moved folder '" + path + "' to '" + targetPath + "'");
+        DebugLogger.runtime(HsRuntimeCategories.STAGE_FOLDERS, "Moved folder '" + path + "' to '" + targetPath + "'");
         return true;
     }
 

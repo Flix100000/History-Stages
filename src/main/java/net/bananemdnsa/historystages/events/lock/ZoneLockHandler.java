@@ -17,6 +17,7 @@ import net.bananemdnsa.historystages.data.lock.engine.StageLocks;
 import net.bananemdnsa.historystages.data.saveddata.IndividualStageData;
 import net.bananemdnsa.historystages.data.saveddata.StageData;
 import net.bananemdnsa.historystages.util.DebugLogger;
+import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import com.mojang.logging.LogUtils;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -229,6 +230,32 @@ public class ZoneLockHandler {
         List<ZoneEntry> zones = new ArrayList<>(here.size());
         for (ZoneIndex.Entry entry : here) zones.add(entry.zone());
         state.verdict = ZoneVerdict.of(zones);
+    }
+
+    /**
+     * The stages keeping {@code pos} locked for this player because a locked zone covers it,
+     * by the same rule as the tick. Empty when no locked zone covers it. Behind {@code PlaceLocks}.
+     */
+    public static List<String> lockingStagesAt(Level level, BlockPos pos, UUID playerUuid) {
+        if (!StageLocks.engine().anyZoneLocks()) return List.of();
+        ZoneIndex.rebuildIfDirty();
+        List<ZoneIndex.Entry> candidates = ZoneIndex.zonesIn(dimensionId(level));
+        if (candidates.isEmpty()) return List.of();
+
+        Set<String> playerStages = IndividualStageData.SERVER_CACHE.getOrDefault(playerUuid, Collections.emptySet());
+        PlayerState probe = new PlayerState();
+        List<ZoneIndex.Entry> locked = new ArrayList<>();
+        for (ZoneIndex.Entry entry : candidates) {
+            boolean unlocked = entry.scope() == StageScope.GLOBAL
+                    ? StageData.SERVER_CACHE.contains(entry.stageId())
+                    : playerStages.contains(entry.stageId());
+            if (!unlocked) locked.add(entry);
+        }
+        probe.lockedZones = locked;
+
+        java.util.LinkedHashSet<String> out = new java.util.LinkedHashSet<>();
+        for (ZoneIndex.Entry entry : zonesAt(probe, level, pos)) out.add(entry.stageId());
+        return List.copyOf(out);
     }
 
     /** The locked zones containing this position, cheapest test first. */
@@ -570,7 +597,7 @@ public class ZoneLockHandler {
             player.displayClientMessage(message, true);
         }
 
-        DebugLogger.runtime("Zone Lock", player.getName().getString(),
+        DebugLogger.runtime(HsRuntimeCategories.ZONE_LOCK, player.getName().getString(),
                 "Inside locked zone '" + zoneName + "' — missing stage: " + stageName);
     }
 

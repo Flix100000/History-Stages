@@ -19,5 +19,6 @@ package net.bananemdnsa.historystages.data.lock;
  *                     no record of which level it was unlocked at, and guessing from list order
  *                     breaks as soon as another mod appends to the same list.
  */
-public record MerchantSubject(String professionId, int level) {
+public record MerchantSubject(String professionId, int level)
+        implements net.bananemdnsa.historystages.api.lock.LockSubject {
 }

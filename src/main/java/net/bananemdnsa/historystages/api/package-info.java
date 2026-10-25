@@ -19,6 +19,27 @@
  * named in over a hundred files by the loader, the editor, the network layer and the graph, and
  * moving it in here would mislabel it. They are as stable as anything in this package.
  *
+ * <p>Where to start, by question:
+ * <ul>
+ *   <li>Does the world or a player have a stage? Unlock or relock one? —
+ *       {@code stage.StageStates}, with {@code stage.StageEvent} for reacting to changes and
+ *       refusing an unlock, and {@code stage.StageDefinitionsChangedEvent} for reloads.</li>
+ *   <li>How far along is a stage, and what comes next? — {@code stage.StageProgress} and
+ *       {@code stage.StageGraph}; {@code stage.StageAnnounceEvent} to take over the unlock
+ *       messages; {@code team.Teams} for who shares with whom.</li>
+ *   <li>Is something locked for a player? — {@code lock.ItemLocks} for items,
+ *       {@code lock.PlaceLocks} for positions,
+ *       {@code lock.CategoryLocks} for everything else (with {@code lock.Subjects}), and
+ *       {@code lock.LockFeedbacks} to tell the player.</li>
+ *   <li>The same on the client, for screens and tooltips — {@code client.ClientStages} and
+ *       {@code client.ClientLocks}.</li>
+ *   <li>Adding something of your own — the {@code Register…Event}s, one per extension point.</li>
+ * </ul>
+ *
+ * <p><strong>Threads.</strong> Call the server-side api from the server thread, the client-side
+ * api from the client thread. Nothing in here locks, and the saved data behind it is not safe to
+ * touch from a worker thread; hop over with {@code server.execute(...)} first.
+ *
  * <p><strong>How to use any of this is documented in the wiki:</strong>
  * <a href="https://historystages.github.io/api/addon-development">Addon
  * Development</a>.

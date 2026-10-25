@@ -14,7 +14,8 @@ package net.bananemdnsa.historystages.data.lock;
  *                    that actually carries a criterion ever looks at it
  */
 public record TradeOfferSubject(String merchantKey, int level, String givesId,
-                                String takesAId, String takesBId, Object givesStack) {
+                                String takesAId, String takesBId, Object givesStack)
+        implements net.bananemdnsa.historystages.api.lock.LockSubject {
 
     /** For the paths and the tests that have no stack — an entry with a criterion won't match. */
     public TradeOfferSubject(String merchantKey, int level, String givesId,

@@ -1,11 +1,13 @@
 package net.bananemdnsa.historystages.gametest;
 
+import net.minecraftforge.common.MinecraftForge;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
 import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.HistoryStages;
+import net.bananemdnsa.historystages.api.stage.StageEvent;
 import net.bananemdnsa.historystages.api.stage.StageStates;
 import net.bananemdnsa.historystages.data.StageMode;
 import net.bananemdnsa.historystages.data.saveddata.IndividualStageData;
@@ -237,6 +239,37 @@ public final class TeamShareTests {
             helper.succeed();
         } finally {
             Config.GAMEPLAY.teamShareOnJoin.set(original);
+            GameTestStages.removeAll();
+            cleanUp(helper, List.of("forge"), alice, bob);
+        }
+    }
+
+    @GameTest(template = "empty")
+    public static void eachTeammateGetsTheirOwnUnlockEvent(GameTestHelper helper) {
+        ServerPlayer alice = GameTestPlayers.createConnected(helper);
+        ServerPlayer bob = GameTestPlayers.createConnected(helper);
+        String id = P + "forge";
+        // Addons that react per player (re-sending a command tree, say) rely on this.
+        List<UUID> received = new java.util.ArrayList<>();
+        java.util.function.Consumer<StageEvent.IndividualUnlocked> listener = event -> {
+            if (event.getStageId().equals(id)) received.add(event.getPlayerUUID());
+        };
+        MinecraftForge.EVENT_BUS.addListener(listener);
+        try {
+            GameTestStages.individual("forge", stage -> stage.setShareWithTeam(true));
+            team(alice, bob);
+
+            StageStates.unlockIndividual(id, alice);
+            login(bob);
+
+            if (!received.equals(List.of(alice.getUUID(), bob.getUUID()))) {
+                helper.fail("expected one unlock event for alice, then one for bob when the stage reaches him; got "
+                        + received);
+                return;
+            }
+            helper.succeed();
+        } finally {
+            MinecraftForge.EVENT_BUS.unregister(listener);
             GameTestStages.removeAll();
             cleanUp(helper, List.of("forge"), alice, bob);
         }

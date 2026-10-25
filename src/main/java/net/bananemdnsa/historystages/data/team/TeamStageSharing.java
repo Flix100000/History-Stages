@@ -1,5 +1,7 @@
 package net.bananemdnsa.historystages.data.team;
 
+import net.bananemdnsa.historystages.data.StageCauses;
+import net.bananemdnsa.historystages.api.stage.StageChangeCause;
 import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.api.stage.StageEvent;
@@ -9,6 +11,7 @@ import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.data.saveddata.IndividualStageData;
 import net.bananemdnsa.historystages.data.saveddata.TeamSharePending;
 import net.bananemdnsa.historystages.util.DebugLogger;
+import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -26,10 +29,10 @@ import java.util.function.Supplier;
 /**
  * Hands individual stages flagged {@code share_with_team} on to the rest of the player's team.
  *
- * <p>Hangs off {@link StageEvent} rather than {@link StageStates#unlockIndividual}: the pedestal
- * and the FTB Quests reward write the stage themselves and only post the event, so a hook on
- * StageStates would miss the two most common ways a stage is earned. Admin paths post the same
- * events and are told apart by wrapping them in {@link #withoutSharing}.
+ * <p>Hangs off {@link StageEvent} rather than {@link StageStates#unlockIndividual}: the bulk
+ * "unlock all" paths write the stages themselves and only post the event, so a hook on
+ * StageStates would miss them. Admin paths post the same events and are told apart by wrapping
+ * them in {@link #withoutSharing}.
  *
  * <p>Teammates go through the normal unlock, so a stage that is lost for good or blocked by its
  * logic for one of them stays shut for that one.
@@ -94,12 +97,12 @@ public final class TeamStageSharing {
             if (player == null) {
                 if (!IndividualStageData.get(server.overworld()).hasStage(mate, stageId)) {
                     pending.addGrant(mate, stageId);
-                    DebugLogger.runtime("Team Share", "Queued '" + stageId + "' for offline teammate " + mate + ".");
+                    DebugLogger.runtime(HsRuntimeCategories.TEAM_SHARE, "Queued '" + stageId + "' for offline teammate " + mate + ".");
                 }
                 continue;
             }
-            if (withoutSharing(() -> StageStates.unlockIndividual(stageId, player))) {
-                DebugLogger.runtime("Team Share", player.getName().getString(),
+            if (withoutSharing(() -> StageCauses.with(StageChangeCause.TEAM, () -> StageStates.unlockIndividual(stageId, player)))) {
+                DebugLogger.runtime(HsRuntimeCategories.TEAM_SHARE, player.getName().getString(),
                         "Received '" + stageId + "' from teammate " + event.getPlayerUUID() + ".");
             }
         }
@@ -122,8 +125,8 @@ public final class TeamStageSharing {
                 continue;
             }
             // A normal relock, never a permanent loss: the teammate did not trip the lock trigger.
-            if (withoutSharing(() -> StageStates.relockIndividual(stageId, player))) {
-                DebugLogger.runtime("Team Share", player.getName().getString(),
+            if (withoutSharing(() -> StageCauses.with(StageChangeCause.TEAM, () -> StageStates.relockIndividual(stageId, player)))) {
+                DebugLogger.runtime(HsRuntimeCategories.TEAM_SHARE, player.getName().getString(),
                         "Lost '" + stageId + "' together with teammate " + event.getPlayerUUID() + ".");
             }
         }
@@ -137,7 +140,7 @@ public final class TeamStageSharing {
 
         Set<String> losses = pending.takeLosses(player.getUUID());
         Set<String> grants = pending.takeGrants(player.getUUID());
-        withoutSharing(() -> {
+        withoutSharing(() -> StageCauses.run(StageChangeCause.TEAM, () -> {
             for (String stageId : losses) {
                 if (isShared(stageId)) StageStates.relockIndividual(stageId, player);
             }
@@ -145,7 +148,7 @@ public final class TeamStageSharing {
             for (String stageId : grants) {
                 if (isShared(stageId)) StageStates.unlockIndividual(stageId, player);
             }
-        });
+        }));
 
         if (Config.GAMEPLAY.teamShareOnJoin.get()) catchUp(player);
     }
@@ -163,16 +166,16 @@ public final class TeamStageSharing {
         if (mates.isEmpty()) return;
         IndividualStageData data = IndividualStageData.get(player.serverLevel());
 
-        withoutSharing(() -> {
+        withoutSharing(() -> StageCauses.run(StageChangeCause.TEAM, () -> {
             for (Map.Entry<String, StageEntry> e : Map.copyOf(StageManager.getIndividualStages()).entrySet()) {
                 String stageId = e.getKey();
                 if (!isShared(stageId) || data.hasStage(player.getUUID(), stageId)) continue;
                 boolean teamHasIt = mates.stream().anyMatch(mate -> data.hasStage(mate, stageId));
                 if (teamHasIt && StageStates.unlockIndividual(stageId, player)) {
-                    DebugLogger.runtime("Team Share", player.getName().getString(),
+                    DebugLogger.runtime(HsRuntimeCategories.TEAM_SHARE, player.getName().getString(),
                             "Caught up on '" + stageId + "' from the team.");
                 }
             }
-        });
+        }));
     }
 }

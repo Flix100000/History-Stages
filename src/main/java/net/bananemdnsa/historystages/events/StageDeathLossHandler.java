@@ -1,5 +1,7 @@
 package net.bananemdnsa.historystages.events;
 
+import net.bananemdnsa.historystages.data.StageCauses;
+import net.bananemdnsa.historystages.api.stage.StageChangeCause;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.StageManager;
@@ -55,7 +57,7 @@ public final class StageDeathLossHandler {
 
         TemporaryStageData temporary = TemporaryStageData.get(level);
         for (String stageId : lost) {
-            StageStates.relockIndividual(stageId, player);
+            StageCauses.run(StageChangeCause.DEATH, () -> StageStates.relockIndividual(stageId, player));
             // No-op unless the stage is in temporary mode with a running timer.
             temporary.expireIndividualEarly(uuid, stageId, HistoryStages::resolveTemporaryConfig);
         }

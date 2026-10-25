@@ -343,7 +343,15 @@ public class StageLockHelper {
     // ITEM DROP ON STAGE REVOCATION
     // =============================================
 
+    /**
+     * Drops what the revoked stage gated from the player's inventory, if the server wants that.
+     *
+     * <p>The {@code dropOnRevoke} switch is read here rather than by the callers. Only the FTB
+     * Quests reward used to ask it, so a relock from a timer, a lock trigger or a command dropped
+     * the items even with the switch off.
+     */
     public static void dropLockedItemsForPlayer(ServerPlayer player, String revokedStageId) {
+        if (!net.bananemdnsa.historystages.Config.GAMEPLAY.individualDropOnRevoke.get()) return;
         StageEntry entry = StageManager.getIndividualStages().get(revokedStageId);
         if (entry == null) return;
 

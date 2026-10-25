@@ -1,5 +1,7 @@
 package net.bananemdnsa.historystages.data.relock;
 
+import net.bananemdnsa.historystages.data.StageCauses;
+import net.bananemdnsa.historystages.api.stage.StageChangeCause;
 import net.bananemdnsa.historystages.api.stage.StageScope;
 import net.bananemdnsa.historystages.api.stage.StageStates;
 import net.bananemdnsa.historystages.api.trigger.StateView;
@@ -13,6 +15,7 @@ import net.bananemdnsa.historystages.data.saveddata.IndividualStageData;
 import net.bananemdnsa.historystages.data.saveddata.LockTriggerProgressData;
 import net.bananemdnsa.historystages.data.saveddata.StageData;
 import net.bananemdnsa.historystages.util.DebugLogger;
+import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.Nullable;
@@ -171,15 +174,19 @@ public final class LockTriggerManager {
         if (lose) {
             if (individual) LostStages.markIndividual(stageId, player); else LostStages.markGlobal(stageId, level);
         }
-        boolean locked = individual ? StageStates.relockIndividual(stageId, player)
-                                    : StageStates.relockGlobal(stageId, level);
+        boolean locked = StageCauses.with(StageChangeCause.LOCK_TRIGGER, () -> {
+            boolean done = individual ? StageStates.relockIndividual(stageId, player)
+                                      : StageStates.relockGlobal(stageId, level);
+            if (done && lose) LostStages.announce(stageId, individual ? player.getUUID() : null);
+            return done;
+        });
         if (!locked) {
             if (lose) {
                 if (individual) LostStages.clearIndividual(stageId, player); else LostStages.clearGlobal(stageId, level);
             }
             String msg = "Lock trigger of '" + stageId + "' fired, but the relock did not go through.";
-            if (individual) DebugLogger.runtime("Re-lock", player.getName().getString(), msg);
-            else DebugLogger.runtime("Re-lock", msg);
+            if (individual) DebugLogger.runtime(HsRuntimeCategories.RELOCK, player.getName().getString(), msg);
+            else DebugLogger.runtime(HsRuntimeCategories.RELOCK, msg);
         }
         return locked;
     }

@@ -14,6 +14,7 @@ import net.bananemdnsa.historystages.structure.ClusterDebugRenderer;
 import net.bananemdnsa.historystages.structure.StructureCluster;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.bananemdnsa.historystages.util.DebugLogger;
+import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import net.bananemdnsa.historystages.data.saveddata.IndividualStageData;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
@@ -139,7 +140,7 @@ public class StructureLockHandler {
 
         // Throttled, because this runs on every chunk crossing: one line per player per interval
         // is enough to see whether the zone cache is holding or thrashing.
-        DebugLogger.runtimeThrottled("Structure Lock", "cluster_cache_" + player.getUUID(),
+        DebugLogger.runtimeThrottled(HsRuntimeCategories.STRUCTURE_CACHE, "cluster_cache_" + player.getUUID(),
                 "Zone cache: " + ClusterBuilder.cacheStats());
 
         state.cachedNearbyClusters = nearby;
@@ -165,19 +166,7 @@ public class StructureLockHandler {
         List<StructureCluster> lockedNearby = new ArrayList<>();
         Map<StructureCluster, Set<String>> clusterStages = new HashMap<>();
         for (StructureCluster c : nearby) {
-            Set<String> idView = new HashSet<>();
-            c.structure().unwrapKey().ifPresent(k -> idView.add(k.location().toString()));
-            Set<String> tagView = new HashSet<>();
-            c.structure().tags().forEach(t -> tagView.add(t.location().toString()));
-
-            List<String> globalGating = stagesGating(StageManager.getStages(), idView, tagView);
-            List<String> individualGating = stagesGating(StageManager.getIndividualStages(), idView, tagView);
-            if (globalGating.isEmpty() && individualGating.isEmpty()) continue;
-
-            Set<String> stages = new LinkedHashSet<>(LockResolution.missingStages(
-                    StageScope.GLOBAL, globalGating, StageLocks.serverGlobal()));
-            stages.addAll(LockResolution.missingStages(
-                    StageScope.INDIVIDUAL, individualGating, StageLocks.serverIndividual(playerStages)));
+            Set<String> stages = missingStagesFor(c, StageLocks.serverIndividual(playerStages));
             if (stages.isEmpty()) continue;
 
             lockedNearby.add(c);
@@ -216,6 +205,41 @@ public class StructureLockHandler {
             h = h * 31 + b.maxZ();
         }
         return h;
+    }
+
+    /** The stages still standing between this player and one structure, global ones first. */
+    private static Set<String> missingStagesFor(StructureCluster c,
+                                                net.bananemdnsa.historystages.api.stage.StageStateView individual) {
+        Set<String> idView = new HashSet<>();
+        c.structure().unwrapKey().ifPresent(k -> idView.add(k.location().toString()));
+        Set<String> tagView = new HashSet<>();
+        c.structure().tags().forEach(t -> tagView.add(t.location().toString()));
+
+        List<String> globalGating = stagesGating(StageManager.getStages(), idView, tagView);
+        List<String> individualGating = stagesGating(StageManager.getIndividualStages(), idView, tagView);
+        if (globalGating.isEmpty() && individualGating.isEmpty()) return Set.of();
+
+        Set<String> stages = new LinkedHashSet<>(LockResolution.missingStages(
+                StageScope.GLOBAL, globalGating, StageLocks.serverGlobal()));
+        stages.addAll(LockResolution.missingStages(StageScope.INDIVIDUAL, individualGating, individual));
+        return stages;
+    }
+
+    /**
+     * The stages keeping {@code pos} locked for this player because a locked structure covers it,
+     * worked out from scratch the way the tick does, for any position rather than only where the
+     * player stands. Empty when no locked structure covers it. Behind {@code PlaceLocks}.
+     */
+    public static List<String> lockingStagesAt(ServerLevel level, BlockPos pos, UUID playerUuid) {
+        if (!StageLocks.engine().anyStructureLocks()) return List.of();
+        List<StructureCluster> nearby = ClusterBuilder.collectClustersNear(level, pos, CHUNK_SCAN_RADIUS,
+                Config.GAMEPLAY.structureLockPadding.get(), Config.GAMEPLAY.structureClusterDistance.get());
+        Set<String> out = new LinkedHashSet<>();
+        for (StructureCluster c : nearby) {
+            if (!c.contains(pos)) continue;
+            out.addAll(missingStagesFor(c, StageLocks.serverIndividual(playerUuid)));
+        }
+        return List.copyOf(out);
     }
 
     /**
@@ -379,7 +403,7 @@ public class StructureLockHandler {
             player.displayClientMessage(msg, true);
         }
 
-        DebugLogger.runtime("Structure Lock", player.getName().getString(),
+        DebugLogger.runtime(HsRuntimeCategories.STRUCTURE_LOCK, player.getName().getString(),
                 "Inside locked structure '" + structureId + "' — missing stages: " + state.cachedLockedStageIds);
     }
 

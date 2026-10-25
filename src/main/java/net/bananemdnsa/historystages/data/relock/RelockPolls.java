@@ -7,6 +7,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.bananemdnsa.historystages.util.DebugLogger;
+import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import org.slf4j.Logger;
 
 import java.util.Set;
@@ -34,7 +35,7 @@ public final class RelockPolls {
                 LOGGER.warn("[HistoryStages] Re-lock check of stage '{}' threw. It is skipped while it keeps failing.",
                         stageId, ex);
             }
-            DebugLogger.runtimeThrottled("Re-lock", "relock-error:" + key,
+            DebugLogger.runtimeThrottled(HsRuntimeCategories.RELOCK, "relock-error:" + key,
                     "Check of '" + stageId + "' threw " + ex + ". Skipped this poll.");
         }
     }

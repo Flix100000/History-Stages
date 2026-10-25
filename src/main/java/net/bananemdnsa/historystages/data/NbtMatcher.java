@@ -4,6 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
+import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import net.minecraft.nbt.*;
 import net.minecraft.world.item.ItemStack;
 

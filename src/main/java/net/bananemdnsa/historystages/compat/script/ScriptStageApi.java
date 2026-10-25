@@ -1,5 +1,7 @@
 package net.bananemdnsa.historystages.compat.script;
 
+import net.bananemdnsa.historystages.api.stage.StageChangeCause;
+import net.bananemdnsa.historystages.data.StageCauses;
 import net.bananemdnsa.historystages.api.lock.CategoryLocks;
 import net.bananemdnsa.historystages.api.stage.StageScope;
 import net.bananemdnsa.historystages.api.stage.StageStates;
@@ -16,7 +18,6 @@ import net.minecraftforge.server.ServerLifecycleHooks;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 
 import org.slf4j.Logger;
 
@@ -45,12 +46,6 @@ public final class ScriptStageApi {
      * misbehaving — they look at the console, next to the KubeJS and CraftTweaker errors.
      */
     private static final Logger LOGGER = LogUtils.getLogger();
-
-    /**
-     * Stands in for "no player" when asking a global-only category. Individual stages are never
-     * recorded against it, so the individual half of the question answers empty instead of wrong.
-     */
-    private static final UUID NO_PLAYER = new UUID(0L, 0L);
 
     // --- reading -----------------------------------------------------------
 
@@ -119,26 +114,26 @@ public final class ScriptStageApi {
         if (!checkStage(stageId, StageScope.GLOBAL)) return false;
         ServerLevel level = overworld();
         if (level == null) return false;
-        return StageStates.unlockGlobal(stageId, level);
+        return StageCauses.with(StageChangeCause.SCRIPT, () -> StageStates.unlockGlobal(stageId, level));
     }
 
     public static boolean lock(String stageId) {
         if (!checkStage(stageId, StageScope.GLOBAL)) return false;
         ServerLevel level = overworld();
         if (level == null) return false;
-        return StageStates.relockGlobal(stageId, level);
+        return StageCauses.with(StageChangeCause.SCRIPT, () -> StageStates.relockGlobal(stageId, level));
     }
 
     public static boolean unlockFor(ServerPlayer player, String stageId) {
         if (player == null) return false;
         if (!checkStage(stageId, StageScope.INDIVIDUAL)) return false;
-        return StageStates.unlockIndividual(stageId, player);
+        return StageCauses.with(StageChangeCause.SCRIPT, () -> StageStates.unlockIndividual(stageId, player));
     }
 
     public static boolean lockFor(ServerPlayer player, String stageId) {
         if (player == null) return false;
         if (!checkStage(stageId, StageScope.INDIVIDUAL)) return false;
-        return StageStates.relockIndividual(stageId, player);
+        return StageCauses.with(StageChangeCause.SCRIPT, () -> StageStates.relockIndividual(stageId, player));
     }
 
     // --- lock questions ----------------------------------------------------
@@ -151,20 +146,18 @@ public final class ScriptStageApi {
     public static boolean isLocked(String categoryId, String subject, ServerPlayer player) {
         String category = resolvedCategory(categoryId);
         if (category == null) return false;
-        return CategoryLocks.isLockedForPlayer(category, subject, uuidOf(player));
+        return player == null ? CategoryLocks.isLockedGlobally(category, subject)
+                : CategoryLocks.isLockedForPlayer(category, subject, player.getUUID());
     }
 
     public static List<String> missingStages(String categoryId, String subject, ServerPlayer player) {
         String category = resolvedCategory(categoryId);
         if (category == null) return List.of();
-        return CategoryLocks.missingStagesForPlayer(category, subject, uuidOf(player));
+        return player == null ? CategoryLocks.missingStagesGlobally(category, subject)
+                : CategoryLocks.missingStagesForPlayer(category, subject, player.getUUID());
     }
 
     // --- shared checking ---------------------------------------------------
-
-    private static UUID uuidOf(ServerPlayer player) {
-        return player == null ? NO_PLAYER : player.getUUID();
-    }
 
     private static boolean checkStage(String stageId, StageScope scope) {
         ScriptCallResolution.Check check = ScriptCallResolution.stage(

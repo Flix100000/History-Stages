@@ -2,6 +2,7 @@ package net.bananemdnsa.historystages.events.lock;
 
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.util.DebugLogger;
+import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import net.bananemdnsa.historystages.util.lock.LockFeedback;
 import net.bananemdnsa.historystages.util.lock.LockMessages;
 import net.bananemdnsa.historystages.util.lock.StageLockHelper;
@@ -98,7 +99,7 @@ public class FluidPickupLockHandler {
         if (!locked) return false;
 
         if (!level.isClientSide() && player instanceof ServerPlayer sp) {
-            DebugLogger.runtimeThrottled("Fluid Lock", "pickup_" + sp.getUUID() + "_" + fluidId,
+            DebugLogger.runtimeThrottled(HsRuntimeCategories.FLUID_LOCK, "pickup_" + sp.getUUID() + "_" + fluidId,
                     "<" + sp.getName().getString() + "> pickup of '" + fluidId
                             + "' blocked [action: pickup]");
             LockFeedback.sendActionbar(sp, FEEDBACK_CATEGORY, LockMessages.fluidLocked());

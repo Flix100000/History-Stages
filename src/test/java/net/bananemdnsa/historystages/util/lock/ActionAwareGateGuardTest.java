@@ -48,7 +48,11 @@ class ActionAwareGateGuardTest {
             // A disguise belongs to the item and holds while any stage gates it at all. How it
             // breaks is the disguise rule's own setting, not an action narrowing of the entry.
             "Disguises.java",
-            "ClientDisguises.java");
+            "ClientDisguises.java",
+            // The api offers both questions, named apart (isGated / isActionLocked) and with the
+            // difference spelled out, because an addon needs the blind one for tooltips too.
+            "ItemLocks.java",
+            "ClientLocks.java");
 
     @Test
     void gatesAskWhichActionIsLockedRatherThanWhetherTheItemIsMentioned() throws IOException {

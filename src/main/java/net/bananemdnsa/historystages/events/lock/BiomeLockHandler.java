@@ -8,6 +8,7 @@ import net.bananemdnsa.historystages.data.lock.engine.StageLocks;
 import net.bananemdnsa.historystages.data.saveddata.IndividualStageData;
 import net.bananemdnsa.historystages.data.saveddata.StageData;
 import net.bananemdnsa.historystages.util.DebugLogger;
+import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import net.bananemdnsa.historystages.util.lock.BiomeEffectRegistry;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
@@ -160,6 +161,25 @@ public class BiomeLockHandler {
     }
 
     /**
+     * The stages keeping the biome at {@code pos} locked for this player, by the same rule as the
+     * tick: every stage the viewer lacks whose biome list names it. Empty when it is free. Behind
+     * {@code PlaceLocks}.
+     */
+    public static List<String> lockingStagesAt(LevelReader level, BlockPos pos, UUID playerUuid) {
+        if (!StageLocks.engine().anyBiomeLocks()) return List.of();
+        BiomeView here = viewOf(level, pos);
+        Set<String> playerStages = IndividualStageData.SERVER_CACHE.getOrDefault(playerUuid, Collections.emptySet());
+        List<String> out = new ArrayList<>();
+        for (Map.Entry<String, StageEntry> e : StageManager.getStages().entrySet()) {
+            if (!StageData.SERVER_CACHE.contains(e.getKey()) && matches(here, e.getValue().getBiomes())) out.add(e.getKey());
+        }
+        for (Map.Entry<String, StageEntry> e : StageManager.getIndividualStages().entrySet()) {
+            if (!playerStages.contains(e.getKey()) && matches(here, e.getValue().getBiomes())) out.add(e.getKey());
+        }
+        return out;
+    }
+
+    /**
      * Note that {@code mod_linked} is deliberately not consulted here. Like the structure lock's
      * equivalent, it is editor bookkeeping recording which entries came from the mod popup — the
      * IDs themselves are already in the biome list, so matching against it would be redundant.
@@ -256,7 +276,7 @@ public class BiomeLockHandler {
             player.displayClientMessage(msg, true);
         }
 
-        DebugLogger.runtime("Biome Lock", player.getName().getString(),
+        DebugLogger.runtime(HsRuntimeCategories.BIOME_LOCK, player.getName().getString(),
                 "Inside locked biome '" + biomeId + "' — missing stages: " + state.currentLockedStageIds);
     }
 

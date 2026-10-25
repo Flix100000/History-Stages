@@ -1,5 +1,7 @@
 package net.bananemdnsa.historystages.data.auto;
 
+import net.bananemdnsa.historystages.data.StageCauses;
+import net.bananemdnsa.historystages.api.stage.StageChangeCause;
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.data.StageMode;
@@ -17,6 +19,7 @@ import net.bananemdnsa.historystages.data.saveddata.IndividualStageData;
 import net.bananemdnsa.historystages.data.saveddata.LostStagesData;
 import net.bananemdnsa.historystages.data.saveddata.StageData;
 import net.bananemdnsa.historystages.util.DebugLogger;
+import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -232,11 +235,13 @@ public final class AutoTriggerManager {
 
     private static void unlockStage(String stageId, boolean isIndividual,
                                     ServerPlayer player, ServerLevel level) {
-        if (isIndividual) {
-            StageStates.unlockIndividual(stageId, player);
-        } else {
-            StageStates.unlockGlobal(stageId, level);
-        }
+        StageCauses.run(StageChangeCause.AUTO_TRIGGER, () -> {
+            if (isIndividual) {
+                StageStates.unlockIndividual(stageId, player);
+            } else {
+                StageStates.unlockGlobal(stageId, level);
+            }
+        });
     }
 
     public static void clearProgress(String stageId, boolean isIndividual,
@@ -261,7 +266,7 @@ public final class AutoTriggerManager {
         // load looks deleted.
         if (StageManager.getLoadingMessages().stream()
                 .anyMatch(m -> m.level() == StageManager.MessageLevel.ERROR)) {
-            DebugLogger.runtime("Re-lock", "Lock progress and lost-stage marks not pruned: the last stage load had errors.");
+            DebugLogger.runtime(HsRuntimeCategories.RELOCK, "Lock progress and lost-stage marks not pruned: the last stage load had errors.");
             return;
         }
         LockTriggerManager.pruneOrphans(level);
