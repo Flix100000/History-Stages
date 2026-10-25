@@ -1,0 +1,16 @@
+{
+  "replace": false,
+  "values": [
+    "historystages:oak_scroll_shelf",
+    "historystages:spruce_scroll_shelf",
+    "historystages:birch_scroll_shelf",
+    "historystages:jungle_scroll_shelf",
+    "historystages:acacia_scroll_shelf",
+    "historystages:dark_oak_scroll_shelf",
+    "historystages:mangrove_scroll_shelf",
+    "historystages:cherry_scroll_shelf",
+    "historystages:bamboo_scroll_shelf",
+    "historystages:crimson_scroll_shelf",
+    "historystages:warped_scroll_shelf"
+  ]
+}

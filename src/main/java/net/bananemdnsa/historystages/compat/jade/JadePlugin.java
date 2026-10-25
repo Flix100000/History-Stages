@@ -5,6 +5,8 @@ import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.block.MultiBlockResearchPedestalBlock;
 import net.bananemdnsa.historystages.block.ResearchPedestalBlock;
+import net.bananemdnsa.historystages.block.ScrollShelfBlock;
+import net.bananemdnsa.historystages.block.entity.ScrollShelfBlockEntity;
 import net.bananemdnsa.historystages.block.TieredPedestal;
 import net.bananemdnsa.historystages.research.TierMatcher;
 import net.bananemdnsa.historystages.client.display.HiddenDisplayResolver;
@@ -33,6 +35,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraftforge.registries.ForgeRegistries;
 import snownee.jade.api.*;
 import snownee.jade.api.config.IPluginConfig;
+import snownee.jade.api.ui.IElementHelper;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -44,12 +47,14 @@ public class JadePlugin implements IWailaPlugin {
     private static final ResourceLocation LOCKED_BLOCK = new ResourceLocation(HistoryStages.MOD_ID, "locked_block");
     private static final ResourceLocation LOCKED_ENTITY_ITEM = new ResourceLocation(HistoryStages.MOD_ID, "locked_entity_item");
     private static final ResourceLocation PEDESTAL_BOOSTER = new ResourceLocation(HistoryStages.MOD_ID, "pedestal_booster");
+    private static final ResourceLocation SCROLL_SHELF = new ResourceLocation(HistoryStages.MOD_ID, "scroll_shelf");
 
     @Override
     public void registerClient(IWailaClientRegistration registration) {
         registration.registerBlockComponent(LockedBlockProvider.INSTANCE, Block.class);
         registration.registerBlockComponent(PedestalBoosterProvider.INSTANCE, ResearchPedestalBlock.class);
         registration.registerBlockComponent(PedestalBoosterProvider.INSTANCE, MultiBlockResearchPedestalBlock.class);
+        registration.registerBlockComponent(ScrollShelfProvider.INSTANCE, ScrollShelfBlock.class);
         registration.registerEntityComponent(LockedEntityItemProvider.INSTANCE, ItemFrame.class);
         registration.registerEntityComponent(LockedEntityItemProvider.INSTANCE, ArmorStand.class);
         registration.addRayTraceCallback((hit, accessor, original) -> disguise(registration, accessor));
@@ -65,6 +70,28 @@ public class JadePlugin implements IWailaPlugin {
         var shown = ClientDisguises.view(real);
         if (shown == real) return accessor;
         return registration.blockAccessor().from(block).blockState(shown).blockEntity(() -> null).build();
+    }
+
+    /** Names the scroll in the slot under the crosshair, the way Jade does for chiseled bookshelves. */
+    public enum ScrollShelfProvider implements IBlockComponentProvider {
+        INSTANCE;
+
+        @Override
+        public void appendTooltip(ITooltip tooltip, BlockAccessor accessor, IPluginConfig config) {
+            if (!(accessor.getBlockEntity() instanceof ScrollShelfBlockEntity shelf)) return;
+            var slot = ScrollShelfBlock.getHitSlot(accessor.getHitResult(), accessor.getBlockState());
+            if (slot.isEmpty()) return;
+            ItemStack scroll = shelf.getItem(slot.getAsInt());
+            if (scroll.isEmpty()) return;
+            IElementHelper elements = IElementHelper.get();
+            tooltip.add(elements.smallItem(scroll));
+            tooltip.append(elements.text(scroll.getHoverName()));
+        }
+
+        @Override
+        public ResourceLocation getUid() {
+            return SCROLL_SHELF;
+        }
     }
 
     public enum PedestalBoosterProvider implements IBlockComponentProvider {

@@ -2,6 +2,8 @@ package net.bananemdnsa.historystages.init;
 
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.block.entity.ResearchPedestalBlockEntity;
+import net.bananemdnsa.historystages.block.entity.ScrollShelfBlockEntity;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.registries.DeferredRegister;
@@ -19,6 +21,11 @@ public class ModBlockEntities {
                             ModBlocks.RESEARCH_PEDESTAL_TIER_2.get(),
                             ModBlocks.RESEARCH_PEDESTAL_TIER_3.get(),
                             ModBlocks.RESEARCH_PEDESTAL_TIER_4.get()).build(null));
+
+    public static final RegistryObject<BlockEntityType<ScrollShelfBlockEntity>> SCROLL_SHELF_BE =
+            BLOCK_ENTITIES.register("scroll_shelf_be", () ->
+                    BlockEntityType.Builder.of(ScrollShelfBlockEntity::new,
+                            ModBlocks.SCROLL_SHELVES.values().stream().map(RegistryObject::get).toArray(Block[]::new)).build(null));
 
     public static void register(IEventBus eventBus) {
         BLOCK_ENTITIES.register(eventBus);

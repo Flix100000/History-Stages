@@ -192,7 +192,7 @@ public class StageManager {
         try {
             byte[] raw = java.nio.file.Files.readAllBytes(file.toPath());
             StageFileGuard.recordLoaded(id, StageScope.GLOBAL, raw);
-            String content = new String(raw);
+            String content = new String(raw, java.nio.charset.StandardCharsets.UTF_8);
             detectUnknownKeys(id, content);
 
             StageEntry entry = GSON.fromJson(content, StageEntry.class);
@@ -1500,7 +1500,7 @@ public class StageManager {
         if (!dir.exists()) dir.mkdirs();
 
         File file = new File(dir, stageId + ".json");
-        try (Writer writer = new FileWriter(file)) {
+        try (Writer writer = new FileWriter(file, java.nio.charset.StandardCharsets.UTF_8)) {
             writer.write(entry.toJson());
             STAGES.put(stageId, entry);
             stagesChanged();
@@ -1604,7 +1604,7 @@ public class StageManager {
         try {
             byte[] raw = java.nio.file.Files.readAllBytes(file.toPath());
             StageFileGuard.recordLoaded(id, StageScope.INDIVIDUAL, raw);
-            String content = new String(raw);
+            String content = new String(raw, java.nio.charset.StandardCharsets.UTF_8);
             detectUnknownKeys(id, content);
 
             StageEntry entry = GSON.fromJson(content, StageEntry.class);
@@ -1951,7 +1951,7 @@ public class StageManager {
         if (!dir.exists()) dir.mkdirs();
 
         File file = new File(dir, stageId + ".json");
-        try (Writer writer = new FileWriter(file)) {
+        try (Writer writer = new FileWriter(file, java.nio.charset.StandardCharsets.UTF_8)) {
             writer.write(entry.toJson());
             INDIVIDUAL_STAGES.put(stageId, entry);
             stagesChanged();
