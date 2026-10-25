@@ -69,6 +69,8 @@ public class BlockLockHandler {
         BlockState state = event.getState();
         ItemStack blockItem = new ItemStack(state.getBlock().asItem());
         if (blockItem.isEmpty()) return;
+        // A disguise that breaks like its disguise must not crawl like a locked block.
+        if (net.bananemdnsa.historystages.data.disguise.Disguises.breakingDisguise(event.getEntity(), state) != null) return;
 
         boolean isClient = event.getEntity().level().isClientSide();
 
@@ -105,6 +107,8 @@ public class BlockLockHandler {
         BlockState state = event.getState();
         ItemStack blockItem = new ItemStack(state.getBlock().asItem());
         if (blockItem.isEmpty()) return;
+        // Drops come from the disguise (DisguiseBreakHandler); swallowing them would give it away.
+        if (net.bananemdnsa.historystages.data.disguise.Disguises.breakingDisguise(sp, state) != null) return;
 
         boolean locked = LockGate.isActionLockedServer(
                 blockItem, sp, "break",

@@ -192,6 +192,13 @@ public class StageManager {
         net.bananemdnsa.historystages.data.graph.GraphLayoutData.load();
         net.bananemdnsa.historystages.data.graph.GraphStageData.load();
         recomputeGraphLayout();
+
+        for (String problem : net.bananemdnsa.historystages.data.disguise.DisguiseData.load()) {
+            addMessage(MessageLevel.WARN, "Disguise: " + problem);
+        }
+        for (String problem : net.bananemdnsa.historystages.data.disguise.Disguises.unknownIds()) {
+            addMessage(MessageLevel.WARN, "Disguise: " + problem);
+        }
     }
 
     /**

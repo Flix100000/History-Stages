@@ -10,6 +10,8 @@ import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.data.graph.GraphLayoutData;
 import net.bananemdnsa.historystages.data.graph.GraphStageData;
+import net.bananemdnsa.historystages.data.disguise.DisguiseData;
+import net.bananemdnsa.historystages.data.disguise.DisguiseRuleSet;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
 
@@ -40,6 +42,9 @@ import java.util.function.Supplier;
  * player was simply dropped. Stage JSON is the same handful of keys repeated once per entry, so it
  * compresses about tenfold, which buys far more headroom than raising the cap would and keeps the
  * packet well under the frame limit at the same time.
+ *
+ * <p>{@code disguises.json} rides along for the same reason as the graph files: both the login
+ * sync and the post-save broadcast already go through here.
  */
 public class SyncStageDefinitionsPacket {
     private static final Gson GSON = new Gson();
@@ -57,6 +62,7 @@ public class SyncStageDefinitionsPacket {
     private final String graphStages;
     private final boolean graphGlobalFrozen;
     private final boolean graphIndividualFrozen;
+    private final String disguises;
 
     public SyncStageDefinitionsPacket(Map<String, StageEntry> stages) {
         this(stages, StageManager.getIndividualStages());
@@ -71,14 +77,16 @@ public class SyncStageDefinitionsPacket {
                 GraphLayoutData.toJson(GraphLayoutData.get()),
                 GraphStageData.toJson(GraphStageData.get()),
                 GraphLayoutData.get().globalFrozen(),
-                GraphLayoutData.get().individualFrozen());
+                GraphLayoutData.get().individualFrozen(),
+                DisguiseRuleSet.toJson(DisguiseData.get()));
     }
 
     public SyncStageDefinitionsPacket(Map<String, StageEntry> stages, Map<String, StageEntry> individualStages,
                                        Map<String, String> stagePaths, Map<String, String> individualStagePaths,
                                        Set<String> folders, Set<String> individualFolders,
                                        String graphLayout, String graphStages,
-                                       boolean graphGlobalFrozen, boolean graphIndividualFrozen) {
+                                       boolean graphGlobalFrozen, boolean graphIndividualFrozen,
+                                       String disguises) {
         this.stages = stages;
         this.individualStages = individualStages;
         this.stagePaths = stagePaths;
@@ -89,6 +97,7 @@ public class SyncStageDefinitionsPacket {
         this.graphStages = graphStages;
         this.graphGlobalFrozen = graphGlobalFrozen;
         this.graphIndividualFrozen = graphIndividualFrozen;
+        this.disguises = disguises;
     }
 
     /**
@@ -123,6 +132,8 @@ public class SyncStageDefinitionsPacket {
 
     public boolean graphIndividualFrozen() { return graphIndividualFrozen; }
 
+    public String disguises() { return disguises; }
+
     public static void encode(SyncStageDefinitionsPacket msg, FriendlyByteBuf buffer) {
         PacketJson.write(buffer, GSON.toJson(msg.stages), MAX_JSON_CHARS, "stages");
         PacketJson.write(buffer, GSON.toJson(msg.individualStages), MAX_JSON_CHARS, "individual stages");
@@ -136,6 +147,7 @@ public class SyncStageDefinitionsPacket {
         // computed positions too, so a non-empty section proves nothing off disk.
         buffer.writeBoolean(msg.graphGlobalFrozen);
         buffer.writeBoolean(msg.graphIndividualFrozen);
+        PacketJson.write(buffer, msg.disguises != null ? msg.disguises : "{}", MAX_JSON_CHARS, "disguises");
     }
 
     public static SyncStageDefinitionsPacket decode(FriendlyByteBuf buffer) {
@@ -155,9 +167,10 @@ public class SyncStageDefinitionsPacket {
         String graphStages = PacketJson.read(buffer, MAX_JSON_CHARS, "graph stages");
         boolean graphGlobalFrozen = buffer.readBoolean();
         boolean graphIndividualFrozen = buffer.readBoolean();
+        String disguises = PacketJson.read(buffer, MAX_JSON_CHARS, "disguises");
         return new SyncStageDefinitionsPacket(stages, individualStages, stagePaths,
                 individualStagePaths, folders, individualFolders, graphLayout, graphStages,
-                graphGlobalFrozen, graphIndividualFrozen);
+                graphGlobalFrozen, graphIndividualFrozen, disguises);
     }
 
     public static void handle(SyncStageDefinitionsPacket msg, Supplier<NetworkEvent.Context> ctx) {
@@ -171,6 +184,7 @@ public class SyncStageDefinitionsPacket {
             GraphLayoutData.setFromSync(layout.global(), layout.individual(),
                     msg.graphGlobalFrozen, msg.graphIndividualFrozen);
             GraphStageData.set(GraphStageData.fromJson(msg.graphStages));
+            DisguiseData.set(DisguiseRuleSet.fromJson(msg.disguises).set());
             StageManager.rebuildDualPhase();
             // Keep editor cache in sync so open editors always show current data
             EditorDataCache.setStages(new HashMap<>(msg.stages));

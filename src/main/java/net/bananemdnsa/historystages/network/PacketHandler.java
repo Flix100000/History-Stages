@@ -9,6 +9,7 @@ import net.bananemdnsa.historystages.network.clientbound.TradeLockedPacket;
 import net.bananemdnsa.historystages.network.clientbound.SyncVisualConfigPacket;
 import net.bananemdnsa.historystages.network.serverbound.TakeLecternScrollPacket;
 import net.bananemdnsa.historystages.network.serverbound.SaveStageGraphStylePacket;
+import net.bananemdnsa.historystages.network.serverbound.SaveDisguisePacket;
 import net.bananemdnsa.historystages.network.serverbound.SaveStageGraphInfoPacket;
 import net.bananemdnsa.historystages.network.serverbound.SaveGraphConfigPacket;
 import net.bananemdnsa.historystages.network.serverbound.RearrangeGraphPacket;
@@ -28,6 +29,7 @@ import net.bananemdnsa.historystages.network.serverbound.RequestStructureDebugPa
 import net.bananemdnsa.historystages.network.serverbound.RequestStageDependencyPacket;
 import net.bananemdnsa.historystages.network.serverbound.RequestIndividualStatesPacket;
 import net.bananemdnsa.historystages.network.serverbound.RequestEditorDataPacket;
+import net.bananemdnsa.historystages.network.serverbound.SaveDisguisePacket;
 import net.bananemdnsa.historystages.network.clientbound.SyncLockBordersPacket;
 import net.bananemdnsa.historystages.network.clientbound.EditorFeedbackPacket;
 import net.bananemdnsa.historystages.network.clientbound.LockFeedbackPacket;
@@ -67,7 +69,7 @@ public class PacketHandler {
          * version mismatch gets it the "incompatible mod" screen instead, which is the same
          * information a player can act on.
          */
-        private static final String PROTOCOL_VERSION = "11";
+        private static final String PROTOCOL_VERSION = "12";
         public static final SimpleChannel INSTANCE = NetworkRegistry.newSimpleChannel(
                         new ResourceLocation(HistoryStages.MOD_ID, "main"),
                         () -> PROTOCOL_VERSION,
@@ -194,6 +196,9 @@ public class PacketHandler {
                 INSTANCE.registerMessage(id++, SaveStageGraphStylePacket.class,
                                 SaveStageGraphStylePacket::encode,
                                 SaveStageGraphStylePacket::decode, SaveStageGraphStylePacket::handle);
+                INSTANCE.registerMessage(id++, SaveDisguisePacket.class,
+                                SaveDisguisePacket::encode,
+                                SaveDisguisePacket::decode, SaveDisguisePacket::handle);
                 INSTANCE.registerMessage(id++, PedestalControlPacket.class,
                                 PedestalControlPacket::encode,
                                 PedestalControlPacket::decode, PedestalControlPacket::handle);
