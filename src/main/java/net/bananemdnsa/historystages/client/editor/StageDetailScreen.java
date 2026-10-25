@@ -46,6 +46,10 @@ import net.bananemdnsa.historystages.data.lock.FluidRecipeScanner;
 import net.bananemdnsa.historystages.client.editor.recipe.RecipeTypeMetas;
 import net.bananemdnsa.historystages.client.editor.tab.CategoryEditors;
 import net.bananemdnsa.historystages.api.editor.CompositeCategoryTab;
+import net.bananemdnsa.historystages.api.editor.widget.CountInputScreen;
+import net.bananemdnsa.historystages.client.editor.tab.LevelledEntryCategoryTab;
+import net.bananemdnsa.historystages.client.editor.widget.list.SearchableEffectList;
+import net.bananemdnsa.historystages.client.editor.widget.list.SearchableEnchantmentList;
 import net.bananemdnsa.historystages.api.editor.CategoryTab;
 import net.bananemdnsa.historystages.client.editor.tab.EntityCategoryTab;
 import net.bananemdnsa.historystages.api.editor.EditorTab;
@@ -156,6 +160,8 @@ public class StageDetailScreen extends Screen {
     private Map<String, Boolean> editFixedItemLockActions;
     private Map<String, Boolean> editFixedFluidLockActions;
     private Map<String, Boolean> editFixedInteractionLockActions;
+    private Map<String, Boolean> editFixedEnchantmentLockActions;
+    private Map<String, Boolean> editFixedEffectLockActions;
     /** SpawnControl rows fixed for every mob of this stage; null = none. Immutable. */
     private net.bananemdnsa.historystages.data.lock.spawn.FixedSpawnRule editFixedSpawnRule;
     /** Logic blocks as the raw array; the logic screen edits it, unknown blocks pass through. */
@@ -434,6 +440,8 @@ public class StageDetailScreen extends Screen {
         this.editFixedItemLockActions = copyOrNull(e.getFixedItemLockActions());
         this.editFixedFluidLockActions = copyOrNull(e.getFixedFluidLockActions());
         this.editFixedInteractionLockActions = copyOrNull(e.getFixedInteractionLockActions());
+        this.editFixedEnchantmentLockActions = copyOrNull(e.getFixedEnchantmentLockActions());
+        this.editFixedEffectLockActions = copyOrNull(e.getFixedEffectLockActions());
         this.editFixedSpawnRule = e.getFixedSpawnRule();
         this.editLogic = e.getLogic() != null ? e.getLogic().deepCopy() : null;
         // Safe cast: the built-in items category stores ItemEntry.
@@ -476,7 +484,7 @@ public class StageDetailScreen extends Screen {
                         NAMED_LOCK_ENTRY_ADAPTER);
         tagTabLocal.load(e);
         this.tagTab = tagTabLocal;
-        this.categoryTabs.put(2, tagTabLocal);
+        this.categoryTabs.put(3, tagTabLocal);
         // Safe cast: the built-in mod-exceptions category stores ItemEntry.
         @SuppressWarnings("unchecked")
         LockCategory<net.bananemdnsa.historystages.data.ItemEntry> exceptionCategory =
@@ -492,7 +500,7 @@ public class StageDetailScreen extends Screen {
         exceptionTabLocal.setRebuildPickerOnOpen(true);
         exceptionTabLocal.load(e);
         this.modExceptionTab = exceptionTabLocal;
-        this.categoryTabs.put(4, exceptionTabLocal);
+        this.categoryTabs.put(5, exceptionTabLocal);
         // Safe cast: the built-in recipes category stores bare ids.
         @SuppressWarnings("unchecked")
         LockCategory<String> recipeCategory =
@@ -504,7 +512,7 @@ public class StageDetailScreen extends Screen {
                 () -> { hasChanges = true; updateMaxScroll(); });
         recipeTabLocal.load(e);
         this.recipeTab = recipeTabLocal;
-        this.categoryTabs.put(5, recipeTabLocal);
+        this.categoryTabs.put(6, recipeTabLocal);
         // Safe cast: the built-in dimensions category stores bare ids.
         @SuppressWarnings("unchecked")
         LockCategory<String> dimensionCategory =
@@ -517,7 +525,7 @@ public class StageDetailScreen extends Screen {
                 },
                 () -> { hasChanges = true; updateMaxScroll(); });
         dimensionTab.load(e);
-        this.categoryTabs.put(6, dimensionTab);
+        this.categoryTabs.put(7, dimensionTab);
         // Safe cast: the built-in structures category stores bare ids.
         @SuppressWarnings("unchecked")
         LockCategory<String> structureCategory =
@@ -531,7 +539,7 @@ public class StageDetailScreen extends Screen {
                 () -> { hasChanges = true; updateMaxScroll(); });
         structureTabLocal.load(e);
         this.structureTab = structureTabLocal;
-        this.categoryTabs.put(9, structureTabLocal);
+        this.categoryTabs.put(10, structureTabLocal);
         // Safe cast: the built-in biomes category stores bare ids.
         @SuppressWarnings("unchecked")
         LockCategory<String> biomeCategory =
@@ -546,7 +554,7 @@ public class StageDetailScreen extends Screen {
                 StageEntry::getBiomeModLinked, StageEntry::setBiomeModLinked);
         biomeTabLocal.load(e);
         this.biomeTab = biomeTabLocal;
-        this.categoryTabs.put(10, biomeTabLocal);
+        this.categoryTabs.put(11, biomeTabLocal);
         // Beside the biomes, because both answer "where"; the difference is that a zone is drawn
         // rather than named. Its rows open a screen of their own, so the host hands it the way to
         // do that instead of the tab reaching for Minecraft itself.
@@ -558,7 +566,7 @@ public class StageDetailScreen extends Screen {
                 () -> { hasChanges = true; updateMaxScroll(); },
                 factory -> this.minecraft.setScreen(factory.apply(this)));
         zoneTabLocal.load(e);
-        this.categoryTabs.put(11, zoneTabLocal);
+        this.categoryTabs.put(12, zoneTabLocal);
         // Which of the two stage maps this screen is editing. Read by every tab that has sections,
         // because a section whose category does not serve this scope is greyed rather than shown.
         StageScope loadScope = isIndividual ? StageScope.INDIVIDUAL : StageScope.GLOBAL;
@@ -631,7 +639,7 @@ public class StageDetailScreen extends Screen {
                                 "editor.historystages.trades.section.levels")),
                 loadScope);
         tradesTabLocal.load(e);
-        this.categoryTabs.put(8, tradesTabLocal);
+        this.categoryTabs.put(9, tradesTabLocal);
         // Fluids sit at index 1, beside items, because that is where someone looks for them.
         // The tab index is a position in the strip and nothing treats it as an identity — every
         // behavioural question goes through isTab against the category id — so putting a tab in
@@ -653,6 +661,42 @@ public class StageDetailScreen extends Screen {
                         FLUID_ENTRY_ADAPTER);
         fluidTabLocal.load(e);
         this.categoryTabs.put(1, fluidTabLocal);
+        // Beside fluids, because all three gate an item by what it carries rather than by what it
+        // is. One tab with two sections, like trades: the questions come up together.
+        @SuppressWarnings("unchecked")
+        LockCategory<net.bananemdnsa.historystages.data.LevelledLockEntry> enchantmentCategory =
+                (LockCategory<net.bananemdnsa.historystages.data.LevelledLockEntry>)
+                        LockCategories.byId("historystages:enchantments");
+        @SuppressWarnings("unchecked")
+        LockCategory<net.bananemdnsa.historystages.data.LevelledLockEntry> effectCategory =
+                (LockCategory<net.bananemdnsa.historystages.data.LevelledLockEntry>)
+                        LockCategories.byId("historystages:effects");
+        LevelledEntryCategoryTab enchantmentTab = new LevelledEntryCategoryTab(enchantmentCategory,
+                (onSelect, alreadyAdded) -> {
+                    SearchableEnchantmentList list = new SearchableEnchantmentList(onSelect, alreadyAdded);
+                    list.setMultiSelect(true);
+                    return list;
+                },
+                () -> { hasChanges = true; updateMaxScroll(); },
+                "minecraft:enchanted_book", SearchableEnchantmentList::displayName, true);
+        LevelledEntryCategoryTab effectTab = new LevelledEntryCategoryTab(effectCategory,
+                (onSelect, alreadyAdded) -> {
+                    SearchableEffectList list = new SearchableEffectList(onSelect, alreadyAdded);
+                    list.setMultiSelect(true);
+                    return list;
+                },
+                () -> { hasChanges = true; updateMaxScroll(); },
+                "minecraft:potion", SearchableEffectList::displayName, false);
+        CompositeCategoryTab enchantEffectTab = new CompositeCategoryTab(
+                enchantmentCategory.id(), "editor.historystages.tab.enchant_effects",
+                "editor.historystages.tooltip.enchant_effects",
+                List.of(new CompositeCategoryTab.Section(enchantmentTab,
+                                "editor.historystages.enchant_effects.section.enchantments"),
+                        new CompositeCategoryTab.Section(effectTab,
+                                "editor.historystages.enchant_effects.section.effects")),
+                loadScope);
+        enchantEffectTab.load(e);
+        this.categoryTabs.put(2, enchantEffectTab);
         this.editIcon = e.getIcon();
         this.editScrollCompletion = e.getScrollCompletion();
         entityState.load(e);
@@ -680,7 +724,7 @@ public class StageDetailScreen extends Screen {
         //
         // No load(e) here: entityState.load(e) above already filled all three lists, and that is
         // the only thing an entity tab's load does.
-        this.categoryTabs.put(7, new CompositeCategoryTab(
+        this.categoryTabs.put(8, new CompositeCategoryTab(
                 attackCategory.id(), "editor.historystages.tab.entities",
                 "editor.historystages.tooltip.entities",
                 List.of(new CompositeCategoryTab.Section(attackTab,
@@ -721,7 +765,7 @@ public class StageDetailScreen extends Screen {
                         NAMED_LOCK_ENTRY_ADAPTER);
         modTabLocal.load(e);
         this.modTab = modTabLocal;
-        this.categoryTabs.put(3, modTabLocal);
+        this.categoryTabs.put(4, modTabLocal);
 
         // Addon categories take their place in the strip after the built-ins, provided they
         // registered an editor. One without an editor still gates and still stores — it simply
@@ -1791,17 +1835,16 @@ public class StageDetailScreen extends Screen {
                 : editDisplayName + " (" + originalStageId + ")";
         guiGraphics.drawCenteredString(this.font, titleText, this.width / 2, 6, 0xFFFFFF);
 
-        // Individual badge
-        if (isIndividual) {
-            Badge.draw(guiGraphics, this.font,
-                    Component.translatable("editor.historystages.stage_type.individual").getString(),
-                    10, 4, 0xBBBBBB);
-        }
-
         // Thin separator between title and button row
         guiGraphics.fill(10, 19, this.width - 10, 20, 0x40FFFFFF);
 
         // Right-side indicators inline with the button row (y=22..40)
+        String typeLabel = Component.translatable(isIndividual
+                ? "editor.historystages.stage_type.individual"
+                : "editor.historystages.stage_type.global").getString();
+        Badge.draw(guiGraphics, this.font, typeLabel,
+                this.width - 10 - Badge.width(this.font, typeLabel),
+                22 + (FIELD_HEIGHT - Badge.HEIGHT) / 2, 0xBBBBBB);
 
         guiGraphics.fill(10, tabY - 2, this.width - 10, tabY - 1, 0xFF555555);
 
@@ -2328,6 +2371,8 @@ public class StageDetailScreen extends Screen {
     private Map<String, Boolean> fixedLockActionsForTab(int tab) {
         if (isAnyTab(tab, CAT_ITEMS, CAT_TAGS, CAT_MODS)) return editFixedItemLockActions;
         if (isTab(tab, CAT_FLUIDS)) return editFixedFluidLockActions;
+        if (isTab(tab, "historystages:enchantments")) return editFixedEnchantmentLockActions;
+        if (isTab(tab, "historystages:effects")) return editFixedEffectLockActions;
         return null;
     }
 
@@ -2361,6 +2406,67 @@ public class StageDetailScreen extends Screen {
             }
             hasChanges = true;
         });
+    }
+
+    /**
+     * The actions popup for an enchantment or effect row. Same handling of fixed actions as
+     * {@link #openLockActionsPopup}: the entry keeps its own value for anything the stage fixes.
+     */
+    private void openLevelledActionsPopup(int tab, LevelledEntryCategoryTab levelled, int idx) {
+        List<String> vocabulary = levelled.vocabulary();
+        Map<String, Boolean> fixed = fixedLockActionsForTab(tab);
+        List<String> own = levelled.lockActions(idx);
+        lockActionsPopup.show(vocabulary, own, fixed, blocked -> {
+            List<String> keep = new ArrayList<>(blocked);
+            if (fixed != null) {
+                for (String action : fixed.keySet()) {
+                    boolean ownBlocked = own == null || own.contains(action);
+                    keep.remove(action);
+                    if (ownBlocked) keep.add(action);
+                }
+            }
+            levelled.setLockActions(idx, keep);
+        });
+    }
+
+    /**
+     * Which item types a row applies to. Checked = locked. An enchantment offers the items it can
+     * go on plus the book; an effect offers the item types that carry potions.
+     */
+    private void openItemTypesPopup(LevelledEntryCategoryTab levelled, int idx, String id) {
+        List<String> types = levelled.isEnchantments()
+                ? net.bananemdnsa.historystages.data.lock.ItemTypeChoices.forEnchantment(
+                        this.minecraft.level.registryAccess(), id)
+                : net.bananemdnsa.historystages.data.lock.ItemTypeChoices.forEffect();
+        String name = levelled.isEnchantments()
+                ? SearchableEnchantmentList.displayName(id) : SearchableEffectList.displayName(id);
+        var popup = new net.bananemdnsa.historystages.client.editor.widget.popup.ItemTypesPopup(
+                name, types, levelled.excludedItemTypes(idx), spared -> levelled.setExcludedItemTypes(idx, spared));
+        popup.show(this.width / 2, this.height / 2, this.width);
+        actionOverlay = popup;
+    }
+
+    /** "Every level", then "from level II" up to what the game knows, as a pick list. */
+    private void openLevelChoices(LevelledEntryCategoryTab levelled, int idx, String id) {
+        int max = levelled.isEnchantments()
+                ? net.bananemdnsa.historystages.data.lock.ItemTypeChoices.maxEnchantmentLevel(
+                        this.minecraft.level.registryAccess(), id)
+                : net.bananemdnsa.historystages.data.lock.ItemTypeChoices.maxEffectLevel(id);
+        int current = levelled.minLevel(idx);
+        List<net.bananemdnsa.historystages.api.editor.widget.ChoiceOverlay.Option> options = new ArrayList<>();
+        for (int level : levelled.levelChoices(max, current)) {
+            String label = level == 1
+                    ? Component.translatable("editor.historystages.levelled.every_level").getString()
+                    : Component.translatable("editor.historystages.levelled.from_level",
+                            Component.translatable("enchantment.level." + level)).getString();
+            if (level == current) label = "\u2714 " + label;
+            options.add(net.bananemdnsa.historystages.api.editor.widget.ChoiceOverlay.Option.of(label,
+                    () -> levelled.setMinLevel(idx, level)));
+        }
+        var overlay = new net.bananemdnsa.historystages.api.editor.widget.ChoiceOverlay(
+                Component.translatable("editor.historystages.dialog.min_level").getString(), options);
+        overlay.show(this.width / 2, this.height / 2, this.width);
+        actionOverlay = overlay;
     }
 
     // ===== Spawn sources popup =====
@@ -2657,6 +2763,14 @@ public class StageDetailScreen extends Screen {
                         contextMenu.addEntry(Component.translatable("editor.historystages.context.trade_levels").getString(),
                                 () -> tradeLevelsPopup.show(entryValue,
                                         tradeProfessionTab.levelsFor(entryValue)));
+                    }
+                    if (sectionAt(tabIdx) instanceof LevelledEntryCategoryTab levelled) {
+                        contextMenu.addEntry(Component.translatable("editor.historystages.context.min_level").getString(),
+                                () -> openLevelChoices(levelled, entryIdx, entryValue));
+                        contextMenu.addEntry(Component.translatable("editor.historystages.context.lock_actions").getString(),
+                                () -> openLevelledActionsPopup(tabIdx, levelled, entryIdx));
+                        contextMenu.addEntry(Component.translatable("editor.historystages.context.item_types").getString(),
+                                () -> openItemTypesPopup(levelled, entryIdx, entryValue));
                     }
                     addDeclaredEntryActions(tabIdx, entryIdx);
                     contextMenu.addEntry(Component.translatable("editor.historystages.copy_id").getString(), () -> { Minecraft.getInstance().keyboardHandler.setClipboard(entryValue); EditorToastHandler.copiedToClipboard(entryValue); });
@@ -3120,11 +3234,13 @@ public class StageDetailScreen extends Screen {
                 editMinPedestalTier, editPedestalTierMode, editMode, editAutoTrigger, editTemporary,
                 editHiddenDisplay.copy(), editLoseOnDeath, editInterchangeable,
                 editFixedItemLockActions, editFixedFluidLockActions, editFixedInteractionLockActions,
+                new StageSettingsScreen.FixedContentActions(editFixedEnchantmentLockActions, editFixedEffectLockActions),
                 editFixedSpawnRule, editScrollCompletion,
                 editAddonSettings, isNewStage, isIndividual,
                 (newId, newName, newTime, newTier, newTierMode, newStageMode, newAutoTrigger,
                  newTemporary, newHidden, newLoseOnDeath, newInterchangeable,
-                 newFixedItemActions, newFixedFluidActions, newFixedInteractionActions, newFixedSpawnRule,
+                 newFixedItemActions, newFixedFluidActions, newFixedInteractionActions,
+                 newFixedContentActions, newFixedSpawnRule,
                  newScrollCompletion,
                  newAddonSettings, newRelock) -> {
                     editStageId = newId;
@@ -3141,6 +3257,8 @@ public class StageDetailScreen extends Screen {
                     editFixedItemLockActions = copyOrNull(newFixedItemActions);
                     editFixedFluidLockActions = copyOrNull(newFixedFluidActions);
                     editFixedInteractionLockActions = copyOrNull(newFixedInteractionActions);
+                    editFixedEnchantmentLockActions = copyOrNull(newFixedContentActions.enchantments());
+                    editFixedEffectLockActions = copyOrNull(newFixedContentActions.effects());
                     editFixedSpawnRule = newFixedSpawnRule;
                     editScrollCompletion = newScrollCompletion == null ? "" : newScrollCompletion;
                     editAddonSettings = newAddonSettings;
@@ -3349,6 +3467,8 @@ public class StageDetailScreen extends Screen {
         newEntry.setFixedItemLockActions(editFixedItemLockActions);
         newEntry.setFixedFluidLockActions(editFixedFluidLockActions);
         newEntry.setFixedInteractionLockActions(editFixedInteractionLockActions);
+        newEntry.setFixedEnchantmentLockActions(editFixedEnchantmentLockActions);
+        newEntry.setFixedEffectLockActions(editFixedEffectLockActions);
         newEntry.setFixedSpawnRule(editFixedSpawnRule);
         newEntry.setLogic(editLogic != null ? editLogic.deepCopy() : null);
         newEntry.setIcon(editIcon);

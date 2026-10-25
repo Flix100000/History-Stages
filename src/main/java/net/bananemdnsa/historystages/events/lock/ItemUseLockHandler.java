@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.events.lock;
 
+import java.util.List;
 import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.util.DebugLogger;
@@ -223,6 +224,41 @@ public class ItemUseLockHandler {
             }
             showMessage(player);
         }
+    }
+
+    /**
+     * Skips locked ammo. A bow, crossbow or any weapon built the same way asks for its projectile
+     * here; a locked one is passed over for the next it may use, the same order the game searches
+     * in, and with none left the weapon simply has no ammo. Shooting an arrow counts as using it,
+     * so the {@code use} action decides.
+     */
+    @SubscribeEvent
+    public static void onGetProjectile(net.minecraftforge.event.entity.living.LivingGetProjectileEvent event) {
+        if (!(event.getEntity() instanceof Player player)) return;
+        ItemStack ammo = event.getProjectileItemStack();
+        if (ammo.isEmpty() || !isActionLocked(ammo, player, "use")) return;
+        ItemStack weapon = event.getProjectileWeaponItemStack();
+        event.setProjectileItemStack(weapon.getItem() instanceof net.minecraft.world.item.ProjectileWeaponItem launcher
+                ? firstFreeAmmo(player, weapon, launcher) : ItemStack.EMPTY);
+    }
+
+    private static ItemStack firstFreeAmmo(Player player, ItemStack weapon,
+                                           net.minecraft.world.item.ProjectileWeaponItem launcher) {
+        java.util.function.Predicate<ItemStack> held = launcher.getSupportedHeldProjectiles();
+        for (ItemStack hand : List.of(player.getOffhandItem(), player.getMainHandItem())) {
+            if (held.test(hand) && !isActionLocked(hand, player, "use")) return hand;
+        }
+        java.util.function.Predicate<ItemStack> any = launcher.getAllSupportedProjectiles();
+        for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
+            ItemStack stack = player.getInventory().getItem(i);
+            if (any.test(stack) && !isActionLocked(stack, player, "use")) return stack;
+        }
+        if (player.getAbilities().instabuild) {
+            // 1.20.1 hands every launcher a plain arrow in creative.
+            ItemStack creative = new ItemStack(net.minecraft.world.item.Items.ARROW);
+            if (!isActionLocked(creative, player, "use")) return creative;
+        }
+        return ItemStack.EMPTY;
     }
 
     private static boolean isActionLocked(ItemStack item, Player player, String action) {

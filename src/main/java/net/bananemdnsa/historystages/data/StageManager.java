@@ -88,7 +88,7 @@ public class StageManager {
     }
 
     private static final Set<String> KNOWN_KEYS = Set.of(
-            "display_name", "research_time", "items", "fluids", "tags", "mods",
+            "display_name", "research_time", "items", "fluids", "enchantments", "effects", "tags", "mods",
             "mod_exceptions", "recipes", "dimensions", "structures", "biomes", "zones", "entities", "trades",
             "dependencies", "icon",
             "min_pedestal_tier", "pedestal_tier_mode",

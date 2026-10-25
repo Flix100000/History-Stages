@@ -20,14 +20,24 @@ public final class FixedLockActions {
     private Map<String, Boolean> items;
     private Map<String, Boolean> fluids;
     private Map<String, Boolean> interactions;
+    private Map<String, Boolean> enchantments;
+    private Map<String, Boolean> effects;
 
     public FixedLockActions() {}
 
     public FixedLockActions(Map<String, Boolean> items, Map<String, Boolean> fluids,
                             Map<String, Boolean> interactions) {
+        this(items, fluids, interactions, null, null);
+    }
+
+    public FixedLockActions(Map<String, Boolean> items, Map<String, Boolean> fluids,
+                            Map<String, Boolean> interactions, Map<String, Boolean> enchantments,
+                            Map<String, Boolean> effects) {
         this.items = copyOrNull(items);
         this.fluids = copyOrNull(fluids);
         this.interactions = copyOrNull(interactions);
+        this.enchantments = copyOrNull(enchantments);
+        this.effects = copyOrNull(effects);
     }
 
     /** Fixed actions for items, tags and mods with their value, or null when none are. */
@@ -39,10 +49,15 @@ public final class FixedLockActions {
     /** Fixed interaction actions with their value, or null when none are. */
     public Map<String, Boolean> getInteractions() { return interactions; }
 
-    public boolean isEmpty() { return items == null && fluids == null && interactions == null; }
+    public Map<String, Boolean> getEnchantments() { return enchantments; }
+
+    public Map<String, Boolean> getEffects() { return effects; }
+
+    public boolean isEmpty() { return items == null && fluids == null && interactions == null
+            && enchantments == null && effects == null; }
 
     public FixedLockActions copy() {
-        return new FixedLockActions(items, fluids, interactions);
+        return new FixedLockActions(items, fluids, interactions, enchantments, effects);
     }
 
     /**

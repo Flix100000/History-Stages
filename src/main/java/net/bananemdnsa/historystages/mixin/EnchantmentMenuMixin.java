@@ -26,6 +26,7 @@ public class EnchantmentMenuMixin {
 
     @Shadow @Final public int[] enchantClue;
     @Shadow @Final public int[] levelClue;
+    @Shadow @Final private net.minecraft.world.Container enchantSlots;
 
     private static final String FEEDBACK_CATEGORY = "enchant_table";
 
@@ -53,7 +54,11 @@ public class EnchantmentMenuMixin {
 
         ResourceLocation enchantRL = key.location();
 
-        if (StageLockHelper.isEnchantmentLockedForPlayer(enchantRL.toString(), level, serverPlayer.getUUID())) {
+        // The item on the table, so an entry that spares it lets the enchantment through.
+        String itemId = net.minecraft.core.registries.BuiltInRegistries.ITEM
+                .getKey(enchantSlots.getItem(0).getItem()).toString();
+        if (StageLockHelper.isEnchantmentLockedForPlayer(enchantRL.toString(), level, "enchanting_table",
+                itemId, serverPlayer.getUUID())) {
             cir.setReturnValue(false);
 
             DebugLogger.runtimeThrottled("Enchantment Lock", "enchant_table_" + serverPlayer.getUUID(),

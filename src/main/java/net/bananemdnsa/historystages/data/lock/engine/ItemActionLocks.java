@@ -44,8 +44,24 @@ public final class ItemActionLocks {
             }
         }
 
+        // Then what the stack carries in enchantments and effects, for the same reason fluids sit
+        // here: it describes this exact stack. A spared item type is not matched at all, so an
+        // entry further down still gets its say.
+        for (net.bananemdnsa.historystages.data.LevelledLockEntry entry : stage.getEnchantmentEntries()) {
+            if (!entry.excludes(subject.itemId())
+                    && LevelledMatching.matches(entry, subject.contents().allEnchantments())) {
+                return isActionInList(stage.effectiveEnchantmentLockActions(entry.getLockActions()), action);
+            }
+        }
+        for (net.bananemdnsa.historystages.data.LevelledLockEntry entry : stage.getEffectEntries()) {
+            if (!entry.excludes(subject.itemId())
+                    && LevelledMatching.matches(entry, subject.contents().effects())) {
+                return isActionInList(stage.effectiveEffectLockActions(entry.getLockActions()), action);
+            }
+        }
+
         for (NamedLockEntry modEntry : stage.getModEntries()) {
-            if (modEntry.getId().equals(subject.modId())
+            if (BuiltInLockMatching.belongsToMod(modEntry.getId(), subject)
                     && !stage.isModExcepted(subject.itemId(), subject.stack())) {
                 return isActionInList(stage.effectiveItemLockActions(modEntry.getLockActions()), action);
             }
