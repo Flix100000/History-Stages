@@ -36,7 +36,7 @@ Full documentation, configuration details, and usage examples are available on t
 
 ## Community
 
-Questions, support, or just want to follow development? Join our [Discord server](https://discord.gg/BeZzxyZ9c4).
+Questions, support, or just want to follow development? Join our [Discord server](https://discord.gg/BeZzxyZ9c4). Trailers and showcases go up on our [YouTube channel](https://www.youtube.com/@HistoryStages).
 
 ## Issues & Bug Reports
 
