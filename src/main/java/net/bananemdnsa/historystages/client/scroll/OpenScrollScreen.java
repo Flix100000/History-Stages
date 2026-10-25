@@ -10,7 +10,6 @@ import net.bananemdnsa.historystages.client.editor.widget.EntityPreviewRenderer;
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.data.TradeOfferEntry;
-import net.bananemdnsa.historystages.data.lock.TradePreview;
 import net.bananemdnsa.historystages.data.display.DisplayMode;
 import net.bananemdnsa.historystages.data.graph.GraphColors;
 import net.bananemdnsa.historystages.data.graph.GraphStageData;
@@ -537,8 +536,8 @@ public class OpenScrollScreen extends Screen {
                 if (offer == null) break;
                 rawId = offer.givesId();
                 String merchant = OpenScrollNames.merchant(offer.merchantKey());
-                // The wandering trader has no levels, so printing "Novice" beside it would invent one.
-                lines.add(TradePreview.WANDERING_TRADER.equals(offer.merchantKey())
+                // A merchant without a profession has no levels, so printing "Novice" beside it would invent one.
+                lines.add(OpenScrollNames.isProfessionlessMerchant(offer.merchantKey())
                         ? Component.literal(merchant).withStyle(ChatFormatting.GRAY)
                         : detailLine("gui.historystages.open_scroll.trade.merchant_level",
                                 merchant, OpenScrollNames.merchantLevel(String.valueOf(offer.level()))));

@@ -10,7 +10,7 @@ import net.bananemdnsa.historystages.api.editor.widget.TradeRowGeometry;
 import net.bananemdnsa.historystages.api.lock.LockCategory;
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.TradeOfferEntry;
-import net.bananemdnsa.historystages.data.lock.TradePreview;
+import net.bananemdnsa.historystages.client.scroll.OpenScrollNames;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -135,7 +135,7 @@ public final class TradeOfferCategoryTab extends AbstractCategoryTab {
         if (index < 0 || index >= offers.size()) return null;
         TradeOfferEntry offer = offers.get(index);
         String tag = "§8" + merchantName(offer.merchantKey())
-                + (TradePreview.WANDERING_TRADER.equals(offer.merchantKey())
+                + (OpenScrollNames.isProfessionlessMerchant(offer.merchantKey())
                         ? "" : " " + offer.level());
         return offer.hasNbt() ? "§6[NBT] " + tag : tag;
     }
@@ -162,16 +162,8 @@ public final class TradeOfferCategoryTab extends AbstractCategoryTab {
         return stack.isEmpty() ? itemId : stack.getHoverName().getString();
     }
 
-    /** The translated merchant name, falling back to the path of its id. */
     private static String merchantName(String merchantKey) {
-        ResourceLocation key = ResourceLocation.tryParse(merchantKey);
-        if (key == null) return merchantKey;
-        if (TradePreview.WANDERING_TRADER.equals(merchantKey)) {
-            return Component.translatable("entity.minecraft.wandering_trader").getString();
-        }
-        String langKey = "entity." + key.getNamespace() + ".villager." + key.getPath();
-        String translated = Component.translatable(langKey).getString();
-        return translated.equals(langKey) ? key.getPath() : translated;
+        return OpenScrollNames.merchant(merchantKey);
     }
 
     @Override

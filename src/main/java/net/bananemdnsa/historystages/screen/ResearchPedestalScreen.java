@@ -18,6 +18,7 @@ import net.bananemdnsa.historystages.network.PacketHandler;
 import net.bananemdnsa.historystages.network.serverbound.PedestalControlPacket;
 import net.bananemdnsa.historystages.research.BoosterUtil;
 import net.bananemdnsa.historystages.research.TierMatcher;
+import net.bananemdnsa.historystages.client.cache.ClientLostStages;
 import net.bananemdnsa.historystages.client.cache.ClientStageCache;
 import net.bananemdnsa.historystages.client.cache.ClientIndividualStageCache;
 import net.bananemdnsa.historystages.client.cache.ClientDependencyCache;
@@ -131,6 +132,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
                 ? ClientIndividualStageCache.isStageUnlocked(stageId)
                 : ClientStageCache.isStageUnlocked(stageId);
         if (unlocked) return false;
+        if (ClientLostStages.isLost(stageId, individual)) return false;
 
         if (this.menu.isTierMismatch()) return false; // pedestal tier does not satisfy the stage
         return this.menu.areDependenciesMet();
@@ -414,6 +416,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
             }
             boolean notResearchable = mode != null
                     && mode != StageMode.DEFAULT;
+            boolean lost = !isCreative && ClientLostStages.isLost(stageId, isIndividual);
 
             if (alreadyUnlocked && finishDelay == 0) {
                 drawSplitLine(guiGraphics, PedestalLayout.LINE_1_Y,
@@ -455,6 +458,12 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
                             : "screen.historystages.tier_required.min";
                     drawCentred(guiGraphics,
                             Component.translatable(key, TierMatcher.roman(menu.getRequiredTier())),
+                            PedestalLayout.LINE_2_Y, SLAB_ERROR);
+                } else if (lost) {
+                    drawSplitLine(guiGraphics, PedestalLayout.LINE_1_Y,
+                            Component.translatable("gui.historystages.pedestal.stage", stageName),
+                            SLAB_PRIMARY, speedLabel(), SLAB_SECONDARY);
+                    drawCentred(guiGraphics, Component.translatable("screen.historystages.stage_lost"),
                             PedestalLayout.LINE_2_Y, SLAB_ERROR);
                 } else if (menu.isLogicBlocked()) {
                     // Before "requirements not met": a blocked stage folds into that verdict

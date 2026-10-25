@@ -8,10 +8,15 @@ import net.bananemdnsa.historystages.api.trigger.TriggerCondition;
 import net.bananemdnsa.historystages.data.dependency.DependencyChecker;
 import net.bananemdnsa.historystages.api.dependency.RequirementResult;
 import net.bananemdnsa.historystages.api.stage.StageScope;
+import net.bananemdnsa.historystages.data.relock.ConditionalStageManager;
+import net.bananemdnsa.historystages.data.relock.LockTriggerManager;
+import net.bananemdnsa.historystages.data.relock.LostStages;
 import net.bananemdnsa.historystages.data.saveddata.AutoTriggerGlobalData;
 import net.bananemdnsa.historystages.data.saveddata.AutoTriggerProgressData;
 import net.bananemdnsa.historystages.data.saveddata.IndividualStageData;
+import net.bananemdnsa.historystages.data.saveddata.LostStagesData;
 import net.bananemdnsa.historystages.data.saveddata.StageData;
+import net.bananemdnsa.historystages.util.DebugLogger;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -45,16 +50,22 @@ public final class AutoTriggerManager {
         INDEX.clear();
         addFrom(StageManager.getStages(), false);
         addFrom(StageManager.getIndividualStages(), true);
+        LockTriggerManager.rebuildIndex();
+        ConditionalStageManager.rebuildIndex();
     }
 
     private static void addFrom(Map<String, StageEntry> stages, boolean isIndividual) {
         StageScope scope = isIndividual ? StageScope.INDIVIDUAL : StageScope.GLOBAL;
         for (var entry : stages.entrySet()) {
             StageEntry se = entry.getValue();
-            if (!se.getMode().usesAutoTrigger()) continue; // AUTO or TEMPORARY
+            // AUTO or TEMPORARY. Conditional stages read the same list but never collect progress;
+            // ConditionalStageManager evaluates them instead.
+            if (!se.getMode().usesAutoTrigger() || se.getMode() == StageMode.CONDITIONAL) continue;
             AutoTrigger at = se.getAutoTrigger();
             if (at == null || at.isEmpty()) continue;
             for (TriggerCondition t : at.getTriggers()) {
+                // negate only means something in lock_trigger; warned about at load.
+                if (t instanceof NegatedTrigger) continue;
                 // A type that declared it does not apply here must not fire here either.
                 // Without this the declaration would only hide rows in the editor, which reads
                 // as a guarantee while being none.
@@ -72,7 +83,8 @@ public final class AutoTriggerManager {
      */
     public static boolean hasType(String triggerType) {
         List<IndexedTrigger> list = INDEX.get(triggerType);
-        return list != null && !list.isEmpty();
+        // Lock triggers ride the same event sources, so a type only they use must still be fed.
+        return (list != null && !list.isEmpty()) || LockTriggerManager.hasType(triggerType);
     }
 
     /** Set of all auto-stage ids currently indexed; used for orphan pruning. */
@@ -92,12 +104,17 @@ public final class AutoTriggerManager {
     public static void process(String triggerType,
                                Predicate<TriggerCondition> matcher,
                                ServerPlayer player) {
+        // First, and before the early return: a type may be indexed only as a lock trigger. A stage
+        // this event just locked must not be reopened by the same event below, lost or not.
+        Set<LockTriggerManager.Relocked> relocked = LockTriggerManager.process(triggerType, matcher, player);
         List<IndexedTrigger> candidates = INDEX.get(triggerType);
         if (candidates == null || candidates.isEmpty()) return;
         if (player == null || player.serverLevel() == null) return;
 
         ServerLevel level = player.serverLevel();
         for (IndexedTrigger it : candidates) {
+            if (!relocked.isEmpty()
+                    && relocked.contains(new LockTriggerManager.Relocked(it.stageId(), it.isIndividual()))) continue;
             if (!matcher.test(it.trigger())) continue;
             handleMatch(it, player, level);
         }
@@ -111,6 +128,11 @@ public final class AutoTriggerManager {
         if (stage == null) return; // stale index entry; will be cleared on next rebuild
 
         if (isUnlocked(stageId, it.isIndividual(), player, level)) return;
+
+        // A stage lost for good would be refused by StageStates anyway; stopping here keeps its
+        // unlock progress from filling up for nothing.
+        if (it.isIndividual() ? LostStages.isLostIndividual(stageId, player.getUUID(), level)
+                              : LostStages.isLostGlobal(stageId, level)) return;
 
         // TEMPORARY stages re-lock on their own. Skip while the stage is spent
         // (non-re-triggerable, already used) or in cooldown — no progress is
@@ -168,6 +190,8 @@ public final class AutoTriggerManager {
     private static boolean isModeSatisfied(AutoTrigger cfg, Set<Long> satisfied) {
         if (cfg.resolvedMode() == CombineMode.ALL) {
             for (TriggerCondition t : cfg.getTriggers()) {
+                // Never indexed, so it could never be satisfied and would pin ALL shut.
+                if (t instanceof NegatedTrigger) continue;
                 if (!satisfied.contains(t.signature())) return false;
             }
             return true;
@@ -233,5 +257,20 @@ public final class AutoTriggerManager {
         Set<String> keep = indexedStageIds();
         AutoTriggerProgressData.get(level).pruneOrphans(keep);
         AutoTriggerGlobalData.get(level).pruneOrphans(keep);
+        // A broken file must not erase lock progress or a permanent loss: a stage that failed to
+        // load looks deleted.
+        if (StageManager.getLoadingMessages().stream()
+                .anyMatch(m -> m.level() == StageManager.MessageLevel.ERROR)) {
+            DebugLogger.runtime("Re-lock", "Lock progress and lost-stage marks not pruned: the last stage load had errors.");
+            return;
+        }
+        LockTriggerManager.pruneOrphans(level);
+        // A stage that merely dropped its lock_trigger stays lost. One whose mode no longer allows
+        // a lock trigger loses the mark: conditional, external and temporary stages have no path
+        // back through a lock trigger, and the mark would refuse every unlock of theirs forever.
+        Set<String> lostKeep = new HashSet<>();
+        StageManager.getStages().forEach((id, e) -> { if (e.getMode().allowsLockTrigger()) lostKeep.add(id); });
+        StageManager.getIndividualStages().forEach((id, e) -> { if (e.getMode().allowsLockTrigger()) lostKeep.add(id); });
+        if (LostStagesData.get(level).pruneOrphans(lostKeep)) LostStages.syncAll(level);
     }
 }

@@ -7,6 +7,7 @@ import net.bananemdnsa.historystages.client.editor.widget.ContextMenu;
 import net.bananemdnsa.historystages.client.editor.widget.MarqueeText;
 import net.bananemdnsa.historystages.client.editor.widget.popup.ModEntitySelectionPopup;
 import net.bananemdnsa.historystages.client.editor.widget.popup.ModEntrySelectionPopup;
+import net.bananemdnsa.historystages.client.editor.widget.popup.IngredientUsagePopup;
 import net.bananemdnsa.historystages.client.editor.widget.popup.GenerationLimitPopup;
 import net.bananemdnsa.historystages.client.editor.widget.popup.spawn.SpawnControlPopup;
 import net.bananemdnsa.historystages.client.editor.widget.popup.TradeLevelsPopup;
@@ -89,6 +90,7 @@ import net.bananemdnsa.historystages.api.editor.widget.SegmentBar;
 import org.jetbrains.annotations.Nullable;
 import net.bananemdnsa.historystages.client.editor.widget.StyledButton;
 import net.minecraft.client.gui.components.EditBox;
+import net.bananemdnsa.historystages.api.editor.widget.SearchBar;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
@@ -106,10 +108,13 @@ import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.item.crafting.ShapedRecipe;
 import net.bananemdnsa.historystages.util.AllRecipesCache;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.tags.TagKey;
 import org.joml.Quaternionf;
 
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -136,6 +141,10 @@ public class StageDetailScreen extends Screen {
     private net.bananemdnsa.historystages.research.TierMode editPedestalTierMode;
     private StageMode editMode;
     private AutoTrigger editAutoTrigger;
+    /** Copied like the auto trigger; kept across mode switches, the server ignores it where it does not apply. */
+    private net.bananemdnsa.historystages.data.relock.LockTrigger editLockTrigger;
+    /** Null = mode default (on, off for conditional stages). */
+    private Boolean editNotify;
     private net.bananemdnsa.historystages.data.temporary.TemporaryConfig editTemporary;
     private String editIcon;
     /** Empty means "follow the config default", the same convention {@link #editIcon} uses. */
@@ -224,6 +233,9 @@ public class StageDetailScreen extends Screen {
     private ModEntitySelectionPopup modEntityPopup;
     private ModEntrySelectionPopup modStructurePopup;
     private ModEntrySelectionPopup modBiomePopup;
+    private IngredientUsagePopup ingredientUsagePopup;
+    /** Kept so the ingredient-usage popup can add recipes the way the recipe picker does. */
+    private StringListCategoryTab recipeTab;
     private GenerationLimitPopup generationLimitPopup;
     private SpawnControlPopup spawnControlPopup;
     private TradeLevelsPopup tradeLevelsPopup;
@@ -260,13 +272,12 @@ public class StageDetailScreen extends Screen {
     private String currentTooltipText = null;
 
     // Category search box (inline header, next to icon button)
-    private EditBox categorySearchBox;
+    private SearchBar categorySearchBox;
     private String categorySearchFilter = "";
     private boolean categoryDropdownVisible = false;
     private List<String> categoryDropdownSuggestions = new ArrayList<>();
     private int categorySearchBoxX;
     private int categorySearchBoxW;
-    private final Anim categorySearchHover = new Anim();
     private static final int DROPDOWN_ENTRY_H = 13;
     private static final int MAX_DROPDOWN_ENTRIES = 8;   // visible rows
     private static final int MAX_DROPDOWN_COLLECT = 50;  // max suggestions collected
@@ -414,6 +425,8 @@ public class StageDetailScreen extends Screen {
         this.editPedestalTierMode = e.getPedestalTierMode();
         this.editMode = e.getMode();
         this.editAutoTrigger = e.getAutoTrigger() != null ? e.getAutoTrigger().copy() : null;
+        this.editLockTrigger = e.getLockTrigger() != null ? e.getLockTrigger().copy() : null;
+        this.editNotify = e.getRawNotify();
         this.editTemporary = e.getTemporary() != null ? e.getTemporary().copy() : null;
         this.editHiddenDisplay = e.getHiddenDisplay().copy();
         this.editLoseOnDeath = e.isLoseOnDeath();
@@ -486,11 +499,12 @@ public class StageDetailScreen extends Screen {
                 (LockCategory<String>) LockCategories.byId("historystages:recipes");
         // Both scopes: the recipes tab is offered on individual stages too, and its picker then
         // filters to the recipe types a per-player gate can actually reach.
-        CategoryTab recipeTab = new StringListCategoryTab(recipeCategory,
+        StringListCategoryTab recipeTabLocal = new StringListCategoryTab(recipeCategory,
                 (onSelect, alreadyAdded) -> new SearchableRecipeList(onSelect, alreadyAdded, isIndividual),
                 () -> { hasChanges = true; updateMaxScroll(); });
-        recipeTab.load(e);
-        this.categoryTabs.put(5, recipeTab);
+        recipeTabLocal.load(e);
+        this.recipeTab = recipeTabLocal;
+        this.categoryTabs.put(5, recipeTabLocal);
         // Safe cast: the built-in dimensions category stores bare ids.
         @SuppressWarnings("unchecked")
         LockCategory<String> dimensionCategory =
@@ -596,6 +610,9 @@ public class StageDetailScreen extends Screen {
                             return list;
                         },
                         () -> { hasChanges = true; updateMaxScroll(); });
+        // Merchants without a profession come from the server's trade scan, which may land after
+        // this screen opened — same reason as the offers picker above.
+        tradeProfessionTabLocal.setRebuildPickerOnOpen(true);
         this.tradeProfessionTab = tradeProfessionTabLocal;
         // Safe cast: the built-in trade-levels category stores bare ids.
         @SuppressWarnings("unchecked")
@@ -831,15 +848,17 @@ public class StageDetailScreen extends Screen {
         int cSearchX = iconBtnX + FIELD_HEIGHT + 8;
         categorySearchBoxW = Math.max(40, Math.min(140, this.width - cSearchX - 80));
         categorySearchBoxX = cSearchX;
-        categorySearchBox = new CategorySearchEditBox(cSearchX + 4, 22, categorySearchBoxW - 8, FIELD_HEIGHT);
-
-        categorySearchBox.setValue("");
-        categorySearchBox.setResponder(val -> {
-            categorySearchFilter = val;
-            updateCategoryDropdown();
-            categoryDropdownVisible = !val.isEmpty();
-        });
-        this.addRenderableWidget(categorySearchBox);
+        categorySearchBox = new SearchBar(
+                Component.translatable("editor.historystages.category_search").getString())
+                .setLightStyle(true)
+                .setEscapeReleasesFocus(true)
+                .onChange(val -> {
+                    categorySearchFilter = val;
+                    updateCategoryDropdown();
+                    categoryDropdownVisible = !val.isEmpty();
+                });
+        categorySearchBox.setFocused(false);
+        categorySearchBox.setPosition(cSearchX, 22, categorySearchBoxW);
 
         // --- Text-override popup widgets (children; rendered manually on top of the popup) ---
         overrideNameField = new EditBox(this.font, 0, 0, 10, FIELD_HEIGHT,
@@ -867,6 +886,10 @@ public class StageDetailScreen extends Screen {
         this.addWidget(overrideDoneBtn);
 
 
+
+        ingredientUsagePopup = new IngredientUsagePopup(
+                ids -> { ids.forEach(recipeTab::addIfAbsent); updateMaxScroll(); },
+                ids -> { ids.forEach(itemTab::addIfAbsent); updateMaxScroll(); });
 
         modStructurePopup = new ModEntrySelectionPopup(
                 Component.translatable("editor.historystages.popup.kind.structures"),
@@ -1076,14 +1099,20 @@ public class StageDetailScreen extends Screen {
     }
 
     private boolean isAnyOverlayVisible() {
+        return contextMenu.isVisible() || isAnyPopupVisible();
+    }
+
+    /** Every overlay except the context menu, which draws high enough to cover anything. */
+    private boolean isAnyPopupVisible() {
         return (iconSearch != null && iconSearch.isVisible())
                 || anyCategoryPickerVisible()
                 || lockActionsPopup.isVisible() || spawnControlPopup.isVisible()
                 || tradeLevelsPopup.isVisible() || interactionActionsPopup.isVisible()
                 || interactionItemsPopup.isVisible() || filterItemSearch.isVisible() || filterTagSearch.isVisible()
                 || generationLimitPopup.isVisible()
-                || contextMenu.isVisible() || recipePopupVisible
+                || recipePopupVisible
                 || modEntityPopup.isVisible() || modStructurePopup.isVisible() || modBiomePopup.isVisible()
+                || ingredientUsagePopup.isVisible()
                 || actionOverlay() != null;
     }
 
@@ -1108,64 +1137,6 @@ public class StageDetailScreen extends Screen {
     private void applyGenerationRule(String structureId, StructureGenerationRule rule) {
         structureTab.applyGenerationRule(structureId, rule);
         hasChanges = true;
-    }
-
-    /**
-     * EditBox variant that replaces the default hard-blink cursor with a smooth
-     * gold sine-wave pulse. Everything else (key handling, text storage, click
-     * detection) comes from EditBox unchanged.
-     */
-    private class CategorySearchEditBox extends EditBox {
-        CategorySearchEditBox(int x, int y, int w, int h) {
-            super(StageDetailScreen.this.font, x, y, w, h, Component.empty());
-            setBordered(false);
-            setMaxLength(128);
-        }
-
-        @Override
-        public void renderWidget(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
-            String val = getValue();
-            String highlighted = getHighlighted();
-            int textX = getX() + 2;
-            int textY = getY() + (getHeight() - 8) / 2;
-            int maxW = getWidth() - 4;
-
-            // Show the tail of the string so cursor stays visible while typing
-            String display;
-            int displayStart;
-            if (font.width(val) <= maxW) {
-                display = val;
-                displayStart = 0;
-            } else {
-                String rev = new StringBuilder(val).reverse().toString();
-                String revDisplay = font.plainSubstrByWidth(rev, maxW);
-                displayStart = val.length() - revDisplay.length();
-                display = val.substring(displayStart);
-            }
-
-            // Blue selection highlight
-            if (!highlighted.isEmpty()) {
-                int selInFull = val.indexOf(highlighted);
-                if (selInFull >= 0) {
-                    int selStart = Math.max(0, selInFull - displayStart);
-                    int selEnd = Math.min(display.length(), selInFull + highlighted.length() - displayStart);
-                    if (selEnd > selStart) {
-                        int selX = textX + font.width(display.substring(0, selStart));
-                        int selW = font.width(display.substring(selStart, selEnd));
-                        g.fill(selX, textY - 1, selX + selW, textY + 9, 0x7F0077FF);
-                    }
-                }
-            }
-
-            g.drawString(font, display, textX, textY, 0xFFFFFF, false);
-
-            if (isFocused()) {
-                int cursorX = textX + font.width(display);
-                float pulse = (float) (0.45 + 0.55 * Math.sin(System.currentTimeMillis() / 250.0));
-                int alpha = (int) (pulse * 255);
-                g.drawString(font, "_", cursorX, textY, (alpha << 24) | 0xFFCC00, false);
-            }
-        }
     }
 
 
@@ -1199,7 +1170,7 @@ public class StageDetailScreen extends Screen {
             categorySearchFilter = "";
             categoryDropdownVisible = false;
             categoryDropdownSuggestions = new ArrayList<>();
-            if (categorySearchBox != null) categorySearchBox.setValue("");
+            if (categorySearchBox != null) categorySearchBox.setText("");
         }
     }
 
@@ -1776,7 +1747,7 @@ public class StageDetailScreen extends Screen {
             categorySearchFilter = "";
             categoryDropdownVisible = false;
             categoryDropdownSuggestions = new ArrayList<>();
-            if (categorySearchBox != null) categorySearchBox.setValue("");
+            if (categorySearchBox != null) categorySearchBox.setText("");
             Minecraft.getInstance().getSoundManager()
                     .play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
         }
@@ -2013,35 +1984,10 @@ public class StageDetailScreen extends Screen {
             guiGraphics.drawCenteredString(this.font, saveError, this.width / 2, this.height - 38, 0xFF5555);
         }
 
-        // Category search box — button-style background with focus/hover animation
-        if (categorySearchBox != null) {
-            boolean csFocused = categorySearchBox.isFocused();
-            boolean csHovered = mouseX >= categorySearchBoxX && mouseX < categorySearchBoxX + categorySearchBoxW
-                    && mouseY >= 22 && mouseY < 22 + FIELD_HEIGHT && !overlayOpen;
-            float hp = Ease.outCubic(categorySearchHover.ramp(csFocused || csHovered,
-                    Timing.HOVER_IN_MS, Timing.HOVER_OUT_MS));
-
-            // Background — subtle white tint, brightens when focused/hovered
-            int bgAlpha = (int) (0x25 + hp * 0x18);
-            guiGraphics.fill(categorySearchBoxX, 22, categorySearchBoxX + categorySearchBoxW, 22 + FIELD_HEIGHT,
-                    (bgAlpha << 24) | 0xFFFFFF);
-            // Top + side edge highlights (same as StyledButton)
-            guiGraphics.fill(categorySearchBoxX, 22, categorySearchBoxX + categorySearchBoxW, 23, 0x20FFFFFF);
-            guiGraphics.fill(categorySearchBoxX, 22, categorySearchBoxX + 1, 22 + FIELD_HEIGHT, 0x15FFFFFF);
-            guiGraphics.fill(categorySearchBoxX + categorySearchBoxW - 1, 22,
-                    categorySearchBoxX + categorySearchBoxW, 22 + FIELD_HEIGHT, 0x15FFFFFF);
-            // Bottom accent: gold when focused, subtle otherwise
-            int accentAlpha = csFocused ? (int) (0xCC + hp * 0x33) : (int) (0x40 + hp * 0x40);
-            int accentRGB = csFocused ? 0xFFCC00 : 0x888888;
-            guiGraphics.fill(categorySearchBoxX, 22 + FIELD_HEIGHT - 2,
-                    categorySearchBoxX + categorySearchBoxW, 22 + FIELD_HEIGHT,
-                    (accentAlpha << 24) | accentRGB);
-
-            // Placeholder text (rendered before super.render so the EditBox text draws over it)
-            if (categorySearchFilter.isEmpty() && !csFocused) {
-                guiGraphics.drawString(this.font, "Search...", categorySearchBoxX + 5,
-                        22 + (FIELD_HEIGHT - 8) / 2, 0x555555, false);
-            }
+        // SearchBar lifts its text to z=300, while the pickers draw at z=0 — it would show
+        // through any of them. They cover this corner anyway, so the bar sits them out.
+        if (categorySearchBox != null && !isAnyPopupVisible()) {
+            categorySearchBox.render(guiGraphics, this.font, mouseX, mouseY);
         }
 
         super.render(guiGraphics, mouseX, mouseY, partialTick);
@@ -2113,6 +2059,7 @@ public class StageDetailScreen extends Screen {
         modEntityPopup.render(guiGraphics, this.font, mouseX, mouseY);
         modStructurePopup.render(guiGraphics, this.font, mouseX, mouseY);
         modBiomePopup.render(guiGraphics, this.font, mouseX, mouseY);
+        ingredientUsagePopup.render(guiGraphics, this.font, mouseX, mouseY);
         if (recipePopupVisible) renderRecipePopup(guiGraphics, mouseX, mouseY);
         lockActionsPopup.render(guiGraphics, this.font, this.width, this.height, mouseX, mouseY);
         tradeLevelsPopup.render(guiGraphics, this.font, mouseX, mouseY);
@@ -2453,6 +2400,7 @@ public class StageDetailScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (ingredientUsagePopup.isVisible()) { return ingredientUsagePopup.mouseClicked(mouseX, mouseY); }
         if (modEntityPopup.isVisible()) { return modEntityPopup.mouseClicked(mouseX, mouseY); }
         if (modStructurePopup.isVisible()) { return modStructurePopup.mouseClicked(mouseX, mouseY); }
         if (modBiomePopup.isVisible()) { return modBiomePopup.mouseClicked(mouseX, mouseY); }
@@ -2503,7 +2451,7 @@ public class StageDetailScreen extends Screen {
         // Unfocus/clear category search when clicking outside the box + dropdown
         if (categorySearchBox != null && categorySearchBox.isFocused()) {
             boolean inSearchBox = mouseX >= categorySearchBoxX && mouseX < categorySearchBoxX + categorySearchBoxW
-                    && mouseY >= 22 && mouseY < 22 + FIELD_HEIGHT;
+                    && mouseY >= 22 && mouseY < 22 + SearchBar.HEIGHT;
             int dropH = Math.min(MAX_DROPDOWN_ENTRIES, categoryDropdownSuggestions.size()) * DROPDOWN_ENTRY_H + 4;
             boolean inDropdown = categoryDropdownVisible && mouseX >= categorySearchBoxX
                     && mouseX < categorySearchBoxX + categorySearchBoxW
@@ -2511,7 +2459,7 @@ public class StageDetailScreen extends Screen {
             if (!inSearchBox && !inDropdown) {
                 categoryDropdownVisible = false;
                 categorySearchFilter = "";
-                categorySearchBox.setValue("");
+                categorySearchBox.setText("");
                 categorySearchBox.setFocused(false);
             }
         }
@@ -2541,10 +2489,12 @@ public class StageDetailScreen extends Screen {
                 }
                 categoryDropdownVisible = false;
                 categorySearchFilter = "";
-                if (categorySearchBox != null) categorySearchBox.setValue("");
+                if (categorySearchBox != null) categorySearchBox.setText("");
                 return true;
             }
         }
+
+        if (categorySearchBox != null && categorySearchBox.mouseClicked(mouseX, mouseY)) return true;
 
         if (mouseY >= tabY && mouseY < tabY + TAB_HEIGHT) {
             // Tab scroll arrow clicks
@@ -2621,6 +2571,8 @@ public class StageDetailScreen extends Screen {
                     if (isTab(tabIdx, CAT_ITEMS)) {
                         contextMenu.addEntry(Component.translatable("editor.historystages.context.edit_nbt").getString(),
                                 () -> openNbtEditScreen(entryIdx, entryValue));
+                        contextMenu.addEntry(Component.translatable("editor.historystages.context.ingredient_usage").getString(),
+                                () -> openIngredientUsage(entryValue));
                     }
                     if (isTab(tabIdx, CAT_TAGS)) {
                         contextMenu.addEntry(Component.translatable("editor.historystages.context.edit_nbt").getString(),
@@ -2851,6 +2803,29 @@ public class StageDetailScreen extends Screen {
         }));
     }
 
+    /**
+     * Opens "recipes using this item". Entries with NBT don't count as locked: they lock one
+     * variant, and a recipe slot asking for the plain item can still be filled.
+     */
+    private void openIngredientUsage(String itemId) {
+        Set<String> locked = new HashSet<>();
+        List<String> items = itemTab.entries();
+        for (int i = 0; i < items.size(); i++) {
+            if (!itemTab.nbtByIndex().containsKey(i)) locked.add(items.get(i));
+        }
+        List<String> tags = tagTab.entries();
+        for (int i = 0; i < tags.size(); i++) {
+            if (tagTab.nbtByIndex().containsKey(i)) continue;
+            String raw = tags.get(i).startsWith("#") ? tags.get(i).substring(1) : tags.get(i);
+            ResourceLocation tagId = ResourceLocation.tryParse(raw);
+            if (tagId == null) continue;
+            BuiltInRegistries.ITEM.getTag(TagKey.create(Registries.ITEM, tagId)).ifPresent(set ->
+                    set.forEach(holder -> locked.add(BuiltInRegistries.ITEM.getKey(holder.value()).toString())));
+        }
+        ingredientUsagePopup.show(itemId, locked, isIndividual,
+                recipeTab::entries, itemTab::entries, this.width, this.height);
+    }
+
     private void openNbtEditScreen(int entryIdx, String itemId) {
         com.google.gson.JsonObject currentNbt = itemTab.nbtByIndex().get(entryIdx);
         this.minecraft.setScreen(new NbtItemEditScreen(this, itemId, currentNbt, nbt -> {
@@ -2926,6 +2901,8 @@ public class StageDetailScreen extends Screen {
 
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+        if (ingredientUsagePopup.isVisible() && ingredientUsagePopup.mouseDragged(mouseX, mouseY))
+            return true;
         if (modEntityPopup.isVisible() && modEntityPopup.mouseDragged(mouseX, mouseY))
             return true;
         if (iconSearch != null && iconSearch.isVisible() && iconSearch.mouseDragged(mouseX, mouseY))
@@ -2956,6 +2933,8 @@ public class StageDetailScreen extends Screen {
 
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        if (ingredientUsagePopup.isVisible() && ingredientUsagePopup.mouseReleased())
+            return true;
         if (modEntityPopup.isVisible() && modEntityPopup.mouseReleased())
             return true;
         if (modBiomePopup.isVisible() && modBiomePopup.mouseReleased())
@@ -3020,6 +2999,7 @@ public class StageDetailScreen extends Screen {
                 return true;
             }
         }
+        if (ingredientUsagePopup.isVisible() && ingredientUsagePopup.mouseScrolled(mouseX, mouseY, scrollY)) return true;
         if (modEntityPopup.isVisible() && modEntityPopup.mouseScrolled(mouseX, mouseY, scrollY)) return true;
         if (modStructurePopup.isVisible() && modStructurePopup.mouseScrolled(mouseX, mouseY, scrollY)) return true;
         if (modBiomePopup.isVisible() && modBiomePopup.mouseScrolled(mouseX, mouseY, scrollY)) return true;
@@ -3056,6 +3036,7 @@ public class StageDetailScreen extends Screen {
             if (overrideTooltipField.isFocused() && overrideTooltipField.keyPressed(keyCode, scanCode, modifiers)) return true;
             return true;
         }
+        if (ingredientUsagePopup.isVisible() && ingredientUsagePopup.keyPressed(keyCode)) return true;
         if (modEntityPopup.isVisible() && modEntityPopup.keyPressed(keyCode)) return true;
         if (modStructurePopup.isVisible() && modStructurePopup.keyPressed(keyCode)) return true;
         if (modBiomePopup.isVisible() && modBiomePopup.keyPressed(keyCode)) return true;
@@ -3079,17 +3060,20 @@ public class StageDetailScreen extends Screen {
         if (keyTab != null && keyTab.keyPressed(keyCode, scanCode, modifiers)) return true;
         if (iconSearch.isVisible() && iconSearch.keyPressed(keyCode)) return true;
 
-        // Forward all key events to the category search box when it has focus
-        // (ensures Ctrl+A/C/V reach EditBox's built-in handlers reliably)
-        if (categorySearchBox != null && categorySearchBox.isFocused()
-                && categorySearchBox.keyPressed(keyCode, scanCode, modifiers))
-            return true;
+        if (categorySearchBox != null) {
+            // One ESC leaves the search completely: the suggestions go with the text, and the
+            // bar's own ESC handling then drops the focus. The next ESC closes the screen.
+            if (keyCode == 256 && categorySearchBox.isFocused()) {
+                categorySearchBox.setText("");
+            }
+            if (categorySearchBox.keyPressed(keyCode)) return true;
+        }
 
         if (keyCode == 256) {
             if (categoryDropdownVisible) {
                 categoryDropdownVisible = false;
                 categorySearchFilter = "";
-                if (categorySearchBox != null) categorySearchBox.setValue("");
+                if (categorySearchBox != null) categorySearchBox.setText("");
                 return true;
             }
             tryClose();
@@ -3106,6 +3090,7 @@ public class StageDetailScreen extends Screen {
             if (overrideTooltipField.isFocused() && overrideTooltipField.charTyped(c, modifiers)) return true;
             return true;
         }
+        if (ingredientUsagePopup.isVisible() && ingredientUsagePopup.charTyped(c)) return true;
         if (spawnControlPopup.isVisible() && spawnControlPopup.charTyped(c)) return true;
         if (generationLimitPopup.isVisible() && generationLimitPopup.charTyped(c)) return true;
         if (actionOverlay() != null) return actionOverlay().charTyped(c);
@@ -3115,6 +3100,7 @@ public class StageDetailScreen extends Screen {
         if (filterItemSearch.isVisible() && filterItemSearch.charTyped(c)) return true;
         if (filterTagSearch.isVisible() && filterTagSearch.charTyped(c)) return true;
         if (iconSearch.isVisible() && iconSearch.charTyped(c)) return true;
+        if (categorySearchBox != null && categorySearchBox.charTyped(c)) return true;
         return super.charTyped(c, modifiers);
     }
 
@@ -3140,7 +3126,7 @@ public class StageDetailScreen extends Screen {
                  newTemporary, newHidden, newLoseOnDeath, newInterchangeable,
                  newFixedItemActions, newFixedFluidActions, newFixedInteractionActions, newFixedSpawnRule,
                  newScrollCompletion,
-                 newAddonSettings) -> {
+                 newAddonSettings, newRelock) -> {
                     editStageId = newId;
                     editDisplayName = newName;
                     editResearchTime = newTime;
@@ -3158,12 +3144,15 @@ public class StageDetailScreen extends Screen {
                     editFixedSpawnRule = newFixedSpawnRule;
                     editScrollCompletion = newScrollCompletion == null ? "" : newScrollCompletion;
                     editAddonSettings = newAddonSettings;
+                    editLockTrigger = newRelock.lockTrigger();
+                    editNotify = newRelock.notifyMessages();
                     hasChanges = true;
                     // Saving in a sub-screen persists the whole stage, so the user never has to
                     // come back here and press Save again.
                     saveStage();
                 },
-                this::buildEntrySnapshot));
+                this::buildEntrySnapshot,
+                new StageSettingsScreen.RelockSettings(editLockTrigger, editNotify).copy()));
     }
 
     /** True when the stage's hidden-display config has at least one axis set to REPLACE. */
@@ -3351,6 +3340,8 @@ public class StageDetailScreen extends Screen {
         newEntry.setPedestalTierMode(editPedestalTierMode);
         newEntry.setMode(editMode);
         newEntry.setAutoTrigger(editAutoTrigger);
+        newEntry.setLockTrigger(editLockTrigger);
+        newEntry.setNotify(editNotify);
         newEntry.setTemporary(editTemporary);
         newEntry.setHiddenDisplay(editHiddenDisplay);
         newEntry.setLoseOnDeath(editLoseOnDeath);

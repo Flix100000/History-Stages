@@ -124,12 +124,11 @@ class TradeOfferFilterTest {
     }
 
     /**
-     * A merchant with no profession — the wandering trader, and anything from another mod — can
-     * never be caught by a profession entry. Gating "the profession of a thing that has none"
-     * would mean nothing.
+     * A merchant with no profession — the wandering trader, and anything from another mod — is
+     * not caught by some villager's profession entry.
      */
     @Test
-    void aMerchantWithoutAProfessionIsNeverCaughtByOne() {
+    void aMerchantWithoutAProfessionIsNotCaughtByAVillagerProfession() {
         StageEntry stage = new StageEntry();
         stage.setTradeProfessions(List.of("minecraft:librarian"));
 
@@ -139,6 +138,54 @@ class TradeOfferFilterTest {
                 stages("bronze", stage), StageScope.GLOBAL, StageStateView.NONE_UNLOCKED, NO_ITEM_ACTION_GATE);
 
         assertEquals(List.of(0), result.keptIndices());
+    }
+
+    /**
+     * Its own entity id in the professions list takes it out whole. Without this a merchant like
+     * Vinery's wandering winemaker could only be gated one offer at a time.
+     */
+    @Test
+    void aMerchantWithoutAProfessionIsCaughtByItsEntityId() {
+        StageEntry stage = new StageEntry();
+        stage.setTradeProfessions(List.of("vinery:wandering_winemaker"));
+
+        TradeOfferFilter.Result result = TradeOfferFilter.filter(
+                List.of(PAPER_FOR_EMERALD),
+                new TradeOfferFilter.MerchantView(null, 1, "vinery:wandering_winemaker"),
+                stages("bronze", stage), StageScope.GLOBAL, StageStateView.NONE_UNLOCKED, NO_ITEM_ACTION_GATE);
+
+        assertEquals(List.of(), result.keptIndices());
+        assertEquals(List.of("bronze"), result.gatingStages());
+    }
+
+    /**
+     * Vinery ships a winemaker profession and a separate wandering winemaker. Gating the first
+     * must not reach the second — they share a name, not an identity.
+     */
+    @Test
+    void aSimilarlyNamedProfessionDoesNotCatchAProfessionlessMerchant() {
+        StageEntry stage = new StageEntry();
+        stage.setTradeProfessions(List.of("vinery:winemaker"));
+
+        TradeOfferFilter.Result result = TradeOfferFilter.filter(
+                List.of(PAPER_FOR_EMERALD),
+                new TradeOfferFilter.MerchantView(null, 1, "vinery:wandering_winemaker"),
+                stages("bronze", stage), StageScope.GLOBAL, StageStateView.NONE_UNLOCKED, NO_ITEM_ACTION_GATE);
+
+        assertEquals(List.of(0), result.keptIndices());
+    }
+
+    /** The payment seam asks gatingStagesFor rather than filter, so it has to agree. */
+    @Test
+    void thePaymentSeamAgreesForAProfessionlessMerchant() {
+        StageEntry stage = new StageEntry();
+        stage.setTradeProfessions(List.of("vinery:wandering_winemaker"));
+
+        List<String> gating = TradeOfferFilter.gatingStagesFor(PAPER_FOR_EMERALD,
+                new TradeOfferFilter.MerchantView(null, 1, "vinery:wandering_winemaker"),
+                stages("bronze", stage), StageScope.GLOBAL, StageStateView.NONE_UNLOCKED, NO_ITEM_ACTION_GATE);
+
+        assertEquals(List.of("bronze"), gating);
     }
 
     // -----------------------------------------------------------------------------------------

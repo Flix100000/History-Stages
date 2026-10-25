@@ -105,10 +105,16 @@ public abstract class AbstractCategoryTab implements CategoryTab {
 
     @Override
     public void rebuildPicker() {
-        picker = pickerFactory.create(id -> {
-            if (!edit.contains(id)) edit.add(id);
-            onChanged.run();
-        }, () -> edit);
+        picker = pickerFactory.create(this::addIfAbsent, () -> edit);
+    }
+
+    /**
+     * Adds an entry the way this tab's picker does: once per id, then marks the stage dirty. For
+     * anything else in the editor that adds entries in bulk.
+     */
+    public void addIfAbsent(String id) {
+        if (!edit.contains(id)) edit.add(id);
+        onChanged.run();
     }
 
     @Override

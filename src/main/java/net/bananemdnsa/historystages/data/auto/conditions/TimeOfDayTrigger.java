@@ -1,6 +1,7 @@
 package net.bananemdnsa.historystages.data.auto.conditions;
 
-import net.bananemdnsa.historystages.api.trigger.TriggerCondition;
+import net.bananemdnsa.historystages.api.trigger.StateTrigger;
+import net.bananemdnsa.historystages.api.trigger.StateView;
 
 import com.google.gson.annotations.SerializedName;
 import org.jetbrains.annotations.Nullable;
@@ -16,7 +17,7 @@ public record TimeOfDayTrigger(
         @SerializedName("preset") String preset,
         @SerializedName("from") Integer from,
         @SerializedName("to") Integer to
-) implements TriggerCondition {
+) implements StateTrigger {
 
     public static final int TICKS_PER_DAY = 24000;
 
@@ -56,6 +57,12 @@ public record TimeOfDayTrigger(
         int end = windowTo();
         // start > end is a window across midnight (22000-2000), not an empty one.
         return start <= end ? (now >= start && now <= end) : (now >= start || now <= end);
+    }
+
+    // A view without a time never matches.
+    @Override public boolean holds(StateView view) {
+        long t = view.dayTime();
+        return t >= 0 && matches(t);
     }
 
     @Override public String type() { return "world_time"; }

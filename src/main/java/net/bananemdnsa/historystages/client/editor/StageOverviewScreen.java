@@ -8,8 +8,10 @@ import net.bananemdnsa.historystages.client.editor.folder.FolderNameScreen;
 import net.bananemdnsa.historystages.client.editor.folder.StageFolderTree;
 import net.bananemdnsa.historystages.client.editor.widget.ConfirmDialog;
 import net.bananemdnsa.historystages.client.editor.widget.ContextMenu;
+import net.bananemdnsa.historystages.client.editor.widget.EditorTooltip;
 import net.bananemdnsa.historystages.api.editor.widget.AbstractInputScreen;
 import net.bananemdnsa.historystages.api.editor.widget.Badge;
+import net.bananemdnsa.historystages.client.cache.ClientLostStages;
 import net.bananemdnsa.historystages.api.editor.widget.InputField;
 import net.bananemdnsa.historystages.api.editor.widget.InputValues;
 import net.bananemdnsa.historystages.client.editor.widget.dropdown.PlayerPickerDropdown;
@@ -19,6 +21,7 @@ import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.data.StageMode;
 import net.bananemdnsa.historystages.data.StagePaths;
 import net.bananemdnsa.historystages.data.auto.AutoTrigger;
+import net.bananemdnsa.historystages.data.relock.LockTrigger;
 import net.bananemdnsa.historystages.network.serverbound.CreateFolderPacket;
 import net.bananemdnsa.historystages.network.serverbound.DeleteFolderPacket;
 import net.bananemdnsa.historystages.network.serverbound.DeleteStagePacket;
@@ -33,7 +36,7 @@ import net.bananemdnsa.historystages.client.cache.ClientStageCache;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.bananemdnsa.historystages.client.editor.widget.StyledButton;
-import net.minecraft.client.gui.components.EditBox;
+import net.bananemdnsa.historystages.api.editor.widget.SearchBar;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
@@ -60,7 +63,11 @@ public class StageOverviewScreen extends Screen {
     private static final int INDIVIDUAL_FOLDER_HOVER_KEY = 30000;
     /** Width of the three bars marking a folder row, in pixels. */
     private static final int FOLDER_ICON_WIDTH = 7;
-    /** Header menu button in the top-right corner. Its height matches the search bar's. */
+    /** Search bar in the top-left corner; y is picked so it centres on the menu button's row. */
+    private static final int SEARCH_X = 10;
+    private static final int SEARCH_Y = 4;
+    private static final int SEARCH_W = 120;
+    /** Header menu button in the top-right corner, vertically centred with the search bar. */
     private static final int MENU_BUTTON_W = 30;
     private static final int MENU_BUTTON_H = 18;
     private static final int MENU_BUTTON_Y = 5;
@@ -92,7 +99,7 @@ public class StageOverviewScreen extends Screen {
     private List<String> individualStageOrder;
     private List<String> filteredStageOrder = new ArrayList<>();
     private List<String> filteredIndividualStageOrder = new ArrayList<>();
-    private EditBox searchBox;
+    private SearchBar searchBox;
     private String searchFilter = "";
     private int lastKnownStageCount = -1;
     private int lastKnownIndividualCount = -1;
@@ -242,17 +249,15 @@ public class StageOverviewScreen extends Screen {
         PacketHandler.sendToServer(new net.bananemdnsa.historystages.network.serverbound.RequestIndividualStatesPacket());
 
         searchFilter = "";
-        int searchW = 120;
-        searchBox = new EditBox(this.font, 12, 8, searchW - 4, 14,
-                Component.translatable("editor.historystages.search"));
-        searchBox.setMaxLength(128);
-        searchBox.setBordered(false);
-        searchBox.setValue(searchFilter);
-        searchBox.setResponder(val -> {
-            searchFilter = val;
-            applyFilter();
-        });
-        this.addRenderableWidget(searchBox);
+        searchBox = new SearchBar(Component.translatable("editor.historystages.search").getString())
+                .setLightStyle(true)
+                .setEscapeReleasesFocus(true)
+                .onChange(val -> {
+                    searchFilter = val;
+                    applyFilter();
+                });
+        searchBox.setFocused(false);
+        searchBox.setPosition(SEARCH_X, SEARCH_Y, SEARCH_W);
 
         this.addRenderableWidget(StyledButton.of(
                 Component.translatable("editor.historystages.new_stage_or_folder"),
@@ -599,15 +604,7 @@ public class StageOverviewScreen extends Screen {
         guiGraphics.fill(0, 0, this.width, this.height, 0xE0101010);
         guiGraphics.drawCenteredString(this.font, this.title, this.width / 2, 10, 0xFFFFFF);
 
-        // Search bar (left side, same row as title)
-        int searchW = 120;
-        int searchX = 10;
-        guiGraphics.fill(searchX, 5, searchX + searchW, 23, 0x25FFFFFF);
-        guiGraphics.fill(searchX, 23, searchX + searchW, 24, searchBox.isFocused() ? 0xFFFFCC00 : 0xFF555555);
-        if (searchFilter.isEmpty() && !searchBox.isFocused()) {
-            guiGraphics.drawString(this.font, Component.translatable("editor.historystages.search").getString(),
-                    searchX + 4, 10, 0x888888, false);
-        }
+        searchBox.render(guiGraphics, this.font, mouseX, mouseY);
 
         guiGraphics.fill(10, HEADER_HEIGHT, this.width - 10, HEADER_HEIGHT + 1, 0xFF555555);
 
@@ -642,6 +639,11 @@ public class StageOverviewScreen extends Screen {
         boolean overlayOpen = contextMenu != null && contextMenu.isVisible();
         int effectiveMouseX = overlayOpen ? -1 : mouseX;
         int effectiveMouseY = overlayOpen ? -1 : mouseY;
+        rowMouseX = effectiveMouseX;
+        // Rows scrolled under the header or bottom bar are clipped, so they must not react.
+        rowMouseY = effectiveMouseY >= listTop && effectiveMouseY <= listBottom ? effectiveMouseY : -1;
+        hoveredBadgeKey = null;
+        hoveredBadgeText = null;
 
         Map<String, StageEntry> stages = StageManager.getStages();
         Map<String, StageEntry> individualStages = StageManager.getIndividualStages();
@@ -800,7 +802,8 @@ public class StageOverviewScreen extends Screen {
             String info = Component.translatable("editor.historystages.entries", itemCount).getString();
             int infoColor = (int) (0x88 + progress * 0x33);
             guiGraphics.drawString(this.font, info, contentLeft + 22, entryTop + 15, (0xFF << 24) | (infoColor << 16) | (infoColor << 8) | infoColor, false);
-            drawInfoBadges(guiGraphics, entry, info, contentLeft, entryTop + 15);
+            drawInfoBadges(guiGraphics, entry, info, contentLeft, entryTop + 15,
+                    ClientLostStages.isLost(stageId, false));
 
             // Lock/Unlock toggle button (right side) - bounds already calculated above
             if (!organizeMode) {
@@ -1000,8 +1003,9 @@ public class StageOverviewScreen extends Screen {
                         (0xFF << 24) | (infoColor << 16) | (infoColor << 8) | infoColor, false);
 
                 // Individual stages carry dependencies just like global ones, so the marker
-                // belongs on these rows too.
-                drawInfoBadges(guiGraphics, entry, info, contentLeft, entryTop + 15);
+                // belongs on these rows too. No lost badge: these rows show the picked target's
+                // state, while the client only knows the local player's lost marks.
+                drawInfoBadges(guiGraphics, entry, info, contentLeft, entryTop + 15, false);
 
                 // Lock/Unlock toggle button, mirroring the global rows.
                 if (!organizeMode) {
@@ -1080,6 +1084,9 @@ public class StageOverviewScreen extends Screen {
 
         super.render(guiGraphics, mouseX, mouseY, partialTick);
 
+        badgeTooltip.render(guiGraphics, this.font, hoveredBadgeKey, hoveredBadgeText,
+                mouseX, mouseY, this.width, this.height);
+
         // The shared context menu is also used for row right-clicks, so the caret only
         // tracks it while the header opened it.
         if (!contextMenu.isVisible()) headerMenuOpen = false;
@@ -1121,18 +1128,16 @@ public class StageOverviewScreen extends Screen {
             return true;
         }
 
-        // Unfocus search box when clicking outside it
-        if (searchBox.isFocused() && !(mouseX >= 10 && mouseX <= 130 && mouseY >= 5 && mouseY <= 24)) {
-            searchBox.setFocused(false);
-        }
-
         if (contextMenu.isVisible()) {
+            searchBox.setFocused(false);
             contextMenu.mouseClicked(mouseX, mouseY, button);
             return true;
         }
 
-        if (super.mouseClicked(mouseX, mouseY, button))
-            return true;
+        if (searchBox.mouseClicked(mouseX, mouseY)) return true;
+        searchBox.setFocused(false);
+
+        if (super.mouseClicked(mouseX, mouseY, button)) return true;
 
         int listTop = HEADER_HEIGHT + 5;
         int listBottom = this.height - 40;
@@ -1848,12 +1853,14 @@ public class StageOverviewScreen extends Screen {
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (playerPicker != null && playerPicker.isExpanded() && playerPicker.keyPressed(keyCode)) return true;
+        if (searchBox.keyPressed(keyCode)) return true;
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
     @Override
     public boolean charTyped(char codePoint, int modifiers) {
         if (playerPicker != null && playerPicker.charTyped(codePoint)) return true;
+        if (searchBox.charTyped(codePoint)) return true;
         return super.charTyped(codePoint, modifiers);
     }
 
@@ -1911,9 +1918,10 @@ public class StageOverviewScreen extends Screen {
             case AUTO -> Component.translatable("editor.historystages.mode.auto").getString();
             case TEMPORARY -> Component.translatable("editor.historystages.mode.temporary").getString();
             case EXTERNAL -> Component.translatable("editor.historystages.mode.external").getString();
+            case CONDITIONAL -> Component.translatable("editor.historystages.mode.conditional").getString();
             default -> Component.translatable("editor.historystages.mode.external").getString();
         };
-        // AUTO and TEMPORARY both use auto-triggers — show the configured count.
+        // AUTO, TEMPORARY and CONDITIONAL all use auto-triggers — show the configured count.
         if (mode.usesAutoTrigger()) {
             AutoTrigger at = entry.getAutoTrigger();
             int count = at == null ? 0 : at.getTriggers().size();
@@ -2024,7 +2032,8 @@ public class StageOverviewScreen extends Screen {
      *
      * @param info the info line they are placed behind, needed for its width
      */
-    private void drawInfoBadges(GuiGraphics g, StageEntry entry, String info, int contentLeft, int y) {
+    private void drawInfoBadges(GuiGraphics g, StageEntry entry, String info, int contentLeft, int y,
+                                boolean lost) {
         int x = contentLeft + 22 + this.font.width(info) + 6;
         if (entry.hasDependencies()) {
             String label = Component.translatable("editor.historystages.badge.dependencies").getString();
@@ -2032,8 +2041,38 @@ public class StageOverviewScreen extends Screen {
         }
         if (entry.hasLogic()) {
             String label = Component.translatable("editor.historystages.badge.logic").getString();
-            Badge.draw(g, this.font, label, x, y - 2, LOGIC_BADGE_COLOR);
+            x = Badge.draw(g, this.font, label, x, y - 2, LOGIC_BADGE_COLOR) + 4;
         }
+        LockTrigger lockTrigger = entry.getLockTrigger();
+        if (entry.getMode().allowsLockTrigger() && lockTrigger != null && !lockTrigger.isEmpty()) {
+            String label = Component.translatable("editor.historystages.relock.badge").getString();
+            if (Badge.contains(x, y - 2, Badge.width(this.font, label), rowMouseX, rowMouseY)) {
+                hoverBadge("relock:" + y, "editor.historystages.relock.badge.tooltip");
+            }
+            x = Badge.draw(g, this.font, label, x, y - 2, LOGIC_BADGE_COLOR) + 4;
+        }
+        if (lost) {
+            String label = Component.translatable("editor.historystages.badge.lost").getString();
+            if (Badge.contains(x, y - 2, Badge.width(this.font, label), rowMouseX, rowMouseY)) {
+                hoverBadge("lost:" + y, "editor.historystages.badge.lost.tooltip");
+            }
+            Badge.draw(g, this.font, label, x, y - 2, LOST_BADGE_COLOR);
+        }
+    }
+
+    private static final int LOST_BADGE_COLOR = 0xFF4444;
+
+    // Mouse position as the row drawing code may see it, and the badge under it this frame.
+    private int rowMouseX = -1;
+    private int rowMouseY = -1;
+    private String hoveredBadgeKey;
+    private String hoveredBadgeText;
+    private final EditorTooltip badgeTooltip = new EditorTooltip();
+
+    /** Keyed by badge and row, so moving to the next row restarts the tooltip delay. */
+    private void hoverBadge(String key, String langKey) {
+        hoveredBadgeKey = key;
+        hoveredBadgeText = Component.translatable(langKey).getString();
     }
 
     /** Rendered width of the lose-on-death badge, or 0 when the stage isn't flagged. */

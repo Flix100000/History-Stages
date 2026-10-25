@@ -13,8 +13,8 @@ package net.bananemdnsa.historystages.data.lock;
  * decision is made, so this is where a unit test has to be able to reach.
  *
  * @param professionId the merchant's profession, never null here. A merchant that has none — the
- *                     wandering trader, and every merchant from another mod — is never asked
- *                     about, because no profession entry could catch it.
+ *                     wandering trader, and every merchant from another mod — is asked about by
+ *                     its entity id instead, so the professions list can name it too.
  * @param level        the merchant's own level, not the level an offer came from. An offer keeps
  *                     no record of which level it was unlocked at, and guessing from list order
  *                     breaks as soon as another mod appends to the same list.

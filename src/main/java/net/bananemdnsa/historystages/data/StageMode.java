@@ -13,17 +13,25 @@ package net.bananemdnsa.historystages.data;
  *       {@code auto_trigger} discovery events, but re-locks automatically after a
  *       configured {@code temporary.duration}. Can optionally be re-triggered with
  *       a cooldown (see {@code temporary}).</li>
+ *   <li>{@link #CONDITIONAL} — no scroll; open only while its {@code auto_trigger} states
+ *       hold, re-evaluated every second.</li>
  * </ul>
  */
 public enum StageMode {
     DEFAULT("default"),
     AUTO("auto"),
     EXTERNAL("external"),
-    TEMPORARY("temporary");
+    TEMPORARY("temporary"),
+    CONDITIONAL("conditional");
 
-    /** True iff this mode unlocks via {@code auto_trigger} discovery events (AUTO or TEMPORARY). */
+    /** True iff this mode reads the {@code auto_trigger} list (AUTO, TEMPORARY, CONDITIONAL). */
     public boolean usesAutoTrigger() {
-        return this == AUTO || this == TEMPORARY;
+        return this == AUTO || this == TEMPORARY || this == CONDITIONAL;
+    }
+
+    /** True iff a {@code lock_trigger} block applies (DEFAULT and AUTO only). */
+    public boolean allowsLockTrigger() {
+        return this == DEFAULT || this == AUTO;
     }
 
     private final String serialized;

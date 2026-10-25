@@ -21,7 +21,9 @@ import net.bananemdnsa.historystages.data.auto.conditions.StructureTrigger;
 import net.bananemdnsa.historystages.data.auto.conditions.TimeOfDayTrigger;
 import net.bananemdnsa.historystages.data.auto.conditions.WeatherTrigger;
 import net.bananemdnsa.historystages.data.auto.conditions.XpLevelTrigger;
+import net.bananemdnsa.historystages.api.trigger.StateTrigger;
 import net.bananemdnsa.historystages.api.trigger.TriggerCondition;
+import net.bananemdnsa.historystages.api.trigger.TriggerKind;
 import net.bananemdnsa.historystages.api.stage.StageScope;
 import org.jetbrains.annotations.Nullable;
 
@@ -48,6 +50,13 @@ public final class TriggerTypes {
      * registration, and a type from an addon that is not installed.
      */
     private static final Map<String, Set<StageScope>> DECLARED_SCOPES = new LinkedHashMap<>();
+
+    private static final Map<String, TriggerKind> BUILT_IN_KINDS = Map.of(
+            "biome", TriggerKind.PLAYER_STATE, "structure", TriggerKind.PLAYER_STATE,
+            "dimension", TriggerKind.PLAYER_STATE, "item", TriggerKind.PLAYER_STATE,
+            "effect", TriggerKind.PLAYER_STATE, "xp_level", TriggerKind.PLAYER_STATE,
+            "weather", TriggerKind.WORLD_STATE, "world_time", TriggerKind.WORLD_STATE);
+    private static final Map<String, TriggerKind> DECLARED_KINDS = new LinkedHashMap<>();
 
     private static boolean frozen;
 
@@ -118,6 +127,37 @@ public final class TriggerTypes {
         }
     }
 
+    /**
+     * Adds a trigger type of the given kind. A state kind must come with a class implementing
+     * {@link StateTrigger}, since a state that cannot be checked could never close anything.
+     */
+    public static void register(String type, Class<? extends TriggerCondition> conditionClass,
+                                TriggerKind kind, StageScope... scopes) {
+        if (kind == null) throw new IllegalArgumentException("Trigger type '" + type + "' has no kind.");
+        if (kind.isState() && !StateTrigger.class.isAssignableFrom(conditionClass)) {
+            throw new IllegalArgumentException("Trigger type '" + type + "' is registered as "
+                    + kind + " but " + conditionClass.getName() + " does not implement StateTrigger.");
+        }
+        register(type, conditionClass, scopes);
+        synchronized (LOCK) {
+            DECLARED_KINDS.put(type, kind);
+        }
+    }
+
+    /** Same as the kind overload with both scopes, the default of the two-argument form. */
+    public static void register(String type, Class<? extends TriggerCondition> conditionClass, TriggerKind kind) {
+        register(type, conditionClass, kind, StageScope.GLOBAL, StageScope.INDIVIDUAL);
+    }
+
+    /** EVENT unless a built-in or a registration said otherwise, including for unknown types. */
+    public static TriggerKind kindOf(String type) {
+        synchronized (LOCK) {
+            TriggerKind declared = DECLARED_KINDS.get(type);
+            if (declared != null) return declared;
+            return BUILT_IN_KINDS.getOrDefault(type, TriggerKind.EVENT);
+        }
+    }
+
     public static void freeze() {
         synchronized (LOCK) {
             frozen = true;
@@ -168,6 +208,7 @@ public final class TriggerTypes {
             BY_TYPE.clear();
             BY_TYPE.putAll(BUILT_IN);
             DECLARED_SCOPES.clear();
+            DECLARED_KINDS.clear();
             frozen = false;
         }
     }

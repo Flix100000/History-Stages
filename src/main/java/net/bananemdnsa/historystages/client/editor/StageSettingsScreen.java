@@ -30,6 +30,8 @@ import net.bananemdnsa.historystages.network.serverbound.SaveStageGraphInfoPacke
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.StageMode;
 import net.bananemdnsa.historystages.data.auto.AutoTrigger;
+import net.bananemdnsa.historystages.data.auto.NegatedTrigger;
+import net.bananemdnsa.historystages.data.relock.LockTrigger;
 import net.bananemdnsa.historystages.api.stage.StageScope;
 import net.bananemdnsa.historystages.api.settings.Setting;
 import net.bananemdnsa.historystages.api.settings.SettingKind;
@@ -49,6 +51,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -71,7 +74,15 @@ public class StageSettingsScreen extends Screen {
                     boolean interchangeable,
                     Map<String, Boolean> fixedItemLockActions, Map<String, Boolean> fixedFluidLockActions,
                     Map<String, Boolean> fixedInteractionLockActions,
-                    FixedSpawnRule fixedSpawnRule, String scrollCompletion, Map<String, SettingsValues> addonSettings);
+                    FixedSpawnRule fixedSpawnRule, String scrollCompletion, Map<String, SettingsValues> addonSettings,
+                    RelockSettings relock);
+    }
+
+    /** The re-lock part of a stage, handed in and out as one piece so the long signatures stop growing. */
+    public record RelockSettings(LockTrigger lockTrigger, Boolean notifyMessages) {
+        public RelockSettings copy() {
+            return new RelockSettings(lockTrigger != null ? lockTrigger.copy() : null, notifyMessages);
+        }
     }
 
     private static final int FIELD_HEIGHT = 18;
@@ -151,6 +162,21 @@ public class StageSettingsScreen extends Screen {
      * closing without saving changes nothing.
      */
     private final Map<String, SettingsValues> editAddonSettings;
+    /**
+     * Kept while the mode is switched to one without lock triggers, so switching back restores
+     * it; the server ignores the block for those modes anyway.
+     */
+    private LockTrigger editLockTrigger;
+    /** Null = the mode's default: on, off for conditional stages. */
+    private Boolean editNotify;
+
+    // Re-lock card state (DEFAULT/AUTO only). Sits between the mode card and the Display card.
+    private int relockCardX, relockCardY, relockCardW, relockCardH;
+    private int reUnlockRowY, relockNotifyRowY, relockToggleX;
+    private StyledButton lockTriggerButton;
+    private static final int RELOCK_ROW_GAP = 6;
+    /** Line step for wrapped small text; one scaled line is about 8px tall. */
+    private static final int SMALL_LINE_H = 9;
 
     // Display card state
     private EditBox nameTextField;
@@ -263,6 +289,9 @@ public class StageSettingsScreen extends Screen {
     private final ToggleControl.State lockHintsToggle = new ToggleControl.State();
     private final ToggleControl.State loseToggle = new ToggleControl.State();
     private final ToggleControl.State interchangeableToggle = new ToggleControl.State();
+    /** One state for both notify switches: only one of them is ever on screen. */
+    private final ToggleControl.State notifyToggle = new ToggleControl.State();
+    private final ToggleControl.State reUnlockToggle = new ToggleControl.State();
     private final Anim scrollThumbHover = new Anim();
     /**
      * Gold wash over the button row after a successful save. Save deliberately stays on this
@@ -281,23 +310,8 @@ public class StageSettingsScreen extends Screen {
                                Map<String, Boolean> fixedItemLockActions, Map<String, Boolean> fixedFluidLockActions,
                                Map<String, Boolean> fixedInteractionLockActions,
                                FixedSpawnRule fixedSpawnRule, String scrollCompletion, Map<String, SettingsValues> addonSettings,
-                               boolean isNewStage, boolean isIndividual, SaveCallback onSave) {
-        this(parent, stageId, displayName, researchTime, minPedestalTier, pedestalTierMode,
-                mode, autoTrigger, temporary, hiddenDisplay, loseOnDeath, interchangeable,
-                fixedItemLockActions, fixedFluidLockActions, fixedInteractionLockActions, fixedSpawnRule,
-                scrollCompletion, addonSettings, isNewStage, isIndividual, onSave, null);
-    }
-
-    public StageSettingsScreen(Screen parent, String stageId, String displayName, int researchTime,
-                               int minPedestalTier, TierMode pedestalTierMode,
-                               StageMode mode, AutoTrigger autoTrigger, TemporaryConfig temporary,
-                               HiddenDisplayConfig hiddenDisplay, boolean loseOnDeath,
-                               boolean interchangeable,
-                               Map<String, Boolean> fixedItemLockActions, Map<String, Boolean> fixedFluidLockActions,
-                               Map<String, Boolean> fixedInteractionLockActions,
-                               FixedSpawnRule fixedSpawnRule, String scrollCompletion, Map<String, SettingsValues> addonSettings,
                                boolean isNewStage, boolean isIndividual, SaveCallback onSave,
-                               Supplier<StageEntry> lockSnapshot) {
+                               Supplier<StageEntry> lockSnapshot, RelockSettings relock) {
         super(Component.translatable("editor.historystages.stage_settings.title"));
         this.parent = parent;
         this.isNewStage = isNewStage;
@@ -321,6 +335,9 @@ public class StageSettingsScreen extends Screen {
         this.editFixedInteractionActions = copyOrNull(fixedInteractionLockActions);
         this.editFixedSpawnRule = fixedSpawnRule;
         this.editAddonSettings = copyAddonSettings(addonSettings);
+        RelockSettings relockCopy = relock != null ? relock.copy() : new RelockSettings(null, null);
+        this.editLockTrigger = relockCopy.lockTrigger();
+        this.editNotify = relockCopy.notifyMessages();
 
         this.editScrollCompletion = scrollCompletion == null ? "" : scrollCompletion;
         this.origScrollCompletion = this.editScrollCompletion;
@@ -526,10 +543,33 @@ public class StageSettingsScreen extends Screen {
                                     autoTriggerButton.setMessage(buildAutoTriggerLabel());
                                 }
                             }, lockSnapshot, this::save,
-                            isIndividual ? StageScope.INDIVIDUAL : StageScope.GLOBAL));
+                            isIndividual ? StageScope.INDIVIDUAL : StageScope.GLOBAL,
+                            titleName(),
+                            editMode == StageMode.CONDITIONAL
+                                    ? AutoTriggerEditorScreen.Purpose.CONDITIONAL
+                                    : AutoTriggerEditorScreen.Purpose.UNLOCK));
                 },
                 cardX + 12, bodyY, cardW - 24, FIELD_HEIGHT);
         addContentWidget(autoTriggerButton);
+
+        // Lock-trigger button (re-lock card); positioned by layoutRelockCard().
+        lockTriggerButton = StyledButton.of(
+                buildLockTriggerLabel(),
+                btn -> {
+                    // Not a change yet: only the editor's own callback marks one, so backing out of
+                    // an untouched editor leaves the screen clean.
+                    if (editLockTrigger == null) editLockTrigger = new LockTrigger();
+                    this.minecraft.setScreen(new AutoTriggerEditorScreen(this, editLockTrigger,
+                            updated -> {
+                                // The editor hands back the instance it was given.
+                                if (updated instanceof LockTrigger lock) editLockTrigger = lock;
+                                hasChanges = true;
+                            }, lockSnapshot, this::save,
+                            isIndividual ? StageScope.INDIVIDUAL : StageScope.GLOBAL,
+                            titleName(), AutoTriggerEditorScreen.Purpose.LOCK));
+                },
+                cardX + 12, bodyY, cardW - 24, FIELD_HEIGHT);
+        addContentWidget(lockTriggerButton);
 
         // --- TEMPORARY card widgets ---
         TemporaryConfig tShown = editTemporary != null ? editTemporary : new TemporaryConfig();
@@ -858,7 +898,87 @@ public class StageSettingsScreen extends Screen {
 
     private Component buildAutoTriggerLabel() {
         int count = editAutoTrigger == null ? 0 : editAutoTrigger.getTriggers().size();
-        return Component.translatable("editor.historystages.auto_trigger.configure", count);
+        String key = editMode == StageMode.CONDITIONAL
+                ? "editor.historystages.conditional.configure"
+                : "editor.historystages.auto_trigger.configure";
+        return Component.translatable(key, count);
+    }
+
+    /** Name for the sub-editor titles; a stage still being named is shown by its id. */
+    private String titleName() {
+        return editDisplayName == null || editDisplayName.isBlank() ? editStageId : editDisplayName;
+    }
+
+    /** An untouched lock block is not written: no triggers and re_unlockable never set. */
+    private LockTrigger lockTriggerToSave() {
+        if (editLockTrigger == null) return null;
+        if (editLockTrigger.getTriggers().isEmpty() && editLockTrigger.getRawReUnlockable() == null) return null;
+        return editLockTrigger;
+    }
+
+    private Component buildLockTriggerLabel() {
+        return Component.translatable("editor.historystages.lock_trigger.configure", lockTriggerCount());
+    }
+
+    private int lockTriggerCount() {
+        return editLockTrigger == null ? 0 : editLockTrigger.getTriggers().size();
+    }
+
+    /** The notify switch as shown: an unset value follows the mode, like {@link StageEntry#resolvedNotify()}. */
+    private boolean shownNotify() {
+        return editNotify != null ? editNotify : editMode != StageMode.CONDITIONAL;
+    }
+
+    private boolean relockVisible() {
+        return editMode.allowsLockTrigger();
+    }
+
+    /**
+     * Permanent loss plus a "no longer holds" trigger can take the stage away the moment it opens
+     * (the state may already be false), so that combination gets a warning.
+     */
+    private boolean showInstantLossWarning() {
+        return editLockTrigger != null && !editLockTrigger.isReUnlockable()
+                && editLockTrigger.getTriggers().stream().anyMatch(NegatedTrigger.class::isInstance);
+    }
+
+    private String conditionalHint() {
+        return Component.translatable(isIndividual
+                ? "editor.historystages.conditional.hint"
+                : "editor.historystages.conditional.hint_global").getString();
+    }
+
+    private String instantLossWarning() {
+        return Component.translatable("editor.historystages.relock.warn_instant_loss").getString();
+    }
+
+    /** Small text wrapped to {@code maxW} screen pixels; the split width is pre-scaled. */
+    private List<FormattedCharSequence> wrapSmall(String text, int maxW) {
+        return this.font.split(Component.literal(text), Math.max(20, (int) (maxW / SMALL_SCALE)));
+    }
+
+    private int smallTextHeight(String text, int maxW) {
+        return Math.max(INDIV_HINT_H, wrapSmall(text, maxW).size() * SMALL_LINE_H);
+    }
+
+    private void drawSmallWrapped(GuiGraphics g, String text, int x, int y, int maxW, int color) {
+        List<FormattedCharSequence> lines = wrapSmall(text, maxW);
+        for (int i = 0; i < lines.size(); i++) {
+            g.pose().pushPose();
+            g.pose().translate(x, y + i * SMALL_LINE_H, 0);
+            g.pose().scale(SMALL_SCALE, SMALL_SCALE, 1.0f);
+            g.drawString(this.font, lines.get(i), 0, 0, color, false);
+            g.pose().popPose();
+        }
+    }
+
+    /** Notify row inside the conditional mode card, right below the conditions button. */
+    private int conditionalNotifyRowY() {
+        return cardY + 28 + FIELD_HEIGHT + 8;
+    }
+
+    private int conditionalNotifyToggleX() {
+        return cardX + 12 + this.font.width(Component.translatable("editor.historystages.relock.notify")) + 8;
     }
 
     /** Lazily creates the temporary config so field edits have somewhere to write. */
@@ -884,6 +1004,7 @@ public class StageSettingsScreen extends Screen {
         boolean isDefault = editMode == StageMode.DEFAULT;
         boolean isAuto = editMode == StageMode.AUTO;
         boolean isTemporary = editMode == StageMode.TEMPORARY;
+        boolean isConditional = editMode == StageMode.CONDITIONAL;
         // Cooldown only matters when the stage can be unlocked more than once.
         boolean reTrig = isTemporary && editTemporary != null && editTemporary.allowsMultiple();
 
@@ -893,8 +1014,10 @@ public class StageSettingsScreen extends Screen {
         tierModeButton.active = isDefault;
         // tierDropdown is not a registered widget — visibility handled in render()/mouseClicked()
         // AUTO and TEMPORARY both configure discovery triggers via the same editor.
-        autoTriggerButton.visible = isAuto || isTemporary;
-        autoTriggerButton.active = isAuto || isTemporary;
+        autoTriggerButton.visible = isAuto || isTemporary || isConditional;
+        autoTriggerButton.active = autoTriggerButton.visible;
+        // The label names conditions or triggers depending on the mode.
+        autoTriggerButton.setMessage(buildAutoTriggerLabel());
 
         durationField.visible = isTemporary;
         durationField.active = isTemporary;
@@ -916,9 +1039,12 @@ public class StageSettingsScreen extends Screen {
     private void layoutDisplayCard() {
         if (nameTextField == null || tooltipTextField == null) return;
 
+        layoutRelockCard();
         displayCardX = cardX;
         displayCardW = cardW;
-        displayCardY = cardY + computeCardHeight() + 6;
+        displayCardY = relockCardH > 0
+                ? relockCardY + relockCardH + 6
+                : cardY + computeCardHeight() + 6;
 
         int labelW = Math.max(
                 this.font.width(Component.translatable("editor.historystages.display.name").getString()),
@@ -958,6 +1084,37 @@ public class StageSettingsScreen extends Screen {
         layoutLockCard();
         layoutIndividualCard();
         layoutAddonCards();
+    }
+
+    /** Computes the re-lock card geometry below the mode card; zero height when the mode has none. */
+    private void layoutRelockCard() {
+        relockCardX = cardX;
+        relockCardW = cardW;
+        relockCardY = cardY + computeCardHeight() + 6;
+        boolean visible = relockVisible();
+        relockCardH = visible ? computeRelockCardHeight() : 0;
+
+        reUnlockRowY = relockCardY + INDIV_BODY_TOP + FIELD_HEIGHT + 8;
+        relockNotifyRowY = reUnlockRowY + INDIV_TOGGLE_H + RELOCK_ROW_GAP;
+        int labelW = Math.max(
+                this.font.width(Component.translatable("editor.historystages.relock.re_unlockable")),
+                this.font.width(Component.translatable("editor.historystages.relock.notify")));
+        relockToggleX = relockCardX + 12 + labelW + 8;
+
+        if (lockTriggerButton != null) {
+            lockTriggerButton.visible = visible;
+            lockTriggerButton.active = visible;
+            lockTriggerButton.setPosition(relockCardX + 12, relockCardY + INDIV_BODY_TOP);
+            lockTriggerButton.setWidth(relockCardW - 24);
+            lockTriggerButton.setMessage(buildLockTriggerLabel());
+        }
+    }
+
+    /** Re-lock card height: button, two switch rows, and the warning only while it applies. */
+    private int computeRelockCardHeight() {
+        int h = INDIV_BODY_TOP + FIELD_HEIGHT + 8 + INDIV_TOGGLE_H + RELOCK_ROW_GAP + INDIV_TOGGLE_H;
+        if (showInstantLossWarning()) h += INDIV_HINT_GAP + smallTextHeight(instantLossWarning(), cardW - 24);
+        return h + INDIV_BOTTOM_PAD;
     }
 
     /** Computes the Locks card geometry directly below the Display card. Both scopes. */
@@ -1169,7 +1326,9 @@ public class StageSettingsScreen extends Screen {
     }
 
     private void clampScroll() {
-        int contentBottom = CARD_TOP + computeCardHeight() + 6 + computeDisplayCardHeight();
+        int contentBottom = CARD_TOP + computeCardHeight() + 6;
+        if (relockVisible()) contentBottom += computeRelockCardHeight() + 6;
+        contentBottom += computeDisplayCardHeight();
         contentBottom += 6 + computeLockCardHeight();
         if (isIndividual) contentBottom += 6 + computeIndividualCardHeight();
         for (AddonCard card : addonCards) contentBottom += 6 + computeAddonCardHeight(card);
@@ -1314,7 +1473,8 @@ public class StageSettingsScreen extends Screen {
                 editMode, editAutoTrigger, editTemporary, editHiddenDisplay, editLoseOnDeath,
                 editInterchangeable, copyOrNull(editFixedItemActions), copyOrNull(editFixedFluidActions),
                 copyOrNull(editFixedInteractionActions), editFixedSpawnRule,
-                editScrollCompletion, copyAddonSettings(editAddonSettings));
+                editScrollCompletion, copyAddonSettings(editAddonSettings),
+                new RelockSettings(lockTriggerToSave(), editNotify).copy());
 
         // The description rides in graph_stages.json, not in the stage entry, so it has its own
         // packet. Keyed on the original id: a rename is the rename logic's business, and writing
@@ -1361,6 +1521,7 @@ public class StageSettingsScreen extends Screen {
             case AUTO -> "editor.historystages.mode.auto";
             case EXTERNAL -> "editor.historystages.mode.external";
             case TEMPORARY -> "editor.historystages.mode.temporary";
+            case CONDITIONAL -> "editor.historystages.mode.conditional";
         };
     }
 
@@ -1370,6 +1531,7 @@ public class StageSettingsScreen extends Screen {
             case AUTO -> "editor.historystages.mode.auto.desc";
             case EXTERNAL -> "editor.historystages.mode.external.desc";
             case TEMPORARY -> "editor.historystages.mode.temporary.desc";
+            case CONDITIONAL -> "editor.historystages.mode.conditional.desc";
         };
     }
 
@@ -1379,6 +1541,7 @@ public class StageSettingsScreen extends Screen {
             case AUTO -> "editor.historystages.mode.card.auto";
             case EXTERNAL -> "editor.historystages.mode.card.external";
             case TEMPORARY -> "editor.historystages.mode.card.temporary";
+            case CONDITIONAL -> "editor.historystages.mode.card.conditional";
         };
     }
 
@@ -1490,6 +1653,10 @@ public class StageSettingsScreen extends Screen {
         // Card chrome (before widgets so they sit on top)
         int cardH = computeCardHeight();
         renderCard(guiGraphics, cardX, cardY, cardW, cardH, modeCardKey(editMode));
+        if (relockCardH > 0) {
+            renderCard(guiGraphics, relockCardX, relockCardY, relockCardW, relockCardH,
+                    "editor.historystages.relock.card", 0xFF7777, 0xFFFF5555);
+        }
         renderCard(guiGraphics, displayCardX, displayCardY, displayCardW, displayCardH,
                 "editor.historystages.display.card");
         renderCard(guiGraphics, lockCardX, lockCardY, lockCardW, lockCardH,
@@ -1507,6 +1674,7 @@ public class StageSettingsScreen extends Screen {
             w.render(guiGraphics, mouseX, mouseY, partialTick);
         }
 
+        renderRelockCardContent(guiGraphics, mouseX, mouseY);
         renderDisplayCardContent(guiGraphics, mouseX, mouseY);
         renderLockCardContent(guiGraphics, mouseX, mouseY);
         renderIndividualCardContent(guiGraphics, mouseX, mouseY);
@@ -1536,6 +1704,17 @@ public class StageSettingsScreen extends Screen {
                 String warn = Component.translatable("editor.historystages.auto_trigger.no_triggers_warn").getString();
                 guiGraphics.drawString(this.font, warn, cardX + 12, bodyY + FIELD_HEIGHT + 8, 0xFFAA55, false);
             }
+        } else if (editMode == StageMode.CONDITIONAL) {
+            int rowY = conditionalNotifyRowY();
+            int toggleX = conditionalNotifyToggleX();
+            guiGraphics.drawString(this.font,
+                    Component.translatable("editor.historystages.relock.notify").getString(),
+                    cardX + 12, rowY + 3, 0xAAAAAA, false);
+            boolean notify = shownNotify();
+            notifyToggle.update(notify, ToggleControl.segmentAt(this.font, toggleX, rowY, mouseX, mouseY));
+            ToggleControl.draw(guiGraphics, this.font, toggleX, rowY, notify, notifyToggle, false);
+            drawSmallWrapped(guiGraphics, conditionalHint(), cardX + 12,
+                    rowY + INDIV_TOGGLE_H + INDIV_HINT_GAP, cardW - 24, 0x888888);
         } else if (editMode == StageMode.EXTERNAL) {
             String help = Component.translatable("editor.historystages.mode.external.help").getString();
             guiGraphics.drawString(this.font, help, cardX + 12, bodyY + 6, 0xAAAAAA, false);
@@ -1678,7 +1857,10 @@ public class StageSettingsScreen extends Screen {
     private int computeCardHeight() {
         return switch (editMode) {
             case DEFAULT -> 28 + 88 + 8;   // header + 4 rows
-            case AUTO    -> 28 + FIELD_HEIGHT + 24; // header + button + warn area
+            case AUTO -> 28 + FIELD_HEIGHT + 24; // header + button + warn area
+            // header + conditions button + notify row + wrapped hint
+            case CONDITIONAL -> 28 + FIELD_HEIGHT + 8 + INDIV_TOGGLE_H + INDIV_HINT_GAP
+                    + smallTextHeight(conditionalHint(), cardW - 24) + INDIV_BOTTOM_PAD;
             case EXTERNAL -> 28 + 20;
             // header + auto-trigger button + duration row + re-trigger row (+ cooldown row when re-triggerable)
             case TEMPORARY -> 28 + (editTemporary != null && editTemporary.allowsMultiple() ? 88 : 66) + 8;
@@ -1686,6 +1868,12 @@ public class StageSettingsScreen extends Screen {
     }
 
     private void renderCard(GuiGraphics g, int x, int y, int w, int h, String headerKey) {
+        renderCard(g, x, y, w, h, headerKey, 0xFFCC00, null);
+    }
+
+    /** A card with its own header colour and, when {@code accentEdge} is set, a coloured top edge (re-lock card). */
+    private void renderCard(GuiGraphics g, int x, int y, int w, int h, String headerKey,
+                            int headerColor, Integer accentEdge) {
         // Outer border
         g.fill(x, y, x + w, y + h, 0xFF555555);
         // Inner background
@@ -1693,9 +1881,39 @@ public class StageSettingsScreen extends Screen {
         // Header band
         g.fill(x + 1, y + 1, x + w - 1, y + 20, 0xFF2D2D2D);
         g.fill(x + 1, y + 20, x + w - 1, y + 21, 0xFF555555);
+        // An accent edge is two pixels so it reads as colour, not as a slightly different border.
+        if (accentEdge != null) g.fill(x, y, x + w, y + 2, accentEdge);
         // Header text
         g.drawString(this.font, Component.translatable(headerKey).getString(),
-                x + 8, y + 7, 0xFFCC00, false);
+                x + 8, y + 7, headerColor, false);
+    }
+
+    private void renderRelockCardContent(GuiGraphics g, int mouseX, int mouseY) {
+        if (relockCardH <= 0) return;
+        int labelX = relockCardX + 12;
+        // Re-unlocking means nothing without a lock trigger, so that row stays grey until one exists.
+        boolean hasLocks = lockTriggerCount() > 0;
+
+        g.drawString(this.font, Component.translatable("editor.historystages.relock.re_unlockable").getString(),
+                labelX, reUnlockRowY + 3, hasLocks ? 0xAAAAAA : 0x666666, false);
+        boolean reUnlockable = editLockTrigger != null && editLockTrigger.isReUnlockable();
+        reUnlockToggle.update(reUnlockable, hasLocks
+                ? ToggleControl.segmentAt(this.font, relockToggleX, reUnlockRowY, mouseX, mouseY) : null);
+        // ToggleControl has no disabled look; its "dimmed" grey is the closest and reads as inactive.
+        ToggleControl.draw(g, this.font, relockToggleX, reUnlockRowY, reUnlockable, reUnlockToggle, !hasLocks);
+
+        // Unlock messages follow this switch too, so it stays live without lock triggers.
+        g.drawString(this.font, Component.translatable("editor.historystages.relock.notify").getString(),
+                labelX, relockNotifyRowY + 3, 0xAAAAAA, false);
+        boolean notify = shownNotify();
+        notifyToggle.update(notify,
+                ToggleControl.segmentAt(this.font, relockToggleX, relockNotifyRowY, mouseX, mouseY));
+        ToggleControl.draw(g, this.font, relockToggleX, relockNotifyRowY, notify, notifyToggle, false);
+
+        if (showInstantLossWarning()) {
+            drawSmallWrapped(g, instantLossWarning(), labelX,
+                    relockNotifyRowY + INDIV_TOGGLE_H + INDIV_HINT_GAP, relockCardW - 24, 0xFFAA00);
+        }
     }
 
     private void renderDisplayCardContent(GuiGraphics g, int mouseX, int mouseY) {
@@ -1845,6 +2063,42 @@ public class StageSettingsScreen extends Screen {
                     return true;
                 }
             }
+        }
+        return false;
+    }
+
+    /** Returns true if a re-lock card switch, or the notify switch of the conditional card, took the click. */
+    private boolean handleRelockCardClick(double mouseX, double mouseY) {
+        if (editMode == StageMode.CONDITIONAL) {
+            int rowY = conditionalNotifyRowY();
+            Boolean picked = ToggleControl.valueAt(this.font, conditionalNotifyToggleX(), mouseX);
+            if (picked != null && mouseY >= rowY && mouseY < rowY + INDIV_TOGGLE_H) {
+                if (shownNotify() != picked) {
+                    editNotify = picked;
+                    onDisplayChanged();
+                }
+                return true;
+            }
+            return false;
+        }
+        if (relockCardH <= 0) return false;
+
+        Boolean picked = ToggleControl.valueAt(this.font, relockToggleX, mouseX);
+        if (picked == null) return false;
+        if (mouseY >= reUnlockRowY && mouseY < reUnlockRowY + INDIV_TOGGLE_H) {
+            // Greyed out without lock triggers: swallow the click, change nothing.
+            if (lockTriggerCount() > 0 && editLockTrigger.isReUnlockable() != picked) {
+                editLockTrigger.setReUnlockable(picked);
+                onDisplayChanged();
+            }
+            return true;
+        }
+        if (mouseY >= relockNotifyRowY && mouseY < relockNotifyRowY + INDIV_TOGGLE_H) {
+            if (shownNotify() != picked) {
+                editNotify = picked;
+                onDisplayChanged();
+            }
+            return true;
         }
         return false;
     }
@@ -2042,6 +2296,7 @@ public class StageSettingsScreen extends Screen {
         }
         if (nameModeDropdown.mouseClicked(mouseX, mouseY)) return true;
         if (tooltipModeDropdown.mouseClicked(mouseX, mouseY)) return true;
+        if (button == 0 && handleRelockCardClick(mouseX, mouseY)) return true;
         if (button == 0 && handleDisplayCardClick(mouseX, mouseY)) return true;
         if (button == 0 && handleLockCardClick(mouseX, mouseY)) return true;
         if (button == 0 && handleIndividualCardClick(mouseX, mouseY)) return true;

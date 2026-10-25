@@ -50,6 +50,7 @@ import net.bananemdnsa.historystages.network.clientbound.SyncStructureRegistryPa
 import net.bananemdnsa.historystages.network.clientbound.SyncStagesPacket;
 import net.bananemdnsa.historystages.network.clientbound.SyncStageDefinitionsPacket;
 import net.bananemdnsa.historystages.network.clientbound.SyncIndividualStagesPacket;
+import net.bananemdnsa.historystages.network.clientbound.SyncLostStagesPacket;
 import net.bananemdnsa.historystages.network.clientbound.SyncGraphConfigPacket;
 import net.bananemdnsa.historystages.network.clientbound.SyncConfigPacket;
 import net.bananemdnsa.historystages.network.clientbound.StageUnlockedToastPacket;
@@ -211,6 +212,9 @@ public class PacketHandler {
                 INSTANCE.registerMessage(id++, AssignStylePresetPacket.class,
                                 AssignStylePresetPacket::encode,
                                 AssignStylePresetPacket::decode, AssignStylePresetPacket::handle);
+                INSTANCE.registerMessage(id++, SyncLostStagesPacket.class,
+                                SyncLostStagesPacket::encode,
+                                SyncLostStagesPacket::decode, SyncLostStagesPacket::handle);
                 INSTANCE.registerMessage(id++, PedestalControlPacket.class,
                                 PedestalControlPacket::encode,
                                 PedestalControlPacket::decode, PedestalControlPacket::handle);
@@ -290,6 +294,10 @@ public class PacketHandler {
 
         // Send graph.toml to a specific player (e.g. on login)
         public static void sendGraphConfigToPlayer(SyncGraphConfigPacket packet, ServerPlayer player) {
+                INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), packet);
+        }
+
+        public static void sendLostStagesToPlayer(SyncLostStagesPacket packet, ServerPlayer player) {
                 INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), packet);
         }
 

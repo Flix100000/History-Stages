@@ -46,7 +46,9 @@ class LangFilesParseTest {
         for (Path file : files) {
             try (Reader reader = Files.newBufferedReader(file)) {
                 JsonObject parsed = gson.fromJson(reader, JsonObject.class);
-                if (parsed == null || parsed.isEmpty()) {
+                // Crowdin ships "{}" for a language nobody has started on yet. That loads fine and
+                // falls back to English key by key; only a file with no JSON at all is broken.
+                if (parsed == null) {
                     broken.add(file.getFileName() + ": parsed to nothing");
                 }
             } catch (JsonSyntaxException | IOException e) {
