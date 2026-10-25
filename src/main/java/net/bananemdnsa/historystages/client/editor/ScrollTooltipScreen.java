@@ -112,7 +112,13 @@ public class ScrollTooltipScreen extends Screen {
             Map.entry("dep.stage", "tooltip.historystages.dep.stage"),
             Map.entry("dep.individual", "tooltip.historystages.dep.individual"),
             Map.entry("dep.xp", "tooltip.historystages.dep.level"),
-            Map.entry("dep.separator", "tooltip.historystages.dep.separator"));
+            Map.entry("dep.separator", "tooltip.historystages.dep.separator"),
+            Map.entry("blocked", "gui.historystages.blocked.header"),
+            Map.entry("cost", "gui.historystages.cost.header"),
+            Map.entry("revoke", "gui.historystages.revoke.header"),
+            Map.entry("revoke_trigger", "gui.historystages.revoke.trigger_header"),
+            Map.entry("logic.unlocked", "gui.historystages.blocked.term_unlocked"),
+            Map.entry("logic.locked", "gui.historystages.blocked.term_not_unlocked"));
 
     /** Placeholder tokens a row's text accepts, shown in a hover tooltip. No entry = no tooltip. */
     private static final Map<String, String> PLACEHOLDERS = Map.ofEntries(
@@ -123,6 +129,9 @@ public class ScrollTooltipScreen extends Screen {
             Map.entry("owner", "%owner%, %stage%"),
             Map.entry("tier", "%tier%, %tier_num%, %stage%"),
             Map.entry("dep.group_header", "%logic%"),
+            Map.entry("cost", "%effect%"),
+            Map.entry("logic.unlocked", "%stage%"),
+            Map.entry("logic.locked", "%stage%"),
             Map.entry("dep.item", "%icon%, %name%, %current%, %required%"),
             Map.entry("dep.stage", "%icon%, %name%"),
             Map.entry("dep.individual", "%icon%, %name%, %mode%"),
@@ -251,8 +260,21 @@ public class ScrollTooltipScreen extends Screen {
         RequirementResult result = new RequirementResult(false,
                 List.of(new RequirementResult.GroupResult("AND", false, entries)));
 
+        // A blocked example too, so the two "blocked" rows have something to show.
+        List<net.bananemdnsa.historystages.client.display.BlockedLines.Line> blockedReason = List.of(
+                net.bananemdnsa.historystages.client.display.BlockedLines.Line.term("Fire Path", true, 0),
+                net.bananemdnsa.historystages.client.display.BlockedLines.Line.term("Fire Master", false, 0));
+
+        // And a cost example: one block in effect, so the "cost" row shows.
+        List<ScrollTooltipContext.CostEntry> cost = List.of(new ScrollTooltipContext.CostEntry(
+                Component.translatable("gui.historystages.cost.header",
+                        net.bananemdnsa.historystages.client.display.BlockedLines.costSummary(0.5, 1.0, 0.75)),
+                true, List.of(net.bananemdnsa.historystages.client.display.BlockedLines.Line.term("Fire Master", true, 0))));
+
         return new ScrollTooltipContext(stageName, true, ownerName, 3, TierMode.MIN,
-                List.of(group1, group2), result);
+                List.of(group1, group2), result, true, blockedReason, cost,
+                List.of(List.of(net.bananemdnsa.historystages.client.display.BlockedLines.Line.term("Shadow Pact", true, 0))),
+                List.of("Light Path"));
     }
 
     // --- model access ---
@@ -303,7 +325,7 @@ public class ScrollTooltipScreen extends Screen {
             // colour comes from dep.color_fulfilled / dep.color_open, and a second colour
             // source for the same line would be a bug (two competing answers), not a feature.
             boolean styleAllowed = "dep.header".equals(id) || "dep.group_header".equals(id)
-                    || "dep.separator".equals(id);
+                    || "dep.separator".equals(id) || "logic.unlocked".equals(id) || "logic.locked".equals(id);
             return new RowSpec(false, true, false, true, styleAllowed);
         }
         if (isColorOnlyOption(id)) return new RowSpec(false, false, false, false, true);

@@ -65,6 +65,39 @@ public final class StageMask {
         return false;
     }
 
+    /** Whether this mask shares at least one bit with {@code other}. */
+    public boolean hasAnyOf(StageMask other) {
+        int n = Math.min(words.length, other.words.length);
+        for (int i = 0; i < n; i++) {
+            if ((words[i] & other.words[i]) != 0) return true;
+        }
+        return false;
+    }
+
+    /** The bits set in both masks. */
+    public StageMask and(StageMask other) {
+        int n = Math.min(words.length, other.words.length);
+        long[] out = new long[n];
+        boolean any = false;
+        for (int i = 0; i < n; i++) {
+            out[i] = words[i] & other.words[i];
+            any |= out[i] != 0;
+        }
+        return any ? new StageMask(out) : EMPTY;
+    }
+
+    /** The bits set here and not in {@code other}. */
+    public StageMask andNot(StageMask other) {
+        long[] out = new long[words.length];
+        boolean any = false;
+        for (int i = 0; i < words.length; i++) {
+            long removed = i < other.words.length ? other.words[i] : 0L;
+            out[i] = words[i] & ~removed;
+            any |= out[i] != 0;
+        }
+        return any ? new StageMask(out) : EMPTY;
+    }
+
     /** True when no bit is set. */
     public boolean isEmpty() {
         for (long word : words) {

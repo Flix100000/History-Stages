@@ -34,8 +34,8 @@ public class DimensionLockHandler {
                 StageLocks.engine().gatingStagesForDimension(dimId, StageScope.INDIVIDUAL);
 
         List<String> lockedStages =
-                new ArrayList<>(LockResolution.missingStages(requiredStageIds, StageLocks.serverGlobal()));
-        lockedStages.addAll(LockResolution.missingStages(
+                new ArrayList<>(LockResolution.missingStages(StageScope.GLOBAL, requiredStageIds, StageLocks.serverGlobal()));
+        lockedStages.addAll(LockResolution.missingStages(StageScope.INDIVIDUAL,
                 individualStageIds, StageLocks.serverIndividual(player.getUUID())));
 
         if (requiredStageIds.isEmpty() && individualStageIds.isEmpty()) return;
@@ -51,7 +51,7 @@ public class DimensionLockHandler {
                 if (stageEntry == null) {
                     stageEntry = StageManager.getIndividualStages().get(stageId);
                 }
-                displayNames.add(stageEntry != null ? stageEntry.getDisplayName() : stageId);
+                displayNames.add(net.bananemdnsa.historystages.data.logic.StageLogicGate.nameForAnyScope(stageId, player.getUUID()));
             }
 
             PacketHandler.sendLockFeedbackToPlayer(

@@ -116,6 +116,22 @@ public class StageEntry {
     private Boolean loseOnDeath;
 
     /**
+     * Stages carrying this flag that gate the same subject stand in for each other: one of them
+     * unlocked is enough. Stages without it still all have to be unlocked. Absent = off.
+     */
+    private Boolean interchangeable;
+
+    /**
+     * Logic blocks, kept as the raw array for the same reason {@link #addons} is: a block type this
+     * version does not know must come back out of a save unchanged. {@link #getLogicBlocks()} is
+     * the parsed view.
+     */
+    private com.google.gson.JsonArray logic;
+
+    /** Parsed {@link #logic}, built on first use. Not serialised; reset whenever the array is set. */
+    private transient List<net.bananemdnsa.historystages.data.logic.LogicBlock> parsedLogic;
+
+    /**
      * Raw storage for lock categories registered by other mods, keyed by category id.
      *
      * <p>Deliberately {@link JsonElement} and not a parsed type: a stage file must survive being
@@ -412,6 +428,41 @@ public class StageEntry {
         this.loseOnDeath = lose ? Boolean.TRUE : null;
     }
 
+    /** True if this stage forms an OR group with the other flagged stages gating the same thing. */
+    public boolean isInterchangeable() {
+        return interchangeable != null && interchangeable;
+    }
+
+    /** Stores null when off so the key stays out of stages that don't use it. */
+    public void setInterchangeable(boolean value) {
+        this.interchangeable = value ? Boolean.TRUE : null;
+    }
+
+    /** The raw logic array, or null when the stage has none. Do not mutate; set a new one. */
+    @Nullable
+    public com.google.gson.JsonArray getLogic() {
+        return logic;
+    }
+
+    /** Stores null for an empty array so the key stays out of stages that don't use it. */
+    public void setLogic(@Nullable com.google.gson.JsonArray value) {
+        this.logic = (value == null || value.isEmpty()) ? null : value;
+        this.parsedLogic = null;
+    }
+
+    public List<net.bananemdnsa.historystages.data.logic.LogicBlock> getLogicBlocks() {
+        List<net.bananemdnsa.historystages.data.logic.LogicBlock> parsed = parsedLogic;
+        if (parsed == null) {
+            parsed = net.bananemdnsa.historystages.data.logic.LogicCodec.read(logic);
+            parsedLogic = parsed;
+        }
+        return parsed;
+    }
+
+    public boolean hasLogic() {
+        return logic != null && !logic.isEmpty();
+    }
+
     public boolean hasDependencies() {
         if (dependencies == null || dependencies.isEmpty()) return false;
         return dependencies.stream().anyMatch(g -> !g.isEmpty());
@@ -682,6 +733,8 @@ public class StageEntry {
         copy.temporary = (this.temporary != null) ? this.temporary.copy() : null;
         copy.hiddenDisplay = (this.hiddenDisplay != null) ? this.hiddenDisplay.copy() : null;
         copy.loseOnDeath = this.loseOnDeath;
+        copy.interchangeable = this.interchangeable;
+        copy.logic = this.logic != null ? this.logic.deepCopy() : null;
         if (this.addons != null) {
             Map<String, JsonElement> addonsCopy = new LinkedHashMap<>();
             for (Map.Entry<String, JsonElement> e : this.addons.entrySet()) {

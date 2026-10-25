@@ -14,10 +14,12 @@ public class Config {
         public final ForgeConfigSpec.BooleanValue showTooltips;
         public final ForgeConfigSpec.BooleanValue showStageName;
         public final ForgeConfigSpec.BooleanValue showAllUntilComplete;
+        public final ForgeConfigSpec.BooleanValue groupInterchangeableStages;
         // Jade integration
         public final ForgeConfigSpec.BooleanValue jadeShowInfo;
         public final ForgeConfigSpec.BooleanValue jadeStageName;
         public final ForgeConfigSpec.BooleanValue jadeShowAllUntilComplete;
+        public final ForgeConfigSpec.BooleanValue jadeGroupInterchangeableStages;
         public final ForgeConfigSpec.BooleanValue dimUseActionbar;
         public final ForgeConfigSpec.BooleanValue dimShowChat;
         public final ForgeConfigSpec.BooleanValue dimShowStagesInChat;
@@ -49,8 +51,8 @@ public class Config {
         public final ForgeConfigSpec.BooleanValue hideLockedRecipesInBook;
 
         // JEI Hiding (Issue #64)
-        public final ForgeConfigSpec.BooleanValue hideLockedItemsInJei;
-        public final ForgeConfigSpec.BooleanValue hideLockedRecipesInJei;
+        public final ForgeConfigSpec.BooleanValue hideLockedItemsInViewers;
+        public final ForgeConfigSpec.BooleanValue hideLockedRecipesInViewers;
         public final ForgeConfigSpec.EnumValue<MultiStagePolicy> lockedItemMultiStagePolicy;
 
         // Central notifications (chat, actionbar, sounds, texts)
@@ -78,6 +80,14 @@ public class Config {
         public final ForgeConfigSpec.ConfigValue<String> msgEntityItemLocked;
         public final ForgeConfigSpec.ConfigValue<String> msgEnchantmentLocked;
         public final ForgeConfigSpec.ConfigValue<String> msgRecipeLocked;
+        public final ForgeConfigSpec.ConfigValue<String> msgStageBlocked;
+        public final ForgeConfigSpec.ConfigValue<String> msgStageRevoked;
+
+        // Stage logic
+        public final ForgeConfigSpec.EnumValue<BlockedDisplay> blockedDisplay;
+        public final ForgeConfigSpec.BooleanValue showInactiveCostHints;
+        public final ForgeConfigSpec.BooleanValue showRevokeWarningOnStage;
+        public final ForgeConfigSpec.BooleanValue showRevokeWarningOnTrigger;
 
         // Scroll tooltip
         public final ForgeConfigSpec.ConfigValue<List<? extends String>> scrollTooltipLines;
@@ -93,6 +103,12 @@ public class Config {
         public final ForgeConfigSpec.ConfigValue<String> openScrollInkHeading;
         public final ForgeConfigSpec.ConfigValue<String> openScrollInkBody;
         public final ForgeConfigSpec.ConfigValue<String> openScrollInkFaint;
+
+        /** How much a player is told about why a stage is blocked. */
+        public enum BlockedDisplay {
+            REASON,  // list the conditions that hold the stage back
+            PLAIN    // only say that it is blocked
+        }
 
         public enum MultiStagePolicy {
             STRICT,   // locked while ANY assigned stage is locked
@@ -118,6 +134,11 @@ public class Config {
             showAllUntilComplete = builder
                     .comment("If an item is in multiple stages, show all of them until all are unlocked? [Default: true]")
                     .define("showAllUntilComplete", true);
+
+            groupInterchangeableStages = builder
+                    .comment("List interchangeable stages under a \"One of:\" line in the tooltip?",
+                            "Off, they are listed like any other stage. [Default: true]")
+                    .define("groupInterchangeableStages", true);
 
             showLockIcons = builder
                     .comment("Show a lock icon overlay on locked items in JEI/EMI and Inventories? [Default: true]")
@@ -227,6 +248,11 @@ public class Config {
                     .comment("If a block is in multiple stages, show all of them until all are unlocked? [Default: true]")
                     .define("showAllUntilComplete", true);
 
+            jadeGroupInterchangeableStages = builder
+                    .comment("List interchangeable stages under a \"One of:\" line in the Jade overlay?",
+                            "Off, they are listed like any other stage. [Default: true]")
+                    .define("groupInterchangeableStages", true);
+
             builder.pop();
 
             builder.comment("Settings for dimension access feedback").push("dimension_lock");
@@ -301,11 +327,13 @@ public class Config {
             builder.comment("JEI and EMI integration — fully hide locked items/recipes instead of using the lock overlay")
                     .push("jei_hiding");
 
-            hideLockedItemsInJei = builder
+            // The toml keys still say Jei from before EMI was covered. Renaming them would reset
+            // the switch in every pack that has it on, so only the field names moved on.
+            hideLockedItemsInViewers = builder
                     .comment("Remove locked items from the JEI and EMI ingredient panels entirely. [Default: false]")
                     .define("hideLockedItemsInJei", false);
 
-            hideLockedRecipesInJei = builder
+            hideLockedRecipesInViewers = builder
                     .comment("Hide locked recipes in JEI and EMI. JEI only catches vanilla recipe types by their OUTPUT;",
                             "EMI hides every recipe the lock overlay would mark. [Default: false]")
                     .define("hideLockedRecipesInJei", false);
@@ -417,7 +445,40 @@ public class Config {
                     .comment("Actionbar message when clicking a locked recipe in the recipe book. Lang key: message.historystages.recipe_locked")
                     .define("recipeLocked", "");
 
+            msgStageBlocked = builder
+                    .comment("Actionbar message when starting research on a stage that is blocked by its logic.",
+                            "{stage} is the stage name. Lang key: message.historystages.stage_blocked")
+                    .define("stageBlocked", "");
+
+            msgStageRevoked = builder
+                    .comment("Toast text when a \"revoke when\" logic block takes a stage away.",
+                            "{stage} is the stage name. Empty = the built-in text, which also names the cause.")
+                    .define("stageRevoked", "");
+
             builder.pop(); // lock_messages
+
+            builder.comment("How stages blocked by their logic (\"Blocked while ...\") are shown.")
+                    .push("stage_logic");
+
+            blockedDisplay = builder
+                    .comment("REASON = list the conditions that block the stage (pedestal, graph, tooltip).",
+                            "PLAIN  = only say that it is blocked. [Default: REASON]")
+                    .defineEnum("blockedDisplay", BlockedDisplay.REASON);
+
+            showInactiveCostHints = builder
+                    .comment("Show \"Would be cheaper while ...\" hints for cost blocks whose condition does not hold yet?",
+                            "Cost changes that are in effect are always shown. [Default: true]")
+                    .define("showInactiveCostHints", true);
+
+            showRevokeWarningOnStage = builder
+                    .comment("Warn on a stage that a \"revoke when\" block can take it away again (scroll tooltip, graph)? [Default: true]")
+                    .define("showRevokeWarningOnStage", true);
+
+            showRevokeWarningOnTrigger = builder
+                    .comment("Warn on a stage whose unlock would take away a stage the player owns (scroll tooltip, pedestal)? [Default: true]")
+                    .define("showRevokeWarningOnTrigger", true);
+
+            builder.pop(); // stage_logic
 
             builder.comment(
                     "Layout of the Research Scroll tooltip.",
@@ -576,6 +637,16 @@ public class Config {
         public final ForgeConfigSpec.BooleanValue biomeBlockProjectiles;
         public final ForgeConfigSpec.ConfigValue<String> zoneMarkerItem;
 
+        // Stage logic
+        public final ForgeConfigSpec.EnumValue<ResearchWhenBlocked> researchWhenBlocked;
+        public final ForgeConfigSpec.BooleanValue warnOnForcedUnlock;
+
+        /** What a pedestal does when the stage it researches becomes blocked mid-research. */
+        public enum ResearchWhenBlocked {
+            PAUSE,   // keep the progress and wait until the block clears
+            CANCEL   // drop the progress; the owner has to start again
+        }
+
         public Gameplay(ForgeConfigSpec.Builder builder) {
             builder.comment(
                     "Found a bug or have a feature request?",
@@ -671,6 +742,21 @@ public class Config {
                     .define("enableScrollResealing", true);
 
             builder.pop(); // research
+
+            builder.comment("Stage logic (\"Blocked while ...\" and future logic blocks)").push("stage_logic");
+
+            researchWhenBlocked = builder
+                    .comment("What a Research Pedestal does when its stage becomes blocked while researching:",
+                            "PAUSE  = keep the progress and continue once the block clears (default).",
+                            "CANCEL = drop the progress; research has to be started again.")
+                    .defineEnum("researchWhenBlocked", ResearchWhenBlocked.PAUSE);
+
+            warnOnForcedUnlock = builder
+                    .comment("Tell an operator when a command or the editor unlocks a stage that was blocked?",
+                            "Those paths unlock anyway; this only decides whether they say so. [Default: true]")
+                    .define("warnOnForcedUnlock", true);
+
+            builder.pop(); // stage_logic
 
             // --- LOOT REPLACEMENTS SECTION ---
             builder.comment("Settings for replacing locked loot with alternatives").push("loot_replacements");

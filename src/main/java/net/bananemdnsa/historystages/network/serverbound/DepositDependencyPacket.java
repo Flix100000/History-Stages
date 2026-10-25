@@ -1,5 +1,7 @@
 package net.bananemdnsa.historystages.network.serverbound;
 
+import net.bananemdnsa.historystages.research.BoosterUtil;
+import net.bananemdnsa.historystages.data.dependency.requirements.XpLevelRequirement;
 import net.bananemdnsa.historystages.block.entity.ResearchPedestalBlockEntity;
 import net.bananemdnsa.historystages.network.PacketReach;
 import net.bananemdnsa.historystages.data.DependencyGroup;
@@ -62,7 +64,8 @@ public class DepositDependencyPacket {
             if (scroll.isEmpty() || !scroll.hasTag() || !scroll.getTag().contains("StageResearch"))
                 return;
 
-            String stageId = scroll.getTag().getString("StageResearch");
+            CompoundTag tag = scroll.getTag();
+            String stageId = tag.getString("StageResearch");
             StageEntry stageEntry = StageManager.isIndividualStage(stageId)
                     ? StageManager.getIndividualStages().get(stageId)
                     : StageManager.getStages().get(stageId);
@@ -91,9 +94,10 @@ public class DepositDependencyPacket {
                         break;
                     }
                 }
-                if (matched == null)
-                    return;
-                int required = matched.getCount();
+                if (matched == null) return;
+                // Same count the slot deposit and the checklist use: booster and cost blocks
+                // applied. This path used to take the full count and ignore the booster.
+                int required = BoosterUtil.effectiveCount(matched.getCount(), pedestal.itemCostReduction(tag));
 
                 String key = DependencyProgress.key(groupKey, DependencyProgress.itemSuffix(rl.toString()));
                 int current = deposited.getInt(key);
@@ -117,6 +121,8 @@ public class DepositDependencyPacket {
                 }
                 if (consumed > 0) {
                     deposited.putInt(key, current + consumed);
+                    // First deposit of any kind freezes what the scroll costs, as the slot path does.
+                    pedestal.lockCostFactors(tag);
                     pedestal.setChanged();
                     // Mark the stack as changed for sync
                     scroll.setTag(scroll.getTag());
@@ -125,9 +131,11 @@ public class DepositDependencyPacket {
                 XpLevelDep xpLevel = group.getXpLevel();
                 if (xpLevel != null && xpLevel.isConsume() && xpLevel.getLevel() > 0) {
                     String key = DependencyProgress.key(groupKey, DependencyProgress.XP_SUFFIX);
-                    if (!deposited.getBoolean(key) && player.experienceLevel >= xpLevel.getLevel()) {
-                        player.giveExperienceLevels(-xpLevel.getLevel());
+                    int cost = XpLevelRequirement.effectiveLevel(xpLevel.getLevel(), pedestal.xpCostFactor(tag));
+                    if (!deposited.getBoolean(key) && player.experienceLevel >= cost) {
+                        player.giveExperienceLevels(-cost);
                         deposited.putBoolean(key, true);
+                        pedestal.lockCostFactors(tag);
                         pedestal.setChanged();
                     }
                 }

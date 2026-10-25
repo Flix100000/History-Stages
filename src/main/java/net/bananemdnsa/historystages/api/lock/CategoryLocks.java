@@ -38,10 +38,10 @@ public final class CategoryLocks {
         // answer would be meaningless rather than merely empty.
         return (CategoryLockResolver.supports(category, StageScope.GLOBAL)
                         && CategoryLockResolver.isLocked(category, subject,
-                                StageManager.getStages(), StageLocks.serverGlobal()))
+                                StageManager.getStages(), StageScope.GLOBAL, StageLocks.serverGlobal()))
                 || (CategoryLockResolver.supports(category, StageScope.INDIVIDUAL)
                         && CategoryLockResolver.isLocked(category, subject,
-                                StageManager.getIndividualStages(), StageLocks.serverIndividual(playerUuid)));
+                                StageManager.getIndividualStages(), StageScope.INDIVIDUAL, StageLocks.serverIndividual(playerUuid)));
     }
 
     /**
@@ -55,11 +55,11 @@ public final class CategoryLocks {
         return CategoryLockResolver.join(
                 CategoryLockResolver.supports(category, StageScope.GLOBAL)
                         ? CategoryLockResolver.missingStages(category, subject,
-                                StageManager.getStages(), StageLocks.serverGlobal())
+                                StageManager.getStages(), StageScope.GLOBAL, StageLocks.serverGlobal())
                         : List.of(),
                 CategoryLockResolver.supports(category, StageScope.INDIVIDUAL)
                         ? CategoryLockResolver.missingStages(category, subject,
-                                StageManager.getIndividualStages(), StageLocks.serverIndividual(playerUuid))
+                                StageManager.getIndividualStages(), StageScope.INDIVIDUAL, StageLocks.serverIndividual(playerUuid))
                         : List.of());
     }
 

@@ -64,6 +64,7 @@ public class CheckDependencyPacket {
             // rather than being dropped.
             CompoundTag depositedTag = null;
             double costReduction = 0.0;
+            double xpFactor = 1.0;
             BlockEntity be = PacketReach.blockEntityInReach(player, packet.pos);
             if (be instanceof ResearchPedestalBlockEntity pedestal) {
                 ItemStack scroll = pedestal.getScrollStack();
@@ -71,14 +72,13 @@ public class CheckDependencyPacket {
                 if (scrollTag.contains("DepositedDependencies")) {
                     depositedTag = scrollTag.getCompound("DepositedDependencies");
                 }
-                costReduction = scrollTag.contains("LockedCostReduction")
-                        ? ResearchPedestalBlockEntity.getLockedCostReduction(scrollTag)
-                        : pedestal.getActiveBooster().costReduction();
+                costReduction = pedestal.itemCostReduction(scrollTag);
+                xpFactor = pedestal.xpCostFactor(scrollTag);
             }
 
             RequirementResult result = DependencyChecker.checkAll(entry, player, player.level(),
                     packet.isIndividual ? StageScope.INDIVIDUAL : StageScope.GLOBAL,
-                    depositedTag, costReduction);
+                    depositedTag, costReduction, xpFactor);
             PacketHandler.INSTANCE.send(
                     net.minecraftforge.network.PacketDistributor.PLAYER.with(() -> player),
                     new SyncDependencyStatusPacket(packet.stageId, packet.isIndividual, result));

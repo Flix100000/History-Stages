@@ -79,7 +79,7 @@ public abstract class MerchantOffersMixin {
         if (filtered.removedEverything()) {
             PacketHandler.sendTradeLockedToPlayer(
                     new TradeLockedPacket(containerId,
-                            TradeLockHelper.displayNamesOf(filtered.gatingStages()),
+                            TradeLockHelper.displayNamesOf(filtered.gatingStages(), player.getUUID()),
                             TradeLockHelper.kindOf(filtered.gatingStages())),
                     player);
         }

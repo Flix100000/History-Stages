@@ -289,7 +289,12 @@ public class StageCommand {
         return 1;
     }
 
+    /** Wrapped so the admin hears about anything a "revoke when" block takes away as a result. */
     private static int handleUnlock(CommandSourceStack source, String s) {
+        return net.bananemdnsa.historystages.events.StageLogicRevocationHandler.reportTo(source.getPlayer(), () -> handleUnlockDirect(source, s));
+    }
+
+    private static int handleUnlockDirect(CommandSourceStack source, String s) {
         String executor = source.getTextName();
         StageData d = StageData.get(source.getLevel());
         // NOTE: intentionally inline (not routed through StageStates) — the "*" path
@@ -316,8 +321,10 @@ public class StageCommand {
             return syncAndReload(source, d, "All stages unlocked.");
         } else {
             if (!StageManager.getStages().containsKey(s)) return 0;
-            boolean changed = StageStates.unlockGlobal(s, source.getLevel());
-            if (!changed) return 0;
+            // Commands are an admin override: a logic block does not stop them, it is only reported.
+            StageStates.UnlockOutcome outcome = StageStates.forceUnlockGlobal(s, source.getLevel());
+            if (!outcome.unlocked()) return 0;
+            warnIfForced(source, s, outcome);
             var entry = StageManager.getStages().get(s);
             String displayName = entry != null ? entry.getDisplayName() : s;
             DebugLogger.runtime("Stage Unlock", executor, "Unlocked stage '" + s + "' (" + displayName + ")");
@@ -327,7 +334,29 @@ public class StageCommand {
         }
     }
 
+    /**
+     * Tells whoever ran the command that the stage was blocked. A toast for a player; the console
+     * has no screen to show one on, so it gets the line instead.
+     */
+    private static void warnIfForced(CommandSourceStack source, String stageId, StageStates.UnlockOutcome outcome) {
+        if (!outcome.wasBlocked() || !net.bananemdnsa.historystages.Config.GAMEPLAY.warnOnForcedUnlock.get()) return;
+        ServerPlayer player = source.getPlayer();
+        if (player != null) {
+            net.bananemdnsa.historystages.network.PacketHandler.sendEditorFeedback(
+                    net.bananemdnsa.historystages.network.clientbound.EditorFeedbackPacket.info("editor.historystages.toast.forced_unlock.title",
+                            "editor.historystages.toast.forced_unlock.message", stageId), player);
+            return;
+        }
+        source.sendSuccess(() -> Component.translatable("message.historystages.forced_unlock", stageId)
+                .withStyle(net.minecraft.ChatFormatting.YELLOW), false);
+    }
+
+    /** Wrapped so the admin hears about anything a "revoke when" block takes away as a result. */
     private static int handleLock(CommandSourceStack source, String s) {
+        return net.bananemdnsa.historystages.events.StageLogicRevocationHandler.reportTo(source.getPlayer(), () -> handleLockDirect(source, s));
+    }
+
+    private static int handleLockDirect(CommandSourceStack source, String s) {
         String executor = source.getTextName();
         StageData d = StageData.get(source.getLevel());
         // NOTE: intentionally inline (not routed through StageStates) — the "*" path
@@ -521,7 +550,12 @@ public class StageCommand {
         return 1;
     }
 
+    /** Wrapped so the admin hears about anything a "revoke when" block takes away as a result. */
     private static int handleIndividualUnlock(CommandSourceStack source, ServerPlayer target, String stageId) {
+        return net.bananemdnsa.historystages.events.StageLogicRevocationHandler.reportTo(source.getPlayer(), () -> handleIndividualUnlockDirect(source, target, stageId));
+    }
+
+    private static int handleIndividualUnlockDirect(CommandSourceStack source, ServerPlayer target, String stageId) {
         if (!StageManager.getIndividualStages().containsKey(stageId)) {
             source.sendFailure(Component.literal("Individual stage '" + stageId + "' not found!"));
             return 0;
@@ -533,8 +567,9 @@ public class StageCommand {
             return 0;
         }
 
-        boolean changed = StageStates.unlockIndividual(stageId, target);
-        if (!changed) return 0;
+        StageStates.UnlockOutcome outcome = StageStates.forceUnlockIndividual(stageId, target);
+        if (!outcome.unlocked()) return 0;
+        warnIfForced(source, stageId, outcome);
 
         DebugLogger.runtime("Individual Unlock", source.getTextName(),
                 "Unlocked individual stage '" + stageId + "' for " + target.getName().getString());
@@ -542,7 +577,12 @@ public class StageCommand {
         return 1;
     }
 
+    /** Wrapped so the admin hears about anything a "revoke when" block takes away as a result. */
     private static int handleIndividualLock(CommandSourceStack source, ServerPlayer target, String stageId) {
+        return net.bananemdnsa.historystages.events.StageLogicRevocationHandler.reportTo(source.getPlayer(), () -> handleIndividualLockDirect(source, target, stageId));
+    }
+
+    private static int handleIndividualLockDirect(CommandSourceStack source, ServerPlayer target, String stageId) {
         if (!StageManager.getIndividualStages().containsKey(stageId)) {
             source.sendFailure(Component.literal("Individual stage '" + stageId + "' not found!"));
             return 0;

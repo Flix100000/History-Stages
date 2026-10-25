@@ -68,4 +68,13 @@ public final class LockMessages {
     public static MutableComponent recipeLocked() {
         return resolve(Config.VISUAL.msgRecipeLocked, "message.historystages.recipe_locked");
     }
+
+    /** Starting research on a stage its logic currently blocks. {@code {stage}} in an override is the name. */
+    public static MutableComponent stageBlocked(String stageName) {
+        String raw = Config.VISUAL.msgStageBlocked.get();
+        if (raw == null || raw.isEmpty()) {
+            return Component.translatable("message.historystages.stage_blocked", stageName);
+        }
+        return Component.literal(raw.replace("{stage}", stageName).replace('&', '§'));
+    }
 }

@@ -15,6 +15,7 @@ public class StateStyles {
     public StageStyle unlocked;
     public StageStyle reachable;
     public StageStyle locked;
+    public StageStyle blocked;
 
     public StageStyle get(NodeState state) {
         if (state == null) return null;
@@ -22,6 +23,7 @@ public class StateStyles {
             case UNLOCKED -> unlocked;
             case REACHABLE -> reachable;
             case LOCKED -> locked;
+            case BLOCKED -> blocked;
         };
     }
 
@@ -31,11 +33,12 @@ public class StateStyles {
             case UNLOCKED -> unlocked = style;
             case REACHABLE -> reachable = style;
             case LOCKED -> locked = style;
+            case BLOCKED -> blocked = style;
         }
     }
 
     public boolean isEmpty() {
-        return isBlank(unlocked) && isBlank(reachable) && isBlank(locked);
+        return isBlank(unlocked) && isBlank(reachable) && isBlank(locked) && isBlank(blocked);
     }
 
     private static boolean isBlank(StageStyle style) {
@@ -47,6 +50,7 @@ public class StateStyles {
         out.unlocked = unlocked == null ? null : unlocked.copy();
         out.reachable = reachable == null ? null : reachable.copy();
         out.locked = locked == null ? null : locked.copy();
+        out.blocked = blocked == null ? null : blocked.copy();
         return out;
     }
 }

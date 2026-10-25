@@ -31,6 +31,8 @@ class KnownStageKeysTest {
         List<String> unlisted = new ArrayList<>();
         for (Field field : StageEntry.class.getDeclaredFields()) {
             if (Modifier.isStatic(field.getModifiers())) continue;
+            // Transient fields are caches, never on disk and never edited.
+            if (Modifier.isTransient(field.getModifiers())) continue;
 
             SerializedName annotation = field.getAnnotation(SerializedName.class);
             String jsonKey = annotation != null ? annotation.value() : field.getName();

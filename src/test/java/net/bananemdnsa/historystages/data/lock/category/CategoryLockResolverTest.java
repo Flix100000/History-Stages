@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.data.lock.category;
 
+import net.bananemdnsa.historystages.api.stage.StageScope;
 import net.bananemdnsa.historystages.api.lock.CategoryStorage;
 
 import net.bananemdnsa.historystages.api.lock.AddonLockCategory;
@@ -50,21 +51,21 @@ class CategoryLockResolverTest {
     void aSubjectGatedByALockedStageIsLocked() {
         assertEquals(List.of("bronze"), CategoryLockResolver.missingStages(TRADES,
                 new Offer("minecraft:emerald"),
-                stages("bronze", gating("minecraft:emerald")), StageStateView.NONE_UNLOCKED));
+                stages("bronze", gating("minecraft:emerald")), StageScope.GLOBAL, StageStateView.NONE_UNLOCKED));
     }
 
     @Test
     void aSubjectGatedByAnUnlockedStageIsNotLocked() {
         assertTrue(CategoryLockResolver.missingStages(TRADES, new Offer("minecraft:emerald"),
                 stages("bronze", gating("minecraft:emerald")),
-                StageStateView.of(Set.of("bronze"))).isEmpty());
+                StageScope.GLOBAL, StageStateView.of(Set.of("bronze"))).isEmpty());
     }
 
     @Test
     void anUngatedSubjectIsNeverLocked() {
         assertTrue(CategoryLockResolver.missingStages(TRADES, new Offer("minecraft:diamond"),
                 stages("bronze", gating("minecraft:emerald")),
-                StageStateView.NONE_UNLOCKED).isEmpty());
+                StageScope.GLOBAL, StageStateView.NONE_UNLOCKED).isEmpty());
     }
 
     @Test
@@ -72,7 +73,7 @@ class CategoryLockResolverTest {
         assertEquals(List.of("bronze", "iron"), CategoryLockResolver.missingStages(TRADES,
                 new Offer("minecraft:emerald"),
                 stages("bronze", gating("minecraft:emerald"), "iron", gating("minecraft:emerald")),
-                StageStateView.NONE_UNLOCKED));
+                StageScope.GLOBAL, StageStateView.NONE_UNLOCKED));
     }
 
     @Test
@@ -80,7 +81,7 @@ class CategoryLockResolverTest {
         assertEquals(List.of("iron"), CategoryLockResolver.missingStages(TRADES,
                 new Offer("minecraft:emerald"),
                 stages("bronze", gating("minecraft:emerald"), "iron", gating("minecraft:emerald")),
-                StageStateView.of(Set.of("bronze"))));
+                StageScope.GLOBAL, StageStateView.of(Set.of("bronze"))));
     }
 
     @Test
@@ -88,7 +89,7 @@ class CategoryLockResolverTest {
         assertEquals(List.of("bronze"), CategoryLockResolver.missingStages(TRADES,
                 new Offer("minecraft:emerald"),
                 stages("bronze", gating("minecraft:emerald", "minecraft:emerald")),
-                StageStateView.NONE_UNLOCKED));
+                StageScope.GLOBAL, StageStateView.NONE_UNLOCKED));
     }
 
     @Test
@@ -96,11 +97,11 @@ class CategoryLockResolverTest {
         Map<String, StageEntry> stages = stages("bronze", gating("minecraft:emerald"));
 
         assertTrue(CategoryLockResolver.isLocked(TRADES, new Offer("minecraft:emerald"),
-                stages, StageStateView.NONE_UNLOCKED));
+                stages, StageScope.GLOBAL, StageStateView.NONE_UNLOCKED));
         assertFalse(CategoryLockResolver.isLocked(TRADES, new Offer("minecraft:emerald"),
-                stages, StageStateView.of(Set.of("bronze"))));
+                stages, StageScope.GLOBAL, StageStateView.of(Set.of("bronze"))));
         assertFalse(CategoryLockResolver.isLocked(TRADES, new Offer("minecraft:diamond"),
-                stages, StageStateView.NONE_UNLOCKED));
+                stages, StageScope.GLOBAL, StageStateView.NONE_UNLOCKED));
     }
 
     @Test
@@ -115,13 +116,13 @@ class CategoryLockResolverTest {
         plain.write(stage, List.of(new Trade("minecraft:emerald")));
 
         assertTrue(CategoryLockResolver.missingStages(plain, new Offer("minecraft:emerald"),
-                stages("bronze", stage), StageStateView.NONE_UNLOCKED).isEmpty());
+                stages("bronze", stage), StageScope.GLOBAL, StageStateView.NONE_UNLOCKED).isEmpty());
     }
 
     @Test
     void noStagesAtAllIsNotLocked() {
         assertFalse(CategoryLockResolver.isLocked(TRADES, new Offer("minecraft:emerald"),
-                Map.of(), StageStateView.NONE_UNLOCKED));
+                Map.of(), StageScope.GLOBAL, StageStateView.NONE_UNLOCKED));
     }
 
     // ---- the stage-level hook ------------------------------------------------------
@@ -169,7 +170,7 @@ class CategoryLockResolverTest {
     @Test
     void theResolverAsksTheCategoryInsteadOfLoopingTheEntriesItself() {
         assertTrue(CategoryLockResolver.missingStages(VETOED, new Offer("minecraft:emerald"),
-                stages("bronze", vetoing("minecraft:emerald")), StageStateView.NONE_UNLOCKED).isEmpty(),
+                stages("bronze", vetoing("minecraft:emerald")), StageScope.GLOBAL, StageStateView.NONE_UNLOCKED).isEmpty(),
                 "the resolver must route through gates(), or an override cannot veto anything");
     }
 
