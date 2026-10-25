@@ -149,12 +149,17 @@ public final class StageStates {
         return applyUnlockIndividual(stageId, player);
     }
 
-    /** Unlocks an individual stage even while it is blocked. For commands and the editor. */
+    /**
+     * Unlocks an individual stage even while it is blocked. For commands and the editor, and
+     * meant for exactly this player: a stage shared with the team is not passed on from here.
+     */
     public static UnlockOutcome forceUnlockIndividual(String stageId, ServerPlayer player) {
         // An admin unlock is the way back from a permanent loss, so it also forgets the loss.
         LostStages.clearIndividual(stageId, player);
         boolean blocked = StageLogicGate.individual(stageId, player.getUUID()).isBlocked();
-        return new UnlockOutcome(applyUnlockIndividual(stageId, player), blocked);
+        boolean unlocked = net.bananemdnsa.historystages.data.team.TeamStageSharing.withoutSharing(
+                () -> applyUnlockIndividual(stageId, player));
+        return new UnlockOutcome(unlocked, blocked);
     }
 
     private static boolean applyUnlockIndividual(String stageId, ServerPlayer player) {

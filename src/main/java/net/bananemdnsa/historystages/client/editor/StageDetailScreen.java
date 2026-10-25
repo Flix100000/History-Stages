@@ -155,6 +155,7 @@ public class StageDetailScreen extends Screen {
     private String editScrollCompletion = "";
     private net.bananemdnsa.historystages.data.display.HiddenDisplayConfig editHiddenDisplay;
     private boolean editLoseOnDeath;
+    private boolean editShareWithTeam;
     private boolean editInterchangeable;
     /** Actions fixed for every item/tag/mod and every fluid (true = locked); null = none. */
     private Map<String, Boolean> editFixedItemLockActions;
@@ -436,6 +437,7 @@ public class StageDetailScreen extends Screen {
         this.editTemporary = e.getTemporary() != null ? e.getTemporary().copy() : null;
         this.editHiddenDisplay = e.getHiddenDisplay().copy();
         this.editLoseOnDeath = e.isLoseOnDeath();
+        this.editShareWithTeam = e.isShareWithTeam();
         this.editInterchangeable = e.isInterchangeable();
         this.editFixedItemLockActions = copyOrNull(e.getFixedItemLockActions());
         this.editFixedFluidLockActions = copyOrNull(e.getFixedFluidLockActions());
@@ -3232,13 +3234,13 @@ public class StageDetailScreen extends Screen {
         this.minecraft.setScreen(new StageSettingsScreen(this,
                 editStageId, editDisplayName, editResearchTime,
                 editMinPedestalTier, editPedestalTierMode, editMode, editAutoTrigger, editTemporary,
-                editHiddenDisplay.copy(), editLoseOnDeath, editInterchangeable,
+                editHiddenDisplay.copy(), editLoseOnDeath, editShareWithTeam, editInterchangeable,
                 editFixedItemLockActions, editFixedFluidLockActions, editFixedInteractionLockActions,
                 new StageSettingsScreen.FixedContentActions(editFixedEnchantmentLockActions, editFixedEffectLockActions),
                 editFixedSpawnRule, editScrollCompletion,
                 editAddonSettings, isNewStage, isIndividual,
                 (newId, newName, newTime, newTier, newTierMode, newStageMode, newAutoTrigger,
-                 newTemporary, newHidden, newLoseOnDeath, newInterchangeable,
+                 newTemporary, newHidden, newLoseOnDeath, newShareWithTeam, newInterchangeable,
                  newFixedItemActions, newFixedFluidActions, newFixedInteractionActions,
                  newFixedContentActions, newFixedSpawnRule,
                  newScrollCompletion,
@@ -3253,6 +3255,7 @@ public class StageDetailScreen extends Screen {
                     editTemporary = newTemporary;
                     editHiddenDisplay = newHidden != null ? newHidden : new net.bananemdnsa.historystages.data.display.HiddenDisplayConfig();
                     editLoseOnDeath = newLoseOnDeath;
+                    editShareWithTeam = newShareWithTeam;
                     editInterchangeable = newInterchangeable;
                     editFixedItemLockActions = copyOrNull(newFixedItemActions);
                     editFixedFluidLockActions = copyOrNull(newFixedFluidActions);
@@ -3463,6 +3466,7 @@ public class StageDetailScreen extends Screen {
         newEntry.setTemporary(editTemporary);
         newEntry.setHiddenDisplay(editHiddenDisplay);
         newEntry.setLoseOnDeath(editLoseOnDeath);
+        newEntry.setShareWithTeam(editShareWithTeam);
         newEntry.setInterchangeable(editInterchangeable);
         newEntry.setFixedItemLockActions(editFixedItemLockActions);
         newEntry.setFixedFluidLockActions(editFixedFluidLockActions);

@@ -92,7 +92,7 @@ public class StageManager {
             "mod_exceptions", "recipes", "dimensions", "structures", "biomes", "zones", "entities", "trades",
             "dependencies", "icon",
             "min_pedestal_tier", "pedestal_tier_mode",
-            "mode", "auto_trigger", "lock_trigger", "notify", "temporary", "hidden_display", "lose_on_death", "interchangeable", "logic",
+            "mode", "auto_trigger", "lock_trigger", "notify", "temporary", "hidden_display", "lose_on_death", "share_with_team", "interchangeable", "logic",
             "scroll_completion", "addons", "addon_settings", "fixed_lock_actions", "fixed_spawn_rule"
     );
 

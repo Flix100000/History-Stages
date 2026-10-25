@@ -60,6 +60,10 @@ public final class LegacyConfigMap {
             // Individual stages could not gate recipes at all before 6.0, so neither the switch
             // nor the message a blocked recipe-book click sends had anything to configure.
             "GAMEPLAY|individual_stages.lockRecipes",
+            // Team sharing arrived with 6.1.0; there were no teams to share with before.
+            "GAMEPLAY|team_mods.shareOnJoin",
+            "GAMEPLAY|team_mods.shareLoss",
+            "GAMEPLAY|team_mods.useFtbTeams",
             "VISUAL|lock_messages.recipeLocked",
             // Fluids were not a lock category before 6.0, so there was nothing to refuse and no
             // message to word.

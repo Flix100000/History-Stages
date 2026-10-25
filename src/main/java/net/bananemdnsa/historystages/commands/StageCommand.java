@@ -497,7 +497,9 @@ public class StageCommand {
                 data.addStage(target.getUUID(), stageId);
                 var entry = StageManager.getIndividualStages().get(stageId);
                 String displayName = entry != null ? entry.getDisplayName() : stageId;
-                MinecraftForge.EVENT_BUS.post(new StageEvent.IndividualUnlocked(stageId, displayName, target.getUUID()));
+                // An admin command means this player only, so nothing goes on to the team.
+                net.bananemdnsa.historystages.data.team.TeamStageSharing.withoutSharing(() ->
+                        MinecraftForge.EVENT_BUS.post(new StageEvent.IndividualUnlocked(stageId, displayName, target.getUUID())));
                 changed = true;
             }
         }
@@ -546,7 +548,8 @@ public class StageCommand {
                     .clearIndividual(target.getUUID(), stageId);
             var entry = StageManager.getIndividualStages().get(stageId);
             String displayName = entry != null ? entry.getDisplayName() : stageId;
-            MinecraftForge.EVENT_BUS.post(new StageEvent.IndividualLocked(stageId, displayName, target.getUUID()));
+            net.bananemdnsa.historystages.data.team.TeamStageSharing.withoutSharing(() ->
+                    MinecraftForge.EVENT_BUS.post(new StageEvent.IndividualLocked(stageId, displayName, target.getUUID())));
             StageLockHelper.dropLockedItemsForPlayer(target, stageId);
         }
 
@@ -614,7 +617,9 @@ public class StageCommand {
 
         var entry = StageManager.getIndividualStages().get(stageId);
         String displayName = entry != null ? entry.getDisplayName() : stageId;
-        MinecraftForge.EVENT_BUS.post(new StageEvent.IndividualLocked(stageId, displayName, target.getUUID()));
+        // An admin lock means this player only, so the team keeps the stage.
+        net.bananemdnsa.historystages.data.team.TeamStageSharing.withoutSharing(() ->
+                MinecraftForge.EVENT_BUS.post(new StageEvent.IndividualLocked(stageId, displayName, target.getUUID())));
 
         // Drop locked items from the player's inventory
         StageLockHelper.dropLockedItemsForPlayer(target, stageId);

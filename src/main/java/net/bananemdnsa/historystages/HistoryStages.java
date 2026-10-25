@@ -128,6 +128,9 @@ public class HistoryStages {
                     net.minecraftforge.fml.ModLoader.get().postEvent(
                             new net.bananemdnsa.historystages.api.lock.RegisterIndividualRecipeSupportEvent());
                     net.bananemdnsa.historystages.data.lock.IndividualRecipeSupport.freeze();
+                    net.minecraftforge.fml.ModLoader.get().postEvent(
+                            new net.bananemdnsa.historystages.api.team.RegisterTeamProvidersEvent());
+                    net.bananemdnsa.historystages.data.team.TeamProviders.freeze();
 
                     // Logged here rather than inside freeze(): LockCategories is unit-tested, and
                     // the unit tests must be able to load it without a running game. This line is
@@ -141,7 +144,19 @@ public class HistoryStages {
                             net.bananemdnsa.historystages.data.settings.StageSettingsGroups.all().size());
                     LOGGER.info("[HistoryStages] Config sections closed: {} total",
                             net.bananemdnsa.historystages.data.config.AddonConfigSections.all().size());
+                    LOGGER.info("[HistoryStages] Team providers closed: {}",
+                            net.bananemdnsa.historystages.data.team.TeamProviders.ids());
                 }));
+
+        // FTB Teams on its own, without FTB Quests, is a common pack setup, so it gets its own check.
+        if (ModList.get().isLoaded("ftbteams")) {
+            try {
+                net.bananemdnsa.historystages.compat.ftbteams.FTBTeamsIntegration.init(modEventBus);
+                LOGGER.info("[HistoryStages] FTB Teams integration loaded.");
+            } catch (Exception e) {
+                LOGGER.error("[HistoryStages] Failed to load FTB Teams integration.", e);
+            }
+        }
 
         // Conditional FTB Quests integration
         if (ModList.get().isLoaded("ftbquests")) {

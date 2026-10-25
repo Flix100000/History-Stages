@@ -963,6 +963,12 @@ public class StageOverviewScreen extends Screen {
                 int deathX = countLeft - deathWidth - 6;
                 if (deathWidth > 0) drawDeathBadge(guiGraphics, deathX, badgeY);
 
+                // Team badge, left of the death badge (or of the count when there is none).
+                int teamWidth = teamBadgeWidth(entry);
+                int deathLeft = deathWidth > 0 ? deathX : countLeft;
+                int teamX = deathLeft - teamWidth - 6;
+                if (teamWidth > 0) drawTeamBadge(guiGraphics, teamX, badgeY, hoverKey);
+
                 // Stage name with marquee. Folder suffix on search hits, same as the
                 // global rows and likewise measured as part of displayText.
                 String folder = StageManager.getStageFolder(stageId, true);
@@ -972,7 +978,7 @@ public class StageOverviewScreen extends Screen {
                 }
                 int nameColor = progress > 0.01f ? 0xDDDDDD : 0xBBBBBB;
                 int nameX = contentLeft + 16;
-                int nameRightLimit = (deathWidth > 0) ? deathX : countLeft;
+                int nameRightLimit = teamWidth > 0 ? teamX : deathLeft;
                 int nameAvailW = nameRightLimit - nameX - 6;
                 int nameW = this.font.width(displayText);
 
@@ -2083,6 +2089,29 @@ public class StageOverviewScreen extends Screen {
 
     private String deathBadgeLabel() {
         return Component.translatable("editor.historystages.badge.lose_on_death").getString();
+    }
+
+    /**
+     * Rendered width of the team badge, or 0 unless the stage is shared with the team. Temporary
+     * and conditional stages never share, so the flag left on them gets no badge either.
+     */
+    private int teamBadgeWidth(StageEntry entry) {
+        if (!entry.isShareWithTeam() || !entry.getMode().allowsTeamSharing()) return 0;
+        return Badge.width(this.font, teamBadgeLabel());
+    }
+
+    private String teamBadgeLabel() {
+        return Component.translatable("editor.historystages.badge.team").getString();
+    }
+
+    private static final int TEAM_BADGE_COLOR = 0x55AAFF;
+
+    private void drawTeamBadge(GuiGraphics g, int x, int y, int row) {
+        String label = teamBadgeLabel();
+        if (Badge.contains(x, y, Badge.width(this.font, label), rowMouseX, rowMouseY)) {
+            hoverBadge("team:" + row, "editor.historystages.badge.team.tooltip");
+        }
+        Badge.draw(g, this.font, label, x, y, TEAM_BADGE_COLOR);
     }
 
     /**

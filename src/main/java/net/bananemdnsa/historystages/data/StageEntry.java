@@ -140,6 +140,10 @@ public class StageEntry {
     @SerializedName("lose_on_death")
     private Boolean loseOnDeath;
 
+    /** Individual stages only: unlocking it hands it to the player's teammates too. Absent = off. */
+    @SerializedName("share_with_team")
+    private Boolean shareWithTeam;
+
     /**
      * Stages carrying this flag that gate the same subject stand in for each other: one of them
      * unlocked is enough. Stages without it still all have to be unlocked. Absent = off.
@@ -494,6 +498,16 @@ public class StageEntry {
     /** Stores null when off so the key stays out of stages that don't use it. */
     public void setLoseOnDeath(boolean lose) {
         this.loseOnDeath = lose ? Boolean.TRUE : null;
+    }
+
+    /** True if this (individual) stage is handed to the unlocking player's teammates too. */
+    public boolean isShareWithTeam() {
+        return shareWithTeam != null && shareWithTeam;
+    }
+
+    /** Stores null when off so the key stays out of stages that don't use it. */
+    public void setShareWithTeam(boolean share) {
+        this.shareWithTeam = share ? Boolean.TRUE : null;
     }
 
     /** True if this stage forms an OR group with the other flagged stages gating the same thing. */
@@ -947,6 +961,7 @@ public class StageEntry {
         copy.temporary = (this.temporary != null) ? this.temporary.copy() : null;
         copy.hiddenDisplay = (this.hiddenDisplay != null) ? this.hiddenDisplay.copy() : null;
         copy.loseOnDeath = this.loseOnDeath;
+        copy.shareWithTeam = this.shareWithTeam;
         copy.interchangeable = this.interchangeable;
         copy.fixedLockActions = this.fixedLockActions != null ? this.fixedLockActions.copy() : null;
         // Immutable, so sharing it is a copy.
