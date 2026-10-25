@@ -52,7 +52,7 @@ public final class SpawnControlGate {
     public static void rebuild() {
         Map<String, List<EntitySpawnLockEntry>> byStage = new HashMap<>();
         for (Map.Entry<String, StageEntry> e : StageManager.getStages().entrySet()) {
-            byStage.put(e.getKey(), e.getValue().getEntities().getSpawnlock());
+            byStage.put(e.getKey(), e.getValue().getEffectiveSpawnlock());
         }
         SpawnRuleSet built = SpawnRuleSet.build(byStage, Set.copyOf(StageData.SERVER_CACHE));
         extrasByCategory = resolve(built);

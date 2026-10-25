@@ -161,6 +161,31 @@ public final class FluidLockTests {
         }
     }
 
+    /** Fixed actions reach fluid entries too — through the container and through the bare id. */
+    @GameTest(template = "empty")
+    public static void fixedActionsWinOverTheFluidEntry(GameTestHelper helper) {
+        try {
+            GameTestStages.global("fluid_fixed_actions", stage -> {
+                stage.setFluidEntries(new ArrayList<>(
+                        List.of(new FluidEntry(LOCKED_FLUID, new ArrayList<>(List.of("use")), null, null))));
+                stage.setFixedFluidLockActions(new java.util.LinkedHashMap<>(
+                        java.util.Map.of("use", false, "pickup", true)));
+            });
+
+            if (StageLockHelper.isActionLockedForServer(new ItemStack(Items.LAVA_BUCKET), "use")) {
+                helper.fail("\"use\" is fixed as allowed, but the bucket was still blocked by the entry");
+                return;
+            }
+            if (!StageLockHelper.isFluidActionLockedForServer(LOCKED_FLUID, "pickup")) {
+                helper.fail("\"pickup\" is fixed as locked, but the bare-id query allowed it");
+                return;
+            }
+            helper.succeed();
+        } finally {
+            GameTestStages.removeAll();
+        }
+    }
+
     /**
      * The bare-id form the pickup handler uses has to agree with the container form. It reaches
      * the same stages by a different route — no stack, no item id, only the fluid.

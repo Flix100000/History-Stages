@@ -97,6 +97,7 @@ public class Config {
         public final ForgeConfigSpec.ConfigValue<List<? extends String>> openScrollChapters;
         public final ForgeConfigSpec.ConfigValue<String> openScrollLockedDisplay;
         public final ForgeConfigSpec.ConfigValue<List<? extends String>> openScrollOverviewBlocks;
+        public final ForgeConfigSpec.ConfigValue<String> openScrollTabStyle;
         public final ForgeConfigSpec.BooleanValue openScrollShowSearch;
         public final ForgeConfigSpec.BooleanValue openScrollShowEntryIds;
         public final ForgeConfigSpec.ConfigValue<String> openScrollEntrySort;
@@ -536,6 +537,14 @@ public class Config {
                     .defineList("overviewBlocks",
                             net.bananemdnsa.historystages.data.scroll.OpenScrollOverviewBlocks.defaultsEncoded(),
                             entry -> entry instanceof String);
+
+            openScrollTabStyle = builder
+                    .comment("How the chapters are marked along the top of the parchment.",
+                            "icons = one small ink icon per chapter, the name on hover",
+                            "words = the chapter names written out",
+                            "[Default: icons]")
+                    .define("tabStyle",
+                            net.bananemdnsa.historystages.data.scroll.OpenScrollTabStyle.ICONS.serialize());
 
             openScrollShowSearch = builder
                     .comment("Draw the search line? Off gives the content 12 more pixels.",

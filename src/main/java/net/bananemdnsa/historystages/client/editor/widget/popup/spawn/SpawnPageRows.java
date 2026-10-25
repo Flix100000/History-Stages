@@ -33,8 +33,22 @@ import java.util.function.IntConsumer;
  * <p>Rows are drawn through a viewport that can be shorter than they are: on a small GUI scale the
  * dialog gives a tab less room than its content needs. Everything below works in drawn
  * coordinates, so the scroll offset needs applying in exactly one place — the cursor's start.
+ *
+ * <p>With a {@link FixHost} set, rows can be wrapped in {@link #beginRow}/{@link #endRow} to make
+ * them fixable: a padlock column opens on the left, a right click fixes or releases the row while
+ * the stage's rule is being edited, and on a mob a fixed row is dimmed and ignores clicks.
  */
 final class SpawnPageRows {
+
+    /** Who decides which rows are fixed, and whether this dialog is the one fixing them. */
+    interface FixHost {
+        /** True while editing the stage's fixed rule; false on a mob. */
+        boolean fixing();
+
+        boolean isFixed(String row);
+
+        void toggleFixed(String row);
+    }
 
     static final String K = "editor.historystages.spawn_control.";
     /** A row's explanation lives under the row's own key with {@code tip.} spliced in. */
@@ -44,6 +58,8 @@ final class SpawnPageRows {
     private static final int CELL_S = 9;
     private static final int MOON_CELL_H = 14;
     private static final int SCROLL_STEP = 12;
+    /** Width of the padlock column, only there when rows can be fixed. */
+    private static final int GUTTER = 12;
 
     /** The area a tab may draw into this frame. */
     record Frame(GuiGraphics g, Font font, int mouseX, int mouseY, int x, int y, int width, int height) {}
@@ -55,6 +71,7 @@ final class SpawnPageRows {
     private record Hit(int x, int y, int w, int h, ClickAction action) {}
 
     private final List<Hit> hits = new ArrayList<>();
+    private final List<Hit> rightHits = new ArrayList<>();
     private final Map<String, SegmentBar.State> segmentStates = new HashMap<>();
     private final List<NumberStepper> steppers = new ArrayList<>();
 
@@ -72,6 +89,14 @@ final class SpawnPageRows {
     private int contentHeight;
     private String tooltip;
 
+    private FixHost fixHost;
+    private String rowKey;
+    private int rowStartY;
+    private int rowHitStart;
+    /** The row being drawn is fixed and this is a mob: draw it, but take no input. */
+    private boolean rowLocked;
+    private int gutterX;
+
     NumberStepper stepper(int min, int max, IntConsumer onChange) {
         NumberStepper stepper = new NumberStepper(min, max, 1, min, onChange);
         steppers.add(stepper);
@@ -82,12 +107,17 @@ final class SpawnPageRows {
         scroll = 0;
     }
 
+    void setFixHost(FixHost host) {
+        this.fixHost = host;
+    }
+
     void render(Frame frame, Runnable body) {
         g = frame.g();
         font = frame.font();
         mouseX = frame.mouseX();
         mouseY = frame.mouseY();
-        left = frame.x() + 8;
+        gutterX = frame.x() + 6;
+        left = frame.x() + 8 + (fixHost != null ? GUTTER : 0);
         right = frame.x() + frame.width() - 8;
         viewTop = frame.y();
         viewHeight = frame.height();
@@ -96,6 +126,7 @@ final class SpawnPageRows {
         int top = viewTop + 4 - scroll;
         cursorY = top;
         hits.clear();
+        rightHits.clear();
         tooltip = null;
         // Steppers of rows not drawn this frame must not catch clicks where they were last time.
         for (NumberStepper stepper : steppers) stepper.setPosition(-10000, -10000);
@@ -118,8 +149,17 @@ final class SpawnPageRows {
         g.fill(trackX, barY + 2, trackX + 2, barY + barH - 2, 0xFF5A5A5A);
     }
 
-    boolean mouseClicked(double mx, double my) {
+    boolean mouseClicked(double mx, double my, int button) {
         if (!inViewport(my)) return false;
+        if (button == 1) {
+            for (Hit hit : List.copyOf(rightHits)) {
+                if (mx >= hit.x() && mx < hit.x() + hit.w() && my >= hit.y() && my < hit.y() + hit.h()) {
+                    hit.action().click(mx, my);
+                    return true;
+                }
+            }
+            return false;
+        }
         for (NumberStepper stepper : steppers) {
             if (stepper.mouseClicked(mx, my)) return true;
         }
@@ -165,6 +205,63 @@ final class SpawnPageRows {
 
     static String countBadge(int count) {
         return count == 0 ? null : String.valueOf(count);
+    }
+
+    // ---- fixable rows --------------------------------------------------------------
+
+    /** Starts a fixable row. Everything drawn until {@link #endRow} belongs to it. */
+    void beginRow(String key) {
+        rowKey = key;
+        rowStartY = cursorY;
+        rowHitStart = hits.size();
+        rowLocked = fixHost != null && !fixHost.fixing() && fixHost.isFixed(key);
+    }
+
+    void endRow() {
+        if (rowKey == null) return;
+        String key = rowKey;
+        int top = rowStartY;
+        int bottom = cursorY;
+        rowKey = null;
+        if (fixHost == null) return;
+
+        boolean fixed = fixHost.isFixed(key);
+        boolean hovered = inside(gutterX - 2, top, right - gutterX + 4, bottom - top);
+        if (rowLocked) {
+            // Drawn as usual, then veiled: the value is readable, the controls plainly are not.
+            hits.subList(rowHitStart, hits.size()).clear();
+            g.fill(left - 2, top, right + 2, bottom, 0x99141414);
+            if (hovered) tooltip = Component.translatable(TIP + "fixed_by_stage").getString();
+        } else if (fixHost.fixing()) {
+            rightHits.add(new Hit(gutterX - 2, top, right - gutterX + 4, bottom - top, (mx, my) -> {
+                playClick();
+                fixHost.toggleFixed(key);
+            }));
+            if (hovered && inside(gutterX - 2, top, GUTTER, bottom - top)) {
+                tooltip = Component.translatable(TIP + (fixed ? "release_row" : "fix_row")).getString();
+            }
+        }
+        if (fixed) {
+            drawPadlock(gutterX, top + (ROW_H - 8) / 2, 0xFFFFCC00);
+        } else if (hovered && fixHost.fixing()) {
+            // A faint lock on the row under the cursor shows that a right click does something.
+            drawPadlock(gutterX, top + (ROW_H - 8) / 2, 0xFF555555);
+        }
+        rowLocked = false;
+    }
+
+    /** True while the row being drawn is fixed on a mob, so its steppers must not take input. */
+    boolean rowLocked() {
+        return rowLocked;
+    }
+
+    /** A 5x8 padlock: shackle on top, body below. */
+    private void drawPadlock(int x, int y, int color) {
+        drawPadlock(g, x, y, color);
+    }
+
+    static void drawPadlock(GuiGraphics g, int x, int y, int color) {
+        net.bananemdnsa.historystages.client.editor.widget.popup.LockActionsPopup.drawPadlock(g, x, y, color);
     }
 
     // ---- rows ----------------------------------------------------------------------
@@ -271,7 +368,7 @@ final class SpawnPageRows {
     void valueRow(String labelKey, NumberStepper stepper) {
         label(labelKey, true);
         stepper.setPosition(right - NumberStepper.width(), cursorY + (ROW_H - NumberStepper.HEIGHT) / 2);
-        stepper.setEnabled(true);
+        stepper.setEnabled(!rowLocked);
         stepper.render(g, font, mouseX, mouseY);
         cursorY += ROW_H;
     }
@@ -285,8 +382,8 @@ final class SpawnPageRows {
         int minX = maxX - 12 - sw;
         min.setPosition(minX, y);
         max.setPosition(maxX, y);
-        min.setEnabled(true);
-        max.setEnabled(true);
+        min.setEnabled(!rowLocked);
+        max.setEnabled(!rowLocked);
         min.render(g, font, mouseX, mouseY);
         max.render(g, font, mouseX, mouseY);
         g.drawCenteredString(font, "–", minX + sw + 6, y + 3, 0xFF888888);
