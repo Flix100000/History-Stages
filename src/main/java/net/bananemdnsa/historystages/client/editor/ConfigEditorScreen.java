@@ -1801,6 +1801,12 @@ public class ConfigEditorScreen extends Screen {
         public boolean varies;
 
         /**
+         * Where an {@link #inherited} value comes from, when that is worth saying — the per-stage
+         * style editor sets it for values a style preset supplies. Null draws no tag.
+         */
+        public String inheritTag;
+
+        /**
          * A Client or Common row. {@code key} is the dotted toml path the value travels and is
          * addressed under; {@code langKey} is the flat name the translations hang off.
          *

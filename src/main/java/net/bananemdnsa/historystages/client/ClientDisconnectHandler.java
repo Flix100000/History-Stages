@@ -11,6 +11,7 @@ import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import net.bananemdnsa.historystages.client.editor.graph.GraphLayoutHistory;
 
 /**
  * Reloads local stage definitions when the client disconnects from a server.
@@ -47,6 +48,9 @@ public class ClientDisconnectHandler {
         // world's zones are somebody else's.
         ClientZoneShapes.clear();
         ZoneBorderRenderer.forgetWall();
+        // Undo steps are snapshots of the last server's graph; replayed on the next one they
+        // would send that layout there.
+        GraphLayoutHistory.CLIENT.clear();
         // The server pushed its config values into our specs and never wrote our file, so our own
         // settings are only a memory away. Without this they would stay until the game restarts,
         // and the visual ones are visible the moment the next singleplayer world opens.

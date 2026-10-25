@@ -118,4 +118,55 @@ class GraphLayoutDataTest {
         assertEquals(start.global(), updated.global());
         assertEquals(new GraphPos(3, 3), updated.individual().get("c"));
     }
+
+    @Test
+    void explicitFlagKeepsAnEmptyTreeFrozen() {
+        GraphLayoutData.Snapshot snap = GraphLayoutData.fromJson("""
+                { "frozen": { "global": true, "individual": false }, "global": {}, "individual": {} }
+                """);
+
+        assertTrue(snap.isFrozen(false), "taking every stage out must not hand the tree back to the algorithm");
+        assertFalse(snap.isFrozen(true));
+    }
+
+    @Test
+    void explicitFlagBeatsANonEmptySection() {
+        GraphLayoutData.Snapshot snap = GraphLayoutData.fromJson("""
+                { "frozen": { "global": false, "individual": false }, "global": { "a": [0, 0] } }
+                """);
+
+        assertFalse(snap.isFrozen(false));
+    }
+
+    @Test
+    void filesWithoutFlagsStillInferFromContent() {
+        GraphLayoutData.Snapshot snap = GraphLayoutData.fromJson("""
+                { "global": { "a": [0, 0] }, "individual": {} }
+                """);
+
+        assertTrue(snap.isFrozen(false));
+        assertFalse(snap.isFrozen(true));
+    }
+
+    @Test
+    void flagsSurviveARoundTrip() {
+        GraphLayoutData.Snapshot original = new GraphLayoutData.Snapshot(Map.of(), Map.of(), true, false);
+
+        GraphLayoutData.Snapshot parsed = GraphLayoutData.fromJson(GraphLayoutData.toJson(original));
+
+        assertTrue(parsed.isFrozen(false));
+        assertFalse(parsed.isFrozen(true));
+    }
+
+    @Test
+    void diskCopyDropsComputedPositionsOfAnUnfrozenTree() {
+        GraphLayoutData.Snapshot snap = new GraphLayoutData.Snapshot(
+                Map.of("a", new GraphPos(0, 0)), Map.of("b", new GraphPos(4, 4)), true, false);
+
+        GraphLayoutData.Snapshot disk = GraphLayoutData.fromJson(GraphLayoutData.toJson(snap.forDisk()));
+
+        assertEquals(Map.of("a", new GraphPos(0, 0)), disk.global());
+        assertTrue(disk.individual().isEmpty(), "computed positions are the algorithm's and must not be persisted");
+        assertFalse(disk.isFrozen(true));
+    }
 }

@@ -27,8 +27,8 @@ class GraphAutoLayoutTest {
         Map<String, GraphPos> pos = GraphAutoLayout.compute(graph("b", "a", "c", "b"));
 
         assertEquals(0, pos.get("a").x());
-        assertEquals(1, pos.get("b").x());
-        assertEquals(2, pos.get("c").x());
+        assertEquals(2, pos.get("b").x(), "one empty column between layers, for the captions");
+        assertEquals(4, pos.get("c").x());
     }
 
     @Test
@@ -39,9 +39,9 @@ class GraphAutoLayoutTest {
                 graph("b", "a", "c", "b", "d", "a", "d", "c"));
 
         assertEquals(0, pos.get("a").x());
-        assertEquals(1, pos.get("b").x());
-        assertEquals(2, pos.get("c").x());
-        assertEquals(3, pos.get("d").x(), "d must land right of its deepest prerequisite");
+        assertEquals(2, pos.get("b").x());
+        assertEquals(4, pos.get("c").x());
+        assertEquals(6, pos.get("d").x(), "d must land right of its deepest prerequisite");
     }
 
     @Test
@@ -110,5 +110,52 @@ class GraphAutoLayoutTest {
         assertEquals(1, layers.get("b"));
         assertEquals(2, layers.get("c"), "c sits behind its deepest prerequisite, not its nearest");
         assertEquals(0, layers.get("island"));
+    }
+
+    @Test
+    void islandsKeepTheColumnGapToo() {
+        Map<String, Set<String>> g = new LinkedHashMap<>();
+        g.put("i1", Set.of());
+        g.put("i2", Set.of());
+
+        Map<String, GraphPos> pos = GraphAutoLayout.compute(g);
+
+        assertEquals(2, Math.abs(pos.get("i1").x() - pos.get("i2").x()));
+    }
+
+    @Test
+    void sourceMovesUpToItsOnlyDependent() {
+        // a -> b -> c -> d is the spine; copper is needed by d alone.
+        Map<String, Set<String>> g = graph("b", "a", "c", "b", "d", "c", "d", "copper");
+
+        Map<String, GraphPos> pos = GraphAutoLayout.compute(g);
+
+        assertEquals(pos.get("d").x() - 2, pos.get("copper").x(),
+                "copper sits one step before d instead of at the far left");
+    }
+
+    @Test
+    void sourceWithSeveralDependentsFollowsTheEarliest() {
+        // Deep enough that the old column (0) cannot coincide with the expected one.
+        Map<String, Set<String>> g = graph("b", "a", "b2", "b", "c", "b2", "c", "tin", "d", "c", "d", "tin");
+
+        Map<String, GraphPos> pos = GraphAutoLayout.compute(g);
+
+        assertEquals(pos.get("c").x() - 2, pos.get("tin").x());
+    }
+
+    @Test
+    void rootOfTheSpineStaysInColumnZero() {
+        Map<String, GraphPos> pos = GraphAutoLayout.compute(graph("b", "a", "c", "b"));
+
+        assertEquals(0, pos.get("a").x());
+    }
+
+    @Test
+    void layersIgnoreThePullForward() {
+        Map<String, Set<String>> g = graph("b", "a", "c", "b", "c", "copper");
+
+        assertEquals(0, GraphAutoLayout.layers(g).get("copper"),
+                "the unlock-background depth must not move because of a display tweak");
     }
 }

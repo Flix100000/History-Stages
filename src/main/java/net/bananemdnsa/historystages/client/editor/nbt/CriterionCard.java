@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.nbt;
 
+import net.bananemdnsa.historystages.api.editor.widget.Badge;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
@@ -94,7 +95,7 @@ public final class CriterionCard {
 
     private int layoutHeader(List<Piece> pieces, NbtCriterion criterion, int available, int y) {
         String badge = badgeText(criterion);
-        int badgeW = font.width(badge) + 6;
+        int badgeW = Badge.width(font, badge);
         pieces.add(new Piece(PAD_X, y, badgeW, HEADER_H, PieceKind.BADGE,
                 badge, null, badgeColor(criterion), null));
 
@@ -289,10 +290,8 @@ public final class CriterionCard {
             boolean hovered = piece.hit() != null && inside(piece, mouseX - x, mouseY - y);
 
             switch (piece.kind()) {
-                case BADGE -> {
-                    g.fill(px, py, px + piece.w(), py + piece.h(), badgeBackground(piece.color()));
-                    g.drawString(font, piece.text(), px + 3, py + 1, piece.color());
-                }
+                // A pixel taller than the header line, centred on it so the text stays put.
+                case BADGE -> Badge.draw(g, font, piece.text(), px, py - 1, piece.w(), piece.color() & 0xFFFFFF);
                 case TITLE, SUBTITLE, TEXT ->
                         g.drawString(font, piece.text(), px, py, piece.color());
                 case LINK -> g.drawString(font, piece.text(), px, py,
@@ -362,10 +361,6 @@ public final class CriterionCard {
     }
 
     /** The badge fill is its text colour at low alpha, so the pair can never drift apart. */
-    private static int badgeBackground(int textColor) {
-        return (textColor & 0x00FFFFFF) | 0x30000000;
-    }
-
     /** One-line summary of what the criterion asks for, for lists that show it without an editor. */
     public static String previewOf(NbtCriterion criterion) {
         if (criterion instanceof EnchantmentListCriterion ench) {

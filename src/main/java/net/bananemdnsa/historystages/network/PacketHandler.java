@@ -30,6 +30,9 @@ import net.bananemdnsa.historystages.network.serverbound.RequestStageDependencyP
 import net.bananemdnsa.historystages.network.serverbound.RequestIndividualStatesPacket;
 import net.bananemdnsa.historystages.network.serverbound.RequestEditorDataPacket;
 import net.bananemdnsa.historystages.network.serverbound.SaveDisguisePacket;
+import net.bananemdnsa.historystages.network.serverbound.SaveStylePresetPacket;
+import net.bananemdnsa.historystages.network.serverbound.DeleteStylePresetPacket;
+import net.bananemdnsa.historystages.network.serverbound.AssignStylePresetPacket;
 import net.bananemdnsa.historystages.network.clientbound.SyncLockBordersPacket;
 import net.bananemdnsa.historystages.network.clientbound.EditorFeedbackPacket;
 import net.bananemdnsa.historystages.network.clientbound.LockFeedbackPacket;
@@ -199,6 +202,15 @@ public class PacketHandler {
                 INSTANCE.registerMessage(id++, SaveDisguisePacket.class,
                                 SaveDisguisePacket::encode,
                                 SaveDisguisePacket::decode, SaveDisguisePacket::handle);
+                INSTANCE.registerMessage(id++, SaveStylePresetPacket.class,
+                                SaveStylePresetPacket::encode,
+                                SaveStylePresetPacket::decode, SaveStylePresetPacket::handle);
+                INSTANCE.registerMessage(id++, DeleteStylePresetPacket.class,
+                                DeleteStylePresetPacket::encode,
+                                DeleteStylePresetPacket::decode, DeleteStylePresetPacket::handle);
+                INSTANCE.registerMessage(id++, AssignStylePresetPacket.class,
+                                AssignStylePresetPacket::encode,
+                                AssignStylePresetPacket::decode, AssignStylePresetPacket::handle);
                 INSTANCE.registerMessage(id++, PedestalControlPacket.class,
                                 PedestalControlPacket::encode,
                                 PedestalControlPacket::decode, PedestalControlPacket::handle);

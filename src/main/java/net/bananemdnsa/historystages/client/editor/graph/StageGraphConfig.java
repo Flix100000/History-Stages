@@ -36,9 +36,24 @@ public final class StageGraphConfig {
         return CACHE.computeIfAbsent(key, k -> resolve(stageId, individual, state));
     }
 
+    /**
+     * A style preset's own look in one state, over graph.toml's global block — for the small
+     * previews in the preset lists. Not cached: those lists are short and open briefly.
+     */
+    public static ResolvedStyle styleForPreset(String presetId, NodeState state) {
+        return ResolvedStyle.merge(base(false, state), GraphStageData.get().presetStyle(presetId, state));
+    }
+
     private static ResolvedStyle resolve(String stageId, boolean individual, NodeState state) {
+        // Both layers of the per-stage file at once: the all-states block with the per-state
+        // block folded on top. The cache key already carries the state, so nothing else changes.
+        StageStyle override = GraphStageData.get().style(stageId, individual, state);
+        return ResolvedStyle.merge(base(individual, state), override);
+    }
+
+    private static ResolvedStyle base(boolean individual, NodeState state) {
         GraphConfig.StyleBlock block = block(individual, state);
-        ResolvedStyle base = new ResolvedStyle(
+        return new ResolvedStyle(
                 block.shape.get().name(),
                 block.size.get(),
                 block.cornerRadius.get(),
@@ -49,11 +64,6 @@ public final class StageGraphConfig {
                 block.label.get().name(),
                 ResolvedStyle.parseColor(block.labelColor.get(), 0),
                 block.checkmark.get());
-
-        // Both layers of the per-stage file at once: the all-states block with the per-state
-        // block folded on top. The cache key already carries the state, so nothing else changes.
-        StageStyle override = GraphStageData.get().style(stageId, individual, state);
-        return ResolvedStyle.merge(base, override);
     }
 
     private static GraphConfig.StyleBlock block(boolean individual, NodeState state) {

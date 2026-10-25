@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.widget.list;
 
+import net.bananemdnsa.historystages.api.editor.widget.Badge;
 import net.bananemdnsa.historystages.api.editor.widget.ToggleControl;
 import net.bananemdnsa.historystages.api.editor.widget.ToggleGeometry;
 import net.bananemdnsa.historystages.client.editor.ConfigEditorScreen;
@@ -115,6 +116,31 @@ public class ConfigRowList {
         return textLeft(entry, left) + Math.max(labelWidth + 20, labelColumnWidth);
     }
 
+    private static final int TAG_TEXT = 0xFFB48CFF;
+    private static final int TAG_FRAME = 0xFF5B3D99;
+    private static final int TAG_BG = 0xFF1E1530;
+    /**
+     * A small framed tag at the right end of the row naming where an inherited value comes from.
+     * Right-aligned rather than after the label, where the label column has no room to spare.
+     * The shades are the hand-picked originals every other {@link Badge} is modelled on.
+     */
+    private static void drawInheritTag(GuiGraphics g, Font font, String tag, int right, int y) {
+        int w = Badge.width(font, tag);
+        Badge.draw(g, font, tag, right - 6 - w, inheritTagY(y), w, TAG_TEXT, TAG_FRAME, TAG_BG);
+    }
+
+    private static int inheritTagY(int y) {
+        return y + (ENTRY_HEIGHT - Badge.HEIGHT) / 2;
+    }
+
+    /** True when the cursor is on the row's inherit tag, so the screen can explain it. */
+    public static boolean overInheritTag(ConfigEditorScreen.ConfigEntry entry, int right, int y,
+                                         double mouseX, double mouseY) {
+        if (!entry.inherited || entry.inheritTag == null) return false;
+        int w = Badge.width(Minecraft.getInstance().font, entry.inheritTag);
+        return Badge.contains(right - 6 - w, inheritTagY(y), w, mouseX, mouseY);
+    }
+
     /** Left edge of the clear-to-inherit ×, in the gutter ahead of the label. */
     public static int clearX(int left) {
         return left + 2;
@@ -178,6 +204,8 @@ public class ConfigRowList {
                 entry.inherited
                         ? Fade.mix(INHERITED_TEXT, INHERITED_TEXT_HOVER, hp)
                         : Fade.mix(0xFFCCCCCC, 0xFFFFFFFF, hp), false);
+
+        if (entry.inherited && entry.inheritTag != null) drawInheritTag(guiGraphics, font, entry.inheritTag, right, y);
 
         // Value control — positioned further left for better readability
         int controlX = controlX(entry, left);
