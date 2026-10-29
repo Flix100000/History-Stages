@@ -180,9 +180,10 @@ public final class TradeGoodsScanner {
                     if (offer == null) continue;
                     TradePreview preview = previewOf(offer, professionId, level);
                     if (preview != null) offers.putIfAbsent(preview.identity(), preview);
-                } catch (Exception recipeRefused) {
+                } catch (Throwable recipeRefused) {
                     // One mod's recipe will not run outside a real trade. Give up on that one and
                     // keep the rest — see the note on the class about why this is quiet.
+                    rethrowIfFatal(recipeRefused);
                     break;
                 }
                 if (budget.tooSlow(runStartedAt)) {
@@ -253,7 +254,8 @@ public final class TradeGoodsScanner {
                 if (preview != null) offers.putIfAbsent(preview.identity(), preview);
             }
             return true;
-        } catch (Exception offersRefused) {
+        } catch (Throwable offersRefused) {
+            rethrowIfFatal(offersRefused);
             return false;
         }
     }
@@ -262,10 +264,21 @@ public final class TradeGoodsScanner {
     private static Entity createQuietly(EntityType<?> type, Level level) {
         try {
             return type.create(level);
-        } catch (Exception refused) {
+        } catch (Throwable refused) {
             // Some modded types will not be made outside a real spawn. Not a merchant we can ask.
+            rethrowIfFatal(refused);
             return null;
         }
+    }
+
+    /**
+     * Refusals are not always exceptions. Under Sinytra Connector a Fabric mixin on a vanilla
+     * trade recipe can fail to apply and throw a mixin {@link Error} the first time the recipe
+     * runs, which used to take the whole editor down with it. Running out of memory or stack is
+     * still everyone's problem, so that is passed on.
+     */
+    private static void rethrowIfFatal(Throwable thrown) {
+        if (thrown instanceof VirtualMachineError fatal) throw fatal;
     }
 
     /**

@@ -192,7 +192,7 @@ public class StageManager {
         try {
             byte[] raw = java.nio.file.Files.readAllBytes(file.toPath());
             StageFileGuard.recordLoaded(id, StageScope.GLOBAL, raw);
-            String content = new String(raw, java.nio.charset.StandardCharsets.UTF_8);
+            String content = decodeStageFile(id, file.getName(), raw);
             detectUnknownKeys(id, content);
 
             StageEntry entry = GSON.fromJson(content, StageEntry.class);
@@ -337,6 +337,42 @@ public class StageManager {
             if (e.getKey().startsWith(prefix)) out.put(e.getKey().substring(prefix.length()), e.getValue());
         }
         return out;
+    }
+
+    /**
+     * Stage files are UTF-8, and everything the editor writes is. A file typed by hand in an
+     * editor that saves in the system's code page (Notepad's "ANSI", for one) is not, and read as
+     * UTF-8 every Cyrillic or accented letter in it becomes a replacement box. Such a file is read
+     * in the system's encoding instead, which is almost always what it was written in, and the
+     * pack author is told so the next save from anywhere does not surprise them.
+     */
+    private static String decodeStageFile(String stageId, String fileName, byte[] raw) {
+        try {
+            return java.nio.charset.StandardCharsets.UTF_8.newDecoder()
+                    .onMalformedInput(java.nio.charset.CodingErrorAction.REPORT)
+                    .onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPORT)
+                    .decode(java.nio.ByteBuffer.wrap(raw))
+                    .toString();
+        } catch (java.nio.charset.CharacterCodingException notUtf8) {
+            java.nio.charset.Charset system = systemCharset();
+            String msg = "Stage '" + stageId + "' (" + fileName + ") is not saved as UTF-8. Read it as "
+                    + system.name() + " instead; re-save the file as UTF-8 to be sure its text "
+                    + "shows correctly.";
+            addMessage(MessageLevel.WARN, msg);
+            DebugLogger.warn("Stage Loading", msg);
+            return new String(raw, system);
+        }
+    }
+
+    /** The code page the OS uses, which on Java 18+ is no longer what defaultCharset() says. */
+    private static java.nio.charset.Charset systemCharset() {
+        String nativeName = System.getProperty("native.encoding");
+        try {
+            if (nativeName != null) return java.nio.charset.Charset.forName(nativeName);
+        } catch (IllegalArgumentException unknown) {
+            // Fall through to the JVM's own default.
+        }
+        return java.nio.charset.Charset.defaultCharset();
     }
 
     /**
@@ -1604,7 +1640,7 @@ public class StageManager {
         try {
             byte[] raw = java.nio.file.Files.readAllBytes(file.toPath());
             StageFileGuard.recordLoaded(id, StageScope.INDIVIDUAL, raw);
-            String content = new String(raw, java.nio.charset.StandardCharsets.UTF_8);
+            String content = decodeStageFile(id, file.getName(), raw);
             detectUnknownKeys(id, content);
 
             StageEntry entry = GSON.fromJson(content, StageEntry.class);
