@@ -172,9 +172,10 @@ public final class TradeGoodsScanner {
                     if (offer == null) continue;
                     TradePreview preview = previewOf(offer, professionId, level);
                     if (preview != null) offers.putIfAbsent(preview.identity(), preview);
-                } catch (Exception recipeRefused) {
+                } catch (Throwable recipeRefused) {
                     // One mod's recipe will not run outside a real trade. Give up on that one and
                     // keep the rest — see the note on the class about why this is quiet.
+                    rethrowIfFatal(recipeRefused);
                     break;
                 }
                 if (budget.tooSlow(runStartedAt)) {
@@ -225,5 +226,15 @@ public final class TradeGoodsScanner {
         if (stack == null || stack.isEmpty()) return null;
         ResourceLocation key = BuiltInRegistries.ITEM.getKey(stack.getItem());
         return key == null ? null : key.toString();
+    }
+
+    /**
+     * Refusals are not always exceptions. A mixin on a vanilla trade recipe that fails to apply
+     * throws a mixin {@link Error} the first time the recipe runs, which used to take the whole
+     * editor down with it. Running out of memory or stack is still everyone's problem, so that is
+     * passed on.
+     */
+    private static void rethrowIfFatal(Throwable thrown) {
+        if (thrown instanceof VirtualMachineError fatal) throw fatal;
     }
 }
