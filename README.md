@@ -6,6 +6,10 @@
 
 Stages can unlock **server-wide** (global), **per player** (individual), or use a **dual-phase** approach that combines both. Players research them at the Research Pedestal, or a stage opens by itself once someone has earned an advancement, reached a biome, or put in the playtime you asked for. With a built-in in-game editor, FTB Quests integration, an API for addon mods, and a flexible dependency system, you have full control over how progression works in your pack.
 
+## Trailer
+
+[![History Stages – Official Trailer](https://img.youtube.com/vi/IOS8yzhGZ3A/maxresdefault.jpg)](https://youtu.be/IOS8yzhGZ3A)
+
 ## Supported Versions
 
 | Minecraft | Loader   | Status                         |
@@ -20,13 +24,17 @@ Stages can unlock **server-wide** (global), **per player** (individual), or use 
 - [Modrinth](https://modrinth.com/mod/history-stages)
 - [CurseForge](https://www.curseforge.com/minecraft/mc-mods/history-stages)
 
+## Addons
+
+Want to build your own? See [Addon Development](https://historystages.github.io/api/addon-development).
+
 ## Documentation
 
 Full documentation, configuration details, and usage examples are available on the [Wiki](https://historystages.github.io/).
 
 ## Community
 
-Questions, support, or just want to follow development? Join our [Discord server](https://discord.gg/BeZzxyZ9c4).
+Questions, support, or just want to follow development? Join our [Discord server](https://discord.gg/BeZzxyZ9c4). Trailers and showcases go up on our [YouTube channel](https://www.youtube.com/@HistoryStages).
 
 ## Issues & Bug Reports
 
@@ -42,6 +50,12 @@ Found a bug or have a feature request? Please open an issue on the [Issue Tracke
 Contributions are very welcome — bug fixes, features, translations, docs, testing, anything. Start with [CONTRIBUTING.md](CONTRIBUTING.md): it covers which branch to target, how to set up the development environment, and what a good pull request looks like. For anything beyond a small fix, open a [Contribution Offer issue](https://github.com/Flix100000/History-Stages/issues/new?template=contribution_offer.yml) first so we can coordinate before you put in the work.
 
 See [CONTRIBUTORS.md](https://github.com/Flix100000/History-Stages/blob/neoforge-1.21.X/CONTRIBUTORS.md) for everyone who has helped improve History Stages so far.
+
+## Translations
+
+Want to see History Stages in your language? Translations happen on [Crowdin](https://crowdin.com/project/history-stages), right in the browser. No coding, no JSON files and no pull request needed. New texts show up there automatically with every update.
+
+If your language is not on Crowdin yet, you can ask for it or send the file as a pull request. [CONTRIBUTING.md](https://github.com/Flix100000/History-Stages/blob/neoforge-1.21.X/CONTRIBUTING.md#translations) explains both ways.
 
 ## License
 
