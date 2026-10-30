@@ -64,4 +64,26 @@ class OpenScrollTabsTest {
     void anEmptyListIsAnEmptyRow() {
         assertTrue(OpenScrollTabs.layout(List.of(), 0, 140, WIDTH).isEmpty());
     }
+
+    @Test
+    void iconSlotsSplitTheWholeContentWidthWithoutGapsOrOverlap() {
+        for (int count = 1; count <= 4; count++) {
+            List<OpenScrollTabs.Tab> tabs = OpenScrollTabs.layoutIcons(count);
+            int x = 0;
+            for (OpenScrollTabs.Tab tab : tabs) {
+                assertEquals(x, tab.x());
+                assertTrue(tab.width() >= OpenScrollGeometry.TAB_ICON_SIZE);
+                x += tab.width();
+            }
+            assertEquals(OpenScrollGeometry.CONTENT_WIDTH, x);
+        }
+    }
+
+    @Test
+    void anIconSitsCentredInItsSlot() {
+        OpenScrollTabs.Tab slot = OpenScrollTabs.layoutIcons(4).get(1);
+        int left = OpenScrollTabs.iconX(slot) - slot.x();
+        int right = slot.x() + slot.width() - (OpenScrollTabs.iconX(slot) + OpenScrollGeometry.TAB_ICON_SIZE);
+        assertTrue(Math.abs(left - right) <= 1);
+    }
 }

@@ -117,6 +117,65 @@ public final class SpawnRuleDraft {
         return new EntitySpawnLockEntry(entityId, sources, phase, conditions, extra);
     }
 
+    /**
+     * The entry for the fixed rule's values. Unlike {@link #toEntry} it keeps "no source locked" —
+     * a stage may fix every source as allowed, which a stored mob entry cannot say.
+     */
+    public EntitySpawnLockEntry toFixedValues() {
+        return toEntry("*").withLockedSources(
+                EntitySpawnLockEntry.ALL_SOURCES.stream().filter(lockedSources::contains).toList());
+    }
+
+    /**
+     * Takes the named rows over from {@code other}, switched-off values included, so a row shows
+     * exactly what the other draft would show. Row names are {@link FixedSpawnRule}'s.
+     */
+    public void copyRowsFrom(Set<String> rows, SpawnRuleDraft other) {
+        for (String source : EntitySpawnLockEntry.ALL_SOURCES) {
+            if (!rows.contains(FixedSpawnRule.source(source))) continue;
+            if (other.lockedSources.contains(source)) lockedSources.add(source);
+            else lockedSources.remove(source);
+        }
+        if (rows.contains(FixedSpawnRule.PHASE)) phase = other.phase;
+        if (rows.contains(FixedSpawnRule.DIMENSIONS)) {
+            dimensionMode = other.dimensionMode;
+            dimensionIds.clear();
+            dimensionIds.addAll(other.dimensionIds);
+        }
+        if (rows.contains(FixedSpawnRule.BIOMES)) {
+            biomeMode = other.biomeMode;
+            biomeIds.clear();
+            biomeIds.addAll(other.biomeIds);
+        }
+        if (rows.contains(FixedSpawnRule.SKY)) sky = other.sky;
+        if (rows.contains(FixedSpawnRule.HEIGHT)) {
+            heightOn = other.heightOn;
+            heightMin = other.heightMin;
+            heightMax = other.heightMax;
+        }
+        if (rows.contains(FixedSpawnRule.TIME)) time = other.time;
+        if (rows.contains(FixedSpawnRule.LIGHT)) {
+            lightOn = other.lightOn;
+            lightMin = other.lightMin;
+            lightMax = other.lightMax;
+        }
+        if (rows.contains(FixedSpawnRule.WEATHER)) weather = other.weather;
+        if (rows.contains(FixedSpawnRule.MOON)) {
+            moonOn = other.moonOn;
+            moonPhases.clear();
+            moonPhases.addAll(other.moonPhases);
+        }
+    }
+
+    /** Toggles a source with no "keep the last one" rule — for the fixed rule, where none is fine. */
+    public void toggleSourceFreely(String source) {
+        if (!lockedSources.remove(source)) lockedSources.add(source);
+    }
+
+    public boolean locksSource(String source) {
+        return lockedSources.contains(source);
+    }
+
     public GenerationPhase phase() {
         return phase;
     }
@@ -135,13 +194,29 @@ public final class SpawnRuleDraft {
     }
 
     public int locationCount() {
+        return locationCount(Set.of());
+    }
+
+    /** @param skip fixed rows, which belong to the stage and so are not counted */
+    public int locationCount(Set<String> skip) {
         SpawnConditions c = toEntry("").getConditions();
-        return count(c.dimensions() != null, c.biomes() != null, c.sky() != null, c.height() != null);
+        return count(c.dimensions() != null && !skip.contains(FixedSpawnRule.DIMENSIONS),
+                c.biomes() != null && !skip.contains(FixedSpawnRule.BIOMES),
+                c.sky() != null && !skip.contains(FixedSpawnRule.SKY),
+                c.height() != null && !skip.contains(FixedSpawnRule.HEIGHT));
     }
 
     public int timeCount() {
+        return timeCount(Set.of());
+    }
+
+    /** @param skip fixed rows, which belong to the stage and so are not counted */
+    public int timeCount(Set<String> skip) {
         SpawnConditions c = toEntry("").getConditions();
-        return count(c.time() != null, c.light() != null, c.weather() != null, !c.moonPhases().isEmpty());
+        return count(c.time() != null && !skip.contains(FixedSpawnRule.TIME),
+                c.light() != null && !skip.contains(FixedSpawnRule.LIGHT),
+                c.weather() != null && !skip.contains(FixedSpawnRule.WEATHER),
+                !c.moonPhases().isEmpty() && !skip.contains(FixedSpawnRule.MOON));
     }
 
     private static int count(boolean... set) {

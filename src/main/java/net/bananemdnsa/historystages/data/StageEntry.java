@@ -10,6 +10,7 @@ import net.bananemdnsa.historystages.data.lock.NamedLockEntryListAdapter;
 import net.bananemdnsa.historystages.data.lock.NamedLockEntry;
 import net.bananemdnsa.historystages.data.lock.EntityLocks;
 import net.bananemdnsa.historystages.data.lock.TradeLocks;
+import net.bananemdnsa.historystages.data.lock.FixedLockActions;
 import net.bananemdnsa.historystages.data.display.HiddenDisplayConfig;
 
 import com.google.gson.GsonBuilder;
@@ -117,6 +118,21 @@ public class StageEntry {
      * unlocked is enough. Stages without it still all have to be unlocked. Absent = off.
      */
     private Boolean interchangeable;
+
+    /**
+     * Lock actions fixed for every item/tag/mod and every fluid entry of this stage, each with its
+     * value (locked or allowed) that wins over the entry's own. Absent = nothing fixed.
+     */
+    @SerializedName("fixed_lock_actions")
+    private FixedLockActions fixedLockActions;
+
+    /**
+     * SpawnControl rows fixed for every spawnlock entry of this stage. Absent = nothing fixed.
+     * Global stages only, like spawnlock itself.
+     */
+    @SerializedName("fixed_spawn_rule")
+    @JsonAdapter(net.bananemdnsa.historystages.data.lock.FixedSpawnRuleAdapter.class)
+    private net.bananemdnsa.historystages.data.lock.spawn.FixedSpawnRule fixedSpawnRule;
 
     /**
      * Logic blocks, kept as the raw array for the same reason {@link #addons} is: a block type this
@@ -397,6 +413,97 @@ public class StageEntry {
     /** Stores null when off so the key stays out of stages that don't use it. */
     public void setInterchangeable(boolean value) {
         this.interchangeable = value ? Boolean.TRUE : null;
+    }
+
+    /** Fixed actions for items, tags and mods (true = locked, false = allowed), or null. */
+    @Nullable
+    public Map<String, Boolean> getFixedItemLockActions() {
+        return fixedLockActions != null ? fixedLockActions.getItems() : null;
+    }
+
+    /** Fixed actions for fluids (true = locked, false = allowed), or null. */
+    @Nullable
+    public Map<String, Boolean> getFixedFluidLockActions() {
+        return fixedLockActions != null ? fixedLockActions.getFluids() : null;
+    }
+
+    /** Fixed interaction actions (true = locked, false = allowed), or null. */
+    @Nullable
+    public Map<String, Boolean> getFixedInteractionLockActions() {
+        return fixedLockActions != null ? fixedLockActions.getInteractions() : null;
+    }
+
+    /** null or empty fixes nothing for items, tags and mods. */
+    public void setFixedItemLockActions(@Nullable Map<String, Boolean> actions) {
+        setFixedLockActions(actions, getFixedFluidLockActions(), getFixedInteractionLockActions());
+    }
+
+    /** null or empty fixes nothing for fluids. */
+    public void setFixedFluidLockActions(@Nullable Map<String, Boolean> actions) {
+        setFixedLockActions(getFixedItemLockActions(), actions, getFixedInteractionLockActions());
+    }
+
+    /** null or empty fixes nothing for interaction-locked mobs. */
+    public void setFixedInteractionLockActions(@Nullable Map<String, Boolean> actions) {
+        setFixedLockActions(getFixedItemLockActions(), getFixedFluidLockActions(), actions);
+    }
+
+    private void setFixedLockActions(@Nullable Map<String, Boolean> items, @Nullable Map<String, Boolean> fluids,
+                                     @Nullable Map<String, Boolean> interactions) {
+        FixedLockActions next = new FixedLockActions(items, fluids, interactions);
+        // No empty object in the file for a stage that never used this.
+        this.fixedLockActions = next.isEmpty() ? null : next;
+    }
+
+    /**
+     * The action list that really applies to an item, tag or mod entry of this stage: the entry's
+     * own list with the fixed actions set to their stage value. Every lock check has to go
+     * through this — reading the entry directly misses the fixed actions.
+     */
+    @Nullable
+    public List<String> effectiveItemLockActions(@Nullable List<String> entryActions) {
+        return FixedLockActions.apply(entryActions, getFixedItemLockActions(),
+                net.bananemdnsa.historystages.api.lock.LockActions.ITEM);
+    }
+
+    /** {@link #effectiveItemLockActions} for interaction-locked mobs. */
+    @Nullable
+    public List<String> effectiveInteractionLockActions(@Nullable List<String> entryActions) {
+        return FixedLockActions.apply(entryActions, getFixedInteractionLockActions(),
+                net.bananemdnsa.historystages.data.lock.EntityInteractionLockEntry.ALL_ACTIONS);
+    }
+
+    /** {@link #effectiveItemLockActions} for fluid entries. */
+    @Nullable
+    public List<String> effectiveFluidLockActions(@Nullable List<String> entryActions) {
+        return FixedLockActions.apply(entryActions, getFixedFluidLockActions(),
+                net.bananemdnsa.historystages.api.lock.LockActions.FLUID);
+    }
+
+    /** The fixed SpawnControl rows, or null when none are. */
+    @Nullable
+    public net.bananemdnsa.historystages.data.lock.spawn.FixedSpawnRule getFixedSpawnRule() {
+        return fixedSpawnRule;
+    }
+
+    /** null or a rule without rows fixes nothing. */
+    public void setFixedSpawnRule(@Nullable net.bananemdnsa.historystages.data.lock.spawn.FixedSpawnRule rule) {
+        this.fixedSpawnRule = rule == null || rule.isEmpty() ? null : rule;
+    }
+
+    /**
+     * The spawnlock entries as they really apply, fixed rows included. Every spawn check has to
+     * read these — {@code getEntities().getSpawnlock()} is what the user typed per mob, and is
+     * what the editor and the save path need instead.
+     */
+    public List<net.bananemdnsa.historystages.data.lock.EntitySpawnLockEntry> getEffectiveSpawnlock() {
+        List<net.bananemdnsa.historystages.data.lock.EntitySpawnLockEntry> own = getEntities().getSpawnlock();
+        if (fixedSpawnRule == null) return own;
+        List<net.bananemdnsa.historystages.data.lock.EntitySpawnLockEntry> out = new ArrayList<>(own.size());
+        for (net.bananemdnsa.historystages.data.lock.EntitySpawnLockEntry entry : own) {
+            out.add(entry == null ? null : fixedSpawnRule.apply(entry));
+        }
+        return out;
     }
 
     /** The raw logic array, or null when the stage has none. Do not mutate; set a new one. */
@@ -718,6 +825,9 @@ public class StageEntry {
         copy.hiddenDisplay = (this.hiddenDisplay != null) ? this.hiddenDisplay.copy() : null;
         copy.loseOnDeath = this.loseOnDeath;
         copy.interchangeable = this.interchangeable;
+        copy.fixedLockActions = this.fixedLockActions != null ? this.fixedLockActions.copy() : null;
+        // Immutable, so sharing it is a copy.
+        copy.fixedSpawnRule = this.fixedSpawnRule;
         copy.logic = this.logic != null ? this.logic.deepCopy() : null;
         if (this.addons != null) {
             Map<String, JsonElement> addonsCopy = new LinkedHashMap<>();

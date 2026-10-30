@@ -38,9 +38,6 @@ public final class ZoneMapScreen extends Screen {
     private static final int LIST_W = 152;
     private static final int ROW_H = 12;
 
-    /** Room kept clear at the top right for the beta mark, so the shape list starts below it. */
-    private static final int BETA_H = 12;
-
     /**
      * Samples per axis of the one grid that gets laid down. Half a million points is a noticeable
      * pause once, when the screen opens — and nothing at all after that.
@@ -152,7 +149,7 @@ public final class ZoneMapScreen extends Screen {
     }
 
     private int listY() {
-        return mapY() + 6 + BETA_H;
+        return mapY() + 6;
     }
 
     private int listH() {
@@ -298,7 +295,6 @@ public final class ZoneMapScreen extends Screen {
         g.disableScissor();
 
         ZoneMapRenderer.scaleBar(g, this.font, mapX(), mapY(), mapW(), mapH(), view);
-        renderBetaMark(g);
         renderList(g, mouseX, mouseY);
         renderBar(g, mouseX, mouseY);
 
@@ -327,16 +323,6 @@ public final class ZoneMapScreen extends Screen {
         Component text = Component.translatable("editor.historystages.zone.map.player_away",
                 (int) Math.round(Math.sqrt(dx * dx + dz * dz)));
         g.drawString(this.font, text, mapX() + 5, mapY() + mapH() - 12, LABEL_GREY, true);
-    }
-
-    /**
-     * Sits over the map rather than beside it: this screen has no title bar to hang it from, and
-     * the shape list occupies the same corner, so it goes above both with a shadow behind it.
-     */
-    private void renderBetaMark(GuiGraphics g) {
-        Component mark = Component.translatable("editor.historystages.zone.beta");
-        g.drawString(this.font, mark, mapX() + mapW() - this.font.width(mark) - 5, mapY() + 5,
-                ACCENT, true);
     }
 
     private void renderList(GuiGraphics g, int mouseX, int mouseY) {
@@ -435,9 +421,8 @@ public final class ZoneMapScreen extends Screen {
     }
 
     /**
-     * Which shape lies under the cursor: a straight drop down the column, so the topmost shape
-     * standing there is the one the author sees. Written as a ray rather than as a rectangle
-     * because a sphere and a cylinder are not rectangles.
+     * Which shape lies under the cursor: a straight drop through the column, and the topmost shape
+     * in it is the one the author sees.
      */
     private int shapeAt(double mouseX, double mouseY) {
         return ZoneRayPick.nearest(zone.getShapes(),

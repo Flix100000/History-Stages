@@ -25,6 +25,7 @@ import net.bananemdnsa.historystages.data.scroll.OpenScrollMarker;
 import net.bananemdnsa.historystages.data.scroll.OpenScrollOverviewBlockEntry;
 import net.bananemdnsa.historystages.data.scroll.OpenScrollOverviewBlocks;
 import net.bananemdnsa.historystages.data.scroll.OpenScrollSort;
+import net.bananemdnsa.historystages.data.scroll.OpenScrollTabStyle;
 import net.bananemdnsa.historystages.data.scroll.OpenScrollVisibility;
 import net.bananemdnsa.historystages.data.scroll.OpenScrollWorldGroup;
 import net.bananemdnsa.historystages.network.serverbound.TakeLecternScrollPacket;
@@ -133,6 +134,7 @@ public class OpenScrollScreen extends Screen {
     private final boolean showSearch;
     private final boolean showEntryIds;
     private final OpenScrollSort sort;
+    private final OpenScrollTabStyle tabStyle;
     private final List<OpenScrollOverviewBlockEntry> overviewBlocks;
 
     /**
@@ -241,6 +243,7 @@ public class OpenScrollScreen extends Screen {
         this.showSearch = Config.VISUAL.openScrollShowSearch.get();
         this.showEntryIds = Config.VISUAL.openScrollShowEntryIds.get();
         this.sort = OpenScrollSort.parse(Config.VISUAL.openScrollEntrySort.get());
+        this.tabStyle = OpenScrollTabStyle.parse(Config.VISUAL.openScrollTabStyle.get());
         this.overviewBlocks = OpenScrollOverviewBlocks.parse(
                 Config.VISUAL.openScrollOverviewBlocks.get());
     }
@@ -391,10 +394,13 @@ public class OpenScrollScreen extends Screen {
     }
 
     private void rebuildTabs() {
+        if (tabStyle == OpenScrollTabStyle.ICONS) {
+            tabs = OpenScrollTabs.layoutIcons(chapters.size());
+            return;
+        }
         List<String> labels = new ArrayList<>();
         for (OpenScrollChapterEntry entry : chapters) {
-            labels.add(Component.translatable("gui.historystages.open_scroll.chapter."
-                    + entry.chapter().serialize()).getString());
+            labels.add(chapterName(entry.chapter()).getString());
         }
         tabs = OpenScrollTabs.layout(labels, activeTab, OpenScrollGeometry.CONTENT_WIDTH,
                 this.font::width);
@@ -705,7 +711,7 @@ public class OpenScrollScreen extends Screen {
         g.blit(SHEET, leftPos - OpenScrollGeometry.SHEET_X, topPos - OpenScrollGeometry.SHEET_Y,
                 0, 0, OpenScrollGeometry.SHEET_SIZE, OpenScrollGeometry.SHEET_SIZE,
                 OpenScrollGeometry.SHEET_SIZE, OpenScrollGeometry.SHEET_SIZE);
-        renderTabs(g);
+        renderTabs(g, mouseX, mouseY);
 
         if (activeChapter() == OpenScrollChapter.OVERVIEW) {
             renderOverview(g);
@@ -722,13 +728,27 @@ public class OpenScrollScreen extends Screen {
         }
     }
 
-    private void renderTabs(GuiGraphics g) {
+    private void renderTabs(GuiGraphics g, int mouseX, int mouseY) {
         int x = leftPos + OpenScrollGeometry.CONTENT_X;
-        int y = topPos + OpenScrollGeometry.TABS_Y;
+        boolean icons = tabStyle == OpenScrollTabStyle.ICONS;
+        int y = topPos + OpenScrollGeometry.tabsTop(icons);
         for (int i = 0; i < tabs.size(); i++) {
             OpenScrollTabs.Tab tab = tabs.get(i);
             boolean active = i == activeTab;
-            g.drawString(this.font, tab.label(), x + tab.x(), y, active ? inkHeading : inkFaint, false);
+            int ink = active ? inkHeading : inkFaint;
+            if (icons) {
+                OpenScrollChapter chapter = chapters.get(i).chapter();
+                int ix = x + OpenScrollTabs.iconX(tab);
+                drawChapterIcon(g, chapter, ix, y, ink);
+                if (active) drawIconUnderline(g, ix, topPos, inkHeading);
+                // An icon alone does not say which chapter it is, so the name comes on hover.
+                if (mouseX >= x + tab.x() && mouseX < x + tab.x() + tab.width()
+                        && mouseY >= y && mouseY < y + OpenScrollGeometry.tabsHeight(true)) {
+                    hoverTooltip = List.of(chapterName(chapter));
+                }
+                continue;
+            }
+            g.drawString(this.font, tab.label(), x + tab.x(), y, ink, false);
             // The underline is what marks the active chapter — no coloured box, no second heading.
             if (active) {
                 g.fill(x + tab.x(), y + OpenScrollGeometry.TABS_HEIGHT,
@@ -738,6 +758,33 @@ public class OpenScrollScreen extends Screen {
         g.fill(x, topPos + OpenScrollGeometry.RULE_TOP_Y,
                 x + OpenScrollGeometry.CONTENT_WIDTH,
                 topPos + OpenScrollGeometry.RULE_TOP_Y + 1, withAlpha(inkFaint, 0x59));
+    }
+
+    /** Same mark as under an active word, sized to the icon. {@code top} is the panel's top edge. */
+    public static void drawIconUnderline(GuiGraphics g, int iconX, int top, int rgb) {
+        int y = top + OpenScrollGeometry.TAB_ICON_UNDERLINE_Y;
+        g.fill(iconX, y, iconX + OpenScrollGeometry.TAB_ICON_SIZE, y + 1, 0xFF000000 | rgb);
+    }
+
+    private static ResourceLocation chapterIconTexture(OpenScrollChapter chapter) {
+        return ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID,
+                "textures/gui/scroll/chapter/" + chapter.serialize() + ".png");
+    }
+
+    public static Component chapterName(OpenScrollChapter chapter) {
+        return Component.translatable("gui.historystages.open_scroll.chapter." + chapter.serialize());
+    }
+
+    /**
+     * The icons ship as white silhouettes (the artist's are black; recoloured on import) so the
+     * shader colour turns them into whatever ink the pack configured — black would stay black. Shared with the editor preview, which must not drift from the real thing.
+     */
+    public static void drawChapterIcon(GuiGraphics g, OpenScrollChapter chapter, int x, int y, int rgb) {
+        int size = OpenScrollGeometry.TAB_ICON_SIZE;
+        g.setColor(((rgb >> 16) & 0xFF) / 255f, ((rgb >> 8) & 0xFF) / 255f, (rgb & 0xFF) / 255f, 1f);
+        // The texture is 8x8; blitting it into the larger square scales it with nearest filtering.
+        g.blit(chapterIconTexture(chapter), x, y, size, size, 0, 0, 8, 8, 8, 8);
+        g.setColor(1f, 1f, 1f, 1f);
     }
 
     /** An ink rule is the same ink, thinned — not a separate configurable colour. */
@@ -998,8 +1045,9 @@ public class OpenScrollScreen extends Screen {
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         int px = leftPos + OpenScrollGeometry.CONTENT_X;
-        int ty = topPos + OpenScrollGeometry.TABS_Y;
-        if (mouseY >= ty && mouseY < ty + OpenScrollGeometry.TABS_HEIGHT) {
+        boolean icons = tabStyle == OpenScrollTabStyle.ICONS;
+        int ty = topPos + OpenScrollGeometry.tabsTop(icons);
+        if (mouseY >= ty && mouseY < ty + OpenScrollGeometry.tabsHeight(icons)) {
             for (int i = 0; i < tabs.size(); i++) {
                 OpenScrollTabs.Tab tab = tabs.get(i);
                 if (mouseX < px + tab.x() || mouseX >= px + tab.x() + tab.width()) continue;

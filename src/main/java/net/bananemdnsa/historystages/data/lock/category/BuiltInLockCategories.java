@@ -467,6 +467,17 @@ final class BuiltInLockCategories {
         }
 
         /**
+         * Asks the entries as they really apply. {@link #read} hands back what was typed per mob,
+         * which the editor and the save path need — a fixed row is not in there.
+         */
+        @Override public boolean gates(StageEntry stage, Object subject) {
+            for (EntitySpawnLockEntry entry : stage.getEffectiveSpawnlock()) {
+                if (matches(entry, subject)) return true;
+            }
+            return false;
+        }
+
+        /**
          * A null source narrows the question to "is there an entry for this entity in this
          * dimension at all" — the {@code EntityJoinLevel} fallback, which fires where no spawn
          * reason is available. With a source it is the real question.
@@ -523,6 +534,21 @@ final class BuiltInLockCategories {
             return entry.getId().equals(interaction.entityId())
                     && entry.blocksAction(interaction.action())
                     && entry.matchesItem(interaction.held());
+        }
+
+        /**
+         * The loop again, but with the stage's fixed actions applied: an action fixed as allowed
+         * frees it on every mob, one fixed as locked blocks it on every mob.
+         */
+        @Override public boolean gates(StageEntry stage, Object subject) {
+            if (!(subject instanceof LockSubjects.InteractionSubject interaction)) return false;
+            for (EntityInteractionLockEntry entry : stage.getEntities().getInteractionlock()) {
+                if (!entry.getId().equals(interaction.entityId())) continue;
+                List<String> actions = stage.effectiveInteractionLockActions(entry.getLockActions());
+                boolean blocks = actions == null || actions.contains(interaction.action());
+                if (blocks && entry.matchesItem(interaction.held())) return true;
+            }
+            return false;
         }
 
         @Override public List<String> globalDualPhaseIds(StageEntry stage) {

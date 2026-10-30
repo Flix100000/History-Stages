@@ -232,7 +232,7 @@ public final class FluidRecipeIndex {
         StageManager.getIndividualStages().forEach((stageId, entry) -> {
             if (entry == null) return;
             for (net.bananemdnsa.historystages.data.FluidEntry fluid : entry.getFluidEntries()) {
-                java.util.List<String> actions = fluid.getLockActions();
+                java.util.List<String> actions = entry.effectiveFluidLockActions(fluid.getLockActions());
                 boolean gatesRecipes = actions == null
                         || actions.contains("recipe") || actions.contains("ingredient");
                 if (!gatesRecipes) continue;

@@ -543,7 +543,6 @@ public class ZoneEditScreen extends Screen {
 
         g.fill(0, 0, this.width, this.height, BACKDROP);
         g.drawCenteredString(this.font, title(), this.width / 2, TITLE_Y, 0xFFFFFF);
-        renderBetaMark(g);
         g.fill(MARGIN, HAIRLINE_Y, this.width - MARGIN, HAIRLINE_Y + 1, HAIRLINE);
         g.fill(MARGIN, contentBottom() + 4, this.width - MARGIN, contentBottom() + 5, SEPARATOR);
 
@@ -567,13 +566,6 @@ public class ZoneEditScreen extends Screen {
             tooltip.render(g, this.font, tooltipKey, tooltipText, mouseX, mouseY,
                     this.width, this.height);
         }
-    }
-
-    /** Zones are the newest category and the least walked-in; the corner says so while that lasts. */
-    private void renderBetaMark(GuiGraphics g) {
-        String mark = label("beta");
-        g.drawString(this.font, mark, this.width - MARGIN - this.font.width(mark), TITLE_Y,
-                ACCENT, false);
     }
 
     /** The title carries the name, so the screen says which zone you are standing in. */

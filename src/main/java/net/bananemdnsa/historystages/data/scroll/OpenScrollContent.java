@@ -60,7 +60,7 @@ public final class OpenScrollContent {
                 entry.getIcon(),
                 entry.getDisplayName() == null ? "" : entry.getDisplayName(),
                 description == null ? "" : description,
-                items(entry, tags), creatures(entry.getEntities()), world(entry));
+                items(entry, tags), creatures(entry), world(entry));
     }
 
     /** A document for a scroll whose stage no longer exists, so the screen can say so. */
@@ -78,9 +78,11 @@ public final class OpenScrollContent {
     }
 
     /** All three lock kinds in one list; an entity in several of them keeps every marker. */
-    private static List<OpenScrollEntry> creatures(EntityLocks locks) {
+    private static List<OpenScrollEntry> creatures(StageEntry entry) {
+        EntityLocks locks = entry.getEntities();
         Map<String, EnumSet<OpenScrollMarker>> byId = new LinkedHashMap<>();
-        for (EntitySpawnLockEntry spawn : locks.getSpawnlock()) {
+        // Effective entries: a stage can fix the phase, and an after-unlock rule locks nothing.
+        for (EntitySpawnLockEntry spawn : entry.getEffectiveSpawnlock()) {
             if (spawn.getPhase() == GenerationPhase.AFTER_UNLOCK) continue;
             byId.computeIfAbsent(spawn.getId(), k -> EnumSet.noneOf(OpenScrollMarker.class)).add(OpenScrollMarker.SPAWN);
         }

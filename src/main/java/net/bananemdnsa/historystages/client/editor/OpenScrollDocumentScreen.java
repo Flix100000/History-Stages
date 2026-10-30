@@ -10,12 +10,15 @@ import net.bananemdnsa.historystages.client.editor.anim.Timing;
 import net.bananemdnsa.historystages.client.editor.widget.ConfirmDialog;
 import net.bananemdnsa.historystages.client.editor.widget.EditorTooltip;
 import net.bananemdnsa.historystages.client.editor.widget.StyledButton;
+import net.bananemdnsa.historystages.client.scroll.OpenScrollScreen;
 import net.bananemdnsa.historystages.data.graph.GraphColors;
+import net.bananemdnsa.historystages.data.scroll.OpenScrollChapter;
 import net.bananemdnsa.historystages.data.scroll.OpenScrollChapterEntry;
 import net.bananemdnsa.historystages.data.scroll.OpenScrollChapterMode;
 import net.bananemdnsa.historystages.data.scroll.OpenScrollChapters;
 import net.bananemdnsa.historystages.data.scroll.OpenScrollOverviewBlockEntry;
 import net.bananemdnsa.historystages.data.scroll.OpenScrollOverviewBlocks;
+import net.bananemdnsa.historystages.data.scroll.OpenScrollTabStyle;
 import net.bananemdnsa.historystages.screen.OpenScrollGeometry;
 import net.bananemdnsa.historystages.screen.OpenScrollTabs;
 import net.minecraft.client.gui.GuiGraphics;
@@ -476,19 +479,30 @@ public class OpenScrollDocumentScreen extends Screen {
         int inkBody = ink("open_scroll.inkBody", 0x4A3416);
         int inkFaint = ink("open_scroll.inkFaint", 0x7A5A2C);
 
+        List<OpenScrollChapter> shownChapters = new ArrayList<>();
         List<String> labels = new ArrayList<>();
         for (OpenScrollChapterEntry entry : chapters) {
             if (!entry.enabled()) continue;
-            labels.add(Component.translatable("gui.historystages.open_scroll.chapter."
-                    + entry.chapter().serialize()).getString());
+            shownChapters.add(entry.chapter());
+            labels.add(OpenScrollScreen.chapterName(entry.chapter()).getString());
         }
+        boolean icons = OpenScrollTabStyle.parse(parent.findEntry("open_scroll.tabStyle").value)
+                == OpenScrollTabStyle.ICONS;
         // The first enabled chapter is what a reader opens on, so that is what the preview shows.
-        List<OpenScrollTabs.Tab> tabs = OpenScrollTabs.layout(labels, 0, width, this.font::width);
-        int ty = sy + OpenScrollGeometry.TABS_Y;
+        List<OpenScrollTabs.Tab> tabs = icons
+                ? OpenScrollTabs.layoutIcons(labels.size())
+                : OpenScrollTabs.layout(labels, 0, width, this.font::width);
+        int ty = sy + OpenScrollGeometry.tabsTop(icons);
         for (int i = 0; i < tabs.size(); i++) {
             OpenScrollTabs.Tab tab = tabs.get(i);
-            g.drawString(this.font, tab.label(), x + tab.x(), ty,
-                    0xFF000000 | (i == 0 ? inkHeading : inkFaint), false);
+            int ink = i == 0 ? inkHeading : inkFaint;
+            if (icons) {
+                int ix = x + OpenScrollTabs.iconX(tab);
+                OpenScrollScreen.drawChapterIcon(g, shownChapters.get(i), ix, ty, ink);
+                if (i == 0) OpenScrollScreen.drawIconUnderline(g, ix, sy, inkHeading);
+                continue;
+            }
+            g.drawString(this.font, tab.label(), x + tab.x(), ty, 0xFF000000 | ink, false);
             if (i == 0) {
                 g.fill(x + tab.x(), ty + OpenScrollGeometry.TABS_HEIGHT,
                         x + tab.x() + tab.width(), ty + OpenScrollGeometry.TABS_HEIGHT + 1,
