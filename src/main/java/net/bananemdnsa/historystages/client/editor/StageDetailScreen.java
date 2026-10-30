@@ -90,6 +90,7 @@ import net.bananemdnsa.historystages.api.editor.widget.SegmentBar;
 import org.jetbrains.annotations.Nullable;
 import net.bananemdnsa.historystages.client.editor.widget.StyledButton;
 import net.minecraft.client.gui.components.EditBox;
+import net.bananemdnsa.historystages.api.editor.widget.SearchBar;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
@@ -270,13 +271,12 @@ public class StageDetailScreen extends Screen {
     private String currentTooltipText = null;
 
     // Category search box (inline header, next to icon button)
-    private EditBox categorySearchBox;
+    private SearchBar categorySearchBox;
     private String categorySearchFilter = "";
     private boolean categoryDropdownVisible = false;
     private List<String> categoryDropdownSuggestions = new ArrayList<>();
     private int categorySearchBoxX;
     private int categorySearchBoxW;
-    private final Anim categorySearchHover = new Anim();
     private static final int DROPDOWN_ENTRY_H = 13;
     private static final int MAX_DROPDOWN_ENTRIES = 8;   // visible rows
     private static final int MAX_DROPDOWN_COLLECT = 50;  // max suggestions collected
@@ -609,6 +609,9 @@ public class StageDetailScreen extends Screen {
                             return list;
                         },
                         () -> { hasChanges = true; updateMaxScroll(); });
+        // Merchants without a profession come from the server's trade scan, which may land after
+        // this screen opened — same reason as the offers picker above.
+        tradeProfessionTabLocal.setRebuildPickerOnOpen(true);
         this.tradeProfessionTab = tradeProfessionTabLocal;
         // Safe cast: the built-in trade-levels category stores bare ids.
         @SuppressWarnings("unchecked")
@@ -844,15 +847,17 @@ public class StageDetailScreen extends Screen {
         int cSearchX = iconBtnX + FIELD_HEIGHT + 8;
         categorySearchBoxW = Math.max(40, Math.min(140, this.width - cSearchX - 80));
         categorySearchBoxX = cSearchX;
-        categorySearchBox = new CategorySearchEditBox(cSearchX + 4, 22, categorySearchBoxW - 8, FIELD_HEIGHT);
-
-        categorySearchBox.setValue("");
-        categorySearchBox.setResponder(val -> {
-            categorySearchFilter = val;
-            updateCategoryDropdown();
-            categoryDropdownVisible = !val.isEmpty();
-        });
-        this.addRenderableWidget(categorySearchBox);
+        categorySearchBox = new SearchBar(
+                Component.translatable("editor.historystages.category_search").getString())
+                .setLightStyle(true)
+                .setEscapeReleasesFocus(true)
+                .onChange(val -> {
+                    categorySearchFilter = val;
+                    updateCategoryDropdown();
+                    categoryDropdownVisible = !val.isEmpty();
+                });
+        categorySearchBox.setFocused(false);
+        categorySearchBox.setPosition(cSearchX, 22, categorySearchBoxW);
 
         // --- Text-override popup widgets (children; rendered manually on top of the popup) ---
         overrideNameField = new EditBox(this.font, 0, 0, 10, FIELD_HEIGHT,
@@ -1093,13 +1098,18 @@ public class StageDetailScreen extends Screen {
     }
 
     private boolean isAnyOverlayVisible() {
+        return contextMenu.isVisible() || isAnyPopupVisible();
+    }
+
+    /** Every overlay except the context menu, which draws high enough to cover anything. */
+    private boolean isAnyPopupVisible() {
         return (iconSearch != null && iconSearch.isVisible())
                 || anyCategoryPickerVisible()
                 || lockActionsPopup.isVisible() || spawnControlPopup.isVisible()
                 || tradeLevelsPopup.isVisible() || interactionActionsPopup.isVisible()
                 || interactionItemsPopup.isVisible() || filterItemSearch.isVisible() || filterTagSearch.isVisible()
                 || generationLimitPopup.isVisible()
-                || contextMenu.isVisible() || recipePopupVisible
+                || recipePopupVisible
                 || modEntityPopup.isVisible() || modStructurePopup.isVisible() || modBiomePopup.isVisible()
                 || ingredientUsagePopup.isVisible()
                 || actionOverlay() != null;
@@ -1126,64 +1136,6 @@ public class StageDetailScreen extends Screen {
     private void applyGenerationRule(String structureId, StructureGenerationRule rule) {
         structureTab.applyGenerationRule(structureId, rule);
         hasChanges = true;
-    }
-
-    /**
-     * EditBox variant that replaces the default hard-blink cursor with a smooth
-     * gold sine-wave pulse. Everything else (key handling, text storage, click
-     * detection) comes from EditBox unchanged.
-     */
-    private class CategorySearchEditBox extends EditBox {
-        CategorySearchEditBox(int x, int y, int w, int h) {
-            super(StageDetailScreen.this.font, x, y, w, h, Component.empty());
-            setBordered(false);
-            setMaxLength(128);
-        }
-
-        @Override
-        public void renderWidget(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
-            String val = getValue();
-            String highlighted = getHighlighted();
-            int textX = getX() + 2;
-            int textY = getY() + (getHeight() - 8) / 2;
-            int maxW = getWidth() - 4;
-
-            // Show the tail of the string so cursor stays visible while typing
-            String display;
-            int displayStart;
-            if (font.width(val) <= maxW) {
-                display = val;
-                displayStart = 0;
-            } else {
-                String rev = new StringBuilder(val).reverse().toString();
-                String revDisplay = font.plainSubstrByWidth(rev, maxW);
-                displayStart = val.length() - revDisplay.length();
-                display = val.substring(displayStart);
-            }
-
-            // Blue selection highlight
-            if (!highlighted.isEmpty()) {
-                int selInFull = val.indexOf(highlighted);
-                if (selInFull >= 0) {
-                    int selStart = Math.max(0, selInFull - displayStart);
-                    int selEnd = Math.min(display.length(), selInFull + highlighted.length() - displayStart);
-                    if (selEnd > selStart) {
-                        int selX = textX + font.width(display.substring(0, selStart));
-                        int selW = font.width(display.substring(selStart, selEnd));
-                        g.fill(selX, textY - 1, selX + selW, textY + 9, 0x7F0077FF);
-                    }
-                }
-            }
-
-            g.drawString(font, display, textX, textY, 0xFFFFFF, false);
-
-            if (isFocused()) {
-                int cursorX = textX + font.width(display);
-                float pulse = (float) (0.45 + 0.55 * Math.sin(System.currentTimeMillis() / 250.0));
-                int alpha = (int) (pulse * 255);
-                g.drawString(font, "_", cursorX, textY, (alpha << 24) | 0xFFCC00, false);
-            }
-        }
     }
 
 
@@ -1217,7 +1169,7 @@ public class StageDetailScreen extends Screen {
             categorySearchFilter = "";
             categoryDropdownVisible = false;
             categoryDropdownSuggestions = new ArrayList<>();
-            if (categorySearchBox != null) categorySearchBox.setValue("");
+            if (categorySearchBox != null) categorySearchBox.setText("");
         }
     }
 
@@ -1794,7 +1746,7 @@ public class StageDetailScreen extends Screen {
             categorySearchFilter = "";
             categoryDropdownVisible = false;
             categoryDropdownSuggestions = new ArrayList<>();
-            if (categorySearchBox != null) categorySearchBox.setValue("");
+            if (categorySearchBox != null) categorySearchBox.setText("");
             Minecraft.getInstance().getSoundManager()
                     .play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
         }
@@ -2031,35 +1983,10 @@ public class StageDetailScreen extends Screen {
             guiGraphics.drawCenteredString(this.font, saveError, this.width / 2, this.height - 38, 0xFF5555);
         }
 
-        // Category search box — button-style background with focus/hover animation
-        if (categorySearchBox != null) {
-            boolean csFocused = categorySearchBox.isFocused();
-            boolean csHovered = mouseX >= categorySearchBoxX && mouseX < categorySearchBoxX + categorySearchBoxW
-                    && mouseY >= 22 && mouseY < 22 + FIELD_HEIGHT && !overlayOpen;
-            float hp = Ease.outCubic(categorySearchHover.ramp(csFocused || csHovered,
-                    Timing.HOVER_IN_MS, Timing.HOVER_OUT_MS));
-
-            // Background — subtle white tint, brightens when focused/hovered
-            int bgAlpha = (int) (0x25 + hp * 0x18);
-            guiGraphics.fill(categorySearchBoxX, 22, categorySearchBoxX + categorySearchBoxW, 22 + FIELD_HEIGHT,
-                    (bgAlpha << 24) | 0xFFFFFF);
-            // Top + side edge highlights (same as StyledButton)
-            guiGraphics.fill(categorySearchBoxX, 22, categorySearchBoxX + categorySearchBoxW, 23, 0x20FFFFFF);
-            guiGraphics.fill(categorySearchBoxX, 22, categorySearchBoxX + 1, 22 + FIELD_HEIGHT, 0x15FFFFFF);
-            guiGraphics.fill(categorySearchBoxX + categorySearchBoxW - 1, 22,
-                    categorySearchBoxX + categorySearchBoxW, 22 + FIELD_HEIGHT, 0x15FFFFFF);
-            // Bottom accent: gold when focused, subtle otherwise
-            int accentAlpha = csFocused ? (int) (0xCC + hp * 0x33) : (int) (0x40 + hp * 0x40);
-            int accentRGB = csFocused ? 0xFFCC00 : 0x888888;
-            guiGraphics.fill(categorySearchBoxX, 22 + FIELD_HEIGHT - 2,
-                    categorySearchBoxX + categorySearchBoxW, 22 + FIELD_HEIGHT,
-                    (accentAlpha << 24) | accentRGB);
-
-            // Placeholder text (rendered before super.render so the EditBox text draws over it)
-            if (categorySearchFilter.isEmpty() && !csFocused) {
-                guiGraphics.drawString(this.font, "Search...", categorySearchBoxX + 5,
-                        22 + (FIELD_HEIGHT - 8) / 2, 0x555555, false);
-            }
+        // SearchBar lifts its text to z=300, while the pickers draw at z=0 — it would show
+        // through any of them. They cover this corner anyway, so the bar sits them out.
+        if (categorySearchBox != null && !isAnyPopupVisible()) {
+            categorySearchBox.render(guiGraphics, this.font, mouseX, mouseY);
         }
 
         super.render(guiGraphics, mouseX, mouseY, partialTick);
@@ -2523,7 +2450,7 @@ public class StageDetailScreen extends Screen {
         // Unfocus/clear category search when clicking outside the box + dropdown
         if (categorySearchBox != null && categorySearchBox.isFocused()) {
             boolean inSearchBox = mouseX >= categorySearchBoxX && mouseX < categorySearchBoxX + categorySearchBoxW
-                    && mouseY >= 22 && mouseY < 22 + FIELD_HEIGHT;
+                    && mouseY >= 22 && mouseY < 22 + SearchBar.HEIGHT;
             int dropH = Math.min(MAX_DROPDOWN_ENTRIES, categoryDropdownSuggestions.size()) * DROPDOWN_ENTRY_H + 4;
             boolean inDropdown = categoryDropdownVisible && mouseX >= categorySearchBoxX
                     && mouseX < categorySearchBoxX + categorySearchBoxW
@@ -2531,7 +2458,7 @@ public class StageDetailScreen extends Screen {
             if (!inSearchBox && !inDropdown) {
                 categoryDropdownVisible = false;
                 categorySearchFilter = "";
-                categorySearchBox.setValue("");
+                categorySearchBox.setText("");
                 categorySearchBox.setFocused(false);
             }
         }
@@ -2561,10 +2488,12 @@ public class StageDetailScreen extends Screen {
                 }
                 categoryDropdownVisible = false;
                 categorySearchFilter = "";
-                if (categorySearchBox != null) categorySearchBox.setValue("");
+                if (categorySearchBox != null) categorySearchBox.setText("");
                 return true;
             }
         }
+
+        if (categorySearchBox != null && categorySearchBox.mouseClicked(mouseX, mouseY)) return true;
 
         if (mouseY >= tabY && mouseY < tabY + TAB_HEIGHT) {
             // Tab scroll arrow clicks
@@ -3130,17 +3059,20 @@ public class StageDetailScreen extends Screen {
         if (keyTab != null && keyTab.keyPressed(keyCode, scanCode, modifiers)) return true;
         if (iconSearch.isVisible() && iconSearch.keyPressed(keyCode)) return true;
 
-        // Forward all key events to the category search box when it has focus
-        // (ensures Ctrl+A/C/V reach EditBox's built-in handlers reliably)
-        if (categorySearchBox != null && categorySearchBox.isFocused()
-                && categorySearchBox.keyPressed(keyCode, scanCode, modifiers))
-            return true;
+        if (categorySearchBox != null) {
+            // One ESC leaves the search completely: the suggestions go with the text, and the
+            // bar's own ESC handling then drops the focus. The next ESC closes the screen.
+            if (keyCode == 256 && categorySearchBox.isFocused()) {
+                categorySearchBox.setText("");
+            }
+            if (categorySearchBox.keyPressed(keyCode)) return true;
+        }
 
         if (keyCode == 256) {
             if (categoryDropdownVisible) {
                 categoryDropdownVisible = false;
                 categorySearchFilter = "";
-                if (categorySearchBox != null) categorySearchBox.setValue("");
+                if (categorySearchBox != null) categorySearchBox.setText("");
                 return true;
             }
             tryClose();
@@ -3167,6 +3099,7 @@ public class StageDetailScreen extends Screen {
         if (filterItemSearch.isVisible() && filterItemSearch.charTyped(c)) return true;
         if (filterTagSearch.isVisible() && filterTagSearch.charTyped(c)) return true;
         if (iconSearch.isVisible() && iconSearch.charTyped(c)) return true;
+        if (categorySearchBox != null && categorySearchBox.charTyped(c)) return true;
         return super.charTyped(c, modifiers);
     }
 

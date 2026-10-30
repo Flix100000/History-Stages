@@ -406,11 +406,12 @@ public class BiomeLockHandler {
     /**
      * Removes blocks inside a locked biome from the explosion's affected list. Explosions have
      * no owner worth attributing, so this checks every tracked player's cached lock set — a
-     * biome locked for anyone present is protected.
+     * biome locked for anyone present is protected. Gated by {@code biomeBlockExplosions}.
      */
     @SubscribeEvent
     public static void onExplosionDetonate(ExplosionEvent.Detonate event) {
         if (event.getLevel().isClientSide()) return;
+        if (!Config.GAMEPLAY.biomeBlockExplosions.get()) return;
         if (STATE.isEmpty()) return;
         List<BlockPos> affected = event.getAffectedBlocks();
         if (affected.isEmpty()) return;

@@ -46,6 +46,8 @@ public class SearchBar {
      * category search. Default is the popup widget's dark-inset look.
      */
     private boolean lightStyle = false;
+    /** See {@link #setEscapeReleasesFocus(boolean)}. */
+    private boolean escapeReleasesFocus = false;
     private final Anim hoverAnim = new Anim();
     private final Anim focusAnim = new Anim();
 
@@ -70,6 +72,16 @@ public class SearchBar {
      */
     public SearchBar setLightStyle(boolean light) {
         this.lightStyle = light;
+        return this;
+    }
+
+    /**
+     * For bars that sit on a screen rather than inside a popup: ESC then only drops the
+     * focus, and a second ESC reaches the host and closes the screen. Popup pickers leave
+     * this off — their bar is always the typing target and ESC closes the whole popup.
+     */
+    public SearchBar setEscapeReleasesFocus(boolean releases) {
+        this.escapeReleasesFocus = releases;
         return this;
     }
 
@@ -225,12 +237,17 @@ public class SearchBar {
     /**
      * Handles ESC (closes popup if open), backspace, Ctrl+A/C/V. Returns true
      * if consumed. ESC with no popup open returns false so the host can hide
-     * the overlay.
+     * the overlay — unless {@link #setEscapeReleasesFocus} is on and the bar has focus.
      */
     public boolean keyPressed(int keyCode) {
         if (keyCode == 256) { // ESC
             if (filterDropdown.isExpanded()) {
                 filterDropdown.close();
+                return true;
+            }
+            if (escapeReleasesFocus && focused) {
+                focused = false;
+                allSelected = false;
                 return true;
             }
             return false;
@@ -267,20 +284,15 @@ public class SearchBar {
     }
 
     /**
-     * Accepts ASCII letters/digits and a permissive set of separators
-     * ({@code _ : . - / @ } and space) — a superset broad enough for resource
-     * locations, file paths, tag IDs, mod names, and the {@code @mod} search
-     * shorthand used by item/recipe pickers.
+     * Accepts every character chat would accept. A narrower whitelist made names with
+     * brackets, apostrophes or the like unsearchable; only control characters and the
+     * formatting sign stay out, since {@code §} would restyle the rendered text.
      */
     public boolean charTyped(char c) {
-        if (!focused)
+        if (!focused || !net.minecraft.util.StringUtil.isAllowedChatCharacter(c))
             return false;
-        if (Character.isLetterOrDigit(c) || c == '_' || c == ':' || c == '.' || c == ' '
-                || c == '-' || c == '@' || c == '/') {
-            setText(allSelected ? String.valueOf(c) : text + c);
-            return true;
-        }
-        return false;
+        setText(allSelected ? String.valueOf(c) : text + c);
+        return true;
     }
 
     public boolean isMouseOverFilterUi(double mx, double my) {

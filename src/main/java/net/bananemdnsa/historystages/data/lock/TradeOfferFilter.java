@@ -54,8 +54,8 @@ public final class TradeOfferFilter {
      * The merchant being asked about.
      *
      * @param professionId null for anything that has no profession — the wandering trader, and
-     *                     every merchant from another mod. Such a merchant can never be caught by
-     *                     a profession entry, only by an item one.
+     *                     every merchant from another mod. A profession entry naming its entity
+     *                     id still takes such a merchant out; see {@code merchantWide}.
      * @param level        the merchant's own level. Not the level an offer came from: an offer
      *                     carries no record of that, and guessing it from list order would break
      *                     the moment another mod appends to the same list.
@@ -155,10 +155,13 @@ public final class TradeOfferFilter {
                                              Map<String, StageEntry> stages,
                                              StageScope scope, StageStateView state) {
         Set<String> gating = new LinkedHashSet<>();
-        if (merchant.professionId() != null) {
+        // A merchant without a profession answers to its entity id instead, so the wandering
+        // trader or a modded one can be listed and gated whole like any profession.
+        String who = merchant.professionId() != null ? merchant.professionId() : merchant.merchantKey();
+        if (who != null && !who.isEmpty()) {
             gating.addAll(CategoryLockResolver.missingStages(
                     category("historystages:trade_professions"),
-                    new MerchantSubject(merchant.professionId(), merchant.level()),
+                    new MerchantSubject(who, merchant.level()),
                     stages, scope, state));
         }
         gating.addAll(CategoryLockResolver.missingStages(

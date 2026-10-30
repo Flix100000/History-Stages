@@ -699,8 +699,8 @@ public class StageGraphScreen extends Screen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        // The sidebar only consumes ESC while its filter dropdown is open; otherwise it falls
-        // through to super, whose default shouldCloseOnEsc()/onClose() closes this screen.
+        // The sidebar consumes ESC only to close its filter dropdown or to leave the search
+        // field; otherwise it falls through to super, whose onClose() closes this screen.
         if (sidebar != null && sidebar.keyPressed(keyCode)) return true;
         boolean typing = sidebar != null && sidebar.isSearchFocused();
         // Esc peels off one layer at a time: the overview, then the selection, then the graph.

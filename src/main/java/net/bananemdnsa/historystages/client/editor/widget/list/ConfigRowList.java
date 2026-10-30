@@ -103,7 +103,25 @@ public class ConfigRowList {
      * nine short labels.
      */
     public void setLabelColumnWidth(int px) {
+        this.baseLabelColumnWidth = px;
         this.labelColumnWidth = px;
+    }
+
+    /** The column width before {@link #fitLabelColumn} widened it for a long label. */
+    private int baseLabelColumnWidth = DEFAULT_LABEL_COLUMN;
+
+    /**
+     * Widens the label column to the longest label among {@code entries}, so every control in
+     * the list starts at the same x. Without this, a single label longer than the column pushes
+     * only its own control right and that row sticks out of an otherwise straight column.
+     */
+    public void fitLabelColumn(Iterable<ConfigEditorScreen.ConfigEntry> entries) {
+        Font font = Minecraft.getInstance().font;
+        int widest = 0;
+        for (ConfigEditorScreen.ConfigEntry entry : entries) {
+            widest = Math.max(widest, font.width(Component.translatable(entry.labelKey).getString()));
+        }
+        this.labelColumnWidth = Math.max(baseLabelColumnWidth, widest + 20);
     }
 
     /**

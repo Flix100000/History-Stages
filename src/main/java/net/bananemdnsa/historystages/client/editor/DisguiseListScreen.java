@@ -63,6 +63,7 @@ public class DisguiseListScreen extends Screen {
         if (search == null) {
             search = new SearchBar(Component.translatable("editor.historystages.disguise.list.search").getString())
                     .setLightStyle(true)
+                    .setEscapeReleasesFocus(true)
                     .onChange(q -> scroll = 0);
             search.setFocused(false);
         }
@@ -225,7 +226,7 @@ public class DisguiseListScreen extends Screen {
             contextMenu.hide();
             return true;
         }
-        if (search.isFocused() && keyCode != 256 && search.keyPressed(keyCode)) return true;
+        if (search.keyPressed(keyCode)) return true;
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
 

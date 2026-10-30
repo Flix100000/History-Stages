@@ -526,10 +526,12 @@ public class StructureLockHandler {
      * blocks. TNT, creeper, end-crystal, bed-in-nether — all explosion types route through
      * this event. We scan every player's cache because explosions have no clean "owner" to
      * attribute the source to (and even if they did, the zones nearby ANY player matter).
+     * Gated by {@code structureBlockExplosions}.
      */
     @SubscribeEvent
     public static void onExplosionDetonate(ExplosionEvent.Detonate event) {
         if (event.getLevel().isClientSide()) return;
+        if (!Config.GAMEPLAY.structureBlockExplosions.get()) return;
         if (STATE.isEmpty()) return;
         List<BlockPos> affected = event.getAffectedBlocks();
         if (affected.isEmpty()) return;

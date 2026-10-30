@@ -86,7 +86,8 @@ public final class GraphSidebar {
 
     private final GraphCanvas canvas;
     private final SearchBar searchBar =
-            new SearchBar(Component.translatable("editor.historystages.search").getString());
+            new SearchBar(Component.translatable("editor.historystages.search").getString())
+                    .setEscapeReleasesFocus(true);
     private final MarqueeText marquee = new MarqueeText();
     private final Scrollbar scrollbar = new Scrollbar();
 

@@ -630,6 +630,7 @@ public class Config {
         public final ModConfigSpec.BooleanValue structureBlockRightClick;
         public final ModConfigSpec.BooleanValue structureBlockLeftClick;
         public final ModConfigSpec.BooleanValue structureBlockProjectiles;
+        public final ModConfigSpec.BooleanValue structureBlockExplosions;
 
         public final ModConfigSpec.IntValue biomeCheckInterval;
         public final ModConfigSpec.BooleanValue biomeEffectsEnabled;
@@ -644,6 +645,7 @@ public class Config {
         public final ModConfigSpec.BooleanValue biomeBlockRightClick;
         public final ModConfigSpec.BooleanValue biomeBlockLeftClick;
         public final ModConfigSpec.BooleanValue biomeBlockProjectiles;
+        public final ModConfigSpec.BooleanValue biomeBlockExplosions;
         public final ModConfigSpec.ConfigValue<String> zoneMarkerItem;
 
         // Stage logic
@@ -891,6 +893,10 @@ public class Config {
                     .comment("Cancel projectiles (arrows, snowballs, ender pearls, etc.) the moment they would impact something inside a locked structure? [Default: true]")
                     .define("blockProjectiles", true);
 
+            structureBlockExplosions = builder
+                    .comment("Keep explosions from destroying blocks inside a locked structure? [Default: true]")
+                    .define("blockExplosions", true);
+
             builder.pop(); // structure_lock
 
             // --- BIOME LOCK SECTION ---
@@ -955,6 +961,10 @@ public class Config {
             biomeBlockProjectiles = builder
                     .comment("Cancel projectiles (arrows, snowballs, ender pearls, etc.) the moment they would impact inside a locked biome? [Default: true]")
                     .define("blockProjectiles", true);
+
+            biomeBlockExplosions = builder
+                    .comment("Keep explosions from destroying blocks inside a locked biome? [Default: true]")
+                    .define("blockExplosions", true);
 
             builder.pop(); // biome_lock
 
