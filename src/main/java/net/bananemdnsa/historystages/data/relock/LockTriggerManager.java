@@ -13,6 +13,7 @@ import net.bananemdnsa.historystages.data.saveddata.IndividualStageData;
 import net.bananemdnsa.historystages.data.saveddata.LockTriggerProgressData;
 import net.bananemdnsa.historystages.data.saveddata.StageData;
 import net.bananemdnsa.historystages.util.DebugLogger;
+import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.Nullable;
@@ -178,8 +179,8 @@ public final class LockTriggerManager {
                 if (individual) LostStages.clearIndividual(stageId, player); else LostStages.clearGlobal(stageId, level);
             }
             String msg = "Lock trigger of '" + stageId + "' fired, but the relock did not go through.";
-            if (individual) DebugLogger.runtime("Re-lock", player.getName().getString(), msg);
-            else DebugLogger.runtime("Re-lock", msg);
+            if (individual) DebugLogger.runtime(HsRuntimeCategories.RELOCK, player.getName().getString(), msg);
+            else DebugLogger.runtime(HsRuntimeCategories.RELOCK, msg);
         }
         return locked;
     }

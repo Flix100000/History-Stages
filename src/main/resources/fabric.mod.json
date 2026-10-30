@@ -61,6 +61,7 @@
 			"net.bananemdnsa.historystages.gametest.StageLogicRevokeTests",
 			"net.bananemdnsa.historystages.gametest.StageLogicRound2Tests",
 			"net.bananemdnsa.historystages.gametest.StageLogicTests",
+			"net.bananemdnsa.historystages.gametest.TeamShareTests",
 			"net.bananemdnsa.historystages.gametest.TradeLockTests",
 			"net.bananemdnsa.historystages.gametest.ZoneLockTests",
 			"net.bananemdnsa.historystages.gametest.ZoneMarkingTests"

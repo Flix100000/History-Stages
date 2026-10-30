@@ -2,6 +2,7 @@ package net.bananemdnsa.historystages.mixin;
 
 import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.util.DebugLogger;
+import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import net.bananemdnsa.historystages.util.lock.LockFeedback;
 import net.bananemdnsa.historystages.util.lock.LockMessages;
 import net.bananemdnsa.historystages.util.lock.StageLockHelper;
@@ -63,7 +64,7 @@ public class ContainerClickMixin {
             ci.cancel();
 
             ResourceLocation itemRL = BuiltInRegistries.ITEM.getKey(stack.getItem());
-            DebugLogger.runtimeThrottled("Container Lock", "container_" + serverPlayer.getUUID() + "_" + itemRL,
+            DebugLogger.runtimeThrottled(HsRuntimeCategories.CONTAINER_LOCK, "container_" + serverPlayer.getUUID() + "_" + itemRL,
                     "<" + serverPlayer.getName().getString() + "> Interaction with locked item '" + itemRL + "' in container blocked");
 
             LockFeedback.sendActionbar(serverPlayer, FEEDBACK_CATEGORY, LockMessages.itemLocked());
@@ -133,7 +134,7 @@ public class ContainerClickMixin {
         ci.cancel();
 
         ResourceLocation itemRL = BuiltInRegistries.ITEM.getKey(candidate.getItem());
-        DebugLogger.runtimeThrottled("Item Use Lock", "equip_click_" + serverPlayer.getUUID() + "_" + itemRL,
+        DebugLogger.runtimeThrottled(HsRuntimeCategories.ITEM_USE_LOCK, "equip_click_" + serverPlayer.getUUID() + "_" + itemRL,
                 "<" + serverPlayer.getName().getString() + "> Equip via container click for '" + itemRL + "' blocked [action: equip]");
 
         LockFeedback.sendActionbar(serverPlayer, FEEDBACK_CATEGORY, LockMessages.itemLocked());

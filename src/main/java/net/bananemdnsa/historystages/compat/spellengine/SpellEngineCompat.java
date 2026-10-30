@@ -2,6 +2,7 @@ package net.bananemdnsa.historystages.compat.spellengine;
 
 import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.util.DebugLogger;
+import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import net.bananemdnsa.historystages.util.lock.LockFeedback;
 import net.bananemdnsa.historystages.util.lock.LockGate;
 import net.bananemdnsa.historystages.util.lock.LockMessages;
@@ -34,7 +35,7 @@ public final class SpellEngineCompat {
                     Config.GAMEPLAY.lockItemUsage, Config.GAMEPLAY.individualLockItemUsage)) {
                 if (caster instanceof ServerPlayer sp) {
                     ResourceLocation itemRL = BuiltInRegistries.ITEM.getKey(stack.getItem());
-                    DebugLogger.runtimeThrottled("Item Use Lock", "cast_" + sp.getUUID() + "_" + itemRL,
+                    DebugLogger.runtimeThrottled(HsRuntimeCategories.ITEM_USE_LOCK, "cast_" + sp.getUUID() + "_" + itemRL,
                             "<" + sp.getName().getString() + "> Spell cast with '" + itemRL + "' blocked [action: use]");
                     LockFeedback.sendActionbar(sp, "item", LockMessages.itemLocked());
                 }

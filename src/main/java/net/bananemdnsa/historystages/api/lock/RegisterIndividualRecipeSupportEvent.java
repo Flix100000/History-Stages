@@ -1,5 +1,8 @@
 package net.bananemdnsa.historystages.api.lock;
 
+import net.bananemdnsa.historystages.data.diagnostics.AddonRegistrations;
+import net.bananemdnsa.historystages.data.diagnostics.ApiExtension;
+import net.bananemdnsa.historystages.data.diagnostics.ApiOwners;
 import net.bananemdnsa.historystages.data.lock.IndividualRecipeSupport;
 
 import net.bananemdnsa.historystages.platform.bus.Event;
@@ -31,5 +34,6 @@ public class RegisterIndividualRecipeSupportEvent extends Event {
     /** @param recipeTypeId registry id of the recipe type, e.g. {@code mymod:assembler} */
     public void register(String recipeTypeId) {
         IndividualRecipeSupport.register(recipeTypeId);
+        AddonRegistrations.record(ApiOwners.active(), recipeTypeId, ApiExtension.INDIVIDUAL_RECIPE_TYPE);
     }
 }

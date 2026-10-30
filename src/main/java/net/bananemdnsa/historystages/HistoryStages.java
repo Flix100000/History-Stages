@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages;
 
+import net.bananemdnsa.historystages.platform.bus.EventBus;
 import com.mojang.logging.LogUtils;
 import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.commands.StageCommand;
@@ -15,6 +16,7 @@ import net.bananemdnsa.historystages.network.clientbound.SyncStageDefinitionsPac
 import net.bananemdnsa.historystages.network.clientbound.SyncStagesPacket;
 import net.bananemdnsa.historystages.screen.ResearchPedestalScreen;
 import net.bananemdnsa.historystages.util.DebugLogger;
+import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import net.bananemdnsa.historystages.data.saveddata.IndividualStageData;
 import net.bananemdnsa.historystages.data.saveddata.StageData;
 import net.bananemdnsa.historystages.util.lock.StageLockHelper;
@@ -113,7 +115,7 @@ public class HistoryStages {
                     net.bananemdnsa.historystages.network.clientbound.SyncStructureRegistryPacket.fromServer(player),
                     player);
 
-            DebugLogger.runtime("Player Login", player.getName().getString(),
+            DebugLogger.runtime(HsRuntimeCategories.PLAYER_LOGIN, player.getName().getString(),
                     "Synced " + StageManager.getStages().size() + " stage definitions, "
                     + data.getUnlockedStages().size() + " unlocked stages, "
                     + individualData.getUnlockedStages(player.getUUID()).size() + " individual stages");
@@ -169,8 +171,8 @@ public class HistoryStages {
                         shown++;
                     }
 
-                    player.sendSystemMessage(Component.literal("  §8Full report: config/historystages/logs/"));
-                    player.sendSystemMessage(Component.literal("  §8(Disable debug messages in the common config)"));
+                    player.sendSystemMessage(Component.translatable("message.historystages.debug.report"));
+                    player.sendSystemMessage(Component.translatable("message.historystages.debug.disable"));
                 }
             }
         }
@@ -201,7 +203,7 @@ public class HistoryStages {
                 DebugLogger.writeLogFile(StageManager.getStages(), StageManager.getIndividualStages());
 
                 DebugLogger.initRuntimeSession();
-                DebugLogger.runtime("Server", "Server started — cache initialized with "
+                DebugLogger.runtime(HsRuntimeCategories.SERVER, "Server started — cache initialized with "
                         + data.getUnlockedStages().size() + " unlocked stages, "
                         + StageManager.getStages().size() + " stages loaded");
             }
@@ -213,7 +215,7 @@ public class HistoryStages {
         serverInitialized = false;
         // Rolled from the trade hooks this server registered; the next one may register others.
         net.bananemdnsa.historystages.data.lock.TradeGoodsScanner.clearCache();
-        DebugLogger.runtime("Server", "Server stopping — flushing runtime log");
+        DebugLogger.runtime(HsRuntimeCategories.SERVER, "Server stopping — flushing runtime log");
         DebugLogger.flushRuntimeBuffer();
     }
 
@@ -294,7 +296,7 @@ public class HistoryStages {
                 && StageLockHelper.isActionLockedByIndividualStage(stack, player.getUUID(), "pickup")) {
             event.setCanPickup(TriState.FALSE);
             ResourceLocation itemRL = BuiltInRegistries.ITEM.getKey(stack.getItem());
-            DebugLogger.runtimeThrottled("Inventory", "pickup_blocked_" + player.getUUID() + "_" + itemRL,
+            DebugLogger.runtimeThrottled(HsRuntimeCategories.INVENTORY, "pickup_blocked_" + player.getUUID() + "_" + itemRL,
                     "<" + player.getName().getString() + "> Pickup of '" + itemRL + "' blocked [action: pickup]");
             return;
         }
@@ -302,7 +304,7 @@ public class HistoryStages {
         // Global stages: log only (existing behavior)
         if (StageLockHelper.isItemLockedForServer(stack)) {
             ResourceLocation itemRL = BuiltInRegistries.ITEM.getKey(stack.getItem());
-            DebugLogger.runtimeThrottled("Inventory", "pickup_" + player.getUUID() + "_" + itemRL,
+            DebugLogger.runtimeThrottled(HsRuntimeCategories.INVENTORY, "pickup_" + player.getUUID() + "_" + itemRL,
                     "<" + player.getName().getString() + "> Picked up locked '" + itemRL + "' x" + stack.getCount() + " [action: pickup]");
         }
     }
@@ -318,7 +320,7 @@ public class HistoryStages {
             }
         }
         if (!lockedItems.isEmpty()) {
-            DebugLogger.runtime("Inventory", player.getName().getString(),
+            DebugLogger.runtime(HsRuntimeCategories.INVENTORY, player.getName().getString(),
                     "Has " + lockedItems.size() + " locked item stack(s) in inventory: " + String.join(", ", lockedItems));
         }
     }

@@ -79,6 +79,9 @@ public class HistoryStagesFabric implements ModInitializer {
 
         // The window in which other mods may add to this one. After the stages are loaded, since
         // nothing upstream of this point needs a category to exist, and before anything plays.
+        // FTB Teams registers its provider through the window below, so it has to be listening first.
+        integrate("ftbteams", "FTB Teams",
+                net.bananemdnsa.historystages.compat.ftbteams.FTBTeamsIntegration::init);
         AddonRegistrations.run();
 
         optionalIntegrations();

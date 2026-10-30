@@ -6,6 +6,7 @@ import java.util.Set;
 import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.util.DebugLogger;
+import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import net.bananemdnsa.historystages.util.lock.LockFeedback;
 import net.bananemdnsa.historystages.util.lock.LockGate;
 import net.bananemdnsa.historystages.util.lock.LockMessages;
@@ -54,7 +55,7 @@ public class ItemUseLockHandler {
             event.setCanceled(true);
             if (!event.getEntity().level().isClientSide()) {
                 ResourceLocation itemRL = BuiltInRegistries.ITEM.getKey(heldItem.getItem());
-                DebugLogger.runtimeThrottled("Item Use Lock", "use_" + event.getEntity().getUUID() + "_" + itemRL,
+                DebugLogger.runtimeThrottled(HsRuntimeCategories.ITEM_USE_LOCK, "use_" + event.getEntity().getUUID() + "_" + itemRL,
                         "<" + event.getEntity().getName().getString() + "> Use of '" + itemRL + "' blocked [action: use]");
                 showMessage(event.getEntity());
             }
@@ -83,7 +84,7 @@ public class ItemUseLockHandler {
             event.setCanceled(true);
             if (!player.level().isClientSide()) {
                 ResourceLocation itemRL = BuiltInRegistries.ITEM.getKey(heldItem.getItem());
-                DebugLogger.runtimeThrottled("Item Use Lock", "entityuse_" + player.getUUID() + "_" + itemRL,
+                DebugLogger.runtimeThrottled(HsRuntimeCategories.ITEM_USE_LOCK, "entityuse_" + player.getUUID() + "_" + itemRL,
                         "<" + player.getName().getString() + "> Use on entity with '" + itemRL + "' blocked [action: use]");
                 showMessage(player);
             }
@@ -120,7 +121,7 @@ public class ItemUseLockHandler {
                 event.setUseBlock(TriState.FALSE);
                 if (!event.getEntity().level().isClientSide()) {
                     ResourceLocation itemRL = BuiltInRegistries.ITEM.getKey(heldItem.getItem());
-                    DebugLogger.runtimeThrottled("Item Use Lock",
+                    DebugLogger.runtimeThrottled(HsRuntimeCategories.ITEM_USE_LOCK,
                             "blockuse_" + event.getEntity().getUUID() + "_" + itemRL,
                             "<" + event.getEntity().getName().getString() + "> Use of '" + itemRL
                                     + "' on '" + blockRL + "' blocked [action: use on item-consuming block]");
@@ -139,7 +140,7 @@ public class ItemUseLockHandler {
             // actionbar keeps its own cooldown, so holding the button does not spam it.
             if (!event.getEntity().level().isClientSide()) {
                 ResourceLocation itemRL = BuiltInRegistries.ITEM.getKey(heldItem.getItem());
-                DebugLogger.runtimeThrottled("Item Use Lock",
+                DebugLogger.runtimeThrottled(HsRuntimeCategories.ITEM_USE_LOCK,
                         action + "_" + event.getEntity().getUUID() + "_" + itemRL,
                         "<" + event.getEntity().getName().getString() + "> '" + itemRL
                                 + "' blocked [action: " + action + "]");
@@ -163,7 +164,7 @@ public class ItemUseLockHandler {
             event.setCanceled(true);
             if (!event.getEntity().level().isClientSide()) {
                 ResourceLocation itemRL = BuiltInRegistries.ITEM.getKey(heldItem.getItem());
-                DebugLogger.runtimeThrottled("Item Use Lock", "break_" + event.getEntity().getUUID() + "_" + itemRL,
+                DebugLogger.runtimeThrottled(HsRuntimeCategories.ITEM_USE_LOCK, "break_" + event.getEntity().getUUID() + "_" + itemRL,
                         "<" + event.getEntity().getName().getString() + "> Mining with '" + itemRL + "' blocked [action: break]");
                 showMessage(event.getEntity());
             }
@@ -186,7 +187,7 @@ public class ItemUseLockHandler {
             event.setCanceled(true);
             if (!event.getEntity().level().isClientSide()) {
                 ResourceLocation weaponRL = BuiltInRegistries.ITEM.getKey(weapon.getItem());
-                DebugLogger.runtimeThrottled("Item Use Lock", "attack_" + event.getEntity().getUUID() + "_" + weaponRL,
+                DebugLogger.runtimeThrottled(HsRuntimeCategories.ITEM_USE_LOCK, "attack_" + event.getEntity().getUUID() + "_" + weaponRL,
                         "<" + event.getEntity().getName().getString() + "> Attack with '" + weaponRL + "' blocked [action: attack]");
                 showMessage(event.getEntity());
             }
@@ -218,7 +219,7 @@ public class ItemUseLockHandler {
                 Config.GAMEPLAY.individualLockItemUsage);
         if (locked) {
             ResourceLocation itemRL = BuiltInRegistries.ITEM.getKey(newItem.getItem());
-            DebugLogger.runtime("Item Use Lock", player.getName().getString(),
+            DebugLogger.runtime(HsRuntimeCategories.ITEM_USE_LOCK, player.getName().getString(),
                     "'" + itemRL + "' in slot " + slot.getName() + " removed and returned to inventory [action: equip]");
             suppressEquipmentCheck = true;
             try {

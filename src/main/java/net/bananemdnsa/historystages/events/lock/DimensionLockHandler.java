@@ -9,6 +9,7 @@ import net.bananemdnsa.historystages.api.stage.StageScope;
 import net.bananemdnsa.historystages.network.clientbound.LockFeedbackPacket;
 import net.bananemdnsa.historystages.network.PacketHandler;
 import net.bananemdnsa.historystages.util.DebugLogger;
+import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.bananemdnsa.historystages.platform.event.entity.EntityTravelToDimensionEvent;
@@ -42,7 +43,7 @@ public class DimensionLockHandler {
 
         if (!lockedStages.isEmpty()) {
             event.setCanceled(true);
-            DebugLogger.runtime("Dimension Lock", player.getName().getString(),
+            DebugLogger.runtime(HsRuntimeCategories.DIMENSION_LOCK, player.getName().getString(),
                     "Blocked travel to '" + dimId + "' — missing stages: " + lockedStages);
 
             List<String> displayNames = new ArrayList<>(lockedStages.size());

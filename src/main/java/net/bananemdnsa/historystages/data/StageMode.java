@@ -34,6 +34,15 @@ public enum StageMode {
         return this == DEFAULT || this == AUTO;
     }
 
+    /**
+     * True iff an individual stage in this mode may be shared with a team. Temporary and
+     * conditional stages run on a per-player timer or per-player states; shared, one player's
+     * expiry or failing condition would keep flipping the stage for everyone else.
+     */
+    public boolean allowsTeamSharing() {
+        return this == DEFAULT || this == AUTO || this == EXTERNAL;
+    }
+
     private final String serialized;
 
     StageMode(String serialized) {

@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.platform;
 
+import net.bananemdnsa.historystages.data.team.TeamStageSharing;
 import net.bananemdnsa.historystages.events.LecternScrollHandler;
 import net.bananemdnsa.historystages.events.RelockEventHandler;
 import net.bananemdnsa.historystages.events.StageDeathLossHandler;
@@ -64,7 +65,8 @@ public final class Handlers {
             StructureLockHandler.class,
             ZoneBarrierHandler.class,
             ZoneLockHandler.class,
-            ZoneSpawnHandler.class);
+            ZoneSpawnHandler.class,
+            TeamStageSharing.class);
 
     public static void registerCommon() {
         for (Class<?> handler : COMMON) {

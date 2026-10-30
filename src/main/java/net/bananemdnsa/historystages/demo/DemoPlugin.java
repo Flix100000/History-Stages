@@ -3,6 +3,8 @@ package net.bananemdnsa.historystages.demo;
 import net.bananemdnsa.historystages.api.HistoryStagesPlugin;
 import net.bananemdnsa.historystages.api.config.RegisterConfigSectionsEvent;
 import net.bananemdnsa.historystages.api.dependency.RegisterRequirementTypesEvent;
+import net.bananemdnsa.historystages.api.diagnostics.RegisterReportSectionsEvent;
+import net.bananemdnsa.historystages.api.diagnostics.RegisterStageChecksEvent;
 import net.bananemdnsa.historystages.api.lock.RegisterLockCategoriesEvent;
 import net.bananemdnsa.historystages.api.settings.RegisterStageSettingsGroupsEvent;
 import net.bananemdnsa.historystages.api.trigger.RegisterTriggerTypesEvent;
@@ -44,5 +46,17 @@ public final class DemoPlugin implements HistoryStagesPlugin {
     @Override
     public void registerConfigSections(RegisterConfigSectionsEvent event) {
         DemoConfigSections.onRegisterConfigSections(event);
+    }
+
+    @Override
+    public void registerStageChecks(RegisterStageChecksEvent event) {
+        DemoDiagnostics.Registration.onRegisterChecks(event);
+    }
+
+    @Override
+    public void registerReportSections(RegisterReportSectionsEvent event) {
+        DemoDiagnostics.Registration.onRegisterSections(event);
+        // Not a registration, but this runs once at start-up, which is all the listener needs.
+        DemoDiagnostics.Game.register();
     }
 }

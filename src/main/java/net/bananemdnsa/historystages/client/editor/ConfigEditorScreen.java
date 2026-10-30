@@ -588,6 +588,15 @@ public class ConfigEditorScreen extends Screen {
                 Config.GAMEPLAY.individualLockRecipes.get().toString(), false, "true"));
         gameplaySections.add(individualCommon);
 
+        ConfigSection teamMods = new ConfigSection("editor.historystages.config.team_mods");
+        teamMods.add(new ConfigEntry("team_mods.shareOnJoin", "teamShareOnJoin", ConfigType.BOOLEAN,
+                Config.GAMEPLAY.teamShareOnJoin.get().toString(), false, "false"));
+        teamMods.add(new ConfigEntry("team_mods.shareLoss", "teamShareLoss", ConfigType.BOOLEAN,
+                Config.GAMEPLAY.teamShareLoss.get().toString(), false, "false"));
+        teamMods.add(new ConfigEntry("team_mods.useFtbTeams", "ftbTeamsEnabled", ConfigType.BOOLEAN,
+                Config.GAMEPLAY.ftbTeamsEnabled.get().toString(), false, "true"));
+        gameplaySections.add(teamMods);
+
         ConfigSection research = new ConfigSection("editor.historystages.config.research");
         research.add(new ConfigEntry("research.researchTimeInSeconds", "researchTimeInSeconds", ConfigType.INTEGER,
                 Config.GAMEPLAY.researchTimeInSeconds.get().toString(), false, "20", 1, 86400));

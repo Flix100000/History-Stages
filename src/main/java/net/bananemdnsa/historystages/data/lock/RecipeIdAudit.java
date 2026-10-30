@@ -27,7 +27,13 @@ public final class RecipeIdAudit {
     private RecipeIdAudit() {}
 
     /** One stage gating one recipe id that is not loaded. */
-    public record MissingRecipe(String stageId, String recipeId) {}
+    public record MissingRecipe(String stageId, String recipeId) {
+        /** The debug report's warning for it. */
+        public String message() {
+            return "Stage '" + stageId + "' gates recipe '" + recipeId + "', which is not loaded. "
+                    + "The lock does nothing. Script-generated ids change when the script is reordered.";
+        }
+    }
 
     /**
      * @param recipesByStage stage id → the recipe ids that stage gates

@@ -1,5 +1,8 @@
 package net.bananemdnsa.historystages.api.lock;
 
+import net.bananemdnsa.historystages.data.diagnostics.AddonRegistrations;
+import net.bananemdnsa.historystages.data.diagnostics.ApiExtension;
+import net.bananemdnsa.historystages.data.diagnostics.ApiOwners;
 import net.bananemdnsa.historystages.data.lock.category.LockCategories;
 
 import net.bananemdnsa.historystages.api.lock.LockCategory;
@@ -31,5 +34,6 @@ public class RegisterLockCategoriesEvent extends Event {
 
     public void register(LockCategory<?> category) {
         LockCategories.register(category);
+        AddonRegistrations.record(ApiOwners.active(), category.id(), ApiExtension.LOCK_CATEGORY);
     }
 }

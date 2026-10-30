@@ -5,6 +5,7 @@ import java.util.UUID;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.util.DebugLogger;
+import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import net.bananemdnsa.historystages.util.lock.LockFeedback;
 import net.bananemdnsa.historystages.util.lock.LockMessages;
 import net.bananemdnsa.historystages.util.lock.StageLockHelper;
@@ -71,7 +72,7 @@ public abstract class AnvilMenuMixin {
 
         self.getSlot(self.getResultSlot()).set(ItemStack.EMPTY);
         this.cost.set(0);
-        DebugLogger.runtimeThrottled("Enchantment Lock", "anvil_" + player.getUUID(),
+        DebugLogger.runtimeThrottled(HsRuntimeCategories.ENCHANTMENT_LOCK, "anvil_" + player.getUUID(),
                 "<" + player.getName().getString() + "> Anvil blocked: enchantment " + locked + " is locked");
         LockFeedback.sendActionbar(player, "anvil", LockMessages.enchantmentLocked());
     }

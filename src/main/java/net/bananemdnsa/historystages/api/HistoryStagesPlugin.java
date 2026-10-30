@@ -2,9 +2,12 @@ package net.bananemdnsa.historystages.api;
 
 import net.bananemdnsa.historystages.api.config.RegisterConfigSectionsEvent;
 import net.bananemdnsa.historystages.api.dependency.RegisterRequirementTypesEvent;
+import net.bananemdnsa.historystages.api.diagnostics.RegisterReportSectionsEvent;
+import net.bananemdnsa.historystages.api.diagnostics.RegisterStageChecksEvent;
 import net.bananemdnsa.historystages.api.lock.RegisterIndividualRecipeSupportEvent;
 import net.bananemdnsa.historystages.api.lock.RegisterLockCategoriesEvent;
 import net.bananemdnsa.historystages.api.settings.RegisterStageSettingsGroupsEvent;
+import net.bananemdnsa.historystages.api.team.RegisterTeamProvidersEvent;
 import net.bananemdnsa.historystages.api.trigger.RegisterTriggerTypesEvent;
 
 /**
@@ -56,5 +59,17 @@ public interface HistoryStagesPlugin {
 
     /** Declare which recipe types your mod can gate per player. */
     default void registerIndividualRecipeSupport(RegisterIndividualRecipeSupportEvent event) {
+    }
+
+    /** Tell History Stages who plays together, for stages shared with a team. */
+    default void registerTeamProviders(RegisterTeamProvidersEvent event) {
+    }
+
+    /** Add checks that the debug report runs over every stage. */
+    default void registerStageChecks(RegisterStageChecksEvent event) {
+    }
+
+    /** Add sections of your own to the debug report. */
+    default void registerReportSections(RegisterReportSectionsEvent event) {
     }
 }

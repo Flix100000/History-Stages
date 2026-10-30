@@ -4,19 +4,28 @@ import com.mojang.logging.LogUtils;
 import net.bananemdnsa.historystages.api.HistoryStagesPlugin;
 import net.bananemdnsa.historystages.api.config.RegisterConfigSectionsEvent;
 import net.bananemdnsa.historystages.api.dependency.RegisterRequirementTypesEvent;
+import net.bananemdnsa.historystages.api.diagnostics.RegisterReportSectionsEvent;
+import net.bananemdnsa.historystages.api.diagnostics.RegisterStageChecksEvent;
 import net.bananemdnsa.historystages.api.lock.RegisterIndividualRecipeSupportEvent;
 import net.bananemdnsa.historystages.api.lock.RegisterLockCategoriesEvent;
 import net.bananemdnsa.historystages.api.settings.RegisterStageSettingsGroupsEvent;
+import net.bananemdnsa.historystages.api.team.RegisterTeamProvidersEvent;
 import net.bananemdnsa.historystages.api.trigger.RegisterTriggerTypesEvent;
 import net.bananemdnsa.historystages.data.auto.TriggerTypes;
 import net.bananemdnsa.historystages.data.config.AddonConfigSections;
 import net.bananemdnsa.historystages.data.dependency.RequirementTypes;
+import net.bananemdnsa.historystages.data.diagnostics.ApiOwners;
+import net.bananemdnsa.historystages.data.diagnostics.ReportSections;
+import net.bananemdnsa.historystages.data.diagnostics.StageChecks;
 import net.bananemdnsa.historystages.data.lock.IndividualRecipeSupport;
 import net.bananemdnsa.historystages.data.lock.category.LockCategories;
 import net.bananemdnsa.historystages.data.settings.StageSettingsGroups;
+import net.bananemdnsa.historystages.data.team.TeamProviders;
 import net.bananemdnsa.historystages.platform.bus.Event;
 import net.bananemdnsa.historystages.platform.bus.EventBus;
+import net.bananemdnsa.historystages.util.DebugLogger;
 import net.fabricmc.loader.api.FabricLoader;
+import net.fabricmc.loader.api.entrypoint.EntrypointContainer;
 import org.slf4j.Logger;
 
 import java.util.List;
@@ -47,8 +56,10 @@ public final class AddonRegistrations {
      * be too late.
      */
     public static void run() {
-        List<HistoryStagesPlugin> plugins =
-                FabricLoader.getInstance().getEntrypoints(ENTRYPOINT, HistoryStagesPlugin.class);
+        // Containers rather than bare instances: each one names the mod that provides it, which is
+        // how the debug report knows which addon registered what.
+        List<EntrypointContainer<HistoryStagesPlugin>> plugins =
+                FabricLoader.getInstance().getEntrypointContainers(ENTRYPOINT, HistoryStagesPlugin.class);
 
         fire(new RegisterLockCategoriesEvent(), plugins, HistoryStagesPlugin::registerLockCategories);
         LockCategories.freeze();
@@ -70,6 +81,17 @@ public final class AddonRegistrations {
                 HistoryStagesPlugin::registerIndividualRecipeSupport);
         IndividualRecipeSupport.freeze();
 
+        fire(new RegisterTeamProvidersEvent(), plugins, HistoryStagesPlugin::registerTeamProviders);
+        TeamProviders.freeze();
+
+        fire(new RegisterStageChecksEvent(), plugins, HistoryStagesPlugin::registerStageChecks);
+        StageChecks.freeze();
+
+        // The built-in sections go first, so addon sections are listed after them in the report.
+        DebugLogger.registerBuiltInSections();
+        fire(new RegisterReportSectionsEvent(), plugins, HistoryStagesPlugin::registerReportSections);
+        ReportSections.freeze();
+
         // Logged here rather than inside freeze(): LockCategories is unit-tested and the test
         // classpath has no Minecraft on it. This line is also how an in-game check confirms the
         // registration window actually opened.
@@ -79,6 +101,7 @@ public final class AddonRegistrations {
         LOGGER.info("[HistoryStages] Stage settings groups closed: {} total",
                 StageSettingsGroups.all().size());
         LOGGER.info("[HistoryStages] Config sections closed: {} total", AddonConfigSections.all().size());
+        LOGGER.info("[HistoryStages] Team providers closed: {}", TeamProviders.ids());
     }
 
     /**
@@ -86,12 +109,13 @@ public final class AddonRegistrations {
      * right after, so a failure here would leave the game running with someone else's categories
      * silently missing rather than with one broken addon.
      */
-    private static <E extends Event> void fire(E event, List<HistoryStagesPlugin> plugins,
+    private static <E extends Event> void fire(E event, List<EntrypointContainer<HistoryStagesPlugin>> plugins,
                                                BiConsumer<HistoryStagesPlugin, E> call) {
         EventBus.post(event);
-        for (HistoryStagesPlugin plugin : plugins) {
+        for (EntrypointContainer<HistoryStagesPlugin> container : plugins) {
+            HistoryStagesPlugin plugin = container.getEntrypoint();
             try {
-                call.accept(plugin, event);
+                ApiOwners.runAs(container.getProvider().getMetadata().getId(), () -> call.accept(plugin, event));
             } catch (Exception e) {
                 LOGGER.error("[HistoryStages] {} failed during {}",
                         plugin.getClass().getName(), event.getClass().getSimpleName(), e);

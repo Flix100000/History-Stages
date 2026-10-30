@@ -3,6 +3,7 @@ package net.bananemdnsa.historystages.mixin;
 import java.util.List;
 
 import net.bananemdnsa.historystages.util.DebugLogger;
+import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import net.bananemdnsa.historystages.util.lock.TradeLockHelper;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
@@ -56,7 +57,7 @@ public abstract class MerchantContainerMixin {
         activeOffer = null;
         futureXp = 0;
 
-        DebugLogger.runtimeThrottled("Trade Lock",
+        DebugLogger.runtimeThrottled(HsRuntimeCategories.TRADE_LOCK,
                 "trade_payment_" + serverPlayer.getUUID(),
                 "<" + serverPlayer.getName().getString() + "> payment for a gated offer refused — "
                         + "missing stages: " + gating);

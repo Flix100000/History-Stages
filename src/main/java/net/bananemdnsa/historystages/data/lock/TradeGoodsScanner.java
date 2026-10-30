@@ -8,6 +8,7 @@ import java.util.Set;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import net.bananemdnsa.historystages.util.DebugLogger;
+import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.RandomSource;
@@ -150,12 +151,12 @@ public final class TradeGoodsScanner {
                 ? 0 : scanProfessionlessMerchants(level, offers, budget);
         // Timed because this runs while a screen opens, and "the game hiccuped once" is otherwise
         // a mystery nobody can attribute.
-        DebugLogger.runtime("Trade Goods", "scan",
+        DebugLogger.runtime(HsRuntimeCategories.TRADE_GOODS, "scan",
                 "ran " + recipes + " merchant recipes and asked " + ownTableMerchants
                         + " merchants without a profession in " + (budget.now() - startedAt)
                         + "ms, found " + offers.size() + " distinct offers");
         if (budget.spent()) {
-            DebugLogger.runtime("Trade Goods",
+            DebugLogger.runtime(HsRuntimeCategories.TRADE_GOODS,
                     "the scan ran out of its " + TradeScanBudget.TOTAL_MILLIS + "ms and stopped "
                             + "where it was. Trades behind that point are missing from the picker; "
                             + "locking those items by hand still works.");
@@ -188,7 +189,7 @@ public final class TradeGoodsScanner {
                 if (budget.tooSlow(runStartedAt)) {
                     // Not quiet, unlike the refusal above: this one cost real time and the pack
                     // author is the only person who can do anything about it.
-                    DebugLogger.runtime("Trade Goods",
+                    DebugLogger.runtime(HsRuntimeCategories.TRADE_GOODS,
                             listing.getClass().getName() + " took "
                                     + (budget.now() - runStartedAt) + "ms to name one offer and "
                                     + "was not asked again. A trade that searches the world for "

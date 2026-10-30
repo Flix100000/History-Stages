@@ -8,6 +8,7 @@ import com.mojang.serialization.DynamicOps;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import net.bananemdnsa.historystages.util.CurrentRegistries;
 import net.bananemdnsa.historystages.util.DebugLogger;
+import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.component.DataComponentType;
@@ -101,7 +102,7 @@ public class NbtMatcher {
         TypedDataComponent<T> typed = new TypedDataComponent<>(type, value);
         return typed.encodeValue(matchOps())
                 .resultOrPartial(err -> DebugLogger.runtimeThrottled(
-                        "NBT Matching",
+                        HsRuntimeCategories.NBT_MATCHING,
                         "encode_" + BuiltInRegistries.DATA_COMPONENT_TYPE.getKey(type),
                         "Could not encode component "
                                 + BuiltInRegistries.DATA_COMPONENT_TYPE.getKey(type)

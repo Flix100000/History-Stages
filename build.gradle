@@ -31,6 +31,13 @@ repositories {
 		name = "Wisp Forest"
 		url = "https://maven.wispforest.io/releases"
 	}
+	maven {
+		name = "Architectury"
+		url = "https://maven.architectury.dev/"
+		content {
+			includeGroup "dev.architectury"
+		}
+	}
 }
 
 loom {
@@ -87,6 +94,8 @@ dependencies {
 	modCompileOnly "curse.maven:ftb-library-fabric-438495:7746958"
 	modCompileOnly "curse.maven:ftb-teams-fabric-438497:7878280"
 	modCompileOnly "curse.maven:ftb-quests-fabric-438496:7878288"
+	// Team stage sharing listens to FTB Teams' party events, and those are Architectury events.
+	modCompileOnly "dev.architectury:architectury-fabric:13.0.8"
 	//Lootr
 	modImplementation "curse.maven:lootr-fabric-615106:8041235"
 	// Lootr wants this at runtime and will not load without it. Nothing in this mod reads it —

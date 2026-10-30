@@ -6,6 +6,7 @@ import net.fabricmc.fabric.api.transfer.v1.fluid.FluidStorage;
 import net.fabricmc.fabric.api.transfer.v1.fluid.FluidVariant;
 import net.fabricmc.fabric.api.transfer.v1.storage.Storage;
 import net.fabricmc.fabric.api.transfer.v1.storage.StorageView;
+import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
@@ -80,7 +81,7 @@ public final class FluidContent {
             return FluidStorage.ITEM.find(stack, ContainerItemContext.withConstant(stack));
         } catch (Exception e) {
             ResourceLocation item = BuiltInRegistries.ITEM.getKey(stack.getItem());
-            DebugLogger.runtimeThrottled("Fluid Locks", "fluid-cap-" + item,
+            DebugLogger.runtimeThrottled(HsRuntimeCategories.FLUID_CONTENT, "fluid-cap-" + item,
                     "Asking " + item + " what fluid it holds failed: " + e
                             + ". Treated as holding none.");
             return null;

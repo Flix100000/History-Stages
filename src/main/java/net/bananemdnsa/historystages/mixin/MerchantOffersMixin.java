@@ -5,6 +5,7 @@ import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.bananemdnsa.historystages.network.PacketHandler;
 import net.bananemdnsa.historystages.network.clientbound.TradeLockedPacket;
 import net.bananemdnsa.historystages.util.DebugLogger;
+import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import net.bananemdnsa.historystages.util.lock.TradeLockHelper;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
@@ -75,7 +76,7 @@ public interface MerchantOffersMixin {
         }
         original.call(player, containerId, shown, level, xp, showProgress, canRestock);
 
-        DebugLogger.runtimeThrottled("Trade Lock",
+        DebugLogger.runtimeThrottled(HsRuntimeCategories.TRADE_LOCK,
                 "trade_" + serverPlayer.getUUID() + "_" + filtered.gatingStages(),
                 "<" + serverPlayer.getName().getString() + "> " + filtered.keptIndices().size()
                         + " of " + filtered.offeredCount() + " offers shown — held back by: "

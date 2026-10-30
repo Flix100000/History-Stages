@@ -10,6 +10,7 @@ import net.bananemdnsa.historystages.network.PacketHandler;
 import net.bananemdnsa.historystages.network.clientbound.SyncIndividualStagesPacket;
 import net.bananemdnsa.historystages.network.clientbound.SyncStagesPacket;
 import net.bananemdnsa.historystages.util.DebugLogger;
+import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import net.bananemdnsa.historystages.data.saveddata.IndividualStageData;
 import net.bananemdnsa.historystages.util.lock.StageLockHelper;
 import net.bananemdnsa.historystages.data.saveddata.StageData;
@@ -152,7 +153,15 @@ public class StageCommand {
                 .then(Commands.literal("reload")
                         .executes(ctx -> {
                             StageManager.reloadStages();
-                            DebugLogger.runtime("Reload", ctx.getSource().getTextName(), "Reloaded stage configurations (" + StageManager.getStages().size() + " stages)");
+                            // Someone fixing a hand-edited file reloads and looks at the report
+                            // again, so it has to describe the files as they are now. Not for the
+                            // silent reloads the pedestal and quest rewards run on every unlock:
+                            // those would rotate the startup report out within ten unlocks.
+                            if (!ctx.getSource().isSilent()) {
+                                StageManager.validateAgainstRegistries();
+                                DebugLogger.writeLogFile(StageManager.getStages(), StageManager.getIndividualStages());
+                            }
+                            DebugLogger.runtime(HsRuntimeCategories.RELOAD, ctx.getSource().getTextName(), "Reloaded stage configurations (" + StageManager.getStages().size() + " stages)");
                             // Push new definitions to all clients so creative tab / lock decorators reflect mode changes
                             PacketHandler.sendDefinitionsToAll(
                                     new net.bananemdnsa.historystages.network.clientbound.SyncStageDefinitionsPacket(StageManager.getStages()));
@@ -232,11 +241,11 @@ public class StageCommand {
             // would leave it unlocked forever.
             if (temp.globalActiveTicks(stage) > 0) StageStates.relockGlobal(stage, level);
             temp.clearGlobal(stage);
-            DebugLogger.runtime("Temporary", source.getTextName(), "Reset temporary state for global stage '" + stage + "'");
+            DebugLogger.runtime(HsRuntimeCategories.TEMPORARY, source.getTextName(), "Reset temporary state for global stage '" + stage + "'");
             source.sendSuccess(() -> Component.literal("§7[HistoryStages] Reset temporary state for '" + stage + "'."), true);
         } else {
             temp.setGlobalCount(stage, count);
-            DebugLogger.runtime("Temporary", source.getTextName(), "Set unlock count of global stage '" + stage + "' to " + count);
+            DebugLogger.runtime(HsRuntimeCategories.TEMPORARY, source.getTextName(), "Set unlock count of global stage '" + stage + "' to " + count);
             source.sendSuccess(() -> Component.literal("§7[HistoryStages] Set unlock count of '" + stage + "' to " + count + "."), true);
         }
         return 1;
@@ -279,11 +288,11 @@ public class StageCommand {
         if (isReset) {
             if (temp.individualActiveTicks(uuid, stage) > 0) StageStates.relockIndividual(stage, player);
             temp.clearIndividual(uuid, stage);
-            DebugLogger.runtime("Temporary", source.getTextName(), "Reset temporary state for individual stage '" + stage + "' (" + player.getName().getString() + ")");
+            DebugLogger.runtime(HsRuntimeCategories.TEMPORARY, source.getTextName(), "Reset temporary state for individual stage '" + stage + "' (" + player.getName().getString() + ")");
             source.sendSuccess(() -> Component.literal("§7[HistoryStages] Reset temporary state for '" + stage + "' (" + player.getName().getString() + ")."), true);
         } else {
             temp.setIndividualCount(uuid, stage, count);
-            DebugLogger.runtime("Temporary", source.getTextName(), "Set unlock count of individual stage '" + stage + "' to " + count + " (" + player.getName().getString() + ")");
+            DebugLogger.runtime(HsRuntimeCategories.TEMPORARY, source.getTextName(), "Set unlock count of individual stage '" + stage + "' to " + count + " (" + player.getName().getString() + ")");
             source.sendSuccess(() -> Component.literal("§7[HistoryStages] Set unlock count of '" + stage + "' to " + count + " (" + player.getName().getString() + ")."), true);
         }
         return 1;
@@ -322,7 +331,7 @@ public class StageCommand {
                 source.sendFailure(Component.literal("All stages are already unlocked!"));
                 return 0;
             }
-            DebugLogger.runtime("Stage Unlock", executor, "Unlocked ALL stages (" + StageManager.getStages().size() + " total)");
+            DebugLogger.runtime(HsRuntimeCategories.STAGE_UNLOCK, executor, "Unlocked ALL stages (" + StageManager.getStages().size() + " total)");
             broadcastEffect(source, "*", true);
             return syncAndReload(source, d, "All stages unlocked.");
         } else {
@@ -333,7 +342,7 @@ public class StageCommand {
             warnIfForced(source, s, outcome);
             var entry = StageManager.getStages().get(s);
             String displayName = entry != null ? entry.getDisplayName() : s;
-            DebugLogger.runtime("Stage Unlock", executor, "Unlocked stage '" + s + "' (" + displayName + ")");
+            DebugLogger.runtime(HsRuntimeCategories.STAGE_UNLOCK, executor, "Unlocked stage '" + s + "' (" + displayName + ")");
             source.sendSuccess(() -> Component.literal("§7[HistoryStages] Unlocked: " + s), true);
             // No reload here: unlockGlobal already asked for one, and asking twice reloads twice.
             return 1;
@@ -390,7 +399,7 @@ public class StageCommand {
             d.setDirty();
             StageData.refreshCache(d.getUnlockedStages());
 
-            DebugLogger.runtime("Stage Lock", executor, "Locked ALL stages (" + count + " total)");
+            DebugLogger.runtime(HsRuntimeCategories.STAGE_LOCK, executor, "Locked ALL stages (" + count + " total)");
             broadcastEffect(source, "*", false);
             return syncAndReload(source, d, "All stages locked.");
         } else {
@@ -401,7 +410,7 @@ public class StageCommand {
             var lockEntry = StageManager.getStages().get(s);
             String lockDisplayName = lockEntry != null ? lockEntry.getDisplayName() : s;
             EventBus.post(new StageEvent.Locked(s, lockDisplayName));
-            DebugLogger.runtime("Stage Lock", executor, "Locked stage '" + s + "' (" + lockDisplayName + ")");
+            DebugLogger.runtime(HsRuntimeCategories.STAGE_LOCK, executor, "Locked stage '" + s + "' (" + lockDisplayName + ")");
             broadcastEffect(source, s, false);
             return syncAndReload(source, d, "Locked: " + s);
         }
@@ -497,7 +506,9 @@ public class StageCommand {
                 data.addStage(target.getUUID(), stageId);
                 var entry = StageManager.getIndividualStages().get(stageId);
                 String displayName = entry != null ? entry.getDisplayName() : stageId;
-                EventBus.post(new StageEvent.IndividualUnlocked(stageId, displayName, target.getUUID()));
+                // An admin command means this player only, so nothing goes on to the team.
+                net.bananemdnsa.historystages.data.team.TeamStageSharing.withoutSharing(() ->
+                        EventBus.post(new StageEvent.IndividualUnlocked(stageId, displayName, target.getUUID())));
                 changed = true;
             }
         }
@@ -518,7 +529,7 @@ public class StageCommand {
             target.playNotifySound(SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundSource.MASTER, 0.75F, 1.0F);
         }
 
-        DebugLogger.runtime("Individual Unlock", source.getTextName(),
+        DebugLogger.runtime(HsRuntimeCategories.INDIVIDUAL_UNLOCK, source.getTextName(),
                 "Unlocked ALL individual stages for " + target.getName().getString());
         source.sendSuccess(() -> Component.literal("§7[HistoryStages] Unlocked all individual stages for " + target.getName().getString()), true);
         return 1;
@@ -546,7 +557,8 @@ public class StageCommand {
                     .clearIndividual(target.getUUID(), stageId);
             var entry = StageManager.getIndividualStages().get(stageId);
             String displayName = entry != null ? entry.getDisplayName() : stageId;
-            EventBus.post(new StageEvent.IndividualLocked(stageId, displayName, target.getUUID()));
+            net.bananemdnsa.historystages.data.team.TeamStageSharing.withoutSharing(() ->
+                    EventBus.post(new StageEvent.IndividualLocked(stageId, displayName, target.getUUID())));
             StageLockHelper.dropLockedItemsForPlayer(target, stageId);
         }
 
@@ -556,7 +568,7 @@ public class StageCommand {
                 target
         );
 
-        DebugLogger.runtime("Individual Lock", source.getTextName(),
+        DebugLogger.runtime(HsRuntimeCategories.INDIVIDUAL_LOCK, source.getTextName(),
                 "Locked ALL individual stages (" + count + ") for " + target.getName().getString());
         source.sendSuccess(() -> Component.literal("§7[HistoryStages] Locked all individual stages for " + target.getName().getString()), true);
         return 1;
@@ -583,7 +595,7 @@ public class StageCommand {
         if (!outcome.unlocked()) return 0;
         warnIfForced(source, stageId, outcome);
 
-        DebugLogger.runtime("Individual Unlock", source.getTextName(),
+        DebugLogger.runtime(HsRuntimeCategories.INDIVIDUAL_UNLOCK, source.getTextName(),
                 "Unlocked individual stage '" + stageId + "' for " + target.getName().getString());
         source.sendSuccess(() -> Component.literal("§7[HistoryStages] Unlocked individual stage '" + stageId + "' for " + target.getName().getString()), true);
         return 1;
@@ -614,7 +626,9 @@ public class StageCommand {
 
         var entry = StageManager.getIndividualStages().get(stageId);
         String displayName = entry != null ? entry.getDisplayName() : stageId;
-        EventBus.post(new StageEvent.IndividualLocked(stageId, displayName, target.getUUID()));
+        // An admin lock means this player only, so the team keeps the stage.
+        net.bananemdnsa.historystages.data.team.TeamStageSharing.withoutSharing(() ->
+                EventBus.post(new StageEvent.IndividualLocked(stageId, displayName, target.getUUID())));
 
         // Drop locked items from the player's inventory
         StageLockHelper.dropLockedItemsForPlayer(target, stageId);
@@ -637,7 +651,7 @@ public class StageCommand {
             target.playNotifySound(SoundEvents.NOTE_BLOCK_BASS.value(), SoundSource.MASTER, 0.75F, 0.5F);
         }
 
-        DebugLogger.runtime("Individual Lock", source.getTextName(),
+        DebugLogger.runtime(HsRuntimeCategories.INDIVIDUAL_LOCK, source.getTextName(),
                 "Locked individual stage '" + stageId + "' for " + target.getName().getString());
         source.sendSuccess(() -> Component.literal("§7[HistoryStages] Locked individual stage '" + stageId + "' for " + target.getName().getString()), true);
         return 1;

@@ -77,7 +77,9 @@ public record ToggleIndividualStageLockPacket(String stageId, Optional<UUID> tar
                         applied = outcome.unlocked();
                         if (applied && outcome.wasBlocked()) counts[1]++;
                     } else {
-                        applied = StageStates.relockIndividual(msg.stageId, target);
+                        // Admin override too: the team keeps the stage.
+                        applied = net.bananemdnsa.historystages.data.team.TeamStageSharing.withoutSharing(
+                                () -> StageStates.relockIndividual(msg.stageId, target));
                     }
                     if (applied) counts[0]++;
                 }

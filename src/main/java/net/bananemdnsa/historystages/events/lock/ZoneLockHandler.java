@@ -17,6 +17,7 @@ import net.bananemdnsa.historystages.data.lock.engine.StageLocks;
 import net.bananemdnsa.historystages.data.saveddata.IndividualStageData;
 import net.bananemdnsa.historystages.data.saveddata.StageData;
 import net.bananemdnsa.historystages.util.DebugLogger;
+import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import com.mojang.logging.LogUtils;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
@@ -573,7 +574,7 @@ public class ZoneLockHandler {
             player.displayClientMessage(message, true);
         }
 
-        DebugLogger.runtime("Zone Lock", player.getName().getString(),
+        DebugLogger.runtime(HsRuntimeCategories.ZONE_LOCK, player.getName().getString(),
                 "Inside locked zone '" + zoneName + "' — missing stage: " + stageName);
     }
 

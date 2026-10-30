@@ -14,6 +14,7 @@ import net.bananemdnsa.historystages.structure.ClusterDebugRenderer;
 import net.bananemdnsa.historystages.structure.StructureCluster;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.bananemdnsa.historystages.util.DebugLogger;
+import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import net.bananemdnsa.historystages.data.saveddata.IndividualStageData;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
@@ -130,7 +131,7 @@ public class StructureLockHandler {
 
         // Throttled, because this runs on every chunk crossing: one line per player per interval
         // is enough to see whether the zone cache is holding or thrashing.
-        DebugLogger.runtimeThrottled("Structure Lock", "cluster_cache_" + player.getUUID(),
+        DebugLogger.runtimeThrottled(HsRuntimeCategories.STRUCTURE_CACHE, "cluster_cache_" + player.getUUID(),
                 "Zone cache: " + ClusterBuilder.cacheStats());
 
         state.cachedNearbyClusters = nearby;
@@ -346,7 +347,7 @@ public class StructureLockHandler {
             player.displayClientMessage(msg, true);
         }
 
-        DebugLogger.runtime("Structure Lock", player.getName().getString(),
+        DebugLogger.runtime(HsRuntimeCategories.STRUCTURE_LOCK, player.getName().getString(),
                 "Inside locked structure '" + structureId + "' — missing stages: " + state.cachedLockedStageIds);
     }
 

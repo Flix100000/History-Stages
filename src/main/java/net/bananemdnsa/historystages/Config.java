@@ -616,6 +616,9 @@ public class Config {
         public final ModConfigSpec.BooleanValue individualLockBlockInteraction;
         public final ModConfigSpec.BooleanValue individualLockEnchanting;
         public final ModConfigSpec.BooleanValue individualLockRecipes;
+        public final ModConfigSpec.BooleanValue teamShareOnJoin;
+        public final ModConfigSpec.BooleanValue teamShareLoss;
+        public final ModConfigSpec.BooleanValue ftbTeamsEnabled;
 
         // Structure Lock
         public final ModConfigSpec.IntValue structureCheckInterval;
@@ -828,6 +831,29 @@ public class Config {
                     .define("lockRecipes", true);
 
             builder.pop(); // individual_stages
+
+            // --- TEAM MODS SECTION ---
+            // What the "share with team" stage switch does, plus the switch for each team mod
+            // HistoryStages talks to itself.
+            builder.comment("Team mods (FTB Teams): individual stages flagged \"share with team\"").push("team_mods");
+
+            teamShareOnJoin = builder
+                    .comment("Hand a player who joins a team every shared stage someone in that team already has?",
+                            "Checked again at each login. Leaving a team never takes stages away. [Default: false]")
+                    .define("shareOnJoin", false);
+
+            teamShareLoss = builder
+                    .comment("When one player loses a shared stage (on death, by a lock trigger, ...), the rest of",
+                            "the team loses it too? They lose it the normal way and can earn it back, even when the",
+                            "first player lost it for good. Admin locks are never shared. [Default: false]")
+                    .define("shareLoss", false);
+
+            ftbTeamsEnabled = builder
+                    .comment("Count FTB Teams parties as teams for shared stages? Off = FTB Teams stays installed",
+                            "but its parties share nothing. Solo teams never count. [Default: true]")
+                    .define("useFtbTeams", true);
+
+            builder.pop(); // team_mods
 
             // --- STRUCTURE LOCK SECTION ---
             builder.comment("Structure Lock Settings (locks player entry into specified structures)").push("structure_lock");

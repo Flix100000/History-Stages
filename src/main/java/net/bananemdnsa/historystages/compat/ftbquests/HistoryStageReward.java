@@ -16,6 +16,8 @@ import net.bananemdnsa.historystages.network.clientbound.SyncIndividualStagesPac
 import net.bananemdnsa.historystages.network.clientbound.SyncStagesPacket;
 import net.bananemdnsa.historystages.data.saveddata.IndividualStageData;
 import net.bananemdnsa.historystages.data.saveddata.StageData;
+import net.bananemdnsa.historystages.util.DebugLogger;
+import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import net.bananemdnsa.historystages.util.lock.StageLockHelper;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.HolderLookup;
@@ -112,6 +114,8 @@ public class HistoryStageReward extends Reward {
             if (!data.hasStage(stage)) return;
             data.removeStage(stage);
             data.setDirty();
+            DebugLogger.runtime(HsRuntimeCategories.STAGE, player.getName().getString(),
+                    "Global stage '" + stage + "' locked by an FTB Quests reward");
             EventBus.post(new StageEvent.Locked(stage, displayName));
 
             if (player.server != null) {
@@ -125,17 +129,19 @@ public class HistoryStageReward extends Reward {
             if (data.hasStage(stage)) return;
             // A quest reward is pack logic, not an admin action, so a logic block stops it.
             if (net.bananemdnsa.historystages.data.logic.StageLogicGate.global(stage).isBlocked()) {
-                net.bananemdnsa.historystages.util.DebugLogger.runtime("Stage Logic", player.getName().getString(),
+                DebugLogger.runtime(HsRuntimeCategories.STAGE_LOGIC, player.getName().getString(),
                         "FTB Quests reward for '" + stage + "' refused: blocked by its logic.");
                 return;
             }
             if (net.bananemdnsa.historystages.data.relock.LostStages.isLostGlobal(stage, player.serverLevel())) {
-                net.bananemdnsa.historystages.util.DebugLogger.runtime("Re-lock", player.getName().getString(),
+                DebugLogger.runtime(HsRuntimeCategories.RELOCK, player.getName().getString(),
                         "FTB Quests reward for '" + stage + "' refused: lost for good.");
                 return;
             }
             data.addStage(stage);
             data.setDirty();
+            DebugLogger.runtime(HsRuntimeCategories.STAGE, player.getName().getString(),
+                    "Global stage '" + stage + "' unlocked by an FTB Quests reward");
             EventBus.post(new StageEvent.Unlocked(stage, displayName));
 
             if (player.server != null) {
@@ -161,6 +167,8 @@ public class HistoryStageReward extends Reward {
             if (!data.hasStage(player.getUUID(), stage)) return;
             data.removeStage(player.getUUID(), stage);
             data.setDirty();
+            DebugLogger.runtime(HsRuntimeCategories.STAGE, player.getName().getString(),
+                    "Individual stage '" + stage + "' locked by an FTB Quests reward");
             EventBus.post(new StageEvent.IndividualLocked(stage, displayName, player.getUUID()));
 
             // Drop locked items from inventory
@@ -181,17 +189,19 @@ public class HistoryStageReward extends Reward {
         } else {
             if (data.hasStage(player.getUUID(), stage)) return;
             if (net.bananemdnsa.historystages.data.logic.StageLogicGate.individual(stage, player.getUUID()).isBlocked()) {
-                net.bananemdnsa.historystages.util.DebugLogger.runtime("Stage Logic", player.getName().getString(),
+                DebugLogger.runtime(HsRuntimeCategories.STAGE_LOGIC, player.getName().getString(),
                         "FTB Quests reward for '" + stage + "' refused: blocked by its logic.");
                 return;
             }
             if (net.bananemdnsa.historystages.data.relock.LostStages.isLostIndividual(stage, player.getUUID(), player.serverLevel())) {
-                net.bananemdnsa.historystages.util.DebugLogger.runtime("Re-lock", player.getName().getString(),
+                DebugLogger.runtime(HsRuntimeCategories.RELOCK, player.getName().getString(),
                         "FTB Quests reward for '" + stage + "' refused: lost for good.");
                 return;
             }
             data.addStage(player.getUUID(), stage);
             data.setDirty();
+            DebugLogger.runtime(HsRuntimeCategories.STAGE, player.getName().getString(),
+                    "Individual stage '" + stage + "' unlocked by an FTB Quests reward");
             EventBus.post(new StageEvent.IndividualUnlocked(stage, displayName, player.getUUID()));
 
             // Notify only this player

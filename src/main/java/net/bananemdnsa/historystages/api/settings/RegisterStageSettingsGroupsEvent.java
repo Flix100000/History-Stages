@@ -1,5 +1,8 @@
 package net.bananemdnsa.historystages.api.settings;
 
+import net.bananemdnsa.historystages.data.diagnostics.AddonRegistrations;
+import net.bananemdnsa.historystages.data.diagnostics.ApiExtension;
+import net.bananemdnsa.historystages.data.diagnostics.ApiOwners;
 import net.bananemdnsa.historystages.data.settings.StageSettingsGroups;
 
 import net.bananemdnsa.historystages.api.settings.StageSettingsGroup;
@@ -30,5 +33,6 @@ public class RegisterStageSettingsGroupsEvent extends Event {
 
     public void register(StageSettingsGroup group) {
         StageSettingsGroups.register(group);
+        AddonRegistrations.record(ApiOwners.active(), group.id(), ApiExtension.SETTINGS_GROUP);
     }
 }

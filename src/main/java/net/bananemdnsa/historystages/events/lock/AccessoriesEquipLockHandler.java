@@ -4,6 +4,7 @@ import io.wispforest.accessories.api.events.CanEquipCallback;
 import io.wispforest.accessories.api.slot.SlotReference;
 import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.util.DebugLogger;
+import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import net.bananemdnsa.historystages.util.lock.StageLockHelper;
 import net.fabricmc.fabric.api.util.TriState;
 import net.minecraft.ChatFormatting;
@@ -41,7 +42,7 @@ public final class AccessoriesEquipLockHandler {
 
         if (!isClient) {
             ResourceLocation itemRL = BuiltInRegistries.ITEM.getKey(stack.getItem());
-            DebugLogger.runtime("Accessories Lock", player.getName().getString(),
+            DebugLogger.runtime(HsRuntimeCategories.ACCESSORIES_LOCK, player.getName().getString(),
                     "Equipping locked item '" + itemRL + "' in accessory slot '"
                             + reference.slotName() + "' — blocked");
             showMessage((ServerPlayer) player);
