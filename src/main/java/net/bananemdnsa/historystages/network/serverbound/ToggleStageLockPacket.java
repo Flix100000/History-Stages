@@ -45,11 +45,21 @@ public record ToggleStageLockPacket(String stageId, boolean unlock) implements C
             // unlock sound or sent the toast, and every other caller — pedestal, command,
             // auto-trigger, quest reward — never cleared the structure and biome caches or
             // reloaded recipes. Everything either side had is now in the helper.
-            if (msg.unlock) {
-                StageStates.unlockGlobal(msg.stageId, player.serverLevel());
-            } else {
-                StageStates.relockGlobal(msg.stageId, player.serverLevel());
-            }
+            net.bananemdnsa.historystages.events.StageLogicRevocationHandler.reportTo(player, () -> {
+                if (msg.unlock) {
+                    // The editor toggle is an admin override: a logic block is reported, not obeyed.
+                    StageStates.UnlockOutcome outcome = StageStates.forceUnlockGlobal(msg.stageId, player.serverLevel());
+                    if (outcome.wasBlocked()
+                            && net.bananemdnsa.historystages.Config.GAMEPLAY.warnOnForcedUnlock.get()) {
+                        PacketHandler.sendEditorFeedback(EditorFeedbackPacket.info(
+                                "editor.historystages.toast.forced_unlock.title",
+                                "editor.historystages.toast.forced_unlock.message", displayName), player);
+                    }
+                } else {
+                    StageStates.relockGlobal(msg.stageId, player.serverLevel());
+                }
+                return null;
+            });
 
             String titleKey = msg.unlock
                     ? "editor.historystages.toast.stage_unlocked_editor.title"

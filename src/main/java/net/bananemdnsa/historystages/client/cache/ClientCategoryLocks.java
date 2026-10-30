@@ -3,6 +3,7 @@ package net.bananemdnsa.historystages.client.cache;
 import java.util.List;
 
 import net.bananemdnsa.historystages.data.StageManager;
+import net.bananemdnsa.historystages.api.stage.StageScope;
 import net.bananemdnsa.historystages.data.lock.category.CategoryLockResolver;
 import net.bananemdnsa.historystages.data.lock.category.LockCategories;
 import net.bananemdnsa.historystages.api.lock.LockCategory;
@@ -24,9 +25,9 @@ public final class ClientCategoryLocks {
         if (category == null) return false;
 
         return CategoryLockResolver.isLocked(category, subject,
-                        StageManager.getStages(), ClientStageStates.global())
+                        StageManager.getStages(), StageScope.GLOBAL, ClientStageStates.global())
                 || CategoryLockResolver.isLocked(category, subject,
-                        StageManager.getIndividualStages(), ClientStageStates.individual());
+                        StageManager.getIndividualStages(), StageScope.INDIVIDUAL, ClientStageStates.individual());
     }
 
     /** The stages the local player still needs, global ones first. */
@@ -36,8 +37,8 @@ public final class ClientCategoryLocks {
 
         return CategoryLockResolver.join(
                 CategoryLockResolver.missingStages(category, subject,
-                        StageManager.getStages(), ClientStageStates.global()),
+                        StageManager.getStages(), StageScope.GLOBAL, ClientStageStates.global()),
                 CategoryLockResolver.missingStages(category, subject,
-                        StageManager.getIndividualStages(), ClientStageStates.individual()));
+                        StageManager.getIndividualStages(), StageScope.INDIVIDUAL, ClientStageStates.individual()));
     }
 }

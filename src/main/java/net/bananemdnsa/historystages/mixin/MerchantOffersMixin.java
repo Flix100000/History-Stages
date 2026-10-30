@@ -86,7 +86,7 @@ public interface MerchantOffersMixin {
         if (filtered.removedEverything()) {
             PacketHandler.sendTradeLockedToPlayer(
                     new TradeLockedPacket(containerId,
-                            TradeLockHelper.displayNamesOf(filtered.gatingStages()),
+                            TradeLockHelper.displayNamesOf(filtered.gatingStages(), serverPlayer.getUUID()),
                             TradeLockHelper.kindOf(filtered.gatingStages())),
                     serverPlayer);
         }

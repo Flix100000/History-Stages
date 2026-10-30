@@ -63,7 +63,7 @@ public class StageSettingsScreen extends Screen {
                     int minPedestalTier, TierMode pedestalTierMode,
                     StageMode mode, AutoTrigger autoTrigger, TemporaryConfig temporary,
                     HiddenDisplayConfig hiddenDisplay, boolean loseOnDeath,
-                    String scrollCompletion,
+                    boolean interchangeable, String scrollCompletion,
                     Map<String, SettingsValues> addonSettings);
     }
 
@@ -123,6 +123,7 @@ public class StageSettingsScreen extends Screen {
     private TemporaryConfig editTemporary;
     private final HiddenDisplayConfig editHiddenDisplay;
     private boolean editLoseOnDeath;
+    private boolean editInterchangeable;
     /**
      * Working copy of the stage's addon settings, keyed by group id. Copied on construction and
      * handed back only from {@link #save()}, exactly like every other field on this screen, so
@@ -149,6 +150,11 @@ public class StageSettingsScreen extends Screen {
     // Name only supports OFF/REPLACE (the title is never blanked); tooltip adds HIDDEN.
     private static final DisplayMode[] NAME_MODES = {DisplayMode.OFF, DisplayMode.REPLACE};
     private static final DisplayMode[] TOOLTIP_MODES = {DisplayMode.OFF, DisplayMode.HIDDEN, DisplayMode.REPLACE};
+
+    // Locks card state (both scopes). Shares the Individual card's metrics: same header, one
+    // toggle row, one hint line.
+    private int lockCardX, lockCardY, lockCardW, lockCardH;
+    private int interchangeableRowY, interchangeableToggleX;
 
     // Individual card state (only laid out and rendered when isIndividual).
     private int indivCardX, indivCardY, indivCardW, indivCardH;
@@ -229,6 +235,7 @@ public class StageSettingsScreen extends Screen {
     /** Animation state of the two card switches. */
     private final ToggleControl.State lockHintsToggle = new ToggleControl.State();
     private final ToggleControl.State loseToggle = new ToggleControl.State();
+    private final ToggleControl.State interchangeableToggle = new ToggleControl.State();
     private final Anim scrollThumbHover = new Anim();
     /**
      * Gold wash over the button row after a successful save. Save deliberately stays on this
@@ -243,17 +250,19 @@ public class StageSettingsScreen extends Screen {
                                int minPedestalTier, TierMode pedestalTierMode,
                                StageMode mode, AutoTrigger autoTrigger, TemporaryConfig temporary,
                                HiddenDisplayConfig hiddenDisplay, boolean loseOnDeath,
+                               boolean interchangeable,
                                String scrollCompletion, Map<String, SettingsValues> addonSettings,
                                boolean isNewStage, boolean isIndividual, SaveCallback onSave) {
         this(parent, stageId, displayName, researchTime, minPedestalTier, pedestalTierMode,
-                mode, autoTrigger, temporary, hiddenDisplay, loseOnDeath, scrollCompletion, addonSettings,
-                isNewStage, isIndividual, onSave, null);
+                mode, autoTrigger, temporary, hiddenDisplay, loseOnDeath, interchangeable,
+                scrollCompletion, addonSettings, isNewStage, isIndividual, onSave, null);
     }
 
     public StageSettingsScreen(Screen parent, String stageId, String displayName, int researchTime,
                                int minPedestalTier, TierMode pedestalTierMode,
                                StageMode mode, AutoTrigger autoTrigger, TemporaryConfig temporary,
                                HiddenDisplayConfig hiddenDisplay, boolean loseOnDeath,
+                               boolean interchangeable,
                                String scrollCompletion, Map<String, SettingsValues> addonSettings,
                                boolean isNewStage, boolean isIndividual, SaveCallback onSave,
                                Supplier<StageEntry> lockSnapshot) {
@@ -274,6 +283,7 @@ public class StageSettingsScreen extends Screen {
         this.editTemporary = temporary;
         this.editHiddenDisplay = hiddenDisplay != null ? hiddenDisplay : new HiddenDisplayConfig();
         this.editLoseOnDeath = loseOnDeath;
+        this.editInterchangeable = interchangeable;
         this.editAddonSettings = copyAddonSettings(addonSettings);
 
         this.editScrollCompletion = scrollCompletion == null ? "" : scrollCompletion;
@@ -886,8 +896,21 @@ public class StageSettingsScreen extends Screen {
         lockHintsToggleX = displayCardX + 12 + this.font.width(label) + 8;
         lockHintsToggleW = ToggleControl.width(this.font);
 
+        layoutLockCard();
         layoutIndividualCard();
         layoutAddonCards();
+    }
+
+    /** Computes the Locks card geometry directly below the Display card. Both scopes. */
+    private void layoutLockCard() {
+        lockCardX = displayCardX;
+        lockCardW = displayCardW;
+        lockCardY = displayCardY + displayCardH + 6;
+        lockCardH = computeLockCardHeight();
+
+        interchangeableRowY = lockCardY + INDIV_BODY_TOP;
+        String label = Component.translatable("editor.historystages.locks.interchangeable").getString();
+        interchangeableToggleX = lockCardX + 12 + this.font.width(label) + 8;
     }
 
     /** Computes the Individual card geometry below the Display card. Individual stages only. */
@@ -898,7 +921,7 @@ public class StageSettingsScreen extends Screen {
         }
         indivCardX = displayCardX;
         indivCardW = displayCardW;
-        indivCardY = displayCardY + displayCardH + 6;
+        indivCardY = lockCardY + lockCardH + 6;
         indivCardH = computeIndividualCardHeight();
 
         loseRowY = indivCardY + INDIV_BODY_TOP;
@@ -946,6 +969,11 @@ public class StageSettingsScreen extends Screen {
         return lockHintsRow + DISP_TOGGLE_H + DISP_BOTTOM_PAD;
     }
 
+    /** Locks-card height (scroll-invariant): the same one-row shape as the Individual card. */
+    private int computeLockCardHeight() {
+        return computeIndividualCardHeight();
+    }
+
     /** Individual-card height (scroll-invariant): one toggle row plus its hint line. */
     private int computeIndividualCardHeight() {
         return INDIV_BODY_TOP + INDIV_TOGGLE_H + INDIV_HINT_GAP + INDIV_HINT_H + INDIV_BOTTOM_PAD;
@@ -958,7 +986,7 @@ public class StageSettingsScreen extends Screen {
      */
     private void layoutAddonCards() {
         if (addonCards.isEmpty()) return;
-        int y = displayCardY + displayCardH + 6;
+        int y = lockCardY + lockCardH + 6;
         if (isIndividual) y += indivCardH + 6;
 
         for (AddonCard card : addonCards) {
@@ -1040,6 +1068,7 @@ public class StageSettingsScreen extends Screen {
 
     private void clampScroll() {
         int contentBottom = CARD_TOP + computeCardHeight() + 6 + computeDisplayCardHeight();
+        contentBottom += 6 + computeLockCardHeight();
         if (isIndividual) contentBottom += 6 + computeIndividualCardHeight();
         for (AddonCard card : addonCards) contentBottom += 6 + computeAddonCardHeight(card);
         maxScroll = Math.max(0, contentBottom + 6 - viewBottom);
@@ -1169,7 +1198,7 @@ public class StageSettingsScreen extends Screen {
         // abandons by closing without saving. Copy it out, same as it was copied in.
         onSave.onSave(editStageId, editDisplayName, editResearchTime, editMinTier, editTierMode,
                 editMode, editAutoTrigger, editTemporary, editHiddenDisplay, editLoseOnDeath,
-                editScrollCompletion, copyAddonSettings(editAddonSettings));
+                editInterchangeable, editScrollCompletion, copyAddonSettings(editAddonSettings));
 
         // The description rides in graph_stages.json, not in the stage entry, so it has its own
         // packet. Keyed on the original id: a rename is the rename logic's business, and writing
@@ -1334,6 +1363,8 @@ public class StageSettingsScreen extends Screen {
         renderCard(guiGraphics, cardX, cardY, cardW, cardH, modeCardKey(editMode));
         renderCard(guiGraphics, displayCardX, displayCardY, displayCardW, displayCardH,
                 "editor.historystages.display.card");
+        renderCard(guiGraphics, lockCardX, lockCardY, lockCardW, lockCardH,
+                "editor.historystages.locks.card");
         if (isIndividual) {
             renderCard(guiGraphics, indivCardX, indivCardY, indivCardW, indivCardH,
                     "editor.historystages.individual.card");
@@ -1348,6 +1379,7 @@ public class StageSettingsScreen extends Screen {
         }
 
         renderDisplayCardContent(guiGraphics, mouseX, mouseY);
+        renderLockCardContent(guiGraphics, mouseX, mouseY);
         renderIndividualCardContent(guiGraphics, mouseX, mouseY);
         renderAddonCardsContent(guiGraphics, mouseX, mouseY);
 
@@ -1541,6 +1573,24 @@ public class StageSettingsScreen extends Screen {
                 lockHintsToggle, false);
     }
 
+    private void renderLockCardContent(GuiGraphics g, int mouseX, int mouseY) {
+        if (lockCardH <= 0) return;
+        int labelX = lockCardX + 12;
+
+        g.drawString(this.font,
+                Component.translatable("editor.historystages.locks.interchangeable").getString(),
+                labelX, interchangeableRowY + 3, 0xAAAAAA, false);
+
+        interchangeableToggle.update(editInterchangeable, ToggleControl.segmentAt(
+                this.font, interchangeableToggleX, interchangeableRowY, mouseX, mouseY));
+        ToggleControl.draw(g, this.font, interchangeableToggleX, interchangeableRowY,
+                editInterchangeable, interchangeableToggle, false);
+
+        drawSmallText(g,
+                Component.translatable("editor.historystages.locks.interchangeable.hint").getString(),
+                labelX, interchangeableRowY + INDIV_TOGGLE_H + INDIV_HINT_GAP, 0x888888);
+    }
+
     private void renderIndividualCardContent(GuiGraphics g, int mouseX, int mouseY) {
         if (!isIndividual || indivCardH <= 0) return;
         int labelX = indivCardX + 12;
@@ -1635,6 +1685,22 @@ public class StageSettingsScreen extends Screen {
                     return true;
                 }
             }
+        }
+        return false;
+    }
+
+    /** Returns true if a Locks-card control consumed the click. */
+    private boolean handleLockCardClick(double mouseX, double mouseY) {
+        if (lockCardH <= 0) return false;
+
+        Boolean picked = ToggleControl.valueAt(this.font, interchangeableToggleX, mouseX);
+        if (picked != null && mouseY >= interchangeableRowY
+                && mouseY < interchangeableRowY + INDIV_TOGGLE_H) {
+            if (editInterchangeable != picked) {
+                editInterchangeable = picked;
+                onDisplayChanged();
+            }
+            return true;
         }
         return false;
     }
@@ -1813,6 +1879,7 @@ public class StageSettingsScreen extends Screen {
         if (nameModeDropdown.mouseClicked(mouseX, mouseY)) return true;
         if (tooltipModeDropdown.mouseClicked(mouseX, mouseY)) return true;
         if (button == 0 && handleDisplayCardClick(mouseX, mouseY)) return true;
+        if (button == 0 && handleLockCardClick(mouseX, mouseY)) return true;
         if (button == 0 && handleIndividualCardClick(mouseX, mouseY)) return true;
         if (button == 0 && handleAddonCardsClick(mouseX, mouseY)) return true;
         return super.mouseClicked(mouseX, mouseY, button);

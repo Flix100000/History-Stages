@@ -1,5 +1,7 @@
 package net.bananemdnsa.historystages.client.editor.graph;
 
+import net.bananemdnsa.historystages.client.display.BlockedLines;
+import net.bananemdnsa.historystages.data.logic.StageLogic;
 import net.bananemdnsa.historystages.GraphConfig;
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.StageManager;
@@ -84,7 +86,18 @@ public class GraphViewFilter {
     public boolean showsStage(String stageId, boolean isIndividual) {
         if (passThrough) return true;
         if (isIndividual && !showIndividualStages) return false;
-        return visible.contains(StageManager.graphKey(stageId, isIndividual));
+        if (!visible.contains(StageManager.graphKey(stageId, isIndividual))) return false;
+        return logicVisibility(stageId, isIndividual) != StageLogic.Visibility.VANISH;
+    }
+
+    /**
+     * What a "hidden while" block says about the stage for this player. A stage the player has
+     * already unlocked is never hidden from them, whatever its condition says: they found it,
+     * and hiding it again helps nobody.
+     */
+    private static StageLogic.Visibility logicVisibility(String stageId, boolean isIndividual) {
+        if (GraphUnlocks.isUnlocked(StageManager.graphKey(stageId, isIndividual))) return StageLogic.Visibility.VISIBLE;
+        return BlockedLines.visibilityForLocalPlayer(stageId, isIndividual);
     }
 
     /** True when DETAIL satellites (items/XP/kills/...) may be drawn. */
@@ -116,8 +129,12 @@ public class GraphViewFilter {
      * </ul>
      */
     public boolean anonymizes(String stageId, boolean isIndividual, StageEntry entry) {
-        if (passThrough || !respectHiddenDisplay || entry == null) return false;
+        if (passThrough || entry == null) return false;
         if (GraphUnlocks.isUnlocked(StageManager.graphKey(stageId, isIndividual))) return false;
+        // A "hidden while" block anonymises on its own authority; respectHiddenDisplay only
+        // governs the hidden_display name mode.
+        if (logicVisibility(stageId, isIndividual) == StageLogic.Visibility.ANONYMOUS) return true;
+        if (!respectHiddenDisplay) return false;
         return entry.getHiddenDisplay().getNameMode() != DisplayMode.OFF;
     }
 

@@ -139,8 +139,23 @@ public final class CategoryLockIndexes {
      * and {@code mask} is the same answer in bits, so a lock check is one pass over a few longs
      * rather than a lookup per stage. That is the shape a mod-tiered pack produces: twenty stages
      * each locking the same mod makes every item of that mod depend on all twenty.
+     *
+     * <p>The mask comes split in two: {@code required} holds the stages that each have to be
+     * unlocked, {@code anyOf} the interchangeable ones, of which one is enough. In a pack without
+     * interchangeable stages {@code anyOf} is always empty.
      */
-    public record ItemGating(List<String> stages, StageMask mask) {}
+    public record ItemGating(List<String> stages, StageMask required, StageMask anyOf) {
+
+        /** The lock question in bits, with the same answer {@link LockResolution} gives. */
+        public boolean isLockedFor(StageMask unlocked) {
+            if (unlocked.missesAnyOf(required)) return true;
+            return !anyOf.isEmpty() && !unlocked.hasAnyOf(anyOf);
+        }
+
+        public boolean hasBits() {
+            return required != StageMask.EMPTY || anyOf != StageMask.EMPTY;
+        }
+    }
 
     private static final Map<String, ItemGating> itemGatingGlobal =
             new java.util.concurrent.ConcurrentHashMap<>();

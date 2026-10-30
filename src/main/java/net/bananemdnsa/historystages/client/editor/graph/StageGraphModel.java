@@ -91,6 +91,12 @@ public final class StageGraphModel {
             StageEntry entry = e.getValue();
             String key = StageManager.graphKey(id, individual);
             NodeState state = GraphReachability.resolve(key, prereqs, GraphUnlocks::isUnlocked);
+            // Reachable but held back by its logic. Asked only for reachable nodes: a locked one
+            // is not researchable anyway, and it stays hidden where a reachable one would show.
+            if (state == NodeState.REACHABLE
+                    && net.bananemdnsa.historystages.client.display.BlockedLines.forLocalPlayer(id, individual).isBlocked()) {
+                state = NodeState.BLOCKED;
+            }
             boolean anonymous = filter.anonymizes(id, individual, entry);
             String label = anonymous ? hiddenLabel() : entry.getDisplayName();
             String icon = anonymous ? defaultIcon() : resolveIcon(entry);

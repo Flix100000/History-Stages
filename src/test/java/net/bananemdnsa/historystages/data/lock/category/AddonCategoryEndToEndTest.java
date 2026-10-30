@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.data.lock.category;
 
+import net.bananemdnsa.historystages.api.stage.StageScope;
 import net.bananemdnsa.historystages.api.lock.CategoryStorage;
 
 import net.bananemdnsa.historystages.api.lock.AddonLockCategory;
@@ -80,18 +81,18 @@ class AddonCategoryEndToEndTest {
 
         // 4. a player without the stage is gated, and is told which stage they need
         Offer gatedOffer = new Offer("minecraft:emerald", 3);
-        assertTrue(CategoryLockResolver.isLocked(trades, gatedOffer, stages, StageStateView.NONE_UNLOCKED));
+        assertTrue(CategoryLockResolver.isLocked(trades, gatedOffer, stages, StageScope.GLOBAL, StageStateView.NONE_UNLOCKED));
         assertEquals(List.of("bronze"),
-                CategoryLockResolver.missingStages(trades, gatedOffer, stages, StageStateView.NONE_UNLOCKED));
+                CategoryLockResolver.missingStages(trades, gatedOffer, stages, StageScope.GLOBAL, StageStateView.NONE_UNLOCKED));
 
         // 5. the same player, once they have the stage, is not
         StageStateView hasBronze = StageStateView.of(Set.of("bronze"));
-        assertFalse(CategoryLockResolver.isLocked(trades, gatedOffer, stages, hasBronze));
-        assertTrue(CategoryLockResolver.missingStages(trades, gatedOffer, stages, hasBronze).isEmpty());
+        assertFalse(CategoryLockResolver.isLocked(trades, gatedOffer, stages, StageScope.GLOBAL, hasBronze));
+        assertTrue(CategoryLockResolver.missingStages(trades, gatedOffer, stages, StageScope.GLOBAL, hasBronze).isEmpty());
 
         // 6. something the addon never gated is never locked
         Offer untouchedOffer = new Offer("minecraft:diamond", 3);
-        assertFalse(CategoryLockResolver.isLocked(trades, untouchedOffer, stages, StageStateView.NONE_UNLOCKED));
+        assertFalse(CategoryLockResolver.isLocked(trades, untouchedOffer, stages, StageScope.GLOBAL, StageStateView.NONE_UNLOCKED));
     }
 
     /**

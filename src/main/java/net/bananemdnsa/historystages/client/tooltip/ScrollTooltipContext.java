@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.tooltip;
 
+import net.bananemdnsa.historystages.client.display.BlockedLines;
 import net.bananemdnsa.historystages.data.DependencyGroup;
 import net.bananemdnsa.historystages.api.dependency.RequirementResult;
 import net.bananemdnsa.historystages.research.TierMode;
@@ -26,7 +27,19 @@ import java.util.List;
  *       yet".</li>
  * </ul>
  */
+/*
+ * blocked / blockedReason: whether the stage is blocked by its logic for the local player, and the
+ * reason lines (empty under PLAIN). The "blocked" section renders only when blocked is true.
+ */
 public record ScrollTooltipContext(String stageName, boolean individual, String ownerName,
                                     int minTier, TierMode tierMode,
-                                    List<DependencyGroup> groups, RequirementResult result) {
+                                    List<DependencyGroup> groups, RequirementResult result,
+                                    boolean blocked, List<BlockedLines.Line> blockedReason,
+                                    List<CostEntry> cost,
+                                    List<List<BlockedLines.Line>> revokeWarnings,
+                                    List<String> revokedByUnlocking) {
+
+    /** One cost block for the tooltip: its heading (active or a hint) and its condition lines. */
+    public record CostEntry(net.minecraft.network.chat.Component heading, boolean active,
+                            List<BlockedLines.Line> reason) {}
 }

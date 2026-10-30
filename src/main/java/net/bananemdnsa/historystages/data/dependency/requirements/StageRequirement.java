@@ -48,8 +48,10 @@ public class StageRequirement implements Requirement {
                 StageData data = StageData.get(ctx.level());
                 met = data.getUnlockedStages().contains(stageId);
             }
-            StageEntry stageEntry = StageManager.getStages().get(stageId);
-            String name = stageEntry != null ? stageEntry.getDisplayName() : stageId;
+            // "???" for a stage the player may not see yet: it still has to be listed, or the
+            // requirement would look met.
+            String name = net.bananemdnsa.historystages.data.logic.StageLogicGate.nameFor(stageId, false,
+                    ctx.player() != null ? ctx.player().getUUID() : null);
             results.add(new RequirementResult.EntryResult("stage", stageId, name, met, met ? 1 : 0, 1));
         }
         return results;

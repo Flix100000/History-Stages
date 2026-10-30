@@ -164,6 +164,6 @@ public interface StageLockEngine {
      */
     default boolean isItemLocked(String itemId, String modId, @Nullable ItemStack stack,
                                  StageScope scope, StageStateView state, @Nullable StageMask unlocked) {
-        return LockResolution.isLocked(gatingStagesForItem(itemId, modId, stack, scope), state);
+        return LockResolution.isLocked(scope, gatingStagesForItem(itemId, modId, stack, scope), state);
     }
 }

@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.data.lock.category;
 
+import net.bananemdnsa.historystages.api.stage.StageScope;
 import net.bananemdnsa.historystages.api.lock.LockCategory;
 
 import java.util.LinkedHashMap;
@@ -54,7 +55,7 @@ class CategoryLocksBuiltInTest {
         assertTrue(CategoryLockResolver.isLocked(category("historystages:dimensions"),
                 "minecraft:the_nether",
                 stages("bronze", gatingDimension("minecraft:the_nether")),
-                StageStateView.NONE_UNLOCKED),
+                StageScope.GLOBAL, StageStateView.NONE_UNLOCKED),
                 "a built-in category must answer for itself instead of defaulting to false");
     }
 
@@ -63,7 +64,7 @@ class CategoryLocksBuiltInTest {
         assertFalse(CategoryLockResolver.isLocked(category("historystages:dimensions"),
                 "minecraft:the_nether",
                 stages("bronze", gatingDimension("minecraft:the_nether")),
-                StageStateView.of(Set.of("bronze"))));
+                StageScope.GLOBAL, StageStateView.of(Set.of("bronze"))));
     }
 
     @Test
@@ -71,7 +72,7 @@ class CategoryLocksBuiltInTest {
         assertEquals(List.of("bronze"), CategoryLockResolver.missingStages(
                 category("historystages:dimensions"), "minecraft:the_nether",
                 stages("bronze", gatingDimension("minecraft:the_nether")),
-                StageStateView.NONE_UNLOCKED));
+                StageScope.GLOBAL, StageStateView.NONE_UNLOCKED));
     }
 
     @Test
@@ -81,7 +82,7 @@ class CategoryLocksBuiltInTest {
         assertFalse(CategoryLockResolver.isLocked(category("historystages:dimensions"),
                 "minecraft:the_end",
                 stages("bronze", gatingDimension("minecraft:the_nether")),
-                StageStateView.NONE_UNLOCKED));
+                StageScope.GLOBAL, StageStateView.NONE_UNLOCKED));
     }
 
     @Test

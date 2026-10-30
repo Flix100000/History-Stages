@@ -45,8 +45,8 @@ public class MobLockHandler {
                 StageLocks.engine().gatingStagesForEntityAttack(entityId, StageScope.INDIVIDUAL);
 
         List<String> lockedStages =
-                new ArrayList<>(LockResolution.missingStages(requiredStageIds, StageLocks.serverGlobal()));
-        lockedStages.addAll(LockResolution.missingStages(
+                new ArrayList<>(LockResolution.missingStages(StageScope.GLOBAL, requiredStageIds, StageLocks.serverGlobal()));
+        lockedStages.addAll(LockResolution.missingStages(StageScope.INDIVIDUAL,
                 individualStageIds, StageLocks.serverIndividual(player.getUUID())));
 
         if (lockedStages.isEmpty() && requiredStageIds.isEmpty() && individualStageIds.isEmpty()) return;
@@ -64,7 +64,7 @@ public class MobLockHandler {
             List<String> displayNames = new ArrayList<>(lockedStages.size());
             for (String stageId : lockedStages) {
                 StageEntry stageEntry = StageManager.getStages().get(stageId);
-                displayNames.add(stageEntry != null ? stageEntry.getDisplayName() : stageId);
+                displayNames.add(net.bananemdnsa.historystages.data.logic.StageLogicGate.nameForAnyScope(stageId, player.getUUID()));
             }
 
             PacketHandler.sendLockFeedbackToPlayer(

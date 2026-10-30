@@ -835,7 +835,7 @@ public class StageOverviewScreen extends Screen {
             String info = Component.translatable("editor.historystages.entries", itemCount).getString();
             int infoColor = (int) (0x88 + progress * 0x33);
             guiGraphics.drawString(this.font, info, contentLeft + 22, entryTop + 15, (0xFF << 24) | (infoColor << 16) | (infoColor << 8) | infoColor, false);
-            if (entry.hasDependencies()) drawDepBadge(guiGraphics, info, contentLeft, entryTop + 15);
+            drawInfoBadges(guiGraphics, entry, info, contentLeft, entryTop + 15);
 
             // Lock/Unlock toggle button (right side) - bounds already calculated above
             if (!organizeMode) {
@@ -1027,7 +1027,7 @@ public class StageOverviewScreen extends Screen {
                 guiGraphics.drawString(this.font, info, contentLeft + 22, entryTop + 15, (0xFF << 24) | (infoColor << 16) | (infoColor << 8) | infoColor, false);
                 // Individual stages carry dependencies just like global ones, so the marker
                 // belongs on these rows too.
-                if (entry.hasDependencies()) drawDepBadge(guiGraphics, info, contentLeft, entryTop + 15);
+                drawInfoBadges(guiGraphics, entry, info, contentLeft, entryTop + 15);
 
                 // Lock/Unlock toggle button, mirroring the global rows.
                 if (!organizeMode) {
@@ -2014,18 +2014,27 @@ public class StageOverviewScreen extends Screen {
         }
     }
 
+    private static final int LOGIC_BADGE_COLOR = 0xFF7777;
+
     /**
-     * Marks a row whose stage is gated behind other stages. Unlike the mode and death
-     * badges this is plain text in the info line, not a pill in the right-hand column —
-     * it is a property of the stage's definition, not of its current state.
+     * Marks a row whose stage is gated behind other stages ("[Dep]") or carries logic blocks
+     * ("[Logic]"). Unlike the mode and death badges these are plain text in the info line, not
+     * pills in the right-hand column: they describe the stage's definition, not its current state.
      *
-     * @param info the info line it is placed behind, needed for its width
+     * @param info the info line they are placed behind, needed for its width
      */
-    private void drawDepBadge(GuiGraphics g, String info, int contentLeft, int y) {
-        String label = DEP_BADGE_PREFIX
-                + Component.translatable("editor.historystages.badge.dependencies").getString();
-        g.drawString(this.font, label, contentLeft + 22 + this.font.width(info) + 6, y,
-                DEP_BADGE_COLOR, false);
+    private void drawInfoBadges(GuiGraphics g, StageEntry entry, String info, int contentLeft, int y) {
+        int x = contentLeft + 22 + this.font.width(info) + 6;
+        if (entry.hasDependencies()) {
+            String label = DEP_BADGE_PREFIX
+                    + Component.translatable("editor.historystages.badge.dependencies").getString();
+            g.drawString(this.font, label, x, y, DEP_BADGE_COLOR, false);
+            x += this.font.width(label) + 4;
+        }
+        if (entry.hasLogic()) {
+            String label = Component.translatable("editor.historystages.badge.logic").getString();
+            g.drawString(this.font, label, x, y, LOGIC_BADGE_COLOR, false);
+        }
     }
 
     /** Rendered width of the lose-on-death pill, or 0 when the stage isn't flagged. */

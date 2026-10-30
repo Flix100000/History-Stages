@@ -38,7 +38,7 @@ import java.util.Map;
 public class GraphStyleScreen extends Screen {
 
     private static final List<String> COLLECTIONS = List.of("global", "individual");
-    private static final List<String> STATES = List.of("unlocked", "reachable", "locked");
+    private static final List<String> STATES = List.of("unlocked", "reachable", "locked", "blocked");
 
     /** Matches {@code GraphCanvas.BASE_NODE_RADIUS}, so the preview is the node at zoom 1. */
     private static final int BASE_NODE_RADIUS = 15;
@@ -323,7 +323,9 @@ public class GraphStyleScreen extends Screen {
         NodeShapes.draw(g, style.shape(), cx, cy, r,
                 style.fillArgb(), style.border(), Math.max(0, style.borderWidth()));
         if (style.checkmark()) {
-            NodeShapes.checkmark(g, cx, cy, r, style.border());
+            NodeShapes.statusBadge(g, "blocked".equals(state)
+                    ? net.bananemdnsa.historystages.data.graph.NodeState.BLOCKED
+                    : net.bananemdnsa.historystages.data.graph.NodeState.UNLOCKED, cx, cy, r, style.border());
         }
 
         if (!"NONE".equals(style.label())) {

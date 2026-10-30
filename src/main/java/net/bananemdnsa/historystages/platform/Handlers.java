@@ -2,6 +2,7 @@ package net.bananemdnsa.historystages.platform;
 
 import net.bananemdnsa.historystages.events.LecternScrollHandler;
 import net.bananemdnsa.historystages.events.StageDeathLossHandler;
+import net.bananemdnsa.historystages.events.StageLogicRevocationHandler;
 import net.bananemdnsa.historystages.events.ZoneMarkingHandler;
 import net.bananemdnsa.historystages.events.lock.AttributeRefreshHandler;
 import net.bananemdnsa.historystages.events.lock.BiomeLockHandler;
@@ -43,6 +44,7 @@ public final class Handlers {
     public static final List<Class<?>> COMMON = List.of(
             LecternScrollHandler.class,
             StageDeathLossHandler.class,
+            StageLogicRevocationHandler.class,
             ZoneMarkingHandler.class,
             AttributeRefreshHandler.class,
             BiomeLockHandler.class,

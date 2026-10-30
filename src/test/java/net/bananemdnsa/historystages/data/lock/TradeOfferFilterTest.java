@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.data.lock;
 
+import net.bananemdnsa.historystages.api.stage.StageScope;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -64,7 +65,7 @@ class TradeOfferFilterTest {
     private static TradeOfferFilter.Result filter(List<TradeOfferFilter.Offer> offers,
                                                   Map<String, StageEntry> stages) {
         return TradeOfferFilter.filter(offers, LIBRARIAN_3, stages,
-                StageStateView.NONE_UNLOCKED, NO_ITEM_ACTION_GATE);
+                StageScope.GLOBAL, StageStateView.NONE_UNLOCKED, NO_ITEM_ACTION_GATE);
     }
 
     @Test
@@ -135,7 +136,7 @@ class TradeOfferFilterTest {
         TradeOfferFilter.Result result = TradeOfferFilter.filter(
                 List.of(PAPER_FOR_EMERALD),
                 new TradeOfferFilter.MerchantView(null, 1, "minecraft:wandering_trader"),
-                stages("bronze", stage), StageStateView.NONE_UNLOCKED, NO_ITEM_ACTION_GATE);
+                stages("bronze", stage), StageScope.GLOBAL, StageStateView.NONE_UNLOCKED, NO_ITEM_ACTION_GATE);
 
         assertEquals(List.of(0), result.keptIndices());
     }
@@ -213,7 +214,7 @@ class TradeOfferFilterTest {
                 new TradeOfferFilter.MerchantView(null, 1, "minecraft:wandering_trader"),
                 stages("bronze", gatingOffers(
                         paperForEmeraldAt("minecraft:wandering_trader", 1))),
-                StageStateView.NONE_UNLOCKED, NO_ITEM_ACTION_GATE);
+                StageScope.GLOBAL, StageStateView.NONE_UNLOCKED, NO_ITEM_ACTION_GATE);
 
         assertEquals(List.of(), result.keptIndices());
         assertEquals(List.of("bronze"), result.gatingStages());
@@ -237,7 +238,7 @@ class TradeOfferFilterTest {
 
         TradeOfferFilter.Result result = TradeOfferFilter.filter(
                 List.of(PAPER_FOR_EMERALD), LIBRARIAN_3, stages,
-                StageStateView.of(Set.of("bronze")), NO_ITEM_ACTION_GATE);
+                StageScope.GLOBAL, StageStateView.of(Set.of("bronze")), NO_ITEM_ACTION_GATE);
 
         assertEquals(List.of(0), result.keptIndices());
     }
@@ -267,7 +268,7 @@ class TradeOfferFilterTest {
 
         TradeOfferFilter.Result result = TradeOfferFilter.filter(
                 List.of(PAPER_FOR_EMERALD), LIBRARIAN_3, new LinkedHashMap<>(),
-                StageStateView.NONE_UNLOCKED, gate);
+                StageScope.GLOBAL, StageStateView.NONE_UNLOCKED, gate);
 
         assertEquals(List.of(), result.keptIndices());
         assertEquals(List.of("iron"), result.gatingStages());
@@ -284,7 +285,7 @@ class TradeOfferFilterTest {
 
         TradeOfferFilter.Result result = TradeOfferFilter.filter(
                 List.of(PAPER_FOR_EMERALD), LIBRARIAN_3, new LinkedHashMap<>(),
-                StageStateView.NONE_UNLOCKED, gate);
+                StageScope.GLOBAL, StageStateView.NONE_UNLOCKED, gate);
 
         assertEquals(List.of(), result.keptIndices());
     }
@@ -301,7 +302,7 @@ class TradeOfferFilterTest {
         TradeOfferFilter.Result result = TradeOfferFilter.filter(
                 List.of(PAPER_FOR_EMERALD), LIBRARIAN_3,
                 stages("bronze", gatingOffers(paperForEmeraldAt("minecraft:librarian", 3))),
-                StageStateView.NONE_UNLOCKED, gate);
+                StageScope.GLOBAL, StageStateView.NONE_UNLOCKED, gate);
 
         assertEquals(List.of(), result.keptIndices());
         assertEquals(Set.of("bronze", "iron"), Set.copyOf(result.gatingStages()));

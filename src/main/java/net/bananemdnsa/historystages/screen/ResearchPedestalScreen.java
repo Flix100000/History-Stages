@@ -1,5 +1,7 @@
 package net.bananemdnsa.historystages.screen;
 
+import net.bananemdnsa.historystages.client.display.BlockedLines;
+import java.util.List;
 import net.bananemdnsa.historystages.api.dependency.Requirement;
 
 import net.bananemdnsa.historystages.HistoryStages;
@@ -83,6 +85,8 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
 
     private boolean hasDependencies = false;
     private Component pendingTooltip = null;
+    /** Multi-line tooltip for the "blocked" status line; wins over {@link #pendingTooltip}. */
+    private List<Component> pendingTooltipLines = null;
 
     // Scrolling state
     private float scrollAmount = 0.0f;
@@ -355,11 +359,24 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
     }
 
     /** The live booster multiplier, or null when no booster is under the pedestal. */
+    /**
+     * The research speed next to the title: the booster's multiplier combined with the stage's
+     * cost blocks. Marked with a star when a cost block is part of it, so the player knows to
+     * hover for the reason.
+     */
     private Component speedLabel() {
-        int speedPercent = menu.getCurrentSpeedPercent();
-        return speedPercent > 0
-                ? Component.literal(BoosterUtil.formatMultiplier(speedPercent / 100.0))
-                : null;
+        double multiplier = effectiveSpeedMultiplier();
+        if (Math.abs(multiplier - 1.0) < 1e-6) return null;
+        String text = Double.isInfinite(multiplier) ? "\u221E" : String.format("\u00D7%.2f", multiplier);
+        return Component.literal(menu.getTimeFactorPercent() != 100 ? "\u2726" + text : text);
+    }
+
+    /** Booster speed times the cost blocks' time factor; infinite when a block makes it instant. */
+    private double effectiveSpeedMultiplier() {
+        double booster = BoosterUtil.speedMultiplier(menu.getCurrentSpeedPercent() / 100.0);
+        int timePercent = menu.getTimeFactorPercent();
+        if (timePercent <= 0) return Double.POSITIVE_INFINITY;
+        return booster * 100.0 / timePercent;
     }
 
     @Override
@@ -430,6 +447,12 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
                         stageLine = Component.translatable("gui.historystages.pedestal.researching", stageName);
                         nameColor = SLAB_PRIMARY;
                     }
+                    // A research that would take something away says so on its title; the hover
+                    // names what.
+                    if (!BlockedLines.revokedByUnlocking(stageId, isIndividual).isEmpty()) {
+                        stageLine = Component.literal("\u26A0 ").withStyle(net.minecraft.ChatFormatting.GOLD)
+                                .append(stageLine.copy());
+                    }
                     drawSplitLine(guiGraphics, PedestalLayout.LINE_1_Y,
                             stageLine, nameColor, speedLabel(), SLAB_SECONDARY);
 
@@ -442,6 +465,12 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
                                 : "screen.historystages.tier_required.min";
                         drawCentred(guiGraphics,
                                 Component.translatable(key, TierMatcher.roman(menu.getRequiredTier())),
+                                PedestalLayout.LINE_2_Y, SLAB_ERROR);
+                    } else if (menu.isLogicBlocked()) {
+                        // Before "requirements not met": a blocked stage folds into that verdict
+                        // on the server, and the player needs the actual reason, which the hover
+                        // on this line spells out.
+                        drawCentred(guiGraphics, trimToWidth(BlockedLines.header(), slabTextWidth()),
                                 PedestalLayout.LINE_2_Y, SLAB_ERROR);
                     } else if (!menu.areDependenciesMet()) {
                         drawCentred(guiGraphics,
@@ -456,9 +485,9 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
 
                         int remainingTicks = Math.max(0, maxProgress - currentProgress);
                         // Account for the live speed multiplier from the booster under the pedestal.
-                        double speedMultiplier =
-                                BoosterUtil.speedMultiplier(menu.getCurrentSpeedPercent() / 100.0);
-                        int effectiveRemainingTicks = (int) Math.ceil(remainingTicks / speedMultiplier);
+                        double speedMultiplier = effectiveSpeedMultiplier();
+                        int effectiveRemainingTicks = Double.isInfinite(speedMultiplier) ? 0
+                                : (int) Math.ceil(remainingTicks / speedMultiplier);
                         int remainingSeconds = (effectiveRemainingTicks / 20)
                                 + (effectiveRemainingTicks % 20 > 0 ? 1 : 0);
                         if (percent >= 100) remainingSeconds = 0;
@@ -568,7 +597,15 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
             }
         }
 
-        if (pendingTooltip != null) {
+        pendingTooltipLines = blockedTooltip(mouseX, mouseY);
+        if (pendingTooltipLines == null) pendingTooltipLines = costTooltip(mouseX, mouseY);
+        if (pendingTooltipLines == null) pendingTooltipLines = revokeTooltip(mouseX, mouseY);
+        if (pendingTooltipLines != null) {
+            guiGraphics.pose().pushPose();
+            guiGraphics.pose().translate(0, 0, 500);
+            guiGraphics.renderComponentTooltip(this.font, pendingTooltipLines, mouseX, mouseY);
+            guiGraphics.pose().popPose();
+        } else if (pendingTooltip != null) {
             guiGraphics.pose().pushPose();
             guiGraphics.pose().translate(0, 0, 500);
             guiGraphics.renderTooltip(this.font, pendingTooltip, mouseX, mouseY);
@@ -641,8 +678,122 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
      * player sits at level 0 with the XP bar hidden, which is exactly how a button that looks
      * live ends up doing nothing.
      */
+    /**
+     * The red "Blocked while" card at the top of the requirement list. Returns the y below it.
+     * Lines are trimmed to the parchment; the status line's hover has the full text.
+     */
+    private int drawBlockedCard(GuiGraphics g, String stageId, boolean individual, int y) {
+        List<BlockedLines.Line> reason = BlockedLines.reasonLines(
+                BlockedLines.forLocalPlayer(stageId, individual), individual);
+        int h = 13 + reason.size() * 10 + 2;
+        g.fill(0, y, PedestalLayout.DEP_CONTENT_W, y + h, 0x40AA2222);
+        g.fill(0, y, 2, y + h, 0xFFFF5555);
+        drawTrimmed(g, BlockedLines.header(), CARD_PAD + 2, y + 3,
+                PedestalLayout.DEP_CONTENT_W - CARD_PAD - 4, 0xFF5555);
+        int lineY = y + 14;
+        for (BlockedLines.Line line : reason) {
+            int indent = CARD_PAD + 2 + line.indent() * 6;
+            drawTrimmed(g, line.text(), indent, lineY, PedestalLayout.DEP_CONTENT_W - indent - 2, PANEL_PRIMARY);
+            lineY += 10;
+        }
+        return y + h + CARD_GAP + 3;
+    }
+
     private static boolean canAfford(RequirementResult.EntryResult entry) {
         return entry.getCurrent() >= entry.getRequired();
+    }
+
+    /**
+     * The reason behind the "blocked" status line, when the mouse is on it. Null otherwise, and
+     * null under PLAIN, where the header is all there is to say.
+     */
+    private List<Component> blockedTooltip(int mouseX, int mouseY) {
+        if (!menu.isLogicBlocked() || !BlockedLines.showReason()) return null;
+        int lineY = this.topPos + PedestalLayout.LINE_2_Y;
+        if (mouseX < this.leftPos || mouseX > this.leftPos + PedestalLayout.WIDTH
+                || mouseY < lineY - 1 || mouseY > lineY + 9) return null;
+        String stageId = currentStageId();
+        if (stageId == null) return null;
+        var blocked = BlockedLines.forLocalPlayer(stageId, StageManager.isIndividualStage(stageId));
+        List<Component> lines = new java.util.ArrayList<>();
+        lines.add(BlockedLines.header().withStyle(net.minecraft.ChatFormatting.RED));
+        for (BlockedLines.Line line : BlockedLines.reasonLines(blocked, StageManager.isIndividualStage(stageId))) {
+            lines.add(Component.literal(line.indent() > 0 ? "   • " : " • ")
+                    .append(line.text()).withStyle(net.minecraft.ChatFormatting.GRAY));
+        }
+        return lines;
+    }
+
+    private static String costLabel(CompoundTag tag) {
+        StringBuilder out = new StringBuilder();
+        if (tag.contains("LockedCostReduction")) {
+            long pct = Math.round(tag.getDouble("LockedCostReduction") * 100);
+            if (pct >= 100) out.append("0");
+            else if (pct != 0) out.append(pct > 0 ? "-" : "+").append(Math.abs(pct)).append('%');
+        }
+        if (tag.contains("LockedXpFactor")) {
+            long pct = Math.round((tag.getDouble("LockedXpFactor") - 1.0) * 100);
+            if (pct != 0) {
+                if (out.length() > 0) out.append(' ');
+                out.append("XP ").append(pct > 0 ? "+" : "-").append(Math.abs(pct)).append('%');
+            }
+        }
+        return out.toString();
+    }
+
+    /**
+     * Why this stage costs what it does, when the mouse is on the speed label: every cost block in
+     * effect with its conditions. Null when none applies or the mouse is elsewhere.
+     */
+    private List<Component> costTooltip(int mouseX, int mouseY) {
+        if (menu.getTimeFactorPercent() == 100 && !hasLogicCost()) return null;
+        int lineY = this.topPos + PedestalLayout.LINE_1_Y;
+        if (mouseX < this.leftPos + PedestalLayout.WIDTH / 2 || mouseX > this.leftPos + PedestalLayout.WIDTH
+                || mouseY < lineY - 1 || mouseY > lineY + 9) return null;
+        String stageId = currentStageId();
+        if (stageId == null) return null;
+        boolean individual = StageManager.isIndividualStage(stageId);
+        var factors = BlockedLines.costForLocalPlayer(stageId, individual);
+        if (factors.active().isEmpty()) return null;
+        List<Component> lines = new java.util.ArrayList<>();
+        for (var block : factors.active()) {
+            lines.add(BlockedLines.costHeader(block, true).withStyle(net.minecraft.ChatFormatting.AQUA));
+            for (BlockedLines.Line line : BlockedLines.conditionLines(block, individual)) {
+                lines.add(Component.literal(line.indent() > 0 ? "   \u2022 " : " \u2022 ")
+                        .append(line.text()).withStyle(net.minecraft.ChatFormatting.GRAY));
+            }
+        }
+        return lines;
+    }
+
+    /** What researching this stage would take away, when the mouse is on the title. */
+    private List<Component> revokeTooltip(int mouseX, int mouseY) {
+        int lineY = this.topPos + PedestalLayout.LINE_1_Y;
+        if (mouseX < this.leftPos || mouseX > this.leftPos + PedestalLayout.WIDTH / 2
+                || mouseY < lineY - 1 || mouseY > lineY + 9) return null;
+        String stageId = currentStageId();
+        if (stageId == null) return null;
+        List<String> lost = BlockedLines.revokedByUnlocking(stageId, StageManager.isIndividualStage(stageId));
+        if (lost.isEmpty()) return null;
+        List<Component> lines = new java.util.ArrayList<>();
+        lines.add(BlockedLines.revokeTriggerHeader().withStyle(net.minecraft.ChatFormatting.GOLD));
+        for (String name : lost) {
+            lines.add(Component.literal(" \u2022 " + name).withStyle(net.minecraft.ChatFormatting.GRAY));
+        }
+        return lines;
+    }
+
+    private boolean hasLogicCost() {
+        String stageId = currentStageId();
+        return stageId != null && !BlockedLines.costForLocalPlayer(stageId,
+                StageManager.isIndividualStage(stageId)).active().isEmpty();
+    }
+
+    private String currentStageId() {
+        ItemStack stack = menu.getSlot(36).getItem();
+        if (stack.isEmpty()) return null;
+        CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        return tag.contains("StageResearch") ? tag.getString("StageResearch") : null;
     }
 
     private void renderDependencyPanel(GuiGraphics guiGraphics, int x, int y, int mouseX, int mouseY) {
@@ -698,10 +849,11 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
         // XP button explains itself through its tooltip.
 
         // Locked cost reduction from the scroll, beside the deposit controls
-        int lockedPct = BoosterUtil.percent(
-                net.bananemdnsa.historystages.block.entity.ResearchPedestalBlockEntity.getLockedCostReduction(tag));
-        if (lockedPct > 0) {
-            guiGraphics.drawString(this.font, "-" + lockedPct + "%", x + 5, y + 154, PANEL_SECONDARY, false);
+        // Frozen cost of this scroll: booster and cost blocks together. Costlier reads "+", and XP
+        // shows only when a cost block changed it.
+        String costLabel = costLabel(tag);
+        if (!costLabel.isEmpty()) {
+            guiGraphics.drawString(this.font, costLabel, x + 5, y + 154, PANEL_SECONDARY, false);
         }
 
         // Deposit progress bar (shows while an item is being processed)
@@ -739,6 +891,9 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
         guiGraphics.pose().translate(clipX, clipY - scrollAmount, 100);
 
         int currentY = 0;
+        if (menu.isLogicBlocked()) {
+            currentY = drawBlockedCard(guiGraphics, stageId, individual, currentY);
+        }
         int groupIdx = 0;
         for (RequirementResult.GroupResult group : result.getGroups()) {
             if (result.getGroups().size() > 1) {

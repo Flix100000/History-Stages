@@ -8,7 +8,10 @@ import java.util.List;
 import java.util.Map;
 
 import net.bananemdnsa.historystages.data.StageEntry;
+import net.bananemdnsa.historystages.api.stage.StageScope;
 import net.bananemdnsa.historystages.api.stage.StageStateView;
+import net.bananemdnsa.historystages.data.lock.engine.InterchangeableStages;
+import net.bananemdnsa.historystages.data.lock.engine.LockResolution;
 
 /**
  * Answers "which stages gate this subject, and are any of them still locked?" for a
@@ -35,11 +38,18 @@ public final class CategoryLockResolver {
     private CategoryLockResolver() {}
 
     /**
-     * The ids of the stages that gate {@code subject} through {@code category} and are not yet
-     * unlocked, in {@code stages}' iteration order, each id at most once.
+     * The ids of the stages that gate {@code subject} through {@code category} and still stand in
+     * the way, in {@code stages}' iteration order, each id at most once.
+     *
+     * <p>"Still stand in the way" follows {@link LockResolution}: interchangeable stages drop out
+     * as soon as one of them is unlocked. Without any such stage in the scope this skips unlocked
+     * stages before asking the category, as it always did — that is the cheap test.
      */
     public static List<String> missingStages(LockCategory<?> category, Object subject,
-            Map<String, StageEntry> stages, StageStateView state) {
+            Map<String, StageEntry> stages, StageScope scope, StageStateView state) {
+        if (!InterchangeableStages.of(scope).isEmpty()) {
+            return LockResolution.missingStages(scope, gatingStages(category, subject, stages), state);
+        }
         List<String> missing = new ArrayList<>();
         for (Map.Entry<String, StageEntry> stage : stages.entrySet()) {
             String stageId = stage.getKey();
@@ -53,10 +63,14 @@ public final class CategoryLockResolver {
 
     /**
      * Whether {@code subject} is currently locked by {@code category} on any of {@code stages}.
-     * Short-circuits on the first still-locked gating stage instead of collecting the full list.
+     * Short-circuits on the first still-locked gating stage unless the scope has interchangeable
+     * stages, where an unlocked one can still settle the answer and the whole list is needed.
      */
     public static boolean isLocked(LockCategory<?> category, Object subject,
-            Map<String, StageEntry> stages, StageStateView state) {
+            Map<String, StageEntry> stages, StageScope scope, StageStateView state) {
+        if (!InterchangeableStages.of(scope).isEmpty()) {
+            return LockResolution.isLocked(scope, gatingStages(category, subject, stages), state);
+        }
         for (Map.Entry<String, StageEntry> stage : stages.entrySet()) {
             String stageId = stage.getKey();
             if (state.isUnlocked(stageId)) continue;

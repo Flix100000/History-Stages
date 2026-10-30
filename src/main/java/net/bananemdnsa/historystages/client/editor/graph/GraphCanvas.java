@@ -2,6 +2,7 @@ package net.bananemdnsa.historystages.client.editor.graph;
 
 import com.mojang.math.Axis;
 import net.bananemdnsa.historystages.GraphConfig;
+import net.bananemdnsa.historystages.data.graph.NodeState;
 import net.bananemdnsa.historystages.client.editor.anim.Anim;
 import net.bananemdnsa.historystages.client.editor.anim.Ease;
 import net.bananemdnsa.historystages.client.editor.anim.Timing;
@@ -401,7 +402,7 @@ public final class GraphCanvas {
         NodeShapes.draw(g, style.shape(), cx, cy, r, style.fillArgb(), style.border(), bw);
         drawNodeIcon(g, node, cx, cy, r);
         if (style.checkmark()) {
-            drawCheckmark(g, cx, cy, r, style.border());
+            NodeShapes.statusBadge(g, node.state(), cx, cy, r, style.border());
         }
 
         if (scaled) g.pose().popPose();

@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.data.lock;
 
+import net.bananemdnsa.historystages.api.stage.StageScope;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -96,7 +97,7 @@ class LockCheckBenchmarkTest {
                     CategoryLockResolver.gatingStages(dimensions, GATED, stages));
 
             List<String> gatingForMiss = CategoryLockResolver.gatingStages(dimensions, UNGATED, stages);
-            long locked = nanosPerOp(() -> LockResolution.isLocked(gatingForMiss, nothingUnlocked));
+            long locked = nanosPerOp(() -> LockResolution.isLocked(StageScope.GLOBAL, gatingForMiss, nothingUnlocked));
 
             report.append(String.format("%-8d %14d %14d %14d%n", scale, miss, hit, locked));
         }
@@ -219,8 +220,8 @@ class LockCheckBenchmarkTest {
             StageStateView individual = id ->
                     perPlayer.getOrDefault(player, Set.<String>of()).contains(id);
 
-            long g = nanosPerOp(() -> LockResolution.isLocked(gating, global));
-            long p = nanosPerOp(() -> LockResolution.isLocked(gating, individual));
+            long g = nanosPerOp(() -> LockResolution.isLocked(StageScope.GLOBAL, gating, global));
+            long p = nanosPerOp(() -> LockResolution.isLocked(StageScope.INDIVIDUAL, gating, individual));
 
             long[] mask = {0L};
             long m = nanosPerOp(() -> { if ((0xFFFFL & ~mask[0]) != 0) mask[0] += 0; });

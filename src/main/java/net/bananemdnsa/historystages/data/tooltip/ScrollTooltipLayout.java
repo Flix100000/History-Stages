@@ -25,12 +25,12 @@ public final class ScrollTooltipLayout {
 
     /** Reorderable sections, in their factory order. */
     public static final List<String> MOVABLE_IDS = List.of(
-            "individual_badge", "owner", "info1", "info2", "tier", "dependencies");
+            "individual_badge", "owner", "info1", "info2", "tier", "blocked", "cost", "revoke", "revoke_trigger", "dependencies");
 
     /** Templates inside the dependency block. Fixed order, only text and colour are editable. */
     public static final List<String> DEP_TEMPLATE_IDS = List.of(
             "dep.header", "dep.group_header", "dep.item", "dep.stage", "dep.individual", "dep.xp",
-            "dep.separator");
+            "dep.separator", "logic.unlocked", "logic.locked");
 
     /**
      * Block-level values of the dependency block. They ride in the same list so the whole layout
@@ -47,6 +47,10 @@ public final class ScrollTooltipLayout {
             new ScrollTooltipLine("info1", true, false, "gray+italic", ""),
             new ScrollTooltipLine("info2", true, false, "gray+italic", ""),
             new ScrollTooltipLine("tier", true, false, "gray", ""),
+            new ScrollTooltipLine("blocked", true, false, "red", ""),
+            new ScrollTooltipLine("cost", true, false, "aqua", ""),
+            new ScrollTooltipLine("revoke", true, false, "gold", ""),
+            new ScrollTooltipLine("revoke_trigger", true, false, "gold", ""),
             new ScrollTooltipLine("dependencies", true, true, "", ""),
             new ScrollTooltipLine("dep.header", true, false, "gold", ""),
             new ScrollTooltipLine("dep.group_header", true, false, "yellow", ""),
@@ -55,6 +59,8 @@ public final class ScrollTooltipLayout {
             new ScrollTooltipLine("dep.individual", true, false, "", ""),
             new ScrollTooltipLine("dep.xp", true, false, "", ""),
             new ScrollTooltipLine("dep.separator", true, false, "dark_gray", ""),
+            new ScrollTooltipLine("logic.unlocked", true, false, "gray", ""),
+            new ScrollTooltipLine("logic.locked", true, false, "gray", ""),
             new ScrollTooltipLine("dep.icon_fulfilled", true, false, "", "\u2714"),
             new ScrollTooltipLine("dep.icon_open", true, false, "", "\u2718"),
             new ScrollTooltipLine("dep.icon_unknown", true, false, "", "\u2022"),
