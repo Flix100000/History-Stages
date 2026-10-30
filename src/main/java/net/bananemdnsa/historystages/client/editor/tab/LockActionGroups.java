@@ -31,7 +31,10 @@ public final class LockActionGroups {
             {"item",   "use",   "attack", "equip", "pickup", "trade"},
             {"block",  "place", "break",  "gui"},
             // "ingredient" exists only in the fluid vocabulary and is dropped again everywhere else.
-            {"output", "loot",  "recipe", "ingredient", "icon"}
+            {"output", "loot",  "recipe", "ingredient", "icon"},
+            // Only enchantments and potion effects know these: they stop a station from producing
+            // the thing rather than acting on a stack that already has it.
+            {"station", "enchanting_table", "anvil", "brew"}
     };
 
     private LockActionGroups() {

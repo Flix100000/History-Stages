@@ -98,7 +98,17 @@ public final class BuiltInLockMatching {
      */
     public static boolean modEntryMatches(NamedLockEntry entry, StageEntry stage,
                                           LockSubjects.ItemSubject subject) {
-        if (!entry.getId().equals(subject.modId())) return false;
+        if (!belongsToMod(entry.getId(), subject)) return false;
         return !stage.isModExcepted(subject.itemId(), subject.stack());
+    }
+
+    /**
+     * Whether the subject counts as coming from this mod: by its own id, or — for books and
+     * potions — by the enchantment or effect it carries. Gear is judged by its id alone, so a
+     * vanilla sword with a modded enchantment is not swept up by that mod's lock.
+     */
+    public static boolean belongsToMod(String modId, LockSubjects.ItemSubject subject) {
+        return modId.equals(subject.modId())
+                || subject.contents().namespacesForModLock().contains(modId);
     }
 }

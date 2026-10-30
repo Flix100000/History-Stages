@@ -44,6 +44,7 @@
 			"net.bananemdnsa.historystages.gametest.ContainerLockTests",
 			"net.bananemdnsa.historystages.gametest.DependencyCheckerTests",
 			"net.bananemdnsa.historystages.gametest.DisguiseGameTests",
+			"net.bananemdnsa.historystages.gametest.EnchantmentEffectLockTests",
 			"net.bananemdnsa.historystages.gametest.FluidLockTests",
 			"net.bananemdnsa.historystages.gametest.GraphReachabilityTests",
 			"net.bananemdnsa.historystages.gametest.HarnessTests",

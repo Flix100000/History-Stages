@@ -33,10 +33,18 @@ public final class LockSubjects {
      * Null on the stackless paths and for anything that is not a container — an empty bucket
      * included, which is why taking a fluid out of the world needs its own handler rather than
      * this field.
+     *
+     * <p>{@code contents} is what the stack carries in enchantments and potion effects, read only
+     * when some stage could care. {@link StackContents#EMPTY} otherwise, never null.
      */
     public record ItemSubject(String itemId, String modId,
                               @Nullable ItemStack stack, @Nullable Item item,
-                              @Nullable String fluidId) {
+                              @Nullable String fluidId, StackContents contents) {
+
+        public ItemSubject(String itemId, String modId, @Nullable ItemStack stack,
+                           @Nullable Item item, @Nullable String fluidId) {
+            this(itemId, modId, stack, item, fluidId, StackContents.EMPTY);
+        }
 
         /**
          * The four-argument form every caller used before fluids existed, resolving the fluid

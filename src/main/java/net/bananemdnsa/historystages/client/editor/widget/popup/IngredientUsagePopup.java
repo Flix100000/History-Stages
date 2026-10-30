@@ -103,9 +103,14 @@ public class IngredientUsagePopup {
     public IngredientUsagePopup(Consumer<List<String>> onAddRecipes, Consumer<List<String>> onAddItems) {
         this.onAddRecipes = onAddRecipes;
         this.onAddItems = onAddItems;
-        this.searchBar = new SearchBar(Component.translatable(
-                "editor.historystages.ingredient_usage.search").getString())
-                .onChange(text -> rebuildLines());
+        this.searchBar = net.bananemdnsa.historystages.client.editor.widget.SearchPanelChrome.createSearchBar(
+                Component.translatable("editor.historystages.ingredient_usage.search").getString(),
+                text -> rebuildLines(), null);
+        // Same pair as the "Applies to" list; one group, so the two exclude each other.
+        searchBar.filters().addOption("only_ticked",
+                Component.translatable("editor.historystages.search.filter.ticked").getString(), "ticked");
+        searchBar.filters().addOption("only_unticked",
+                Component.translatable("editor.historystages.search.filter.unticked").getString(), "ticked");
     }
 
     /**
@@ -201,13 +206,32 @@ public class IngredientUsagePopup {
         for (Kind group : List.of(Kind.ONLY_LOCKED, Kind.WORKS_WITHOUT)) {
             List<Entry> matching = new ArrayList<>();
             for (Entry e : entriesByMode.get(mode)) {
-                if (e.kind() == group && (query.isEmpty() || e.search().contains(query))) matching.add(e);
+                if (e.kind() == group && (query.isEmpty() || e.search().contains(query)) && passesFilters(e)) {
+                    matching.add(e);
+                }
             }
             if (matching.isEmpty()) continue;
             lines.add(new Line(group, null));
             for (Entry e : matching) lines.add(new Line(group, e));
         }
         scrollRow = Math.min(scrollRow, maxScrollRow());
+    }
+
+    /**
+     * The search bar's dropdown. Read when the search or a filter changes, not on every click, so
+     * a row unticked under "only ticked" stays put instead of vanishing under the cursor. An
+     * already-added row has no tick either way and drops out under both.
+     */
+    private boolean passesFilters(Entry e) {
+        String namespace = e.id().contains(":") ? e.id().substring(0, e.id().indexOf(':')) : "minecraft";
+        boolean vanilla = "minecraft".equals(namespace);
+        if (searchBar.filters().isActive("only_vanilla") && !vanilla) return false;
+        if (searchBar.filters().isActive("only_modded") && vanilla) return false;
+        boolean ticked = !e.added() && selected().contains(e.id());
+        boolean unticked = !e.added() && !selected().contains(e.id());
+        if (searchBar.filters().isActive("only_ticked") && !ticked) return false;
+        if (searchBar.filters().isActive("only_unticked") && !unticked) return false;
+        return true;
     }
 
     private Set<String> selected() { return selectedByMode.get(mode); }
@@ -305,7 +329,8 @@ public class IngredientUsagePopup {
             if (index >= lines.size()) break;
             Line line = lines.get(index);
             int rowY = y + i * ROW_HEIGHT;
-            boolean rowHovered = mouseX >= x && mouseX < x + LIST_W && mouseY >= rowY && mouseY < rowY + ROW_HEIGHT;
+            boolean rowHovered = mouseX >= x && mouseX < x + LIST_W && mouseY >= rowY && mouseY < rowY + ROW_HEIGHT
+                    && !searchBar.isMouseOverFilterUi(mouseX, mouseY);
             int cbY = rowY + (ROW_HEIGHT - CHECKBOX_SIZE) / 2;
 
             if (line.entry() == null) {

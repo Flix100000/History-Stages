@@ -34,7 +34,7 @@ import net.minecraft.world.item.Item;
 public final class LockRelevanceIndex {
 
     public static final LockRelevanceIndex EMPTY =
-            new LockRelevanceIndex(Map.of(), Map.of(), Map.of(), List.of());
+            new LockRelevanceIndex(Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), List.of());
 
     /** A tag entry together with the stage that declared it. */
     private record TaggedStage(NamedLockEntry tag, String stageId) {}
@@ -42,15 +42,21 @@ public final class LockRelevanceIndex {
     private final Map<String, List<String>> stagesByItemId;
     private final Map<String, List<String>> stagesByModId;
     private final Map<String, List<String>> stagesByFluidId;
+    private final Map<String, List<String>> stagesByEnchantmentId;
+    private final Map<String, List<String>> stagesByEffectId;
     private final List<TaggedStage> taggedStages;
 
     private LockRelevanceIndex(Map<String, List<String>> stagesByItemId,
                                Map<String, List<String>> stagesByModId,
                                Map<String, List<String>> stagesByFluidId,
+                               Map<String, List<String>> stagesByEnchantmentId,
+                               Map<String, List<String>> stagesByEffectId,
                                List<TaggedStage> taggedStages) {
         this.stagesByItemId = stagesByItemId;
         this.stagesByModId = stagesByModId;
         this.stagesByFluidId = stagesByFluidId;
+        this.stagesByEnchantmentId = stagesByEnchantmentId;
+        this.stagesByEffectId = stagesByEffectId;
         this.taggedStages = taggedStages;
     }
 
@@ -60,6 +66,8 @@ public final class LockRelevanceIndex {
         Map<String, List<String>> byItem = new HashMap<>();
         Map<String, List<String>> byMod = new HashMap<>();
         Map<String, List<String>> byFluid = new HashMap<>();
+        Map<String, List<String>> byEnchantment = new HashMap<>();
+        Map<String, List<String>> byEffect = new HashMap<>();
         List<TaggedStage> byTag = new ArrayList<>();
 
         for (Map.Entry<String, StageEntry> e : stages.entrySet()) {
@@ -79,10 +87,17 @@ public final class LockRelevanceIndex {
             for (String fluidId : stage.getAllFluidIds()) {
                 addStage(byFluid, fluidId, stageId);
             }
+            for (String enchantmentId : stage.getAllEnchantmentIds()) {
+                addStage(byEnchantment, enchantmentId, stageId);
+            }
+            for (String effectId : stage.getAllEffectIds()) {
+                addStage(byEffect, effectId, stageId);
+            }
         }
 
-        if (byItem.isEmpty() && byMod.isEmpty() && byFluid.isEmpty() && byTag.isEmpty()) return EMPTY;
-        return new LockRelevanceIndex(byItem, byMod, byFluid, byTag);
+        if (byItem.isEmpty() && byMod.isEmpty() && byFluid.isEmpty() && byTag.isEmpty()
+                && byEnchantment.isEmpty() && byEffect.isEmpty()) return EMPTY;
+        return new LockRelevanceIndex(byItem, byMod, byFluid, byEnchantment, byEffect, byTag);
     }
 
     /** A stage can list the same ID more than once; the candidate list stays free of duplicates. */
@@ -93,7 +108,8 @@ public final class LockRelevanceIndex {
 
     public boolean isEmpty() {
         return stagesByItemId.isEmpty() && stagesByModId.isEmpty()
-                && stagesByFluidId.isEmpty() && taggedStages.isEmpty();
+                && stagesByFluidId.isEmpty() && taggedStages.isEmpty()
+                && stagesByEnchantmentId.isEmpty() && stagesByEffectId.isEmpty();
     }
 
     /**
@@ -121,6 +137,41 @@ public final class LockRelevanceIndex {
         List<String> byFluid = fluidId != null ? stagesByFluidId.get(fluidId) : null;
         return merge(stagesByItemId.get(itemId), stagesByModId.get(modId),
                 tagCandidates(item), byFluid);
+    }
+
+    /**
+     * The same, for a stack that also carries enchantments or potion effects.
+     *
+     * <p>What the stack carries adds three sources: stages naming one of its enchantments, stages
+     * naming one of its effects, and mod entries for the namespace a book or potion counts as
+     * coming from. Empty contents cost one check, which is the answer for nearly every stack.
+     */
+    public Collection<String> candidateStages(String itemId, String modId, Item item,
+                                              String fluidId,
+                                              net.bananemdnsa.historystages.data.lock.engine.StackContents contents) {
+        Collection<String> base = candidateStages(itemId, modId, item, fluidId);
+        if (contents == null || contents.isEmpty()) return base;
+
+        LinkedHashSet<String> merged = null;
+        for (var enchantment : contents.allEnchantments()) {
+            merged = addHits(merged, base, stagesByEnchantmentId.get(enchantment.id()));
+        }
+        for (var effect : contents.effects()) {
+            merged = addHits(merged, base, stagesByEffectId.get(effect.id()));
+        }
+        for (String namespace : contents.namespacesForModLock()) {
+            merged = addHits(merged, base, stagesByModId.get(namespace));
+        }
+        return merged != null ? merged : base;
+    }
+
+    /** Starts the merged set from the base only once something extra turns up. */
+    private static LinkedHashSet<String> addHits(LinkedHashSet<String> merged, Collection<String> base,
+                                                 List<String> hits) {
+        if (hits == null) return merged;
+        if (merged == null) merged = new LinkedHashSet<>(base);
+        merged.addAll(hits);
+        return merged;
     }
 
     /**

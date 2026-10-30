@@ -355,6 +355,20 @@ public final class CategoryLockIndexes {
         return individual.candidateStages(itemId, modId, item, fluidId);
     }
 
+    /** The same, widened by what the stack carries in enchantments and potion effects. */
+    public static Collection<String> globalCandidates(String itemId, String modId, Item item,
+                                                      String fluidId, StackContents contents) {
+        rebuildRelevanceIfDirty();
+        return global.candidateStages(itemId, modId, item, fluidId, contents);
+    }
+
+    /** Individual-stage counterpart of the contents-aware {@link #globalCandidates}. */
+    public static Collection<String> individualCandidates(String itemId, String modId, Item item,
+                                                          String fluidId, StackContents contents) {
+        rebuildRelevanceIfDirty();
+        return individual.candidateStages(itemId, modId, item, fluidId, contents);
+    }
+
     private static void rebuildRelevanceIfDirty() {
         if (!relevanceDirty) return;
         synchronized (REBUILD_LOCK) {
