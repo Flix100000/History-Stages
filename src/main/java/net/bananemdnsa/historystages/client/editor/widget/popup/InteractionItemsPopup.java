@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.widget.popup;
 
+import net.bananemdnsa.historystages.api.editor.widget.Badge;
 import net.bananemdnsa.historystages.data.ItemEntry;
 import net.bananemdnsa.historystages.client.editor.anim.Timing;
 import net.minecraft.client.Minecraft;
@@ -224,10 +225,10 @@ public class InteractionItemsPopup {
                 g.pose().popPose();
             }
 
-            String badge = entry.hasNbt() ? "§e[NBT]" : "";
-            int badgeW = badge.isEmpty() ? 0 : font.width(badge) + 4;
-            if (!badge.isEmpty()) {
-                g.drawString(font, badge, rowX + rowW - badgeW, ry + 5, 0xFFFFFF, false);
+            String nbt = Component.translatable("editor.historystages.badge.nbt").getString();
+            int badgeW = entry.hasNbt() ? Badge.width(font, nbt) + 2 : 0;
+            if (entry.hasNbt()) {
+                Badge.draw(g, font, nbt, rowX + rowW - badgeW, ry + 3, 0xFFFF55);
             }
 
             int textStartX = rowX + 20;

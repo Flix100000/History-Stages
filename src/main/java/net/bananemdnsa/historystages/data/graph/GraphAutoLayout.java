@@ -33,6 +33,8 @@ public final class GraphAutoLayout {
     static final int BARYCENTER_PASSES = 3;
     /** Width of the island block at the bottom, in columns. */
     static final int ISLAND_COLUMNS = 6;
+    /** Grid columns from one layer to the next. The empty one in between holds the captions. */
+    static final int COLUMN_STEP = 2;
 
     private GraphAutoLayout() {}
 
@@ -53,7 +55,8 @@ public final class GraphAutoLayout {
             else connected.add(id);
         }
 
-        Map<String, Integer> layer = assignLayers(connected, prereq);
+        Map<String, Integer> layer = pullSourcesForward(
+                assignLayers(connected, prereq), connected, prereq, dependents);
 
         Map<String, GraphPos> out = new HashMap<>();
         int yCursor = 0;
@@ -65,7 +68,7 @@ public final class GraphAutoLayout {
         return out;
     }
 
-    /** Longest-path depth of every key — the column {@link #compute} starts a connected stage in. */
+    /** Longest-path depth of every key, before {@link #compute} pulls sources forward and spaces the columns. */
     public static Map<String, Integer> layers(Map<String, Set<String>> prerequisites) {
         Map<String, Set<String>> prereq = sanitize(prerequisites);
         return assignLayers(prereq.keySet(), prereq);
@@ -123,6 +126,29 @@ public final class GraphAutoLayout {
         int result = max + 1;
         layer.put(id, result);
         return result;
+    }
+
+    /**
+     * A stage that requires nothing but is required by something moves up to the column just
+     * before its earliest dependent. Longest-path layering parks every such stage in column 0,
+     * and one needed only at the far end of a chain then draws its line across the whole map.
+     *
+     * <p>Only these stages move. Anything with prerequisites keeps its depth, so no edge can end
+     * up pointing backwards. {@link #layers} deliberately stays pure longest-path: the unlock
+     * background is chosen by depth, and that must not shift because of a display tweak.
+     */
+    private static Map<String, Integer> pullSourcesForward(Map<String, Integer> layer, Set<String> nodes,
+                                                           Map<String, Set<String>> prereq,
+                                                           Map<String, Set<String>> dependents) {
+        Map<String, Integer> out = new HashMap<>(layer);
+        for (String id : nodes) {
+            if (!prereq.get(id).isEmpty() || dependents.get(id).isEmpty()) continue;
+            int earliest = Integer.MAX_VALUE;
+            for (String dep : dependents.get(id)) earliest = Math.min(earliest, layer.getOrDefault(dep, 0));
+            // A dependent on layer 0 only happens inside a cycle (see depth()); leave those alone.
+            if (earliest >= 1) out.put(id, earliest - 1);
+        }
+        return out;
     }
 
     /**
@@ -210,7 +236,7 @@ public final class GraphAutoLayout {
             List<String> rows = e.getValue();
             int pad = (height - rows.size()) / 2;   // centre the layer inside the component
             for (int i = 0; i < rows.size(); i++) {
-                out.put(rows.get(i), new GraphPos(e.getKey(), yOffset + pad + i));
+                out.put(rows.get(i), new GraphPos(e.getKey() * COLUMN_STEP, yOffset + pad + i));
             }
         }
         return height;
@@ -232,7 +258,7 @@ public final class GraphAutoLayout {
     /** Stages with neither prerequisites nor dependents, in a block below everything else. */
     private static void placeIslands(List<String> islands, int yOffset, Map<String, GraphPos> out) {
         for (int i = 0; i < islands.size(); i++) {
-            out.put(islands.get(i), new GraphPos(i % ISLAND_COLUMNS, yOffset + i / ISLAND_COLUMNS));
+            out.put(islands.get(i), new GraphPos((i % ISLAND_COLUMNS) * COLUMN_STEP, yOffset + i / ISLAND_COLUMNS));
         }
     }
 }

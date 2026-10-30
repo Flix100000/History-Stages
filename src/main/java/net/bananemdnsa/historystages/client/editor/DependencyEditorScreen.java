@@ -1323,7 +1323,7 @@ public class DependencyEditorScreen extends Screen {
             }
             row.text(rows.get(i));
             String badge = tab.badgeText(i);
-            if (badge != null) row.badge(badge);
+            if (badge != null) row.badge(badge, 0xFFCC00, tab.badgeTooltip(i));
         });
     }
 

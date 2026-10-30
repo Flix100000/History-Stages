@@ -5,6 +5,7 @@ import net.bananemdnsa.historystages.client.cache.ClientDependencyCache;
 import net.bananemdnsa.historystages.client.editor.widget.MarqueeText;
 import net.bananemdnsa.historystages.client.editor.widget.Scrollbar;
 import net.bananemdnsa.historystages.api.editor.widget.AbstractModalScreen;
+import net.bananemdnsa.historystages.api.editor.widget.Badge;
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.data.auto.AutoTrigger;
@@ -65,7 +66,7 @@ public final class GraphDetailScreen extends AbstractModalScreen {
     private static final int ENTRY_GAP = 3;
     private static final int LEAD_PAD_TOP = 5;
     private static final int LEAD_PAD_BOTTOM = 6;
-    private static final int PILL_H = 11;
+    private static final int PILL_H = Badge.HEIGHT;
     /** Height of a row carrying a 16px item icon. */
     private static final int ICON_ROW_H = 18;
     private static final int ICON_SIZE = 16;
@@ -104,7 +105,6 @@ public final class GraphDetailScreen extends AbstractModalScreen {
     private static final int SECTION_TEXT_COLOR = 0xFFFFCC00;
     private static final int SECTION_RULE_COLOR = 0x50FFCC00;
     private static final int AMOUNT_TEXT_COLOR = 0xFF888888;
-    private static final int STATE_PILL_ALPHA = 0x33000000;
     /** Band behind the pills, and the line closing it off from the list. */
     private static final int HEADER_BAND_COLOR = 0x18FFFFFF;
     private static final int HEADER_RULE_COLOR = 0x30FFFFFF;
@@ -633,10 +633,7 @@ public final class GraphDetailScreen extends AbstractModalScreen {
 
     /** @return x just past the pill drawn */
     private int drawPill(GuiGraphics g, int x, int y, String text, int color) {
-        int pillW = this.font.width(text) + 6;
-        g.fill(x, y, x + pillW, y + PILL_H, (color & 0x00FFFFFF) | STATE_PILL_ALPHA);
-        g.drawString(this.font, text, x + 3, y + 2, color, false);
-        return x + pillW;
+        return Badge.draw(g, this.font, text, x, y, color & 0xFFFFFF);
     }
 
     private void drawRow(GuiGraphics g, Row row, int left, int right, int top) {

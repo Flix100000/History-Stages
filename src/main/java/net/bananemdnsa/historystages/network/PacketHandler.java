@@ -45,6 +45,9 @@ import net.bananemdnsa.historystages.network.serverbound.SaveStageGraphInfoPacke
 import net.bananemdnsa.historystages.network.serverbound.SaveDisguisePacket;
 import net.bananemdnsa.historystages.network.serverbound.SaveStageGraphStylePacket;
 import net.bananemdnsa.historystages.network.serverbound.SaveStagePacket;
+import net.bananemdnsa.historystages.network.serverbound.SaveStylePresetPacket;
+import net.bananemdnsa.historystages.network.serverbound.DeleteStylePresetPacket;
+import net.bananemdnsa.historystages.network.serverbound.AssignStylePresetPacket;
 import net.bananemdnsa.historystages.network.serverbound.TakeLecternScrollPacket;
 import net.bananemdnsa.historystages.network.serverbound.ToggleIndividualStageLockPacket;
 import net.bananemdnsa.historystages.network.serverbound.ToggleStageLockPacket;
@@ -136,7 +139,10 @@ public class PacketHandler {
             new Serverbound<>(SaveDisguisePacket.TYPE, SaveDisguisePacket.STREAM_CODEC, SaveDisguisePacket::handle),
             new Serverbound<>(PedestalControlPacket.TYPE, PedestalControlPacket.STREAM_CODEC, PedestalControlPacket::handle),
             new Serverbound<>(TakeLecternScrollPacket.TYPE, TakeLecternScrollPacket.STREAM_CODEC, TakeLecternScrollPacket::handle),
-            new Serverbound<>(RequestZoneSelectionPacket.TYPE, RequestZoneSelectionPacket.STREAM_CODEC, RequestZoneSelectionPacket::handle));
+            new Serverbound<>(RequestZoneSelectionPacket.TYPE, RequestZoneSelectionPacket.STREAM_CODEC, RequestZoneSelectionPacket::handle),
+            new Serverbound<>(SaveStylePresetPacket.TYPE, SaveStylePresetPacket.STREAM_CODEC, SaveStylePresetPacket::handle),
+            new Serverbound<>(DeleteStylePresetPacket.TYPE, DeleteStylePresetPacket.STREAM_CODEC, DeleteStylePresetPacket::handle),
+            new Serverbound<>(AssignStylePresetPacket.TYPE, AssignStylePresetPacket.STREAM_CODEC, AssignStylePresetPacket::handle));
 
     /**
      * Registers every codec, and the receivers for packets arriving at the server.
