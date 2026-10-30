@@ -23,6 +23,7 @@ public final class ClientHandlers {
     private ClientHandlers() {}
 
     public static final List<Class<?>> CLIENT = List.of(
+            ClientApiEvents.class,
             ClientDisconnectHandler.class,
             ClientFluidRecipeIndex.class,
             ClientDisguises.class,

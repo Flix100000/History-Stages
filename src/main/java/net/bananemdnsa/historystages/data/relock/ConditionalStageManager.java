@@ -1,5 +1,7 @@
 package net.bananemdnsa.historystages.data.relock;
 
+import net.bananemdnsa.historystages.data.StageCauses;
+import net.bananemdnsa.historystages.api.stage.StageChangeCause;
 import net.bananemdnsa.historystages.api.stage.StageScope;
 import net.bananemdnsa.historystages.api.stage.StageStates;
 import net.bananemdnsa.historystages.api.trigger.StateView;
@@ -64,10 +66,10 @@ public final class ConditionalStageManager {
         if (holds && !open) {
             if (!e.hasDependencies() || DependencyChecker.checkAll(e, player, level,
                     StageScope.INDIVIDUAL, null).isFulfilled()) {
-                StageStates.unlockIndividual(id, player);
+                StageCauses.run(StageChangeCause.CONDITIONAL, () -> StageStates.unlockIndividual(id, player));
             }
         } else if (!holds && open) {
-            StageStates.relockIndividual(id, player);
+            StageCauses.run(StageChangeCause.CONDITIONAL, () -> StageStates.relockIndividual(id, player));
         }
     }
 
@@ -83,9 +85,11 @@ public final class ConditionalStageManager {
         boolean holds = StateEvaluation.conditionHolds(e.getAutoTrigger(), view, StageScope.GLOBAL);
         boolean open = StageData.SERVER_CACHE.contains(id);
         if (holds && !open) {
-            if (globalDependenciesMet(e, overworld)) StageStates.unlockGlobal(id, overworld);
+            if (globalDependenciesMet(e, overworld)) {
+                StageCauses.run(StageChangeCause.CONDITIONAL, () -> StageStates.unlockGlobal(id, overworld));
+            }
         } else if (!holds && open) {
-            StageStates.relockGlobal(id, overworld);
+            StageCauses.run(StageChangeCause.CONDITIONAL, () -> StageStates.relockGlobal(id, overworld));
         }
     }
 

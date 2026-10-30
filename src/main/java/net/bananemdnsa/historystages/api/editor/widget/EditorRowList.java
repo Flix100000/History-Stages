@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.DoubleToIntFunction;
+import java.util.function.IntConsumer;
 
 import net.bananemdnsa.historystages.client.editor.anim.Anim;
 import net.bananemdnsa.historystages.client.editor.anim.Ease;
@@ -176,7 +178,8 @@ public final class EditorRowList {
         }
 
         public Row badge(String text, int colour, int minWidth, @Nullable String tooltip) {
-            slots.add(new Slot(text, colour, tooltip, null, false, null, false, minWidth));
+            slots.add(new Slot(text, colour, tooltip, null, false, null, false, minWidth,
+                    List.of(), -1, null));
             return this;
         }
 
@@ -195,7 +198,7 @@ public final class EditorRowList {
          */
         public Row button(String label, @Nullable String tooltip, int minWidth, Runnable onClick) {
             slots.add(new Slot(label, 0xCCCCCC, tooltip, (x, y, w, h) -> onClick.run(), false, null, false,
-                    minWidth));
+                    minWidth, List.of(), -1, null));
             return this;
         }
 
@@ -206,7 +209,8 @@ public final class EditorRowList {
          * @param expanded whether the popup is up, which turns the caret over
          */
         public Row dropdown(String label, @Nullable String tooltip, boolean expanded, SlotClick onClick) {
-            slots.add(new Slot(label, 0xCCCCCC, tooltip, onClick, true, null, false, 0));
+            slots.add(new Slot(label, 0xCCCCCC, tooltip, onClick, true, null, false, 0,
+                    List.of(), -1, null));
             this.caretUp = expanded;
             return this;
         }
@@ -219,17 +223,36 @@ public final class EditorRowList {
          * introduced to stop.
          */
         public Row toggle(boolean value, @Nullable String tooltip, ToggleClick onPick) {
-            slots.add(new Slot("", 0xCCCCCC, tooltip, null, false, onPick, value, 0));
+            slots.add(new Slot("", 0xCCCCCC, tooltip, null, false, onPick, value, 0,
+                    List.of(), -1, null));
+            return this;
+        }
+
+        /**
+         * A choice between named options, as a slot: the {@link SegmentBar}.
+         *
+         * <p>The switch only says on and off. A row whose value is one of two named things would
+         * otherwise need a button labelled with its own state, which is the third way of drawing
+         * a choice that the switch was introduced to stop.
+         */
+        public Row segments(List<String> labels, int selected, @Nullable String tooltip, IntConsumer onPick) {
+            slots.add(new Slot("", 0xCCCCCC, tooltip, null, false, null, false, 0,
+                    List.copyOf(labels), selected, onPick));
             return this;
         }
     }
 
     private record Slot(String text, int colour, @Nullable String tooltip,
                         @Nullable SlotClick onClick, boolean caret,
-                        @Nullable ToggleClick onToggle, boolean toggleValue, int minWidth) {
+                        @Nullable ToggleClick onToggle, boolean toggleValue, int minWidth,
+                        List<String> segmentLabels, int segmentSelected, @Nullable IntConsumer onSegment) {
 
         boolean isToggle() {
             return onToggle != null;
+        }
+
+        boolean isSegments() {
+            return onSegment != null;
         }
     }
 
@@ -242,7 +265,9 @@ public final class EditorRowList {
      */
     private record ButtonZone(int x, int y, int width, int height, @Nullable SlotClick onClick,
                               @Nullable ToggleClick onToggle,
-                              @Nullable java.util.function.DoubleFunction<Boolean> valueAt) {}
+                              @Nullable java.util.function.DoubleFunction<Boolean> valueAt,
+                              @Nullable IntConsumer onSegment,
+                              @Nullable DoubleToIntFunction segmentAt) {}
 
     private final int rowHeight;
     private boolean flat;
@@ -252,6 +277,8 @@ public final class EditorRowList {
     private final List<ButtonZone> buttonZones = new ArrayList<>();
     /** Hover state per toggle slot, keyed by row and slot, so neighbours animate separately. */
     private final Map<Integer, ToggleControl.State> toggleStates = new HashMap<>();
+    /** Animation state per segment slot, keyed like the toggles'. */
+    private final Map<Integer, SegmentBar.State> segmentStates = new HashMap<>();
     private int hoveredRow = -1;
     private long hoverStart = 0;
     private long slideStart = 0;
@@ -359,6 +386,12 @@ public final class EditorRowList {
                     || ctx.mouseY() < zone.y() || ctx.mouseY() >= zone.y() + zone.height()) {
                 continue;
             }
+            if (zone.onSegment() != null) {
+                int picked = zone.segmentAt().applyAsInt(ctx.mouseX());
+                // -1 is the frame between segments; the click still belongs to the bar.
+                if (picked >= 0) zone.onSegment().accept(picked);
+                return true;
+            }
             if (zone.onToggle() != null) {
                 Boolean picked = zone.valueAt().apply(ctx.mouseX());
                 // Null is the gap between the two halves. Swallowing the click there would look
@@ -421,13 +454,32 @@ public final class EditorRowList {
         int used = SLOT_MARGIN;
         for (int i = row.slots.size() - 1; i >= 0; i--) {
             Slot slot = row.slots.get(i);
-            int slotW = slot.isToggle()
+            int slotW = slot.isSegments()
+                    ? SegmentBar.width(font, slot.segmentLabels())
+                    : slot.isToggle()
                     ? ToggleControl.width(font)
                     : slot.onClick() == null
                     ? Math.max(slot.minWidth(), Badge.width(font, slot.text()))
                     : Math.max(slot.minWidth(), font.width(slot.text()) + 6 + (slot.caret() ? CARET_SLOT_W : 0));
             int slotX = right - used - slotW;
-            if (slot.isToggle()) {
+            if (slot.isSegments()) {
+                List<String> labels = slot.segmentLabels();
+                int barY = cardY + (rowHeight - SegmentBar.height()) / 2;
+                SegmentBar.State state = segmentStates.computeIfAbsent(
+                        index * 16 + i, k -> new SegmentBar.State());
+                int hoveredSegment = ctx.inputBlocked() ? -1
+                        : SegmentBar.segmentAt(font, slotX, barY, ctx.mouseX(), ctx.mouseY(), labels);
+                state.update(slot.segmentSelected(), hoveredSegment, labels.size());
+                SegmentBar.draw(g, font, slotX, barY, labels, slot.segmentSelected(), state,
+                        new boolean[labels.size()]);
+
+                final int originX = slotX;
+                buttonZones.add(new ButtonZone(slotX, barY, slotW, SegmentBar.height(), null, null, null,
+                        slot.onSegment(), mx -> SegmentBar.indexAt(font, originX, mx, labels)));
+                if (slot.tooltip() != null && hoveredSegment >= 0) {
+                    ctx.tooltip("row." + index + ".slot." + i, slot.tooltip());
+                }
+            } else if (slot.isToggle()) {
                 int toggleY = cardY + (rowHeight - ToggleControl.height()) / 2;
                 ToggleControl.State state = toggleStates.computeIfAbsent(
                         index * 16 + i, k -> new ToggleControl.State());
@@ -437,7 +489,8 @@ public final class EditorRowList {
 
                 final int originX = slotX;
                 buttonZones.add(new ButtonZone(slotX, toggleY, slotW, ToggleControl.height(),
-                        null, slot.onToggle(), mx -> ToggleControl.valueAt(font, originX, mx)));
+                        null, slot.onToggle(), mx -> ToggleControl.valueAt(font, originX, mx),
+                        null, null));
                 if (slot.tooltip() != null
                         && ctx.mouseX() >= slotX && ctx.mouseX() < slotX + slotW
                         && ctx.mouseY() >= toggleY && ctx.mouseY() < toggleY + ToggleControl.height()) {
@@ -467,7 +520,7 @@ public final class EditorRowList {
                             slotHovered ? 0xFFDDDDDD : 0xFF999999, flip);
                 }
                 buttonZones.add(new ButtonZone(slotX, cardY + 3, slotW, rowHeight - 6,
-                        slot.onClick(), null, null));
+                        slot.onClick(), null, null, null, null));
                 if (slotHovered && slot.tooltip() != null) {
                     ctx.tooltip("row." + index + ".slot." + i, slot.tooltip());
                 }

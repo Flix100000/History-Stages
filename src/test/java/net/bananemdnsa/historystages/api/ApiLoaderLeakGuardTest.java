@@ -36,7 +36,8 @@ class ApiLoaderLeakGuardTest {
             "RegisterCustomFieldScreensEvent", "RegisterRecipeTypeMetaEvent",
             "RegisterIndividualRecipeSupportEvent",
             "RegisterTeamProvidersEvent", "RegisterStageChecksEvent", "RegisterReportSectionsEvent",
-            "StageEvent", "StageStates");
+            "StageEvent", "StageStates", "StageDefinitionsChangedEvent", "ClientStagesChangedEvent",
+            "StageAnnounceEvent");
 
     @Test
     void onlyTheRegistrationEventsAndTheEventBridgeNameTheLoader() throws IOException {

@@ -232,6 +232,32 @@ public class ZoneLockHandler {
         state.verdict = ZoneVerdict.of(zones);
     }
 
+    /**
+     * The stages keeping {@code pos} locked for this player because a locked zone covers it,
+     * by the same rule as the tick. Empty when no locked zone covers it. Behind {@code PlaceLocks}.
+     */
+    public static List<String> lockingStagesAt(Level level, BlockPos pos, UUID playerUuid) {
+        if (!StageLocks.engine().anyZoneLocks()) return List.of();
+        ZoneIndex.rebuildIfDirty();
+        List<ZoneIndex.Entry> candidates = ZoneIndex.zonesIn(dimensionId(level));
+        if (candidates.isEmpty()) return List.of();
+
+        Set<String> playerStages = IndividualStageData.SERVER_CACHE.getOrDefault(playerUuid, Collections.emptySet());
+        PlayerState probe = new PlayerState();
+        List<ZoneIndex.Entry> locked = new ArrayList<>();
+        for (ZoneIndex.Entry entry : candidates) {
+            boolean unlocked = entry.scope() == StageScope.GLOBAL
+                    ? StageData.SERVER_CACHE.contains(entry.stageId())
+                    : playerStages.contains(entry.stageId());
+            if (!unlocked) locked.add(entry);
+        }
+        probe.lockedZones = locked;
+
+        java.util.LinkedHashSet<String> out = new java.util.LinkedHashSet<>();
+        for (ZoneIndex.Entry entry : zonesAt(probe, level, pos)) out.add(entry.stageId());
+        return List.copyOf(out);
+    }
+
     /** The locked zones containing this position, cheapest test first. */
     private static List<ZoneIndex.Entry> zonesAt(PlayerState state, Level level, BlockPos pos) {
         if (state.lockedZones.isEmpty()) return Collections.emptyList();

@@ -120,6 +120,28 @@ public abstract class AbstractSearchableList<T> implements PickerOverlay {
     /** {@link #selectedSnapshot} filtered by the current query. */
     private final List<Sel<T>> selectedView = new ArrayList<>();
     private final Anim addHover = new Anim();
+    private final Map<Integer, Anim> footerHover = new HashMap<>();
+
+    /** A button an addon puts at the bottom of its picker, such as "Done" or "Default". */
+    public record FooterButton(String label, Runnable onClick) {}
+
+    /**
+     * Buttons along the bottom edge, left to right. Empty by default. Only drawn when multi-select
+     * is off: multi-select already owns the bottom row with its Add button.
+     *
+     * <p>For a picker that edits a set in place rather than adding to one, where the only things
+     * left to say are "keep this" and "start over".
+     *
+     * <p>Asked every frame, but the panel's height is fixed when it opens: keep the number of
+     * buttons the same while the picker is up.
+     */
+    protected List<FooterButton> footerButtons() {
+        return List.of();
+    }
+
+    private boolean hasFooter() {
+        return !multiSelect && !footerButtons().isEmpty();
+    }
 
     private record Sel<E>(String value, E entry) {}
 
@@ -244,6 +266,18 @@ public abstract class AbstractSearchableList<T> implements PickerOverlay {
     }
 
     /**
+     * A click on a row, before it selects anything. Return true to keep the click.
+     *
+     * <p>For a row with a control of its own inside it, such as the caret of a tree: without
+     * this, opening a branch would also pick it.
+     *
+     * @param rowX left edge of the row as drawn
+     */
+    protected boolean onRowClicked(T entry, int index, double mouseX, int rowX) {
+        return false;
+    }
+
+    /**
      * Whether the row at this index is a caption rather than something to pick.
      *
      * <p>A caption is measured, drawn and scrolled past like any other row — it just cannot be
@@ -334,7 +368,7 @@ public abstract class AbstractSearchableList<T> implements PickerOverlay {
         panelH = getTabBarHeight() + SearchBar.HEIGHT + PADDING * 2 + visibleRows() * ROW_HEIGHT + PADDING + 4
                 + selectAllRowH()
                 + stickyCaptionH()
-                + (multiSelect ? ADD_BTN_H + PADDING : 0);
+                + (multiSelect || hasFooter() ? ADD_BTN_H + PADDING : 0);
         panelX = centerX - panelW / 2;
         panelY = centerY - panelH / 2;
         if (panelX < 4) panelX = 4;
@@ -456,6 +490,20 @@ public abstract class AbstractSearchableList<T> implements PickerOverlay {
         resetListAnim();
         // re-fire the current filter via setText (always fires onChange)
         searchBar.setText(searchBar.getText() == null ? "" : searchBar.getText());
+    }
+
+    /**
+     * Like {@link #reloadEntries()}, but the list stays where it was scrolled to. For a change
+     * that keeps most rows in place – a tree branch opening – where jumping to the top would
+     * lose the row that was just clicked.
+     */
+    protected final void reloadEntriesKeepingScroll() {
+        int keep = scrollRow;
+        allEntries.clear();
+        allEntries.addAll(loadEntries());
+        searchBar.setText(searchBar.getText() == null ? "" : searchBar.getText());
+        scrollRow = Math.min(keep, maxScrollRow);
+        scrollAnim.set(scrollRow);
     }
 
     // =============================================
@@ -796,6 +844,23 @@ public abstract class AbstractSearchableList<T> implements PickerOverlay {
                 && mouseY >= addButtonY() && mouseY < addButtonY() + ADD_BTN_H;
     }
 
+    private int footerButtonX(int index, int count) {
+        int total = count * ADD_BTN_W + (count - 1) * PADDING;
+        return panelX + (panelW - total) / 2 + index * (ADD_BTN_W + PADDING);
+    }
+
+    private void renderFooter(GuiGraphics g, Font font, int mouseX, int mouseY) {
+        List<FooterButton> buttons = footerButtons();
+        int y = addButtonY();
+        for (int i = 0; i < buttons.size(); i++) {
+            int x = footerButtonX(i, buttons.size());
+            boolean hovered = mouseX >= x && mouseX < x + ADD_BTN_W && mouseY >= y && mouseY < y + ADD_BTN_H;
+            float hp = Ease.outCubic(footerHover.computeIfAbsent(i, k -> new Anim())
+                    .ramp(hovered, Timing.HOVER_IN_MS, Timing.HOVER_OUT_MS));
+            SearchPanelChrome.renderStyledButton(g, font, x, y, ADD_BTN_W, ADD_BTN_H, buttons.get(i).label(), hp);
+        }
+    }
+
     private boolean canConfirm() {
         return multiSelect && !selected.isEmpty();
     }
@@ -993,6 +1058,7 @@ public abstract class AbstractSearchableList<T> implements PickerOverlay {
         }
 
         if (multiSelect) renderAddButton(g, font, mouseX, mouseY);
+        else if (hasFooter()) renderFooter(g, font, mouseX, mouseY);
 
         afterRender(g, font, mouseX, mouseY);
 
@@ -1078,6 +1144,20 @@ public abstract class AbstractSearchableList<T> implements PickerOverlay {
             return true;
         }
 
+        if (hasFooter()) {
+            List<FooterButton> buttons = footerButtons();
+            int y = addButtonY();
+            for (int i = 0; i < buttons.size(); i++) {
+                int x = footerButtonX(i, buttons.size());
+                if (mouseX >= x && mouseX < x + ADD_BTN_W && mouseY >= y && mouseY < y + ADD_BTN_H) {
+                    Minecraft.getInstance().getSoundManager()
+                            .play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
+                    buttons.get(i).onClick().run();
+                    return true;
+                }
+            }
+        }
+
         int listX = listLeftX();
         int listY = listTopY();
         int listW = listInnerW();
@@ -1115,6 +1195,9 @@ public abstract class AbstractSearchableList<T> implements PickerOverlay {
                 if (!isSelectedTabActive() && isHeaderRow(index)) return true;
                 Minecraft.getInstance().getSoundManager()
                         .play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
+                if (!isSelectedTabActive() && onRowClicked(filteredEntries.get(index), index, mouseX, listX)) {
+                    return true;
+                }
                 if (isSelectedTabActive()) {
                     // Toggle against the live selection; the snapshot stays put on purpose.
                     Sel<T> ref = selectedView.get(index);

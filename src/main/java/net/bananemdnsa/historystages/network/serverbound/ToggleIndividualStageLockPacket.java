@@ -1,5 +1,7 @@
 package net.bananemdnsa.historystages.network.serverbound;
 
+import net.bananemdnsa.historystages.data.StageCauses;
+import net.bananemdnsa.historystages.api.stage.StageChangeCause;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.StageManager;
@@ -73,13 +75,14 @@ public record ToggleIndividualStageLockPacket(String stageId, Optional<UUID> tar
                     boolean applied;
                     if (msg.unlock) {
                         // Admin override, like the global toggle: blocked stages unlock anyway.
-                        StageStates.UnlockOutcome outcome = StageStates.forceUnlockIndividual(msg.stageId, target);
+                        StageStates.UnlockOutcome outcome = StageCauses.with(StageChangeCause.EDITOR,
+                                () -> StageStates.forceUnlockIndividual(msg.stageId, target));
                         applied = outcome.unlocked();
                         if (applied && outcome.wasBlocked()) counts[1]++;
                     } else {
                         // Admin override too: the team keeps the stage.
                         applied = net.bananemdnsa.historystages.data.team.TeamStageSharing.withoutSharing(
-                                () -> StageStates.relockIndividual(msg.stageId, target));
+                                () -> StageCauses.with(StageChangeCause.EDITOR, () -> StageStates.relockIndividual(msg.stageId, target)));
                     }
                     if (applied) counts[0]++;
                 }

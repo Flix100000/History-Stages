@@ -1,5 +1,7 @@
 package net.bananemdnsa.historystages.block.entity;
 
+import net.bananemdnsa.historystages.data.StageCauses;
+import net.bananemdnsa.historystages.api.stage.StageChangeCause;
 import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.block.ResearchPedestalBlock;
 import net.bananemdnsa.historystages.compat.ScrollVariants;
@@ -33,6 +35,7 @@ import net.bananemdnsa.historystages.network.clientbound.SyncDependencyStatusPac
 import net.bananemdnsa.historystages.network.clientbound.SyncIndividualStagesPacket;
 import net.bananemdnsa.historystages.network.clientbound.SyncStagesPacket;
 import net.bananemdnsa.historystages.api.stage.StageScope;
+import net.bananemdnsa.historystages.api.stage.StageStates;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -928,12 +931,22 @@ public class ResearchPedestalBlockEntity extends BlockEntity
         if (!level.isClientSide && stageId != null) {
             // Consuming items and XP is now handled when depositing into the scroll.
 
+            boolean unlocked;
             if (ModItems.CREATIVE_STAGE_ID.equals(stageId)) {
-                finishCreativeResearch();
+                StageCauses.run(StageChangeCause.CREATIVE, this::finishCreativeResearch);
+                unlocked = true;
             } else if (StageManager.isIndividualStage(stageId)) {
-                finishIndividualResearch(stack, stageId);
+                unlocked = finishIndividualResearch(stageId);
             } else {
-                finishGlobalResearch(stack, stageId);
+                unlocked = finishGlobalResearch(stageId);
+            }
+            if (!unlocked) {
+                // Refused at the last moment: by an addon, or by a block or loss that arrived
+                // during the final tick. The scroll stays, so nothing paid for is lost.
+                this.resetResearchState();
+                this.finishDelay = 0;
+                setChanged();
+                return;
             }
         }
 
@@ -976,118 +989,34 @@ public class ResearchPedestalBlockEntity extends BlockEntity
         this.itemHandler.setStackInSlot(0, replacement);
     }
 
-    private void finishGlobalResearch(ItemStack stack, String stageId) {
-        var stageEntry = StageManager.getStages().get(stageId);
-        StageData data = StageData.get(level);
-
-        if (!data.getUnlockedStages().contains(stageId)) {
-            data.addStage(stageId);
-            data.setDirty();
-
-            String eventDisplayName = (stageEntry != null) ? stageEntry.getDisplayName() : stageId;
-            EventBus.post(
-                    new net.bananemdnsa.historystages.api.stage.StageEvent.Unlocked(stageId, eventDisplayName));
-
-            if (level.getServer() != null) {
-                level.getServer().getCommands().performPrefixedCommand(
-                        level.getServer().createCommandSourceStack().withSuppressedOutput(),
-                        "history reload");
-            }
-
-            // Same per-stage opt-out as StageStates.unlockGlobal.
-            if (stageEntry != null && !stageEntry.resolvedNotify()) return;
-
-            String stagename = (stageEntry != null) ? stageEntry.getDisplayName() : stageId;
-            String configChat = Config.VISUAL.unlockMessageFormat.get();
-            String finalChat = configChat.replace("{stage}", stagename).replace("&", "\u00A7");
-
-            level.getServer().getPlayerList().getPlayers().forEach(player -> {
-                if (Config.VISUAL.broadcastChat.get()) {
-                    player.sendSystemMessage(
-                            Component.literal("[HistoryStages] ")
-                                    .withStyle(ChatFormatting.GRAY)
-                                    .append(Component.literal(finalChat)));
-                }
-                if (Config.VISUAL.useSounds.get()) {
-                    player.playNotifySound(SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundSource.MASTER, 0.75F, 1.0F);
-                }
-            });
-
-            if (Config.VISUAL.useToasts.get()) {
-                String iconId = (stageEntry != null && !stageEntry.getIcon().isEmpty())
-                        ? stageEntry.getIcon() : Config.VISUAL.defaultStageIcon.get();
-                PacketHandler.sendToastToAll(
-                        new net.bananemdnsa.historystages.network.clientbound.StageUnlockedToastPacket(stagename, iconId));
-            }
-        }
+    /**
+     * Through {@link StageStates}, like every other normal unlock. This used to be a hand copy,
+     * and the copy drifted: it reloaded every stage file and every datapack on each finished
+     * scroll, skipped the actionbar line, left the structure and biome caches stale, and gave an
+     * addon no chance to refuse. Returns false if the unlock was refused.
+     */
+    private boolean finishGlobalResearch(String stageId) {
+        if (StageData.get(level).hasStage(stageId)) return true;
+        return StageCauses.with(StageChangeCause.RESEARCH, () -> StageStates.unlockGlobal(stageId, (ServerLevel) level));
     }
 
-    private void finishIndividualResearch(ItemStack stack, String stageId) {
-        if (ownerUUID == null) return;
-
-        var stageEntry = StageManager.getIndividualStages().get(stageId);
-        IndividualStageData data = IndividualStageData.get(level);
-
-        if (!data.hasStage(ownerUUID, stageId)) {
-            data.addStage(ownerUUID, stageId);
-            data.setDirty();
-
-            String eventDisplayName = (stageEntry != null) ? stageEntry.getDisplayName() : stageId;
-            EventBus.post(
-                    new net.bananemdnsa.historystages.api.stage.StageEvent.IndividualUnlocked(stageId, eventDisplayName,
-                            ownerUUID));
-
-            if (level.getServer() != null) {
-                net.minecraft.server.level.ServerPlayer ownerPlayer =
-                        level.getServer().getPlayerList().getPlayer(ownerUUID);
-                if (ownerPlayer != null) {
-                    PacketHandler.sendIndividualStagesToPlayer(
-                            SyncIndividualStagesPacket.of(data, ownerUUID),
-                            ownerPlayer);
-
-                    // Same per-stage opt-out as StageStates.unlockIndividual.
-                    if (stageEntry != null && !stageEntry.resolvedNotify()) return;
-
-                    String stagename = (stageEntry != null) ? stageEntry.getDisplayName() : stageId;
-                    if (Config.VISUAL.individualBroadcastChat.get()) {
-                        String configChat = Config.VISUAL.individualUnlockMessageFormat.get();
-                        String finalChat = configChat.replace("{stage}", stagename)
-                                .replace("{player}", ownerPlayer.getName().getString())
-                                .replace("&", "\u00A7");
-                        ownerPlayer.sendSystemMessage(
-                                Component.literal("[HistoryStages] ")
-                                        .withStyle(ChatFormatting.GRAY)
-                                        .append(Component.literal(finalChat)));
-                    }
-                    if (Config.VISUAL.individualUseActionbar.get()) {
-                        String configChat = Config.VISUAL.individualUnlockMessageFormat.get();
-                        String finalChat = configChat.replace("{stage}", stagename)
-                                .replace("{player}", ownerPlayer.getName().getString())
-                                .replace("&", "\u00A7");
-                        ownerPlayer.displayClientMessage(Component.literal(finalChat), true);
-                    }
-                    if (Config.VISUAL.individualUseSounds.get()) {
-                        ownerPlayer.playNotifySound(SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundSource.MASTER,
-                                0.75F, 1.0F);
-                    }
-                    if (Config.VISUAL.individualUseToasts.get()) {
-                        String indIconId = (stageEntry != null && !stageEntry.getIcon().isEmpty())
-                                ? stageEntry.getIcon() : Config.VISUAL.defaultStageIcon.get();
-                        PacketHandler.sendToastToPlayer(
-                                new net.bananemdnsa.historystages.network.clientbound.StageUnlockedToastPacket(stagename, indIconId),
-                                ownerPlayer);
-                    }
-                }
-            }
-        }
+    /** The individual counterpart. The owner may have logged out while the scroll ran. */
+    private boolean finishIndividualResearch(String stageId) {
+        if (ownerUUID == null || level.getServer() == null) return false;
+        if (IndividualStageData.get(level).hasStage(ownerUUID, stageId)) return true;
+        return StageCauses.with(StageChangeCause.RESEARCH, () -> StageStates.unlockIndividual(stageId, ownerUUID, level.getServer()));
     }
 
     private void finishCreativeResearch() {
         if (level.getServer() == null) return;
 
         StageData stageData = StageData.get(level);
-        // Writes the stages directly, so no StageEvent clears their lock progress; do it here.
+        // Writes the stages directly and posts the events afterwards, one per stage, as the
+        // "unlock all" command does. Lock progress is cleared here as well as by the listeners,
+        // because the listeners only see the stages once the whole batch is in.
         ServerLevel serverLevel = (ServerLevel) level;
+        java.util.List<String> newGlobal = new java.util.ArrayList<>();
+        java.util.Map<java.util.UUID, java.util.List<String>> newIndividual = new java.util.LinkedHashMap<>();
         // The creative scroll counts as an admin unlock: it also forgets permanent losses.
         var lost = net.bananemdnsa.historystages.data.saveddata.LostStagesData.get(level);
         boolean lostCleared = false;
@@ -1096,6 +1025,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity
                 lostCleared |= lost.clearGlobal(id);
                 LockTriggerManager.clearProgress(id, false, null, serverLevel);
                 stageData.addStage(id);
+                newGlobal.add(id);
             }
         }
         stageData.setDirty();
@@ -1113,6 +1043,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity
                     playerLostCleared |= lost.clearIndividual(player.getUUID(), id);
                     LockTriggerManager.clearProgress(id, true, player.getUUID(), serverLevel);
                     individualData.addStage(player.getUUID(), id);
+                    newIndividual.computeIfAbsent(player.getUUID(), k -> new java.util.ArrayList<>()).add(id);
                 }
             }
             if (playerLostCleared) LostStages.syncTo(player);
@@ -1123,6 +1054,29 @@ public class ResearchPedestalBlockEntity extends BlockEntity
         individualData.setDirty();
 
         PacketHandler.sendToAll(new SyncStagesPacket(new ArrayList<>(StageData.SERVER_CACHE)));
+
+        // An admin unlock of everything: nothing to pass on to teams, every player got it all.
+        net.bananemdnsa.historystages.data.team.TeamStageSharing.withoutSharing(() -> {
+            for (String id : newGlobal) {
+                StageEntry entry = StageManager.getStages().get(id);
+                EventBus.post(new net.bananemdnsa.historystages.api.stage.StageEvent.Unlocked(
+                        id, entry != null ? entry.getDisplayName() : id));
+            }
+            newIndividual.forEach((uuid, ids) -> {
+                for (String id : ids) {
+                    StageEntry entry = StageManager.getIndividualStages().get(id);
+                    EventBus.post(new net.bananemdnsa.historystages.api.stage.StageEvent.IndividualUnlocked(
+                            id, entry != null ? entry.getDisplayName() : id, uuid));
+                }
+            });
+        });
+
+        if (newGlobal.isEmpty() && newIndividual.isEmpty()) return;
+        if (EventBus.post(new net.bananemdnsa.historystages.api.stage.StageAnnounceEvent(newGlobal,
+                newGlobal.stream().map(id -> {
+                    StageEntry entry = StageManager.getStages().get(id);
+                    return entry != null ? entry.getDisplayName() : id;
+                }).toList(), null, true)).isCanceled()) return;
 
         level.getServer().getPlayerList().getPlayers().forEach(player -> {
             if (Config.VISUAL.broadcastChat.get()) {
@@ -1137,6 +1091,17 @@ public class ResearchPedestalBlockEntity extends BlockEntity
                         SoundSource.MASTER, 0.75F, 1.0F);
             }
         });
+    }
+
+    /** What this pedestal is researching right now, for the api. Null without a scroll in the slot. */
+    @Nullable
+    public net.bananemdnsa.historystages.api.stage.StageProgress.Research researchProgress() {
+        ItemStack stack = this.itemHandler.getStackInSlot(0);
+        if (stack.isEmpty()) return null;
+        CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        if (!tag.contains("StageResearch")) return null;
+        return new net.bananemdnsa.historystages.api.stage.StageProgress.Research(
+                tag.getString("StageResearch"), progress, getMaxProgressForCurrentStage(), running, ownerUUID);
     }
 
     private int getMaxProgressForCurrentStage() {

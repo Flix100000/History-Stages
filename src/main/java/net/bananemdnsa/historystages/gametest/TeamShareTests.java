@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.HistoryStages;
+import net.bananemdnsa.historystages.api.stage.StageEvent;
 import net.bananemdnsa.historystages.api.stage.StageStates;
 import net.bananemdnsa.historystages.data.StageMode;
 import net.bananemdnsa.historystages.data.saveddata.IndividualStageData;
@@ -18,6 +19,7 @@ import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerPlayer;
 import net.bananemdnsa.historystages.platform.event.entity.player.PlayerEvent;
+import net.bananemdnsa.historystages.platform.bus.EventBus;
 
 /**
  * Individual stages flagged "share with team".
@@ -234,6 +236,37 @@ public class TeamShareTests {
             helper.succeed();
         } finally {
             Config.GAMEPLAY.teamShareOnJoin.set(original);
+            GameTestStages.removeAll();
+            cleanUp(helper, List.of("forge"), alice, bob);
+        }
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public static void eachTeammateGetsTheirOwnUnlockEvent(GameTestHelper helper) {
+        ServerPlayer alice = GameTestPlayers.createConnected(helper);
+        ServerPlayer bob = GameTestPlayers.createConnected(helper);
+        String id = P + "forge";
+        // Addons that react per player (re-sending a command tree, say) rely on this.
+        List<UUID> received = new java.util.ArrayList<>();
+        java.util.function.Consumer<StageEvent.IndividualUnlocked> listener = event -> {
+            if (event.getStageId().equals(id)) received.add(event.getPlayerUUID());
+        };
+        EventBus.addListener(StageEvent.IndividualUnlocked.class, listener);
+        try {
+            GameTestStages.individual("forge", stage -> stage.setShareWithTeam(true));
+            team(alice, bob);
+
+            StageStates.unlockIndividual(id, alice);
+            login(bob);
+
+            if (!received.equals(List.of(alice.getUUID(), bob.getUUID()))) {
+                helper.fail("expected one unlock event for alice, then one for bob when the stage reaches him; got "
+                        + received);
+                return;
+            }
+            helper.succeed();
+        } finally {
+            EventBus.unregister(listener);
             GameTestStages.removeAll();
             cleanUp(helper, List.of("forge"), alice, bob);
         }

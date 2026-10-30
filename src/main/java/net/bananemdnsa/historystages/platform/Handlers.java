@@ -3,6 +3,7 @@ package net.bananemdnsa.historystages.platform;
 import net.bananemdnsa.historystages.data.team.TeamStageSharing;
 import net.bananemdnsa.historystages.events.LecternScrollHandler;
 import net.bananemdnsa.historystages.events.RelockEventHandler;
+import net.bananemdnsa.historystages.events.StageDefinitionsEventBridge;
 import net.bananemdnsa.historystages.events.StageDeathLossHandler;
 import net.bananemdnsa.historystages.events.StageLogicRevocationHandler;
 import net.bananemdnsa.historystages.events.ZoneMarkingHandler;
@@ -46,6 +47,7 @@ public final class Handlers {
     public static final List<Class<?>> COMMON = List.of(
             LecternScrollHandler.class,
             RelockEventHandler.class,
+            StageDefinitionsEventBridge.class,
             StageDeathLossHandler.class,
             StageLogicRevocationHandler.class,
             ZoneMarkingHandler.class,

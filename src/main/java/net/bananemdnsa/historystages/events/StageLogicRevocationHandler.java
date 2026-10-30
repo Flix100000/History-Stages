@@ -1,5 +1,7 @@
 package net.bananemdnsa.historystages.events;
 
+import net.bananemdnsa.historystages.data.StageCauses;
+import net.bananemdnsa.historystages.api.stage.StageChangeCause;
 import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.api.stage.StageEvent;
@@ -152,7 +154,7 @@ public final class StageLogicRevocationHandler {
             DebugLogger.runtime(HsRuntimeCategories.STAGE_LOGIC, "Revoking global stage '" + target + "' because '" + changed
                     + "' is now " + (nowUnlocked ? "unlocked" : "locked") + ".");
             count(target, true);
-            if (StageStates.relockGlobal(target, level)) {
+            if (StageCauses.with(StageChangeCause.LOGIC, () -> StageStates.relockGlobal(target, level))) {
                 for (ServerPlayer player : server.getPlayerList().getPlayers()) {
                     toast(player, target, false, changed, false, nowUnlocked);
                 }
@@ -211,7 +213,7 @@ public final class StageLogicRevocationHandler {
         DebugLogger.runtime(HsRuntimeCategories.STAGE_LOGIC, player.getName().getString(),
                 "Revoking individual stage '" + target + "' because '" + changed + "' is now "
                         + (nowUnlocked ? "unlocked" : "locked") + ".");
-        if (StageStates.relockIndividual(target, player)) {
+        if (StageCauses.with(StageChangeCause.LOGIC, () -> StageStates.relockIndividual(target, player))) {
             toast(player, target, true, changed, changedIndividual, nowUnlocked);
         }
     }
@@ -223,7 +225,7 @@ public final class StageLogicRevocationHandler {
         Set<String> owed = LogicPendingRevocations.get(player.serverLevel()).take(player.getUUID());
         for (String target : owed) {
             if (!IndividualStageData.get(player.serverLevel()).hasStage(player.getUUID(), target)) continue;
-            if (StageStates.relockIndividual(target, player)) toast(player, target, true, null, false, false);
+            if (StageCauses.with(StageChangeCause.LOGIC, () -> StageStates.relockIndividual(target, player))) toast(player, target, true, null, false, false);
         }
     }
 

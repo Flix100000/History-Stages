@@ -1,5 +1,7 @@
 package net.bananemdnsa.historystages.commands;
 
+import net.bananemdnsa.historystages.api.stage.StageChangeCause;
+import net.bananemdnsa.historystages.data.StageCauses;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import net.bananemdnsa.historystages.Config;
@@ -39,23 +41,23 @@ public class StageCommand {
                 .then(Commands.literal("global")
                         .then(Commands.literal("unlock")
                                 .then(Commands.literal("*")
-                                        .executes(ctx -> handleUnlock(ctx.getSource(), "*")))
+                                        .executes(ctx -> StageCauses.with(StageChangeCause.COMMAND, () -> handleUnlock(ctx.getSource(), "*"))))
                                 .then(Commands.argument("stage", StringArgumentType.word())
                                         .suggests((ctx, b) -> {
                                             StageData d = StageData.get(ctx.getSource().getLevel());
                                             return SharedSuggestionProvider.suggest(StageManager.getStages().keySet().stream()
                                                     .filter(s -> !d.getUnlockedStages().contains(s)), b);
                                         })
-                                        .executes(ctx -> handleUnlock(ctx.getSource(), StringArgumentType.getString(ctx, "stage")))))
+                                        .executes(ctx -> StageCauses.with(StageChangeCause.COMMAND, () -> handleUnlock(ctx.getSource(), StringArgumentType.getString(ctx, "stage"))))))
                         .then(Commands.literal("lock")
                                 .then(Commands.literal("*")
-                                        .executes(ctx -> handleLock(ctx.getSource(), "*")))
+                                        .executes(ctx -> StageCauses.with(StageChangeCause.COMMAND, () -> handleLock(ctx.getSource(), "*"))))
                                 .then(Commands.argument("stage", StringArgumentType.word())
                                         .suggests((ctx, b) -> {
                                             StageData d = StageData.get(ctx.getSource().getLevel());
                                             return SharedSuggestionProvider.suggest(d.getUnlockedStages().stream(), b);
                                         })
-                                        .executes(ctx -> handleLock(ctx.getSource(), StringArgumentType.getString(ctx, "stage"))))))
+                                        .executes(ctx -> StageCauses.with(StageChangeCause.COMMAND, () -> handleLock(ctx.getSource(), StringArgumentType.getString(ctx, "stage")))))))
 
                 // --- INDIVIDUAL ---
                 .then(Commands.literal("individual")
@@ -65,7 +67,7 @@ public class StageCommand {
                                                 .executes(ctx -> {
                                                     int result = 0;
                                                     for (ServerPlayer p : EntityArgument.getPlayers(ctx, "players"))
-                                                        result += handleIndividualUnlockAll(ctx.getSource(), p);
+                                                        result += StageCauses.with(StageChangeCause.COMMAND, () -> handleIndividualUnlockAll(ctx.getSource(), p));
                                                     return result;
                                                 }))
                                         .then(Commands.argument("stage", StringArgumentType.word())
@@ -74,7 +76,7 @@ public class StageCommand {
                                                     String stage = StringArgumentType.getString(ctx, "stage");
                                                     int result = 0;
                                                     for (ServerPlayer p : EntityArgument.getPlayers(ctx, "players"))
-                                                        result += handleIndividualUnlock(ctx.getSource(), p, stage);
+                                                        result += StageCauses.with(StageChangeCause.COMMAND, () -> handleIndividualUnlock(ctx.getSource(), p, stage));
                                                     return result;
                                                 }))))
                         .then(Commands.literal("lock")
@@ -83,7 +85,7 @@ public class StageCommand {
                                                 .executes(ctx -> {
                                                     int result = 0;
                                                     for (ServerPlayer p : EntityArgument.getPlayers(ctx, "players"))
-                                                        result += handleIndividualLockAll(ctx.getSource(), p);
+                                                        result += StageCauses.with(StageChangeCause.COMMAND, () -> handleIndividualLockAll(ctx.getSource(), p));
                                                     return result;
                                                 }))
                                         .then(Commands.argument("stage", StringArgumentType.word())
@@ -92,7 +94,7 @@ public class StageCommand {
                                                     String stage = StringArgumentType.getString(ctx, "stage");
                                                     int result = 0;
                                                     for (ServerPlayer p : EntityArgument.getPlayers(ctx, "players"))
-                                                        result += handleIndividualLock(ctx.getSource(), p, stage);
+                                                        result += StageCauses.with(StageChangeCause.COMMAND, () -> handleIndividualLock(ctx.getSource(), p, stage));
                                                     return result;
                                                 })))))
 
@@ -106,14 +108,14 @@ public class StageCommand {
                                 .then(Commands.literal("reset")
                                         .then(Commands.argument("stage", StringArgumentType.word())
                                                 .suggests((ctx, b) -> SharedSuggestionProvider.suggest(temporaryStageNames(false), b))
-                                                .executes(ctx -> handleTempGlobalSetCount(ctx.getSource(), StringArgumentType.getString(ctx, "stage"), 0, true))))
+                                                .executes(ctx -> StageCauses.with(StageChangeCause.COMMAND, () -> handleTempGlobalSetCount(ctx.getSource(), StringArgumentType.getString(ctx, "stage"), 0, true)))))
                                 .then(Commands.literal("setcount")
                                         .then(Commands.argument("stage", StringArgumentType.word())
                                                 .suggests((ctx, b) -> SharedSuggestionProvider.suggest(temporaryStageNames(false), b))
                                                 .then(Commands.argument("count", com.mojang.brigadier.arguments.IntegerArgumentType.integer(0))
-                                                        .executes(ctx -> handleTempGlobalSetCount(ctx.getSource(),
+                                                        .executes(ctx -> StageCauses.with(StageChangeCause.COMMAND, () -> handleTempGlobalSetCount(ctx.getSource(),
                                                                 StringArgumentType.getString(ctx, "stage"),
-                                                                com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(ctx, "count"), false))))))
+                                                                com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(ctx, "count"), false)))))))
                         .then(Commands.literal("individual")
                                 .then(Commands.argument("players", EntityArgument.players())
                                         .then(Commands.literal("info")
@@ -133,7 +135,7 @@ public class StageCommand {
                                                             String stage = StringArgumentType.getString(ctx, "stage");
                                                             int r = 0;
                                                             for (ServerPlayer p : EntityArgument.getPlayers(ctx, "players"))
-                                                                r += handleTempIndividualSetCount(ctx.getSource(), p, stage, 0, true);
+                                                                r += StageCauses.with(StageChangeCause.COMMAND, () -> handleTempIndividualSetCount(ctx.getSource(), p, stage, 0, true));
                                                             return r;
                                                         })))
                                         .then(Commands.literal("setcount")
@@ -145,7 +147,7 @@ public class StageCommand {
                                                                     int count = com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(ctx, "count");
                                                                     int r = 0;
                                                                     for (ServerPlayer p : EntityArgument.getPlayers(ctx, "players"))
-                                                                        r += handleTempIndividualSetCount(ctx.getSource(), p, stage, count, false);
+                                                                        r += StageCauses.with(StageChangeCause.COMMAND, () -> handleTempIndividualSetCount(ctx.getSource(), p, stage, count, false));
                                                                     return r;
                                                                 })))))))
 
@@ -421,6 +423,14 @@ public class StageCommand {
 
         var stageEntry = StageManager.getStages().get(stageID);
         String name = stageID.equals("*") ? "All Progress" : (stageEntry != null ? stageEntry.getDisplayName() : stageID);
+        java.util.List<String> announcedIds = stageID.equals("*")
+                ? new ArrayList<>(StageManager.getStages().keySet()) : java.util.List.of(stageID);
+        java.util.List<String> announcedNames = announcedIds.stream().map(id -> {
+            var e = StageManager.getStages().get(id);
+            return e != null ? e.getDisplayName() : id;
+        }).toList();
+        if (EventBus.post(new net.bananemdnsa.historystages.api.stage.StageAnnounceEvent(
+                announcedIds, announcedNames, null, isUnlock)).isCanceled()) return;
         String iconId = (!stageID.equals("*") && stageEntry != null && !stageEntry.getIcon().isEmpty())
                 ? stageEntry.getIcon() : Config.VISUAL.defaultStageIcon.get();
 
@@ -639,15 +649,17 @@ public class StageCommand {
                 target
         );
 
-        // Notify the target player
-        if (Config.VISUAL.individualBroadcastChat.get()) {
+        // Notify the target player, unless an addon announces it itself
+        boolean announce = !EventBus.post(new net.bananemdnsa.historystages.api.stage.StageAnnounceEvent(
+                java.util.List.of(stageId), java.util.List.of(displayName), target.getUUID(), false)).isCanceled();
+        if (announce && Config.VISUAL.individualBroadcastChat.get()) {
             target.sendSystemMessage(
                     Component.literal("[HistoryStages] ")
                             .withStyle(ChatFormatting.RED)
                             .append(Component.literal("The knowledge of " + displayName + " has been forgotten...").withStyle(ChatFormatting.WHITE))
             );
         }
-        if (Config.VISUAL.individualUseSounds.get()) {
+        if (announce && Config.VISUAL.individualUseSounds.get()) {
             target.playNotifySound(SoundEvents.NOTE_BLOCK_BASS.value(), SoundSource.MASTER, 0.75F, 0.5F);
         }
 

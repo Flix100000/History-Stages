@@ -126,6 +126,18 @@ public final class EventBus {
         }
     }
 
+    /**
+     * Takes a listener off again: a lambda handed to {@link #addListener}, or an object handed to
+     * {@link #register(Object)}. For the code that only listens for a while, a test above all.
+     */
+    public static void unregister(Object listener) {
+        for (List<Listener> list : LISTENERS.values()) {
+            synchronized (list) {
+                list.removeIf(entry -> entry.instance() == listener);
+            }
+        }
+    }
+
     /** Whether anything at all listens for this event, so a caller can skip building one. */
     public static boolean hasListeners(Class<? extends Event> eventType) {
         List<Listener> list = LISTENERS.get(eventType);

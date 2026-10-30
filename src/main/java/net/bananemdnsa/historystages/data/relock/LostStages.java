@@ -33,6 +33,23 @@ public final class LostStages {
         if (LostStagesData.get(player.serverLevel()).markIndividual(player.getUUID(), stageId)) syncTo(player);
     }
 
+    /**
+     * Posts {@code StageEvent.LostForGood}. Separate from the marks because the lock trigger marks
+     * before it relocks and takes the mark back if the relock fails; the event must only go out
+     * once the loss has really happened.
+     */
+    public static void announce(String stageId, @org.jetbrains.annotations.Nullable UUID player) {
+        net.bananemdnsa.historystages.platform.bus.EventBus.post(new net.bananemdnsa.historystages.api.stage.StageEvent.LostForGood(
+                stageId, displayName(stageId, player != null), player));
+    }
+
+    private static String displayName(String stageId, boolean individual) {
+        var entry = individual
+                ? net.bananemdnsa.historystages.data.StageManager.getIndividualStages().get(stageId)
+                : net.bananemdnsa.historystages.data.StageManager.getStages().get(stageId);
+        return entry != null ? entry.getDisplayName() : stageId;
+    }
+
     public static void clearGlobal(String stageId, ServerLevel level) {
         if (LostStagesData.get(level).clearGlobal(stageId)) syncAll(level);
     }

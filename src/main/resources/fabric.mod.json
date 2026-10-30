@@ -38,6 +38,8 @@
 			"net.bananemdnsa.historystages.demo.DemoClientPlugin"
 		],
 		"fabric-gametest": [
+			"net.bananemdnsa.historystages.gametest.AddonApiTests",
+			"net.bananemdnsa.historystages.gametest.AddonHookTests",
 			"net.bananemdnsa.historystages.gametest.AnvilLockTests",
 			"net.bananemdnsa.historystages.gametest.AutoTriggerTests",
 			"net.bananemdnsa.historystages.gametest.ConfigCodecTests",
@@ -61,6 +63,7 @@
 			"net.bananemdnsa.historystages.gametest.StageLogicRevokeTests",
 			"net.bananemdnsa.historystages.gametest.StageLogicRound2Tests",
 			"net.bananemdnsa.historystages.gametest.StageLogicTests",
+			"net.bananemdnsa.historystages.gametest.StageQueryTests",
 			"net.bananemdnsa.historystages.gametest.TeamShareTests",
 			"net.bananemdnsa.historystages.gametest.TradeLockTests",
 			"net.bananemdnsa.historystages.gametest.ZoneLockTests",

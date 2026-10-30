@@ -42,8 +42,12 @@ class ApiSurfaceGuardTest {
      *
      * <p>An addon does not have to touch the bus itself: registration goes through the plugin
      * entrypoint, which names only api types.
+     *
+     * <p>{@code ICancellableEvent} for the same reason: an event an addon may cancel, such as
+     * {@code StageEvent.BeforeUnlock}, has to say so in its type, and on the other loader that
+     * marker is the loader's as well.
      */
-    private static final Set<String> LOADER_BRIDGE = Set.of("Event");
+    private static final Set<String> LOADER_BRIDGE = Set.of("Event", "ICancellableEvent");
 
     private static final Set<String> DATA_MODEL = Set.of(
             "StageEntry", "ItemEntry", "NamedLockEntry", "EntityLocks", "EntitySpawnLockEntry",
