@@ -72,6 +72,15 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
     /** Breathing room between two labels sharing a line. */
     private static final int LINE_GAP = 6;
 
+    /**
+     * Depth for a wash laid over a slot's item. A container screen stacks two lifts before the
+     * icon is drawn — {@code renderSlot} pushes +100 and {@code renderItem} another +150, with
+     * the stack count another +200 above that — and the depth test is back on by the time a
+     * screen paints over {@code super.render}. Anything below ~300 loses to the item it covers,
+     * which is how a grey plane ends up behind the thing it is meant to hide.
+     */
+    private static final int SLOT_OVERLAY_Z = 350;
+
     private boolean hasDependencies = false;
     private Component pendingTooltip = null;
 
@@ -552,7 +561,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
                     int slotX = this.leftPos + PedestalLayout.SCROLL_SLOT_X;
                     int slotY = this.topPos + PedestalLayout.SCROLL_SLOT_Y;
                     guiGraphics.pose().pushPose();
-                    guiGraphics.pose().translate(0, 0, 200);
+                    guiGraphics.pose().translate(0, 0, SLOT_OVERLAY_Z);
                     guiGraphics.fill(slotX, slotY, slotX + 16, slotY + 16, 0x80808080);
                     guiGraphics.pose().popPose();
                 }
@@ -627,7 +636,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
 
     /**
      * Whether the player can actually pay for a depositable requirement. {@code canDeposit} only
-     * says the requirement takes a deposit at all - the pedestal's XP branch additionally refuses
+     * says the requirement takes a deposit at all — the pedestal's XP branch additionally refuses
      * anything the player cannot cover, and returns without a word when it does. A creative
      * player sits at level 0 with the XP bar hidden, which is exactly how a button that looks
      * live ends up doing nothing.

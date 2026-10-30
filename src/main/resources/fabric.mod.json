@@ -55,7 +55,8 @@
 			"net.bananemdnsa.historystages.gametest.RecipeLockTests",
 			"net.bananemdnsa.historystages.gametest.SpawnControlTests",
 			"net.bananemdnsa.historystages.gametest.TradeLockTests",
-			"net.bananemdnsa.historystages.gametest.ZoneLockTests"
+			"net.bananemdnsa.historystages.gametest.ZoneLockTests",
+			"net.bananemdnsa.historystages.gametest.ZoneMarkingTests"
 		],
 		"ftbquests": [
 			"net.bananemdnsa.historystages.compat.ftbquests.FTBQuestsIntegration"

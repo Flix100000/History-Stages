@@ -65,6 +65,11 @@ public record SyncIndividualStagesPacket(Set<String> unlockedStages, Map<String,
                     net.bananemdnsa.historystages.compat.jei.JEIPlugin.tryApplyDiff();
                 } catch (Throwable ignored) {}
             }
+            if (net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("emi")) {
+                try {
+                    net.bananemdnsa.historystages.compat.emi.EmiReloadBridge.reloadIfHiding();
+                } catch (Throwable ignored) {}
+            }
         });
     }
 

@@ -21,6 +21,17 @@ public final class EmiReloadBridge {
 
     private EmiReloadBridge() {}
 
+    /**
+     * Reload after a stage change, but only when something is hidden. The lock overlay is drawn
+     * fresh every time a recipe opens and needs no reload; the hiding only happens during one.
+     */
+    public static void reloadIfHiding() {
+        if (net.bananemdnsa.historystages.Config.VISUAL.hideLockedItemsInJei.get()
+                || net.bananemdnsa.historystages.Config.VISUAL.hideLockedRecipesInJei.get()) {
+            reloadIfPresent();
+        }
+    }
+
     /** Triggers a full EMI reload if EMI is present; silently does nothing otherwise. */
     public static void reloadIfPresent() {
         try {

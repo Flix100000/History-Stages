@@ -84,15 +84,16 @@ public record SyncStagesPacket(List<String> unlockedStages, Map<String, Long> un
                     net.bananemdnsa.historystages.client.ClientRecipeBookRefresh.rebuild();
                     net.bananemdnsa.historystages.client.ClientFluidRecipeIndex.refresh();
 
-                    if (FabricLoader.getInstance().isModLoaded("emi")) {
-                        ExternalMods.refreshEMI();
-                    }
-
                     // JEI hiding (Issue #64): refresh visibility after stage cache updated.
                     // Null-safe — no-op if JEI is not installed.
                     if (FabricLoader.getInstance().isModLoaded("jei")) {
                         try {
                             net.bananemdnsa.historystages.compat.jei.JEIPlugin.tryApplyDiff();
+                        } catch (Throwable ignored) {}
+                    }
+                    if (net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("emi")) {
+                        try {
+                            net.bananemdnsa.historystages.compat.emi.EmiReloadBridge.reloadIfHiding();
                         } catch (Throwable ignored) {}
                     }
 
@@ -107,14 +108,5 @@ public record SyncStagesPacket(List<String> unlockedStages, Map<String, Long> un
     @Override
     public CustomPacketPayload.Type<? extends CustomPacketPayload> type() {
         return TYPE;
-    }
-
-    private static class ExternalMods {
-        private static void refreshEMI() {
-            try {
-                String currentSearch = dev.emi.emi.api.EmiApi.getSearchText();
-                dev.emi.emi.api.EmiApi.setSearchText(currentSearch);
-            } catch (Throwable ignored) {}
-        }
     }
 }

@@ -1619,7 +1619,7 @@ public class ConfigEditorScreen extends Screen {
         }
 
         // EMI: rebuild its index so booster/config changes show up immediately.
-        if (FabricLoader.getInstance().isModLoaded("emi")) {
+        if (net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("emi")) {
             try {
                 net.bananemdnsa.historystages.compat.emi.EmiReloadBridge.reloadIfPresent();
             } catch (Throwable ignored) {}

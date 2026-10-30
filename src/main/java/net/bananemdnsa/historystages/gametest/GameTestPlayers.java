@@ -5,9 +5,16 @@ import java.util.UUID;
 import com.mojang.authlib.GameProfile;
 
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.network.Connection;
+import net.minecraft.network.PacketSendListener;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.network.CommonListenerCookie;
+import net.minecraft.server.network.ServerGamePacketListenerImpl;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * A {@link ServerPlayer} for a test to check things against.
@@ -32,5 +39,35 @@ final class GameTestPlayers {
         ServerLevel level = helper.getLevel();
         GameProfile profile = new GameProfile(UUID.randomUUID(), "gametest");
         return new ServerPlayer(level.getServer(), level, profile, ClientInformation.createDefault());
+    }
+
+    /**
+     * The same player with a connection that swallows everything sent to it.
+     *
+     * <p>For code under test that talks back — an actionbar line, a sync packet. Without it the
+     * first send dies on the missing connection, after the part the test asks about.
+     */
+    static ServerPlayer createConnected(GameTestHelper helper) {
+        ServerPlayer player = create(helper);
+        new SilentListener(player);
+        return player;
+    }
+
+    /**
+     * Overridden on the listener, not only the connection: NeoForge checks a mod payload against
+     * the channels the client negotiated before it ever reaches the connection, and a player
+     * built without a login negotiated none.
+     */
+    private static final class SilentListener extends ServerGamePacketListenerImpl {
+        SilentListener(ServerPlayer player) {
+            super(player.getServer(), new Connection(PacketFlow.SERVERBOUND), player,
+                    CommonListenerCookie.createInitial(player.getGameProfile(), false));
+        }
+
+        @Override
+        public void send(Packet<?> packet) {}
+
+        @Override
+        public void send(Packet<?> packet, @Nullable PacketSendListener listener) {}
     }
 }
