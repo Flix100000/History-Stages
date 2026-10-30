@@ -1535,7 +1535,7 @@ public class StageManager {
         if (!dir.exists()) dir.mkdirs();
 
         File file = new File(dir, stageId + ".json");
-        try (Writer writer = new FileWriter(file)) {
+        try (Writer writer = new FileWriter(file, java.nio.charset.StandardCharsets.UTF_8)) {
             writer.write(entry.toJson());
             STAGES.put(stageId, entry);
             stagesChanged();
@@ -1986,7 +1986,7 @@ public class StageManager {
         if (!dir.exists()) dir.mkdirs();
 
         File file = new File(dir, stageId + ".json");
-        try (Writer writer = new FileWriter(file)) {
+        try (Writer writer = new FileWriter(file, java.nio.charset.StandardCharsets.UTF_8)) {
             writer.write(entry.toJson());
             INDIVIDUAL_STAGES.put(stageId, entry);
             stagesChanged();

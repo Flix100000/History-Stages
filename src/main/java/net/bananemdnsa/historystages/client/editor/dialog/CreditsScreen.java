@@ -9,6 +9,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.ConfirmLinkScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.fabricmc.loader.api.FabricLoader;
 
 import java.util.List;
@@ -29,6 +30,12 @@ public class CreditsScreen extends AbstractModalScreen {
     private static final int SECTION_GAP = 12;
 
     private static final int AUTHORS_COLOR = 0xFFFFFF;
+
+    private static final ResourceLocation LOGO =
+            ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "textures/gui/logo.png");
+    /** Drawn at its native size, so the pixel art stays crisp at every GUI scale. */
+    private static final int LOGO_SIZE = 64;
+    private static final int LOGO_GAP = 8;
 
     /** One button per entry, in the order they are drawn. */
     private record Link(String labelKey, String url) {}
@@ -77,7 +84,7 @@ public class CreditsScreen extends AbstractModalScreen {
 
     @Override
     protected int contentHeight() {
-        return LINE_H * 2 + SECTION_GAP
+        return LOGO_SIZE + LOGO_GAP + LINE_H * 2 + SECTION_GAP
                 + LINK_H * LINKS.size() + LINK_GAP * (LINKS.size() - 1);
     }
 
@@ -85,7 +92,7 @@ public class CreditsScreen extends AbstractModalScreen {
     protected void buildContentWidgets() {
         int x = boxX + PAD;
         int w = boxW - PAD * 2;
-        int y = contentY + LINE_H * 2 + SECTION_GAP;
+        int y = contentY + LOGO_SIZE + LOGO_GAP + LINE_H * 2 + SECTION_GAP;
 
         for (Link link : LINKS) {
             this.addRenderableWidget(StyledButton.of(Component.translatable(link.labelKey()),
@@ -109,10 +116,12 @@ public class CreditsScreen extends AbstractModalScreen {
     @Override
     protected void renderContent(GuiGraphics g, int x, int y, int w, int mouseX, int mouseY) {
         int centerX = x + w / 2;
+        g.blit(LOGO, centerX - LOGO_SIZE / 2, y, 0f, 0f, LOGO_SIZE, LOGO_SIZE, LOGO_SIZE, LOGO_SIZE);
+        int textY = y + LOGO_SIZE + LOGO_GAP;
         g.drawCenteredString(this.font, Component.translatable("editor.historystages.credits.made_by"),
-                centerX, y, SUBTITLE_GREY);
+                centerX, textY, SUBTITLE_GREY);
         g.drawCenteredString(this.font, Component.translatable("editor.historystages.credits.authors"),
-                centerX, y + LINE_H, AUTHORS_COLOR);
+                centerX, textY + LINE_H, AUTHORS_COLOR);
         // The links themselves are widgets and are drawn by super.render().
     }
 }

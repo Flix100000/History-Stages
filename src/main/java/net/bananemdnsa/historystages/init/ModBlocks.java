@@ -5,12 +5,22 @@ import net.bananemdnsa.historystages.block.MultiBlockTier3Block;
 import net.bananemdnsa.historystages.block.MultiBlockTier4Block;
 import net.bananemdnsa.historystages.block.ResearchPedestalBlock;
 import net.bananemdnsa.historystages.block.ResearchPedestalTier2Block;
+import net.bananemdnsa.historystages.block.ScrollShelfBlock;
+import net.bananemdnsa.historystages.block.ScrollShelfWood;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.SoundType;
+import net.minecraft.world.level.block.state.properties.NoteBlockInstrument;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.bananemdnsa.historystages.platform.DeferredRegister;
 import net.bananemdnsa.historystages.platform.DeferredHolder;
+
+import net.fabricmc.fabric.api.registry.FlammableBlockRegistry;
+
+import java.util.Collections;
+import java.util.EnumMap;
+import java.util.Map;
 
 public class ModBlocks {
     public static final DeferredRegister<Block> BLOCKS =
@@ -34,7 +44,38 @@ public class ModBlocks {
     public static final DeferredHolder<Block, Block> RESEARCH_PEDESTAL_TIER_4 = BLOCKS.register("research_pedestal_tier_4",
             () -> new MultiBlockTier4Block(pedestalProps()));
 
+    public static final Map<ScrollShelfWood, DeferredHolder<Block, ScrollShelfBlock>> SCROLL_SHELVES = registerScrollShelves();
+
+    private static Map<ScrollShelfWood, DeferredHolder<Block, ScrollShelfBlock>> registerScrollShelves() {
+        Map<ScrollShelfWood, DeferredHolder<Block, ScrollShelfBlock>> shelves = new EnumMap<>(ScrollShelfWood.class);
+        for (ScrollShelfWood wood : ScrollShelfWood.values()) {
+            shelves.put(wood, BLOCKS.register(wood.blockId(), () -> new ScrollShelfBlock(scrollShelfProps(wood))));
+        }
+        return Collections.unmodifiableMap(shelves);
+    }
+
+    // The chiseled bookshelf's properties, coloured on the map like the wood it's made of. The
+    // last three would follow from a full-cube collision shape, which the shelf doesn't have.
+    private static BlockBehaviour.Properties scrollShelfProps(ScrollShelfWood wood) {
+        BlockBehaviour.Properties props = BlockBehaviour.Properties.of()
+                .mapColor(wood.planks().defaultMapColor())
+                .instrument(NoteBlockInstrument.BASS)
+                .strength(1.5F)
+                .sound(SoundType.CHISELED_BOOKSHELF)
+                .isRedstoneConductor((state, level, pos) -> true)
+                .isSuffocating((state, level, pos) -> true)
+                .isViewBlocking((state, level, pos) -> true);
+        return wood.flammable() ? props.ignitedByLava() : props;
+    }
+
     public static void register() {
         BLOCKS.register();
+        // Same fire behaviour as the chiseled bookshelf; nether wood shelves never catch. NeoForge
+        // asks the block itself, vanilla and Fabric a table, so the wooden ones go in here.
+        for (Map.Entry<ScrollShelfWood, DeferredHolder<Block, ScrollShelfBlock>> shelf : SCROLL_SHELVES.entrySet()) {
+            if (shelf.getKey().flammable()) {
+                FlammableBlockRegistry.getDefaultInstance().add(shelf.getValue().get(), 30, 20);
+            }
+        }
     }
 }

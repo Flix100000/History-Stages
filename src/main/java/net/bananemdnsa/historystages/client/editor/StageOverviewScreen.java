@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor;
 
+import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.client.editor.anim.Anim;
 import net.bananemdnsa.historystages.client.editor.anim.Ease;
 import net.bananemdnsa.historystages.client.editor.anim.Fade;
@@ -43,6 +44,7 @@ import net.bananemdnsa.historystages.api.editor.widget.SearchBar;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
 
 import java.util.ArrayList;
@@ -65,8 +67,16 @@ public class StageOverviewScreen extends Screen {
     private static final int INDIVIDUAL_FOLDER_HOVER_KEY = 30000;
     /** Width of the three bars marking a folder row, in pixels. */
     private static final int FOLDER_ICON_WIDTH = 7;
-    /** Search bar in the top-left corner; y is picked so it centres on the menu button's row. */
-    private static final int SEARCH_X = 10;
+    /** Round mod logo in the top-left corner, ahead of the search bar. */
+    private static final ResourceLocation LOGO =
+            ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "textures/gui/logo_round.png");
+    /** The texture is 72px; a third of that lands on whole pixels at GUI scale 3. */
+    private static final int LOGO_TEX = 72;
+    private static final int LOGO_SIZE = 24;
+    private static final int LOGO_X = 10;
+    private static final int LOGO_Y = 3;
+    /** Search bar right of the logo; y is picked so it centres on the menu button's row. */
+    private static final int SEARCH_X = LOGO_X + LOGO_SIZE + 6;
     private static final int SEARCH_Y = 4;
     private static final int SEARCH_W = 120;
     /** Header menu button in the top-right corner, vertically centred with the search bar. */
@@ -631,6 +641,8 @@ public class StageOverviewScreen extends Screen {
         guiGraphics.fill(0, 0, this.width, this.height, 0xE0101010);
         guiGraphics.drawCenteredString(this.font, this.title, this.width / 2, 10, 0xFFFFFF);
 
+        guiGraphics.blit(LOGO, LOGO_X, LOGO_Y, LOGO_SIZE, LOGO_SIZE, 0f, 0f,
+                LOGO_TEX, LOGO_TEX, LOGO_TEX, LOGO_TEX);
         searchBox.render(guiGraphics, this.font, mouseX, mouseY);
 
         guiGraphics.fill(10, HEADER_HEIGHT, this.width - 10, HEADER_HEIGHT + 1, 0xFF555555);

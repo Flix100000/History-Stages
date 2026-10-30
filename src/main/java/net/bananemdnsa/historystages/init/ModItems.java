@@ -1,6 +1,7 @@
 package net.bananemdnsa.historystages.init;
 
 import net.bananemdnsa.historystages.client.tooltip.ScrollTooltipRenderer;
+import net.bananemdnsa.historystages.block.ScrollShelfWood;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
@@ -15,7 +16,10 @@ import net.bananemdnsa.historystages.platform.DeferredRegister;
 import net.bananemdnsa.historystages.platform.DeferredHolder;
 import net.bananemdnsa.historystages.HistoryStages;
 
+import java.util.Collections;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 
 public class ModItems {
     public static final DeferredRegister<Item> ITEMS =
@@ -85,6 +89,15 @@ public class ModItems {
 
     public static final DeferredHolder<Item, Item> RESEARCH_PEDESTAL_TIER_4_ITEM = ITEMS.register("research_pedestal_tier_4",
             () -> new BlockItem(ModBlocks.RESEARCH_PEDESTAL_TIER_4.get(), new Item.Properties()));
+
+    public static final Map<ScrollShelfWood, DeferredHolder<Item, Item>> SCROLL_SHELF_ITEMS = registerScrollShelfItems();
+
+    private static Map<ScrollShelfWood, DeferredHolder<Item, Item>> registerScrollShelfItems() {
+        Map<ScrollShelfWood, DeferredHolder<Item, Item>> items = new EnumMap<>(ScrollShelfWood.class);
+        ModBlocks.SCROLL_SHELVES.forEach((wood, block) -> items.put(wood,
+                ITEMS.register(wood.blockId(), () -> new BlockItem(block.get(), new Item.Properties()))));
+        return Collections.unmodifiableMap(items);
+    }
 
     public static void register() {
         ITEMS.register();
