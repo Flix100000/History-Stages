@@ -27,6 +27,8 @@ public final class LockIconRenderer {
     public static ResourceLocation iconFor(ItemStack stack) {
         if (!Config.VISUAL.showLockIcons.get()) return null;
         if (stack == null || stack.isEmpty()) return null;
+        // A disguise that hides its hints would be given away by a lock on the "stone".
+        if (net.bananemdnsa.historystages.client.disguise.ClientDisguises.hidesHints(stack)) return null;
 
         boolean globallyLocked     = StageLockHelper.isActionLockedForClient(stack, "icon");
         boolean dualPhaseGlobal    = globallyLocked && StageLockHelper.isDualPhaseGloballyLockedClient(stack);

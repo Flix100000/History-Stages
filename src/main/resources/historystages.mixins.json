@@ -38,7 +38,9 @@
     "EnchantmentMenuMixin",
     "MerchantOffersMixin",
     "MerchantContainerMixin",
-    "jei.RecipeLayoutMixin"
+    "jei.RecipeLayoutMixin",
+    "disguise.DisguiseProgressMixin",
+    "disguise.DisguiseDropsMixin"
   ],
   "client": [
     "client.ClientUseItemOnMixin",
@@ -61,7 +63,13 @@
     "emi.FluidEmiStackMixin",
     "emi.StackBatcherMixin",
     "emi.SlotWidgetMixin",
-    "jei.FluidTankRendererMixin"
+    "jei.FluidTankRendererMixin",
+    "disguise.BlockModelShaperMixin",
+    "disguise.ItemRendererMixin",
+    "disguise.EntitySoundMixin",
+    "disguise.LivingEntitySoundMixin",
+    "disguise.MultiPlayerGameModeSoundMixin",
+    "disguise.LevelRendererSoundMixin"
   ],
   "injectors": {
     "defaultRequire": 1

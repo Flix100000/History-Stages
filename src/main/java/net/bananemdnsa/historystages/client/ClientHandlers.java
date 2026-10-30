@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client;
 
+import net.bananemdnsa.historystages.client.disguise.ClientDisguises;
 import net.bananemdnsa.historystages.client.scroll.OpenScrollHandler;
 import net.bananemdnsa.historystages.commands.ClientDebugCommand;
 import net.bananemdnsa.historystages.commands.ClientScreenCommand;
@@ -24,6 +25,7 @@ public final class ClientHandlers {
     public static final List<Class<?>> CLIENT = List.of(
             ClientDisconnectHandler.class,
             ClientFluidRecipeIndex.class,
+            ClientDisguises.class,
             EditorButtonHandler.class,
             LockBorderRenderer.class,
             LockOverlayRenderer.class,

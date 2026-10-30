@@ -42,6 +42,7 @@ import net.bananemdnsa.historystages.network.serverbound.SaveConfigPacket;
 import net.bananemdnsa.historystages.network.serverbound.SaveGraphConfigPacket;
 import net.bananemdnsa.historystages.network.serverbound.SaveGraphPositionsPacket;
 import net.bananemdnsa.historystages.network.serverbound.SaveStageGraphInfoPacket;
+import net.bananemdnsa.historystages.network.serverbound.SaveDisguisePacket;
 import net.bananemdnsa.historystages.network.serverbound.SaveStageGraphStylePacket;
 import net.bananemdnsa.historystages.network.serverbound.SaveStagePacket;
 import net.bananemdnsa.historystages.network.serverbound.TakeLecternScrollPacket;
@@ -132,6 +133,7 @@ public class PacketHandler {
             new Serverbound<>(RearrangeGraphPacket.TYPE, RearrangeGraphPacket.STREAM_CODEC, RearrangeGraphPacket::handle),
             new Serverbound<>(SaveStageGraphInfoPacket.TYPE, SaveStageGraphInfoPacket.STREAM_CODEC, SaveStageGraphInfoPacket::handle),
             new Serverbound<>(SaveStageGraphStylePacket.TYPE, SaveStageGraphStylePacket.STREAM_CODEC, SaveStageGraphStylePacket::handle),
+            new Serverbound<>(SaveDisguisePacket.TYPE, SaveDisguisePacket.STREAM_CODEC, SaveDisguisePacket::handle),
             new Serverbound<>(PedestalControlPacket.TYPE, PedestalControlPacket.STREAM_CODEC, PedestalControlPacket::handle),
             new Serverbound<>(TakeLecternScrollPacket.TYPE, TakeLecternScrollPacket.STREAM_CODEC, TakeLecternScrollPacket::handle),
             new Serverbound<>(RequestZoneSelectionPacket.TYPE, RequestZoneSelectionPacket.STREAM_CODEC, RequestZoneSelectionPacket::handle));

@@ -2,6 +2,7 @@ package net.bananemdnsa.historystages.client;
 
 import net.bananemdnsa.historystages.platform.bus.EventBus;
 import net.bananemdnsa.historystages.platform.event.client.ClientPlayerNetworkEvent;
+import net.bananemdnsa.historystages.platform.event.client.ClientTickEvent;
 import net.bananemdnsa.historystages.platform.event.client.RegisterClientCommandsEvent;
 import net.bananemdnsa.historystages.platform.event.client.RenderGuiEvent;
 import net.bananemdnsa.historystages.platform.event.client.RenderLevelStageEvent;
@@ -10,6 +11,7 @@ import net.bananemdnsa.historystages.platform.event.entity.player.ItemTooltipEve
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.item.v1.ItemTooltipCallback;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
@@ -34,6 +36,8 @@ public final class ClientEventSources {
         // to it in place rather than answering with a new list.
         ItemTooltipCallback.EVENT.register((stack, context, type, lines) ->
                 EventBus.post(new ItemTooltipEvent(stack, lines)));
+
+        ClientTickEvents.END_CLIENT_TICK.register(client -> EventBus.post(new ClientTickEvent.Post()));
 
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) ->
                 EventBus.post(new ClientPlayerNetworkEvent.LoggingOut(client.player)));

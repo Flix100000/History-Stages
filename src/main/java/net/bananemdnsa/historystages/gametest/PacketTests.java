@@ -157,7 +157,8 @@ public class PacketTests {
         return new SyncStageDefinitionsPacket(stages, Map.of(),
                 Map.of("gametest:stage_0", "early/ores"), Map.of(),
                 Set.of("early", "early/ores"), Set.of(),
-                "{\"global\":{}}", "{\"descriptions\":{}}", true, false);
+                "{\"global\":{}}", "{\"descriptions\":{}}", true, false,
+                "{\"minecraft:emerald_ore\":{\"as\":\"minecraft:stone\"}}");
     }
 
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
@@ -189,6 +190,10 @@ public class PacketTests {
             helper.fail("the graph settings did not survive: layout " + restored.graphLayout()
                     + ", stages " + restored.graphStages()
                     + ", frozen " + restored.graphGlobalFrozen() + "/" + restored.graphIndividualFrozen());
+            return;
+        }
+        if (!original.disguises().equals(restored.disguises())) {
+            helper.fail("the disguise rules did not survive: " + restored.disguises());
             return;
         }
         if (buffer.readableBytes() != 0) {

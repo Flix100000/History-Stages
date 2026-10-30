@@ -23,13 +23,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * {@code isActionLocked*} forms are the ones a gate wants.
  *
  * <p>The trap is that both forms read the same and the wrong one is shorter, so it comes back
- * one convenient call at a time. Three places may still ask the blind question, and each has a
+ * one convenient call at a time. A few places may still ask the blind question, and each has a
  * reason that is not a gate:
  *
  * <ul>
  *   <li>{@code StageLockHelper} defines them and uses them among themselves.</li>
  *   <li>{@code HistoryStages} logs which locked items a player carries — a report, not a block.</li>
  *   <li>The GameTests assert that an item is gated at all, which is the blind question.</li>
+ *   <li>Disguises hold while an item is gated at all; see the list below.</li>
  * </ul>
  */
 class ActionAwareGateGuardTest {
@@ -42,7 +43,11 @@ class ActionAwareGateGuardTest {
             "HistoryStages.java",     // inventory logging
             "LockTests.java",         // GameTest: asserts an item is gated at all
             "FluidLockTests.java",    // GameTest: same
-            "InterchangeableStageTests.java"); // GameTest: same
+            "InterchangeableStageTests.java", // GameTest: same
+            // A disguise belongs to the item and holds while any stage gates it at all. How it
+            // breaks is the disguise rule's own setting, not an action narrowing of the entry.
+            "Disguises.java",
+            "ClientDisguises.java");
 
     @Test
     void gatesAskWhichActionIsLockedRatherThanWhetherTheItemIsMentioned() throws IOException {
