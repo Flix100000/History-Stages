@@ -12,6 +12,7 @@ Thanks to everyone who has helped improve History Stages!
 - **angusbarnes** ([@angusbarnes](https://github.com/angusbarnes)) — API design and StageManager performance rework
 - **Unsupported-File** ([@Unsupported-File](https://github.com/Unsupported-File)) — Fabric port
 - **jwright159** ([@jwright159](https://github.com/jwright159)) — hiding locked items and recipes in EMI
+- **JustS-js** ([@JustS-js](https://github.com/JustS-js)) — fixing dimension locks for players on Fabric
 
 <!--
 When someone contributes, add them here in the format:
