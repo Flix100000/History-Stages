@@ -25,10 +25,13 @@ public final class RecipeShape {
 
     private final RecipeCardLayout layout;
     private final List<ItemStack> slots;
+    private final List<Ingredient> slotIngredients;
 
-    private RecipeShape(RecipeCardLayout layout, List<ItemStack> slots) {
+    private RecipeShape(RecipeCardLayout layout, List<ItemStack> slots,
+                        List<Ingredient> slotIngredients) {
         this.layout = layout;
         this.slots = slots;
+        this.slotIngredients = slotIngredients;
     }
 
     public RecipeCardLayout layout() {
@@ -38,6 +41,14 @@ public final class RecipeShape {
     /** One entry per slot in the layout; empty stacks are the holes in a shaped pattern. */
     public List<ItemStack> slots() {
         return Collections.unmodifiableList(slots);
+    }
+
+    /**
+     * The ingredient behind each slot, in the same order as {@link #slots()}; {@code Ingredient.EMPTY}
+     * for a hole. Lets a caller mark the slots an item fits without re-deriving the layout.
+     */
+    public List<Ingredient> slotIngredients() {
+        return Collections.unmodifiableList(slotIngredients);
     }
 
     /** Reads a recipe. Never throws for a malformed one — it degrades to a flat sequence. */
@@ -54,7 +65,7 @@ public final class RecipeShape {
      */
     public static RecipeShape of(Recipe<?> recipe, int fluidCount) {
         RecipeShape read = read(recipe);
-        return new RecipeShape(read.layout.withFluids(fluidCount), read.slots);
+        return new RecipeShape(read.layout.withFluids(fluidCount), read.slots, read.slotIngredients);
     }
 
     private static RecipeShape read(Recipe<?> recipe) {
@@ -65,6 +76,7 @@ public final class RecipeShape {
             int h = shaped.getHeight();
             RecipeCardLayout layout = RecipeCardLayout.shaped(w, h);
             List<ItemStack> slots = new ArrayList<>(layout.slotCount());
+            List<Ingredient> slotIngredients = new ArrayList<>(layout.slotCount());
             // ShapedRecipePattern.unpack() fills its ingredient list with
             // nonnulllist.set(col + width * row, ingredient), i.e. row-major over width*height —
             // exactly the order RecipeCardLayout.slotX/slotY expect, so the holes stay where the
@@ -72,15 +84,21 @@ public final class RecipeShape {
             // (ingredients.get(j + i * width)) and against StageDetailScreen.renderRecipePopup's
             // existing grid draw (idx = row * gridCols + col), which agree with each other.
             for (int i = 0; i < layout.slotCount(); i++) {
-                slots.add(i < ingredients.size() ? firstStackOf(ingredients.get(i)) : ItemStack.EMPTY);
+                Ingredient ingredient = i < ingredients.size() ? ingredients.get(i) : Ingredient.EMPTY;
+                slots.add(firstStackOf(ingredient));
+                slotIngredients.add(ingredient);
             }
-            return new RecipeShape(layout, slots);
+            return new RecipeShape(layout, slots, slotIngredients);
         }
 
         List<ItemStack> present = new ArrayList<>();
+        List<Ingredient> presentIngredients = new ArrayList<>();
         for (Ingredient ingredient : ingredients) {
             ItemStack stack = firstStackOf(ingredient);
-            if (!stack.isEmpty()) present.add(stack);
+            if (!stack.isEmpty()) {
+                present.add(stack);
+                presentIngredients.add(ingredient);
+            }
         }
 
         RecipeCardLayout layout;
@@ -93,10 +111,12 @@ public final class RecipeShape {
         }
 
         List<ItemStack> slots = new ArrayList<>(layout.slotCount());
+        List<Ingredient> slotIngredients = new ArrayList<>(layout.slotCount());
         for (int i = 0; i < layout.slotCount(); i++) {
             slots.add(i < present.size() ? present.get(i) : ItemStack.EMPTY);
+            slotIngredients.add(i < presentIngredients.size() ? presentIngredients.get(i) : Ingredient.EMPTY);
         }
-        return new RecipeShape(layout, slots);
+        return new RecipeShape(layout, slots, slotIngredients);
     }
 
     private static ItemStack firstStackOf(Ingredient ingredient) {

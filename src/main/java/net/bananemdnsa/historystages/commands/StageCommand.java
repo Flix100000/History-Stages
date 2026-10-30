@@ -303,8 +303,13 @@ public class StageCommand {
         // the change should be mirrored here for consistency.
         if (s.equals("*")) {
             boolean changed = false;
+            boolean lostCleared = false;
+            net.bananemdnsa.historystages.data.saveddata.LostStagesData lost =
+                    net.bananemdnsa.historystages.data.saveddata.LostStagesData.get(source.getLevel());
             for (String id : StageManager.getStages().keySet()) {
                 if (!d.getUnlockedStages().contains(id)) {
+                    // Admin unlock is the way back from a permanent loss, so it forgets the loss.
+                    lostCleared |= lost.clearGlobal(id);
                     d.addStage(id);
                     var entry = StageManager.getStages().get(id);
                     String displayName = entry != null ? entry.getDisplayName() : id;
@@ -312,6 +317,7 @@ public class StageCommand {
                     changed = true;
                 }
             }
+            if (lostCleared) net.bananemdnsa.historystages.data.relock.LostStages.syncAll(source.getLevel());
             if (!changed) {
                 source.sendFailure(Component.literal("All stages are already unlocked!"));
                 return 0;
@@ -480,9 +486,14 @@ public class StageCommand {
         IndividualStageData data = IndividualStageData.get(source.getLevel());
         java.util.Set<String> alreadyUnlocked = data.getUnlockedStages(target.getUUID());
         boolean changed = false;
+        boolean lostCleared = false;
+        net.bananemdnsa.historystages.data.saveddata.LostStagesData lost =
+                net.bananemdnsa.historystages.data.saveddata.LostStagesData.get(source.getLevel());
 
         for (String stageId : StageManager.getIndividualStages().keySet()) {
             if (!alreadyUnlocked.contains(stageId)) {
+                // Admin unlock is the way back from a permanent loss, so it forgets the loss.
+                lostCleared |= lost.clearIndividual(target.getUUID(), stageId);
                 data.addStage(target.getUUID(), stageId);
                 var entry = StageManager.getIndividualStages().get(stageId);
                 String displayName = entry != null ? entry.getDisplayName() : stageId;
@@ -491,6 +502,7 @@ public class StageCommand {
             }
         }
 
+        if (lostCleared) net.bananemdnsa.historystages.data.relock.LostStages.syncTo(target);
         if (!changed) {
             source.sendFailure(Component.literal("Player " + target.getName().getString() + " already has all individual stages!"));
             return 0;

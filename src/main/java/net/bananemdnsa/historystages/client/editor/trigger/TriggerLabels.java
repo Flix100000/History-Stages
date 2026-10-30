@@ -1,6 +1,7 @@
 package net.bananemdnsa.historystages.client.editor.trigger;
 
 import net.bananemdnsa.historystages.api.editor.TriggerEditor;
+import net.bananemdnsa.historystages.data.auto.NegatedTrigger;
 
 import net.bananemdnsa.historystages.data.auto.conditions.AdvancementTrigger;
 import net.bananemdnsa.historystages.data.auto.conditions.BiomeTrigger;
@@ -41,6 +42,8 @@ public final class TriggerLabels {
      * registered for it — or from the bare type when nothing was.
      */
     public static String typeLabel(TriggerCondition t) {
+        // A negated row names the state it turns around; the lock editor shows the negation itself.
+        t = NegatedTrigger.unwrap(t);
         if (t instanceof UnknownTrigger) {
             return Component.translatable("editor.historystages.auto_trigger.type.unknown").getString();
         }
@@ -55,6 +58,7 @@ public final class TriggerLabels {
 
     /** The value column: what this particular trigger is waiting for. */
     public static String valueText(TriggerCondition t) {
+        t = NegatedTrigger.unwrap(t);
         return switch (t) {
             case BiomeTrigger b -> b.id();
             case StructureTrigger s -> s.id();

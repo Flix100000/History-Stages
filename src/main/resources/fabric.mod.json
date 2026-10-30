@@ -55,6 +55,7 @@
 			"net.bananemdnsa.historystages.gametest.PersistenceTests",
 			"net.bananemdnsa.historystages.gametest.ReachTests",
 			"net.bananemdnsa.historystages.gametest.RecipeLockTests",
+			"net.bananemdnsa.historystages.gametest.RelockTests",
 			"net.bananemdnsa.historystages.gametest.SpawnControlTests",
 			"net.bananemdnsa.historystages.gametest.StageLogicRevokeTests",
 			"net.bananemdnsa.historystages.gametest.StageLogicRound2Tests",

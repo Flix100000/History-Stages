@@ -52,6 +52,7 @@ import net.bananemdnsa.historystages.network.serverbound.TakeLecternScrollPacket
 import net.bananemdnsa.historystages.network.serverbound.ToggleIndividualStageLockPacket;
 import net.bananemdnsa.historystages.network.serverbound.ToggleStageLockPacket;
 import net.bananemdnsa.historystages.network.serverbound.ToggleStructureVizPacket;
+import net.bananemdnsa.historystages.network.clientbound.SyncLostStagesPacket;
 
 import net.bananemdnsa.historystages.platform.IPayloadContext;
 import net.bananemdnsa.historystages.util.DebugLogger;
@@ -108,7 +109,8 @@ public class PacketHandler {
             new Clientbound<>(EditorFeedbackPacket.TYPE, EditorFeedbackPacket.STREAM_CODEC, EditorFeedbackPacket::handle),
             new Clientbound<>(SyncLockBordersPacket.TYPE, SyncLockBordersPacket.STREAM_CODEC, SyncLockBordersPacket::handle),
             new Clientbound<>(SyncZoneSelectionPacket.TYPE, SyncZoneSelectionPacket.STREAM_CODEC, SyncZoneSelectionPacket::handle),
-            new Clientbound<>(SyncZoneShapesPacket.TYPE, SyncZoneShapesPacket.STREAM_CODEC, SyncZoneShapesPacket::handle));
+            new Clientbound<>(SyncZoneShapesPacket.TYPE, SyncZoneShapesPacket.STREAM_CODEC, SyncZoneShapesPacket::handle),
+            new Clientbound<>(SyncLostStagesPacket.TYPE, SyncLostStagesPacket.STREAM_CODEC, SyncLostStagesPacket::handle));
 
     public static final List<Serverbound<?>> SERVERBOUND = List.of(
             new Serverbound<>(RequestEditorDataPacket.TYPE, RequestEditorDataPacket.STREAM_CODEC, RequestEditorDataPacket::handle),
@@ -255,6 +257,10 @@ public class PacketHandler {
 
     public static void sendIndividualStagesToPlayer(SyncIndividualStagesPacket packet, ServerPlayer player) {
         send(player, packet);
+    }
+
+    public static void sendLostStagesToPlayer(SyncLostStagesPacket packet, ServerPlayer player) {
+        ServerPlayNetworking.send(player, packet);
     }
 
     public static void sendStructureRegistryToPlayer(SyncStructureRegistryPacket packet, ServerPlayer player) {

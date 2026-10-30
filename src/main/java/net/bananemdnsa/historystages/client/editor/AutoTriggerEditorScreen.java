@@ -8,6 +8,7 @@ import net.bananemdnsa.historystages.api.editor.widget.CountInputScreen;
 import net.bananemdnsa.historystages.api.editor.widget.PickerOverlay;
 import net.bananemdnsa.historystages.client.editor.dialog.TimeWindowScreen;
 import net.bananemdnsa.historystages.client.editor.widget.ContextMenu;
+import net.bananemdnsa.historystages.client.editor.widget.EditorTooltip;
 import net.bananemdnsa.historystages.client.editor.widget.EntityPreviewRenderer;
 import net.bananemdnsa.historystages.client.editor.widget.list.SearchableAdvancementList;
 import net.bananemdnsa.historystages.api.editor.widget.SearchBar;
@@ -24,6 +25,8 @@ import net.bananemdnsa.historystages.client.editor.widget.StyledButton;
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.auto.AutoTrigger;
 import net.bananemdnsa.historystages.data.auto.CombineMode;
+import net.bananemdnsa.historystages.data.auto.NegatedTrigger;
+import net.bananemdnsa.historystages.data.relock.TriggerRules;
 import net.bananemdnsa.historystages.data.auto.conditions.AdvancementTrigger;
 import net.bananemdnsa.historystages.data.auto.conditions.BiomeTrigger;
 import net.bananemdnsa.historystages.data.auto.conditions.BlockBreakTrigger;
@@ -68,7 +71,9 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 import java.util.function.Supplier;
@@ -96,6 +101,27 @@ public class AutoTriggerEditorScreen extends Screen {
 
     private static final TriggerType[] TYPES = TriggerType.values();
 
+    /** What the edited list is for. Changes the title, the accent and which types may be added. */
+    public enum Purpose {
+        UNLOCK("editor.historystages.auto_trigger.title", 0xFFFFCC00),
+        CONDITIONAL("editor.historystages.conditional.title", 0xFFFFCC00),
+        LOCK("editor.historystages.lock_trigger.title", 0xFFFF5555);
+
+        final String titleKey;
+        final int accent;
+
+        Purpose(String titleKey, int accent) { this.titleKey = titleKey; this.accent = accent; }
+
+        /** ANY/ALL mean something different for each list, so the pill explains itself per purpose. */
+        String combineTooltipKey() {
+            return switch (this) {
+                case UNLOCK -> "editor.historystages.auto_trigger.combine.tooltip";
+                case CONDITIONAL -> "editor.historystages.conditional.combine.tooltip";
+                case LOCK -> "editor.historystages.lock_trigger.combine.tooltip";
+            };
+        }
+    }
+
     /**
      * A row in the add menu: a label and what happens when it is clicked. Built-in types and types
      * another mod registered both become one of these, so the menu stops being a fixed list.
@@ -109,13 +135,14 @@ public class AutoTriggerEditorScreen extends Screen {
     /** Built-ins first, in their long-standing order, then whatever addons registered. */
     private List<AddableTrigger> addableTriggers() {
         List<AddableTrigger> rows = new ArrayList<>(TYPES.length);
-        // Not filtered by scope: every built-in supports both scopes (see TriggerTypes), so a
-        // filter here would be a no-op that only invites a later reader to wonder what it guards.
+        // Built-ins support both scopes, so only the conditional rule can drop one here.
         for (TriggerType type : TYPES) {
+            if (purpose == Purpose.CONDITIONAL && !TriggerRules.stateUsable(type.id, scope)) continue;
             rows.add(new AddableTrigger(typeLabel(type), () -> openPickerFor(type)));
         }
         for (TriggerEditor editor : TriggerEditors.all()) {
             if (!TriggerTypes.scopesOf(editor.type()).contains(scope)) continue;
+            if (purpose == Purpose.CONDITIONAL && !TriggerRules.stateUsable(editor.type(), scope)) continue;
             rows.add(new AddableTrigger(
                     Component.translatable(editor.labelLangKey()).getString(),
                     () -> openAddonPicker(editor)));
@@ -156,6 +183,7 @@ public class AutoTriggerEditorScreen extends Screen {
     private final Runnable onPersist;
     /** Scope of the stage being edited — narrows the add menu to types that apply here. */
     private final StageScope scope;
+    private final Purpose purpose;
 
     // Layout
     private int listX, listY, listW, listH;
@@ -201,6 +229,16 @@ public class AutoTriggerEditorScreen extends Screen {
 
     // Context menu
     private ContextMenu contextMenu = new ContextMenu();
+    private final EditorTooltip tooltip = new EditorTooltip();
+
+    /**
+     * The "is reached | no longer holds" segment of each row drawn last frame, as {x, y, leftW,
+     * rightW}, keyed by trigger index. Clicks test against this so they hit exactly what was drawn.
+     */
+    private final Map<Integer, int[]> segmentRects = new HashMap<>();
+    /** Where the "Event" / "can't be reversed" tags went this frame, and which tooltip each has. */
+    private final Map<Integer, int[]> tagRects = new HashMap<>();
+    private final Map<Integer, String> tagTooltipKeys = new HashMap<>();
 
     public AutoTriggerEditorScreen(Screen parent, AutoTrigger trigger, Consumer<AutoTrigger> onChanged,
                                    StageScope scope) {
@@ -219,13 +257,24 @@ public class AutoTriggerEditorScreen extends Screen {
                                    Supplier<StageEntry> lockSnapshot,
                                    Runnable onPersist,
                                    StageScope scope) {
-        super(Component.translatable("editor.historystages.auto_trigger.title"));
+        this(parent, trigger, onChanged, lockSnapshot, onPersist, scope, "", Purpose.UNLOCK);
+    }
+
+    public AutoTriggerEditorScreen(Screen parent, AutoTrigger trigger,
+                                   Consumer<AutoTrigger> onChanged,
+                                   Supplier<StageEntry> lockSnapshot,
+                                   Runnable onPersist,
+                                   StageScope scope,
+                                   String stageName,
+                                   Purpose purpose) {
+        super(Component.translatable(purpose.titleKey, stageName));
         this.parent = parent;
         this.trigger = trigger;
         this.onChanged = onChanged;
         this.lockSnapshot = lockSnapshot;
         this.onPersist = onPersist;
         this.scope = scope;
+        this.purpose = purpose;
     }
 
     @Override
@@ -313,15 +362,26 @@ public class AutoTriggerEditorScreen extends Screen {
 
         super.render(g, mx, my, pt);
 
-        // Tooltip for pill toggle (drawn here so it sits above the screen background but
-        // below any overlays; the actual tooltip box is rendered with editor styling)
+        // Drawn here so it sits above the screen but below any overlays.
+        String tooltipKey = null;
+        String tooltipText = null;
         if (isOver(mx, my, pillX, pillY, pillAnyW + pillAllW, 14)
                 && currentList == null && !addDropdownOpen
                 && !contextMenu.isVisible()) {
-            drawEditorTooltip(g,
-                    Component.translatable("editor.historystages.auto_trigger.combine.tooltip").getString(),
-                    mx, my);
+            tooltipKey = "combine";
+            tooltipText = Component.translatable(purpose.combineTooltipKey()).getString();
+        } else {
+            int segment = segmentAt(mx, my);
+            int tag = tagAt(mx, my);
+            if (segment >= 0 && !isInputBlocked()) {
+                tooltipKey = "segment:" + segment;
+                tooltipText = Component.translatable("editor.historystages.lock_trigger.negate.tooltip").getString();
+            } else if (tag >= 0 && !isInputBlocked()) {
+                tooltipKey = "tag:" + tag;
+                tooltipText = Component.translatable(tagTooltipKeys.get(tag)).getString();
+            }
         }
+        tooltip.render(g, this.font, tooltipKey, tooltipText, mx, my, this.width, this.height);
 
         // Add-dropdown popup — always rendered; the reveal animation decides what is visible.
         renderAddDropdown(g, mx, my);
@@ -360,7 +420,7 @@ public class AutoTriggerEditorScreen extends Screen {
 
         // ANY half
         boolean anyActive = active == CombineMode.ANY;
-        int anyBg = anyActive ? 0x60FFCC00 : 0x25FFFFFF;
+        int anyBg = anyActive ? accentFill() : 0x25FFFFFF;
         g.fill(x, y, x + pillAnyW, y + h, anyBg);
         g.drawString(this.font, combineLabel(CombineMode.ANY),
                 x + (pillAnyW - this.font.width(combineLabel(CombineMode.ANY))) / 2,
@@ -368,14 +428,19 @@ public class AutoTriggerEditorScreen extends Screen {
 
         // ALL half
         boolean allActive = active == CombineMode.ALL;
-        int allBg = allActive ? 0x60FFCC00 : 0x25FFFFFF;
+        int allBg = allActive ? accentFill() : 0x25FFFFFF;
         g.fill(x + pillAnyW, y, x + pillAnyW + pillAllW, y + h, allBg);
         g.drawString(this.font, combineLabel(CombineMode.ALL),
                 x + pillAnyW + (pillAllW - this.font.width(combineLabel(CombineMode.ALL))) / 2,
                 y + 3, allActive ? 0xFFFFFFFF : 0xFFCCCCCC, false);
 
         // Bottom accent
-        g.fill(x, y + h, x + pillAnyW + pillAllW, y + h + 1, 0x60FFCC00);
+        g.fill(x, y + h, x + pillAnyW + pillAllW, y + h + 1, accentFill());
+    }
+
+    /** The pill's translucent fill, in this purpose's accent. */
+    private int accentFill() {
+        return 0x60000000 | (purpose.accent & 0xFFFFFF);
     }
 
     private void renderListSearchBar(GuiGraphics g, int mx, int my) {
@@ -393,6 +458,9 @@ public class AutoTriggerEditorScreen extends Screen {
     }
 
     private void renderList(GuiGraphics g, int mx, int my) {
+        segmentRects.clear();
+        tagRects.clear();
+        tagTooltipKeys.clear();
         // Card frame
         g.fill(listX - 1, listY - 1, listX + listW + 1, listY + listH + 1, 0xFF555555);
         g.fill(listX, listY, listX + listW, listY + listH, 0xFF1A1A1A);
@@ -466,7 +534,7 @@ public class AutoTriggerEditorScreen extends Screen {
                 && my >= Math.max(top, listY) && my <= Math.min(top + rowH, listY + listH);
 
         g.fill(listX + 2, top, listX + listW - 6, top + rowH, hov ? 0x35FFFFFF : 0x18FFFFFF);
-        if (hov) g.fill(listX + 2, top, listX + 4, top + rowH, 0xFFFFCC00);
+        if (hov) g.fill(listX + 2, top, listX + 4, top + rowH, purpose.accent);
 
         // Icon
         int iconX = listX + 8;
@@ -482,17 +550,85 @@ public class AutoTriggerEditorScreen extends Screen {
         }
         g.drawString(this.font, typeName, iconX + ICON_W + 4, top + 7, 0xFFCCCCCC, false);
 
+        // Lock lists say per row how it locks: a state can lock on arriving or on ending, an
+        // event only ever fires.
+        int rightEdge = listX + listW - 10;
+        if (purpose == Purpose.LOCK) {
+            // A row stored negated where the scope forbids it still gets the segment, or there
+            // would be no way to switch it back.
+            if (TriggerRules.stateUsable(t.type(), scope) || t instanceof NegatedTrigger) {
+                rightEdge = renderNegateSegment(g, t, idx, top + (rowH - 14) / 2, rightEdge) - 6;
+            } else {
+                String tagKey = TriggerTypes.kindOf(t.type()).isState()
+                        ? "editor.historystages.lock_trigger.not_negatable"
+                        : "editor.historystages.lock_trigger.event";
+                String tag = Component.translatable(tagKey).getString();
+                int tagX = rightEdge - this.font.width(tag);
+                g.drawString(this.font, tag, tagX, top + 7, 0xFF777777, false);
+                // Hovering the tag says why there is no switch; without it the row just looks broken.
+                tagRects.put(idx, new int[] { tagX, top + 5, this.font.width(tag) });
+                tagTooltipKeys.put(idx, tagKey + ".tooltip");
+                rightEdge = tagX - 6;
+            }
+        }
+
         // Value
         String value = TriggerLabels.valueText(t);
         int valueX = iconX + ICON_W + 4 + TYPE_COL_W;
-        int valueAvail = (listX + listW - 12) - valueX;
+        int valueAvail = (rightEdge - 2) - valueX;
+        // Too narrow for even the ellipsis: drawing "..." anyway would run into the segment.
+        if (valueAvail <= 10) return;
         if (this.font.width(value) > valueAvail) {
             value = this.font.plainSubstrByWidth(value, valueAvail - 10) + "...";
         }
         g.drawString(this.font, value, valueX, top + 7, 0xFFFFFFFF, false);
     }
 
+    /**
+     * Draws the segment right-aligned against {@code right}, in the combine pill's look, and
+     * records where it went. Returns its left edge.
+     */
+    private int renderNegateSegment(GuiGraphics g, TriggerCondition t, int idx, int y, int right) {
+        String reached = Component.translatable("editor.historystages.lock_trigger.reached").getString();
+        String noLonger = Component.translatable("editor.historystages.lock_trigger.no_longer").getString();
+        int leftW = this.font.width(reached) + 14;
+        int rightW = this.font.width(noLonger) + 14;
+        int x = right - leftW - rightW;
+        int h = 14;
+        boolean negated = t instanceof NegatedTrigger;
+
+        g.fill(x, y, x + leftW, y + h, negated ? 0x25FFFFFF : accentFill());
+        g.drawString(this.font, reached, x + 7, y + 3, negated ? 0xFFCCCCCC : 0xFFFFFFFF, false);
+        g.fill(x + leftW, y, x + leftW + rightW, y + h, negated ? accentFill() : 0x25FFFFFF);
+        g.drawString(this.font, noLonger, x + leftW + 7, y + 3, negated ? 0xFFFFFFFF : 0xFFCCCCCC, false);
+        g.fill(x, y + h, x + leftW + rightW, y + h + 1, accentFill());
+
+        segmentRects.put(idx, new int[] { x, y, leftW, rightW });
+        return x;
+    }
+
+    /** Trigger index whose segment is under the cursor, or -1. Only the list's visible part counts. */
+    private int segmentAt(double mx, double my) {
+        if (my < listY || my > listY + listH) return -1;
+        for (Map.Entry<Integer, int[]> e : segmentRects.entrySet()) {
+            int[] r = e.getValue();
+            if (mx >= r[0] && mx < r[0] + r[2] + r[3] && my >= r[1] && my < r[1] + 14) return e.getKey();
+        }
+        return -1;
+    }
+
+    /** Trigger index whose "Event" / "can't be reversed" tag is under the cursor, or -1. */
+    private int tagAt(double mx, double my) {
+        if (my < listY || my > listY + listH) return -1;
+        for (Map.Entry<Integer, int[]> e : tagRects.entrySet()) {
+            int[] r = e.getValue();
+            if (mx >= r[0] && mx < r[0] + r[2] && my >= r[1] && my < r[1] + 12) return e.getKey();
+        }
+        return -1;
+    }
+
     private void renderTriggerIcon(GuiGraphics g, TriggerCondition t, int x, int y) {
+        t = NegatedTrigger.unwrap(t);
         // Entities render their actual living-entity model (spinning), matching SearchableEntityList.
         if (t instanceof EntityTrigger et) {
             LivingEntity living = EntityPreviewRenderer.getOrCreate(et.id());
@@ -690,6 +826,20 @@ public class AutoTriggerEditorScreen extends Screen {
         if (button == 0 && isOverScrollbar(mouseX, mouseY)) {
             draggingScrollbar = true;
             updateScrollFromMouse(mouseY);
+            return true;
+        }
+        // Negation segment: the clicked half wins, as on the combine pill
+        int segIdx = button == 0 ? segmentAt(mouseX, mouseY) : -1;
+        if (segIdx >= 0 && segIdx < trigger.getTriggers().size()) {
+            int[] r = segmentRects.get(segIdx);
+            boolean wantNegated = mouseX >= r[0] + r[2];
+            List<TriggerCondition> list = trigger.getTriggers();
+            TriggerCondition cur = list.get(segIdx);
+            if ((cur instanceof NegatedTrigger) != wantNegated) {
+                list.set(segIdx, cur instanceof NegatedTrigger n ? n.inner() : new NegatedTrigger(cur));
+                notifyChanged();
+            }
+            Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
             return true;
         }
         // List row right-click (context menu)
@@ -898,6 +1048,8 @@ public class AutoTriggerEditorScreen extends Screen {
 
     private void openEditFor(int idx, TriggerCondition t) {
         editIndex = idx;
+        // placeTrigger puts the negation back on whatever the picker returns.
+        t = NegatedTrigger.unwrap(t);
         switch (t) {
             case BiomeTrigger b -> showAbstract(new SearchableBiomeList(id -> placeTrigger(new BiomeTrigger(id))), null, false);
             case StructureTrigger s -> showAbstract(new SearchableStructureList(id -> placeTrigger(new StructureTrigger(id))), TriggerType.STRUCTURE, true);
@@ -1141,6 +1293,12 @@ public class AutoTriggerEditorScreen extends Screen {
     /** Insert (or replace at {@code editIndex}) the given trigger and notify the parent. */
     private void placeTrigger(TriggerCondition t) {
         if (editIndex >= 0 && editIndex < trigger.getTriggers().size()) {
+            // Editing a "no longer holds" row changes what it watches, not how it locks.
+            TriggerCondition previous = trigger.getTriggers().get(editIndex);
+            if (previous instanceof NegatedTrigger && !(t instanceof NegatedTrigger)
+                    && TriggerRules.stateUsable(t.type(), scope)) {
+                t = new NegatedTrigger(t);
+            }
             trigger.getTriggers().set(editIndex, t);
         } else {
             trigger.getTriggers().add(t);
@@ -1213,40 +1371,6 @@ public class AutoTriggerEditorScreen extends Screen {
         if (contextMenu.isVisible()) return true;
         if (listSearchBar != null && listSearchBar.filters().isExpanded()) return true;
         return false;
-    }
-
-    /**
-     * Renders a tooltip box in the editor's own style (dark bg, gold top accent, subtle border)
-     * instead of the vanilla {@code renderTooltip} look. Supports {@code \n} line breaks.
-     */
-    private void drawEditorTooltip(GuiGraphics g, String text, int mx, int my) {
-        String[] lines = text.split("\n");
-        int maxW = 0;
-        for (String l : lines) maxW = Math.max(maxW, this.font.width(l));
-
-        int pad = 5;
-        int lineH = this.font.lineHeight + 1;
-        int boxW = maxW + pad * 2;
-        int boxH = lines.length * lineH + pad * 2 - 1;
-
-        int bx = mx + 10;
-        int by = my - 4;
-        if (bx + boxW > this.width - 4) bx = this.width - 4 - boxW;
-        if (by + boxH > this.height - 4) by = this.height - 4 - boxH;
-        if (by < 4) by = 4;
-
-        g.pose().pushPose();
-        g.pose().translate(0, 0, 500);
-        // Border + background
-        g.fill(bx - 1, by - 1, bx + boxW + 1, by + boxH + 1, 0xFF555555);
-        g.fill(bx, by, bx + boxW, by + boxH, 0xFF1A1A1A);
-        // Gold top accent
-        g.fill(bx, by, bx + boxW, by + 1, 0xFFFFCC00);
-
-        for (int i = 0; i < lines.length; i++) {
-            g.drawString(this.font, lines[i], bx + pad, by + pad + i * lineH, 0xFFDDDDDD, false);
-        }
-        g.pose().popPose();
     }
 
     private static String combineLabel(CombineMode m) {
