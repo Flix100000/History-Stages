@@ -2,6 +2,7 @@ package net.bananemdnsa.historystages.platform.event.level;
 
 import net.bananemdnsa.historystages.platform.bus.Event;
 import net.minecraft.core.BlockPos;
+import net.minecraft.util.random.Weighted;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.biome.MobSpawnSettings;
@@ -31,15 +32,18 @@ public abstract class LevelEvent extends Event {
      * The candidates natural spawning is about to choose from, while the list can still be
      * changed. Taking an entry out here is cheaper than refusing each mob afterwards, and it also
      * stops the spawn attempt counting against the cap.
+     *
+     * <p>Entries carry their weight in a {@link Weighted} wrapper since 1.21.5, the shape vanilla
+     * and NeoForge 26.2 use; {@code SpawnerData} itself no longer has a weight.
      */
     public static class PotentialSpawns extends LevelEvent {
 
-        private final List<MobSpawnSettings.SpawnerData> spawnerDataList;
+        private final List<Weighted<MobSpawnSettings.SpawnerData>> spawnerDataList;
         private final MobCategory category;
         private final BlockPos pos;
 
         public PotentialSpawns(LevelAccessor level, MobCategory category, BlockPos pos,
-                               List<MobSpawnSettings.SpawnerData> spawnerDataList) {
+                               List<Weighted<MobSpawnSettings.SpawnerData>> spawnerDataList) {
             super(level);
             this.category = category;
             this.pos = pos;
@@ -57,11 +61,11 @@ public abstract class LevelEvent extends Event {
         }
 
         /** The live list, so handlers remove from it in place. */
-        public List<MobSpawnSettings.SpawnerData> getSpawnerDataList() {
+        public List<Weighted<MobSpawnSettings.SpawnerData>> getSpawnerDataList() {
             return spawnerDataList;
         }
 
-        public void addSpawnerData(MobSpawnSettings.SpawnerData data) {
+        public void addSpawnerData(Weighted<MobSpawnSettings.SpawnerData> data) {
             spawnerDataList.add(data);
         }
     }
