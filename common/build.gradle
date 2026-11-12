@@ -3,13 +3,21 @@ architectury {
 }
 
 dependencies {
-    // Only for the @Environment annotations; nothing else from Fabric Loader belongs in common.
+    // Architectury's common API exposes Fabric Loader types (EnvType); nothing else from Fabric
+    // Loader belongs in common. No @Environment either: it becomes @OnlyIn on NeoForge, and
+    // NeoForge 26.2 reports every such class as a load warning.
     implementation "net.fabricmc:fabric-loader:${rootProject.fabric_loader_version}"
     implementation "dev.architectury:architectury:${rootProject.architectury_api_version}"
+    // ModConfigSpec is built on NightConfig. NeoForge ships 3.9.0 itself; the Fabric jar has to
+    // bundle the same version (Task 5). compileOnly, so common never decides what ships.
+    compileOnly "com.electronwill.night-config:core:3.9.0"
+    compileOnly "com.electronwill.night-config:toml:3.9.0"
 
     testImplementation platform("org.junit:junit-bom:5.10.2")
     testImplementation "org.junit.jupiter:junit-jupiter"
     testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+    testImplementation "com.electronwill.night-config:core:3.9.0"
+    testImplementation "com.electronwill.night-config:toml:3.9.0"
 }
 
 tasks.named("test", Test) {
