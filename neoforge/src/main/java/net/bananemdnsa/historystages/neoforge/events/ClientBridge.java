@@ -2,6 +2,7 @@ package net.bananemdnsa.historystages.neoforge.events;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.bananemdnsa.historystages.platform.bus.EventBus;
+import net.bananemdnsa.historystages.platform.bus.EventPriority;
 import net.minecraft.client.Minecraft;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
@@ -32,38 +33,38 @@ public final class ClientBridge {
         Bridges.listenCancellable(bus, ScreenEvent.MouseButtonPressed.Pre.class, ClientBridge::mousePressedPre);
     }
 
-    private static void loggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
-        if (Bridges.wanted(net.bananemdnsa.historystages.platform.event.client.ClientPlayerNetworkEvent.LoggingOut.class)) {
+    private static void loggingOut(ClientPlayerNetworkEvent.LoggingOut event, EventPriority priority) {
+        if (Bridges.wanted(net.bananemdnsa.historystages.platform.event.client.ClientPlayerNetworkEvent.LoggingOut.class, priority)) {
             EventBus.post(new net.bananemdnsa.historystages.platform.event.client.ClientPlayerNetworkEvent.LoggingOut(
-                    event.getPlayer()));
+                    event.getPlayer()), priority);
         }
     }
 
-    private static void tickPost(ClientTickEvent.Post event) {
-        if (Bridges.wanted(net.bananemdnsa.historystages.platform.event.client.ClientTickEvent.Post.class)) {
-            EventBus.post(new net.bananemdnsa.historystages.platform.event.client.ClientTickEvent.Post());
+    private static void tickPost(ClientTickEvent.Post event, EventPriority priority) {
+        if (Bridges.wanted(net.bananemdnsa.historystages.platform.event.client.ClientTickEvent.Post.class, priority)) {
+            EventBus.post(new net.bananemdnsa.historystages.platform.event.client.ClientTickEvent.Post(), priority);
         }
     }
 
     /** NeoForge 26.2 has no {@code RecipesUpdatedEvent} any more; this is its successor. */
-    private static void recipesReceived(RecipesReceivedEvent event) {
-        if (Bridges.wanted(net.bananemdnsa.historystages.platform.event.client.RecipesUpdatedEvent.class)) {
+    private static void recipesReceived(RecipesReceivedEvent event, EventPriority priority) {
+        if (Bridges.wanted(net.bananemdnsa.historystages.platform.event.client.RecipesUpdatedEvent.class, priority)) {
             EventBus.post(new net.bananemdnsa.historystages.platform.event.client.RecipesUpdatedEvent(
-                    event.getRecipeMap()));
+                    event.getRecipeMap()), priority);
         }
     }
 
-    private static void registerClientCommands(RegisterClientCommandsEvent event) {
-        if (Bridges.wanted(net.bananemdnsa.historystages.platform.event.client.RegisterClientCommandsEvent.class)) {
+    private static void registerClientCommands(RegisterClientCommandsEvent event, EventPriority priority) {
+        if (Bridges.wanted(net.bananemdnsa.historystages.platform.event.client.RegisterClientCommandsEvent.class, priority)) {
             EventBus.post(new net.bananemdnsa.historystages.platform.event.client.RegisterClientCommandsEvent(
-                    event.getDispatcher()));
+                    event.getDispatcher()), priority);
         }
     }
 
-    private static void renderGuiPost(RenderGuiEvent.Post event) {
-        if (Bridges.wanted(net.bananemdnsa.historystages.platform.event.client.RenderGuiEvent.Post.class)) {
+    private static void renderGuiPost(RenderGuiEvent.Post event, EventPriority priority) {
+        if (Bridges.wanted(net.bananemdnsa.historystages.platform.event.client.RenderGuiEvent.Post.class, priority)) {
             EventBus.post(new net.bananemdnsa.historystages.platform.event.client.RenderGuiEvent.Post(
-                    event.getGuiGraphics()));
+                    event.getGuiGraphics()), priority);
         }
     }
 
@@ -73,8 +74,8 @@ public final class ClientBridge {
      * PoseStack that already carries the camera rotation, so one is built from that matrix. The
      * camera is no longer on the event either.
      */
-    private static void afterTranslucentBlocks(RenderLevelStageEvent.AfterTranslucentBlocks event) {
-        if (!Bridges.wanted(net.bananemdnsa.historystages.platform.event.client.RenderLevelStageEvent.class)) {
+    private static void afterTranslucentBlocks(RenderLevelStageEvent.AfterTranslucentBlocks event, EventPriority priority) {
+        if (!Bridges.wanted(net.bananemdnsa.historystages.platform.event.client.RenderLevelStageEvent.class, priority)) {
             return;
         }
         PoseStack poseStack = event.getPoseStack();
@@ -84,27 +85,27 @@ public final class ClientBridge {
         }
         EventBus.post(new net.bananemdnsa.historystages.platform.event.client.RenderLevelStageEvent(
                 net.bananemdnsa.historystages.platform.event.client.RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS,
-                poseStack, Minecraft.getInstance().gameRenderer.mainCamera()));
+                poseStack, Minecraft.getInstance().gameRenderer.mainCamera()), priority);
     }
 
-    private static void screenInitPost(ScreenEvent.Init.Post event) {
-        if (Bridges.wanted(net.bananemdnsa.historystages.platform.event.client.ScreenEvent.Init.Post.class)) {
+    private static void screenInitPost(ScreenEvent.Init.Post event, EventPriority priority) {
+        if (Bridges.wanted(net.bananemdnsa.historystages.platform.event.client.ScreenEvent.Init.Post.class, priority)) {
             EventBus.post(new net.bananemdnsa.historystages.platform.event.client.ScreenEvent.Init.Post(
-                    event.getScreen(), event::addListener));
+                    event.getScreen(), event::addListener), priority);
         }
     }
 
-    private static void screenRenderPost(ScreenEvent.Render.Post event) {
-        if (Bridges.wanted(net.bananemdnsa.historystages.platform.event.client.ScreenEvent.Render.Post.class)) {
+    private static void screenRenderPost(ScreenEvent.Render.Post event, EventPriority priority) {
+        if (Bridges.wanted(net.bananemdnsa.historystages.platform.event.client.ScreenEvent.Render.Post.class, priority)) {
             EventBus.post(new net.bananemdnsa.historystages.platform.event.client.ScreenEvent.Render.Post(
-                    event.getScreen(), event.getGuiGraphics()));
+                    event.getScreen(), event.getGuiGraphics()), priority);
         }
     }
 
-    private static void mousePressedPre(ScreenEvent.MouseButtonPressed.Pre event) {
-        if (Bridges.wanted(net.bananemdnsa.historystages.platform.event.client.ScreenEvent.MouseButtonPressed.Pre.class)) {
+    private static void mousePressedPre(ScreenEvent.MouseButtonPressed.Pre event, EventPriority priority) {
+        if (Bridges.wanted(net.bananemdnsa.historystages.platform.event.client.ScreenEvent.MouseButtonPressed.Pre.class, priority)) {
             Bridges.post(event, new net.bananemdnsa.historystages.platform.event.client.ScreenEvent.MouseButtonPressed.Pre(
-                    event.getScreen(), event.getMouseX(), event.getMouseY(), event.getButton()));
+                    event.getScreen(), event.getMouseX(), event.getMouseY(), event.getButton()), priority);
         }
     }
 }

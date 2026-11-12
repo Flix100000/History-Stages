@@ -1,6 +1,7 @@
 package net.bananemdnsa.historystages.neoforge.events;
 
 import net.bananemdnsa.historystages.platform.bus.EventBus;
+import net.bananemdnsa.historystages.platform.bus.EventPriority;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
 import net.neoforged.neoforge.event.entity.EntityTeleportEvent;
@@ -38,10 +39,10 @@ public final class EntityBridge {
         Bridges.listen(bus, MobSpawnEvent.SpawnPlacementCheck.class, EntityBridge::spawnPlacementCheck);
     }
 
-    private static void joinLevel(EntityJoinLevelEvent event) {
-        if (Bridges.wanted(net.bananemdnsa.historystages.platform.event.entity.EntityJoinLevelEvent.class)) {
+    private static void joinLevel(EntityJoinLevelEvent event, EventPriority priority) {
+        if (Bridges.wanted(net.bananemdnsa.historystages.platform.event.entity.EntityJoinLevelEvent.class, priority)) {
             Bridges.post(event, new net.bananemdnsa.historystages.platform.event.entity.EntityJoinLevelEvent(
-                    event.getEntity(), event.getLevel()));
+                    event.getEntity(), event.getLevel()), priority);
         }
     }
 
@@ -50,12 +51,12 @@ public final class EntityBridge {
      * {@code EnderPearl}, everything else the plain event, so a handler on the base class still
      * hears all of them, as it did on NeoForge.
      */
-    private static void teleport(EntityTeleportEvent event) {
+    private static void teleport(EntityTeleportEvent event, EventPriority priority) {
         boolean pearl = event instanceof EntityTeleportEvent.EnderPearl;
         var type = pearl
                 ? net.bananemdnsa.historystages.platform.event.entity.EntityTeleportEvent.EnderPearl.class
                 : net.bananemdnsa.historystages.platform.event.entity.EntityTeleportEvent.class;
-        if (!Bridges.wanted(type)) {
+        if (!Bridges.wanted(type, priority)) {
             return;
         }
         var platform = pearl
@@ -63,33 +64,33 @@ public final class EntityBridge {
                         event.getEntity(), event.getTargetX(), event.getTargetY(), event.getTargetZ())
                 : new net.bananemdnsa.historystages.platform.event.entity.EntityTeleportEvent(
                         event.getEntity(), event.getTargetX(), event.getTargetY(), event.getTargetZ());
-        Bridges.post(event, platform);
+        Bridges.post(event, platform, priority);
         event.setTargetX(platform.getTargetX());
         event.setTargetY(platform.getTargetY());
         event.setTargetZ(platform.getTargetZ());
     }
 
-    private static void travelToDimension(EntityTravelToDimensionEvent event) {
-        if (Bridges.wanted(net.bananemdnsa.historystages.platform.event.entity.EntityTravelToDimensionEvent.class)) {
+    private static void travelToDimension(EntityTravelToDimensionEvent event, EventPriority priority) {
+        if (Bridges.wanted(net.bananemdnsa.historystages.platform.event.entity.EntityTravelToDimensionEvent.class, priority)) {
             Bridges.post(event, new net.bananemdnsa.historystages.platform.event.entity.EntityTravelToDimensionEvent(
-                    event.getEntity(), event.getDimension()));
+                    event.getEntity(), event.getDimension()), priority);
         }
     }
 
-    private static void projectileImpact(ProjectileImpactEvent event) {
-        if (Bridges.wanted(net.bananemdnsa.historystages.platform.event.entity.ProjectileImpactEvent.class)) {
+    private static void projectileImpact(ProjectileImpactEvent event, EventPriority priority) {
+        if (Bridges.wanted(net.bananemdnsa.historystages.platform.event.entity.ProjectileImpactEvent.class, priority)) {
             Bridges.post(event, new net.bananemdnsa.historystages.platform.event.entity.ProjectileImpactEvent(
-                    event.getProjectile(), event.getRayTraceResult()));
+                    event.getProjectile(), event.getRayTraceResult()), priority);
         }
     }
 
-    private static void babySpawn(BabyEntitySpawnEvent event) {
-        if (!Bridges.wanted(net.bananemdnsa.historystages.platform.event.entity.living.BabyEntitySpawnEvent.class)) {
+    private static void babySpawn(BabyEntitySpawnEvent event, EventPriority priority) {
+        if (!Bridges.wanted(net.bananemdnsa.historystages.platform.event.entity.living.BabyEntitySpawnEvent.class, priority)) {
             return;
         }
         var platform = new net.bananemdnsa.historystages.platform.event.entity.living.BabyEntitySpawnEvent(
                 event.getParentA(), event.getParentB(), event.getChild());
-        Bridges.post(event, platform);
+        Bridges.post(event, platform, priority);
         if (platform.getChild() != event.getChild()) {
             event.setChild(platform.getChild());
         }
@@ -99,88 +100,102 @@ public final class EntityBridge {
      * Two separate outcomes, as on NeoForge: cancelling skips the mob's own finalizeSpawn, while
      * {@code spawnCancelled} keeps the mob out of the world.
      */
-    private static void finalizeSpawn(FinalizeSpawnEvent event) {
-        if (!Bridges.wanted(net.bananemdnsa.historystages.platform.event.entity.living.FinalizeSpawnEvent.class)) {
+    private static void finalizeSpawn(FinalizeSpawnEvent event, EventPriority priority) {
+        if (!Bridges.wanted(net.bananemdnsa.historystages.platform.event.entity.living.FinalizeSpawnEvent.class, priority)) {
             return;
         }
         var platform = new net.bananemdnsa.historystages.platform.event.entity.living.FinalizeSpawnEvent(
                 event.getEntity(), event.getLevel(), event.getX(), event.getY(), event.getZ(), event.getSpawnType());
         platform.setSpawnCancelled(event.isSpawnCancelled());
-        Bridges.post(event, platform);
+        Bridges.post(event, platform, priority);
         if (platform.isSpawnCancelled() != event.isSpawnCancelled()) {
             event.setSpawnCancelled(platform.isSpawnCancelled());
         }
     }
 
-    private static void death(LivingDeathEvent event) {
-        if (Bridges.wanted(net.bananemdnsa.historystages.platform.event.entity.living.LivingDeathEvent.class)) {
+    private static void death(LivingDeathEvent event, EventPriority priority) {
+        if (Bridges.wanted(net.bananemdnsa.historystages.platform.event.entity.living.LivingDeathEvent.class, priority)) {
             Bridges.post(event, new net.bananemdnsa.historystages.platform.event.entity.living.LivingDeathEvent(
-                    event.getEntity(), event.getSource()));
+                    event.getEntity(), event.getSource()), priority);
         }
     }
 
     /** The drop collection is the live one, so a handler that removes an item removes the real drop. */
-    private static void drops(LivingDropsEvent event) {
-        if (Bridges.wanted(net.bananemdnsa.historystages.platform.event.entity.living.LivingDropsEvent.class)) {
+    private static void drops(LivingDropsEvent event, EventPriority priority) {
+        if (Bridges.wanted(net.bananemdnsa.historystages.platform.event.entity.living.LivingDropsEvent.class, priority)) {
             Bridges.post(event, new net.bananemdnsa.historystages.platform.event.entity.living.LivingDropsEvent(
-                    event.getEntity(), event.getSource(), event.getDrops()));
+                    event.getEntity(), event.getSource(), event.getDrops()), priority);
         }
     }
 
-    private static void incomingDamage(LivingIncomingDamageEvent event) {
-        if (Bridges.wanted(net.bananemdnsa.historystages.platform.event.entity.living.LivingIncomingDamageEvent.class)) {
+    private static void incomingDamage(LivingIncomingDamageEvent event, EventPriority priority) {
+        if (Bridges.wanted(net.bananemdnsa.historystages.platform.event.entity.living.LivingIncomingDamageEvent.class, priority)) {
             Bridges.post(event, new net.bananemdnsa.historystages.platform.event.entity.living.LivingIncomingDamageEvent(
-                    event.getEntity(), event.getSource()));
+                    event.getEntity(), event.getSource()), priority);
         }
     }
 
-    private static void equipmentChange(LivingEquipmentChangeEvent event) {
-        if (Bridges.wanted(net.bananemdnsa.historystages.platform.event.entity.living.LivingEquipmentChangeEvent.class)) {
+    private static void equipmentChange(LivingEquipmentChangeEvent event, EventPriority priority) {
+        if (Bridges.wanted(net.bananemdnsa.historystages.platform.event.entity.living.LivingEquipmentChangeEvent.class, priority)) {
             EventBus.post(new net.bananemdnsa.historystages.platform.event.entity.living.LivingEquipmentChangeEvent(
-                    event.getEntity(), event.getSlot(), event.getFrom(), event.getTo()));
+                    event.getEntity(), event.getSlot(), event.getFrom(), event.getTo()), priority);
         }
     }
 
-    private static void getProjectile(LivingGetProjectileEvent event) {
-        if (!Bridges.wanted(net.bananemdnsa.historystages.platform.event.entity.living.LivingGetProjectileEvent.class)) {
+    private static void getProjectile(LivingGetProjectileEvent event, EventPriority priority) {
+        if (!Bridges.wanted(net.bananemdnsa.historystages.platform.event.entity.living.LivingGetProjectileEvent.class, priority)) {
             return;
         }
         var platform = new net.bananemdnsa.historystages.platform.event.entity.living.LivingGetProjectileEvent(
                 event.getEntity(), event.getProjectileWeaponItemStack(), event.getProjectileItemStack());
-        EventBus.post(platform);
+        EventBus.post(platform, priority);
         if (platform.getProjectileItemStack() != event.getProjectileItemStack()) {
             event.setProjectileItemStack(platform.getProjectileItemStack());
         }
     }
 
-    private static void effectAdded(MobEffectEvent.Added event) {
-        if (Bridges.wanted(net.bananemdnsa.historystages.platform.event.entity.living.MobEffectEvent.Added.class)) {
+    private static void effectAdded(MobEffectEvent.Added event, EventPriority priority) {
+        if (Bridges.wanted(net.bananemdnsa.historystages.platform.event.entity.living.MobEffectEvent.Added.class, priority)) {
             EventBus.post(new net.bananemdnsa.historystages.platform.event.entity.living.MobEffectEvent.Added(
-                    event.getEntity(), event.getEffectInstance()));
+                    event.getEntity(), event.getEffectInstance()), priority);
         }
     }
 
-    private static void positionCheck(MobSpawnEvent.PositionCheck event) {
-        if (!Bridges.wanted(net.bananemdnsa.historystages.platform.event.entity.living.MobSpawnEvent.PositionCheck.class)) {
+    private static void positionCheck(MobSpawnEvent.PositionCheck event, EventPriority priority) {
+        if (!Bridges.wanted(net.bananemdnsa.historystages.platform.event.entity.living.MobSpawnEvent.PositionCheck.class, priority)) {
             return;
         }
         var platform = new net.bananemdnsa.historystages.platform.event.entity.living.MobSpawnEvent.PositionCheck(
                 event.getEntity(), event.getLevel(), event.getSpawnType(), event.getX(), event.getY(), event.getZ());
-        platform.setResult(net.bananemdnsa.historystages.platform.event.entity.living.MobSpawnEvent.PositionCheck.Result
-                .valueOf(event.getResult().name()));
-        EventBus.post(platform);
-        event.setResult(MobSpawnEvent.PositionCheck.Result.valueOf(platform.getResult().name()));
+        platform.setResult(switch (event.getResult()) {
+            case SUCCEED -> net.bananemdnsa.historystages.platform.event.entity.living.MobSpawnEvent.PositionCheck.Result.SUCCEED;
+            case DEFAULT -> net.bananemdnsa.historystages.platform.event.entity.living.MobSpawnEvent.PositionCheck.Result.DEFAULT;
+            case FAIL -> net.bananemdnsa.historystages.platform.event.entity.living.MobSpawnEvent.PositionCheck.Result.FAIL;
+        });
+        EventBus.post(platform, priority);
+        event.setResult(switch (platform.getResult()) {
+            case SUCCEED -> MobSpawnEvent.PositionCheck.Result.SUCCEED;
+            case DEFAULT -> MobSpawnEvent.PositionCheck.Result.DEFAULT;
+            case FAIL -> MobSpawnEvent.PositionCheck.Result.FAIL;
+        });
     }
 
-    private static void spawnPlacementCheck(MobSpawnEvent.SpawnPlacementCheck event) {
-        if (!Bridges.wanted(net.bananemdnsa.historystages.platform.event.entity.living.MobSpawnEvent.SpawnPlacementCheck.class)) {
+    private static void spawnPlacementCheck(MobSpawnEvent.SpawnPlacementCheck event, EventPriority priority) {
+        if (!Bridges.wanted(net.bananemdnsa.historystages.platform.event.entity.living.MobSpawnEvent.SpawnPlacementCheck.class, priority)) {
             return;
         }
         var platform = new net.bananemdnsa.historystages.platform.event.entity.living.MobSpawnEvent.SpawnPlacementCheck(
                 event.getEntityType(), event.getLevel(), event.getSpawnType(), event.getPos());
-        platform.setResult(net.bananemdnsa.historystages.platform.event.entity.living.MobSpawnEvent.SpawnPlacementCheck.Result
-                .valueOf(event.getResult().name()));
-        EventBus.post(platform);
-        event.setResult(MobSpawnEvent.SpawnPlacementCheck.Result.valueOf(platform.getResult().name()));
+        platform.setResult(switch (event.getResult()) {
+            case SUCCEED -> net.bananemdnsa.historystages.platform.event.entity.living.MobSpawnEvent.SpawnPlacementCheck.Result.SUCCEED;
+            case DEFAULT -> net.bananemdnsa.historystages.platform.event.entity.living.MobSpawnEvent.SpawnPlacementCheck.Result.DEFAULT;
+            case FAIL -> net.bananemdnsa.historystages.platform.event.entity.living.MobSpawnEvent.SpawnPlacementCheck.Result.FAIL;
+        });
+        EventBus.post(platform, priority);
+        event.setResult(switch (platform.getResult()) {
+            case SUCCEED -> MobSpawnEvent.SpawnPlacementCheck.Result.SUCCEED;
+            case DEFAULT -> MobSpawnEvent.SpawnPlacementCheck.Result.DEFAULT;
+            case FAIL -> MobSpawnEvent.SpawnPlacementCheck.Result.FAIL;
+        });
     }
 }

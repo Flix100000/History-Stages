@@ -36,6 +36,7 @@ public final class NeoForgeGameTests {
 
     static {
         BridgeCancelTests.collect(TESTS);
+        BridgePriorityTests.collect(TESTS);
     }
 
     private NeoForgeGameTests() {}

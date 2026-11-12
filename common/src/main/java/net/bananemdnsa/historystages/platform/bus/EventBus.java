@@ -45,6 +45,9 @@ public final class EventBus {
      */
     private static final Map<Class<?>, List<Listener>> RESOLVED = new ConcurrentHashMap<>();
 
+    /** {@link #RESOLVED} split by priority, indexed by ordinal, for {@link #post(Event, EventPriority)}. */
+    private static final Map<Class<?>, List<List<Listener>>> RESOLVED_BY_PRIORITY = new ConcurrentHashMap<>();
+
     private EventBus() {}
 
     /** Registers the static handler methods of a class. */
@@ -84,6 +87,7 @@ public final class EventBus {
     private static synchronized void addEntry(Class<?> eventType, Listener listener) {
         LISTENERS.computeIfAbsent(eventType, key -> new ArrayList<>()).add(listener);
         RESOLVED.clear();
+        RESOLVED_BY_PRIORITY.clear();
     }
 
     /**
@@ -98,7 +102,23 @@ public final class EventBus {
      * propagates the exception as well.
      */
     public static <T extends Event> T post(T event) {
-        List<Listener> listeners = resolve(event.getClass());
+        return dispatch(event, resolve(event.getClass()));
+    }
+
+    /**
+     * Like {@link #post(Event)}, but only for the listeners registered at {@code priority}
+     * (supertype listeners included, the cancel rule unchanged).
+     *
+     * <p>For a loader bridge that hangs one native listener per priority on the loader's own bus,
+     * so a LOWEST handler here still runs after another mod's NORMAL handler there. Each of those
+     * native listeners builds a fresh event from the native one's current state and posts it here
+     * at its own priority.
+     */
+    public static <T extends Event> T post(T event, EventPriority priority) {
+        return dispatch(event, resolve(event.getClass(), priority));
+    }
+
+    private static <T extends Event> T dispatch(T event, List<Listener> listeners) {
         if (listeners.isEmpty()) {
             return event;
         }
@@ -157,6 +177,21 @@ public final class EventBus {
         }
     }
 
+    private static List<Listener> resolve(Class<?> eventType, EventPriority priority) {
+        List<List<Listener>> cached = RESOLVED_BY_PRIORITY.get(eventType);
+        if (cached == null) {
+            synchronized (EventBus.class) {
+                List<List<Listener>> split = new ArrayList<>();
+                for (EventPriority each : EventPriority.values()) {
+                    split.add(resolve(eventType).stream().filter(listener -> listener.priority() == each).toList());
+                }
+                cached = List.copyOf(split);
+                RESOLVED_BY_PRIORITY.put(eventType, cached);
+            }
+        }
+        return cached.get(priority.ordinal());
+    }
+
     /**
      * Adds a single listener without a class to scan.
      *
@@ -164,7 +199,13 @@ public final class EventBus {
      * only wants to hear about one thing and has no handler class of its own.
      */
     public static <T extends Event> void addListener(Class<T> eventType, Consumer<T> listener) {
-        addEntry(eventType, new Listener(null, listener, EventPriority.NORMAL, false, NEXT_ORDER.getAndIncrement()));
+        addListener(eventType, EventPriority.NORMAL, false, listener);
+    }
+
+    /** {@link #addListener(Class, Consumer)} with the two settings {@link SubscribeEvent} offers. */
+    public static <T extends Event> void addListener(Class<T> eventType, EventPriority priority, boolean receiveCanceled,
+                                                     Consumer<T> listener) {
+        addEntry(eventType, new Listener(null, listener, priority, receiveCanceled, NEXT_ORDER.getAndIncrement()));
     }
 
     /**
@@ -176,10 +217,16 @@ public final class EventBus {
             list.removeIf(entry -> entry.instance() == listener);
         }
         RESOLVED.clear();
+        RESOLVED_BY_PRIORITY.clear();
     }
 
     /** Whether anything listens for this event or a superclass of it, so a caller can skip building one. */
     public static boolean hasListeners(Class<? extends Event> eventType) {
         return !resolve(eventType).isEmpty();
+    }
+
+    /** {@link #hasListeners(Class)} for one priority, the check that goes with {@link #post(Event, EventPriority)}. */
+    public static boolean hasListeners(Class<? extends Event> eventType, EventPriority priority) {
+        return !resolve(eventType, priority).isEmpty();
     }
 }

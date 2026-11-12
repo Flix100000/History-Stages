@@ -46,6 +46,14 @@ class EventBusTest {
 
     static class RankedChild extends RankedParent {}
 
+    static class SlicedParent extends Event implements ICancellableEvent {}
+
+    static class Sliced extends SlicedParent {}
+
+    static class PreCanceled extends Event implements ICancellableEvent {}
+
+    static class Lambda extends Event implements ICancellableEvent {}
+
     public static class StaticHandler {
         @SubscribeEvent
         public static void onPlain(Plain event) {
@@ -176,6 +184,40 @@ class EventBusTest {
         }
     }
 
+    public static class PerRank {
+        @SubscribeEvent(priority = EventPriority.HIGHEST)
+        public static void highest(Sliced event) {
+            CALLS.add("slice-highest");
+        }
+
+        @SubscribeEvent
+        public static void exactNormal(Sliced event) {
+            CALLS.add("slice-exact-normal");
+        }
+
+        @SubscribeEvent
+        public static void superNormal(SlicedParent event) {
+            CALLS.add("slice-super-normal");
+        }
+
+        @SubscribeEvent(priority = EventPriority.LOWEST)
+        public static void lowest(Sliced event) {
+            CALLS.add("slice-lowest");
+        }
+    }
+
+    public static class PreCanceledHandlers {
+        @SubscribeEvent(priority = EventPriority.LOWEST)
+        public static void skipped(PreCanceled event) {
+            CALLS.add("pre-skipped");
+        }
+
+        @SubscribeEvent(priority = EventPriority.LOWEST, receiveCanceled = true)
+        public static void observer(PreCanceled event) {
+            CALLS.add("pre-observer:" + event.isCanceled());
+        }
+    }
+
     public static class WrongShape {
         @SubscribeEvent
         public static void twoArguments(Plain event, String extra) {
@@ -285,5 +327,49 @@ class EventBusTest {
         Unheard unheard = new Unheard();
         assertSame(unheard, EventBus.post(unheard));
         assertFalse(EventBus.hasListeners(Unheard.class));
+    }
+
+    @Test
+    void postAtPriorityCallsOnlyThatPrioritysListenersSupertypesIncluded() {
+        CALLS.clear();
+        EventBus.register(PerRank.class);
+        EventBus.post(new Sliced(), EventPriority.NORMAL);
+        assertEquals(List.of("slice-exact-normal", "slice-super-normal"), CALLS);
+        CALLS.clear();
+        EventBus.post(new Sliced(), EventPriority.HIGH);
+        assertEquals(List.of(), CALLS, "nobody listens at HIGH");
+        assertTrue(EventBus.hasListeners(Sliced.class, EventPriority.LOWEST));
+        assertFalse(EventBus.hasListeners(Sliced.class, EventPriority.HIGH));
+        assertTrue(EventBus.hasListeners(Sliced.class, EventPriority.NORMAL), "supertype listener counts");
+    }
+
+    @Test
+    void postAtPriorityOnACanceledEventOnlyReachesReceiveCanceledListeners() {
+        CALLS.clear();
+        EventBus.register(PreCanceledHandlers.class);
+        PreCanceled event = new PreCanceled();
+        event.setCanceled(true);
+        EventBus.post(event, EventPriority.LOWEST);
+        assertEquals(List.of("pre-observer:true"), CALLS);
+    }
+
+    @Test
+    void addListenerWithPriorityAndReceiveCanceled() {
+        CALLS.clear();
+        java.util.function.Consumer<Lambda> first = event -> {
+            CALLS.add("lambda-high");
+            event.setCanceled(true);
+        };
+        java.util.function.Consumer<Lambda> skipped = event -> CALLS.add("lambda-skipped");
+        java.util.function.Consumer<Lambda> observer = event -> CALLS.add("lambda-observer:" + event.isCanceled());
+        EventBus.addListener(Lambda.class, EventPriority.LOWEST, true, observer);
+        EventBus.addListener(Lambda.class, EventPriority.NORMAL, false, skipped);
+        EventBus.addListener(Lambda.class, EventPriority.HIGH, false, first);
+        EventBus.post(new Lambda());
+        EventBus.unregister(first);
+        EventBus.unregister(skipped);
+        EventBus.unregister(observer);
+        assertEquals(List.of("lambda-high", "lambda-observer:true"), CALLS);
+        assertFalse(EventBus.hasListeners(Lambda.class));
     }
 }
