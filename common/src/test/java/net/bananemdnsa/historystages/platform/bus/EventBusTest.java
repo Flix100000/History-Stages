@@ -36,6 +36,16 @@ class EventBusTest {
 
     static class Other extends Event {}
 
+    static class Unheard extends Event {}
+
+    static class Parent extends Event {}
+
+    static class Child extends Parent {}
+
+    static class RankedParent extends Event {}
+
+    static class RankedChild extends RankedParent {}
+
     public static class StaticHandler {
         @SubscribeEvent
         public static void onPlain(Plain event) {
@@ -137,8 +147,32 @@ class EventBusTest {
         }
 
         @SubscribeEvent(priority = EventPriority.LOWEST)
-        public static void stillRuns(Other event) {
-            CALLS.add("survivor");
+        public static void neverReached(Other event) {
+            CALLS.add("after-throw");
+        }
+    }
+
+    public static class ParentHandler {
+        @SubscribeEvent
+        public static void onParent(Parent event) {
+            CALLS.add("parent:" + event.getClass().getSimpleName());
+        }
+    }
+
+    public static class MixedRanks {
+        @SubscribeEvent(priority = EventPriority.LOWEST)
+        public static void superLast(RankedParent event) {
+            CALLS.add("super-lowest");
+        }
+
+        @SubscribeEvent
+        public static void exactMiddle(RankedChild event) {
+            CALLS.add("exact-normal");
+        }
+
+        @SubscribeEvent(priority = EventPriority.HIGHEST)
+        public static void superFirst(RankedParent event) {
+            CALLS.add("super-highest");
         }
     }
 
@@ -213,12 +247,31 @@ class EventBusTest {
     }
 
     @Test
-    void aBrokenHandlerDoesNotTakeTheOthersWithIt() {
+    void handlerExceptionPropagatesFromPost() {
         CALLS.clear();
         EventBus.register(Thrower.class);
-        EventBus.post(new Other());
-        assertEquals(List.of("survivor"), CALLS,
-                "a broken rule should lose its own lock, not the interaction it hung on");
+        IllegalStateException thrown = assertThrows(IllegalStateException.class, () -> EventBus.post(new Other()),
+                "a swallowed exception before setCanceled would silently open a lock");
+        assertEquals("handler is broken", thrown.getMessage(), "the handler's own exception, not a reflection wrapper");
+        assertEquals(List.of(), CALLS);
+    }
+
+    @Test
+    void handlerForSupertypeReceivesSubclassEvent() {
+        CALLS.clear();
+        EventBus.register(ParentHandler.class);
+        EventBus.post(new Child());
+        EventBus.post(new Parent());
+        assertEquals(List.of("parent:Child", "parent:Parent"), CALLS);
+    }
+
+    @Test
+    void priorityOrderHoldsAcrossSupertypeAndExactListeners() {
+        CALLS.clear();
+        EventBus.register(MixedRanks.class);
+        EventBus.post(new RankedChild());
+        assertEquals(List.of("super-highest", "exact-normal", "super-lowest"), CALLS);
+        assertTrue(EventBus.hasListeners(RankedChild.class));
     }
 
     @Test
@@ -229,7 +282,8 @@ class EventBusTest {
 
     @Test
     void anEventNobodyListensForIsHandedBackUnchanged() {
-        Other unheard = new Other() {};
+        Unheard unheard = new Unheard();
         assertSame(unheard, EventBus.post(unheard));
+        assertFalse(EventBus.hasListeners(Unheard.class));
     }
 }

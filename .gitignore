@@ -30,3 +30,6 @@ docs/
 .superpowers/
 .claude/
 CLAUDE.md
+
+# Log4j output from test and run tasks, at the root and inside subprojects.
+logs/
