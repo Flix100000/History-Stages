@@ -2,11 +2,9 @@
 build
 .gradle
 
-# dev run directories
-run
-run-server
-run-gametest
-run-gametest-forge
+# dev run directories, at the root and in each subproject (anchored so a package named run* is not hit)
+/run*/
+/*/run*/
 
 # eclipse / vscode
 bin

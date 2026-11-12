@@ -1,0 +1,285 @@
+plugins {
+    id 'java-library'
+    id 'net.neoforged.moddev' version '2.0.140'
+    id 'idea'
+}
+
+tasks.named('wrapper', Wrapper).configure {
+    distributionType = Wrapper.DistributionType.BIN
+}
+
+version = mod_version
+group = mod_group_id
+
+repositories {
+    maven {
+        url "https://cursemaven.com"
+    }
+    maven {
+        name = "Jared's Maven"
+        url "https://maven.blamejared.com"
+    }
+    maven {
+        name = "TerraformersMC"
+        url "https://maven.terraformersmc.com/"
+    }
+    maven {
+        name = "FTB Mods"
+        url "https://maven.ftb.dev/releases"
+        content {
+            includeGroup "dev.ftb.mods"
+        }
+    }
+    maven {
+        name = "Architectury"
+        url "https://maven.architectury.dev/"
+        content {
+            includeGroup "dev.architectury"
+        }
+    }
+    maven {
+        name = "Curios"
+        url "https://maven.theillusivec4.top/"
+    }
+    maven {
+        name = "Wisp Forest"
+        url "https://maven.wispforest.io/releases"
+    }
+    maven {
+        name = "Sinytra"
+        url "https://maven.su5ed.dev/releases"
+    }
+    maven {
+        // KubeJS pulls animated-gif-lib-for-java at runtime and it lives nowhere but JitPack.
+        // Scoped to that one group so nothing else starts resolving from here by accident.
+        name = "JitPack"
+        url "https://jitpack.io"
+        content {
+            includeGroup "com.github.rtyley"
+        }
+    }
+    maven {
+        name = "KubeJS"
+        url "https://maven.latvian.dev/releases"
+        content {
+            includeGroup "dev.latvian.mods"
+            includeGroup "dev.latvian.apps"
+        }
+    }
+    maven {
+        name = "Modrinth"
+        url "https://api.modrinth.com/maven"
+        content {
+            includeGroup "maven.modrinth"
+        }
+    }
+}
+
+base {
+    archivesName = mod_id
+}
+
+// Mojang ships Java 21 to end users in 1.21, so mods should target Java 21.
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+neoForge {
+    version = project.neo_version
+
+    parchment {
+        mappingsVersion = project.parchment_mappings_version
+        minecraftVersion = project.parchment_minecraft_version
+    }
+
+    runs {
+        client {
+            client()
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+
+            // Adds the stand-in addon category so the addon path can be exercised in the dev
+            // client. Nothing ships with it: without this property the demo never registers.
+            systemProperty 'historystages.demoCategory', 'true'
+        }
+
+        server {
+            server()
+            programArgument '--nogui'
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+
+            // Its own directory, or the server and a client cannot run at the same time — which is
+            // the entire point of a dedicated-server test. The client keeps run/ and the test data
+            // sitting in it.
+            gameDirectory = project.file('run-server')
+
+            // The same stand-in addon the client gets. Without it the server never registers the
+            // demo category or requirement, so an addon's data crossing the wire — the thing most
+            // likely to break on a server — could not be tested at all.
+            systemProperty 'historystages.demoCategory', 'true'
+        }
+
+        // Runs every registered GameTest and exits. The other runs still have them under /test.
+        gameTestServer {
+            type = "gameTestServer"
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+
+            // Its own directory as well, or an automated run collides with both of the above.
+            gameDirectory = project.file('run-gametest')
+
+            // The demo addon takes part in the tests, so the server has to know it.
+            systemProperty 'historystages.demoCategory', 'true'
+        }
+
+        data {
+            data()
+            programArguments.addAll '--mod', project.mod_id, '--all', '--output', file('src/generated/resources/').getAbsolutePath(), '--existing', file('src/main/resources/').getAbsolutePath()
+        }
+
+        configureEach {
+            // Other markers: SCAN for the mod scan, REGISTRYDUMP for the full registry contents.
+            systemProperty 'forge.logging.markers', 'REGISTRIES'
+            logLevel = org.slf4j.event.Level.DEBUG
+        }
+    }
+
+    mods {
+        "${mod_id}" {
+            sourceSet(sourceSets.main)
+        }
+    }
+}
+
+sourceSets.main.resources { srcDir 'src/generated/resources' }
+
+// localRuntime: in the dev client, but never on the compile classpath.
+configurations {
+    runtimeClasspath.extendsFrom localRuntime
+}
+
+dependencies {
+    // ---- Required ----
+
+    // The only hard dependency, see neoforge.mods.toml.
+    implementation "curse.maven:lootr-361276:8695784"
+
+    // ---- Recipe viewers ----
+
+    // JEI for MC 1.21.1 NeoForge. The 1.21 artifacts stop at 19.8.2.99; everything newer is
+    // published under the 1.21.1 id, which is the version this mod builds against anyway.
+    compileOnly "mezz.jei:jei-1.21.1-common-api:19.51.0.417"
+    compileOnly "mezz.jei:jei-1.21.1-neoforge-api:19.51.0.417"
+    localRuntime "mezz.jei:jei-1.21.1-neoforge:19.51.0.417"
+
+    compileOnly "dev.emi:emi-neoforge:1.1.24+1.21.1:api"
+    //localRuntime "dev.emi:emi-neoforge:1.1.24+1.21.1"
+
+    // ---- Optional integrations, present in the dev client ----
+
+    compileOnly "curse.maven:jade-324717:8591319"
+    localRuntime "curse.maven:jade-324717:8591319"
+
+    // FTB Quests targets MC 1.21.1 (2101.x). FTBQuests for MC 1.21 (2100.x) never left beta and
+    // has broken tooltips for custom tasks/rewards. Teams has to be on the compile classpath too:
+    // quest team data hands out FTB Teams types, and team stage sharing asks FTB Teams directly.
+    // Architectury is on the compile classpath because FTB Teams' events are Architectury events.
+    compileOnly "curse.maven:architectury-api-419699:8492726"
+    compileOnly "curse.maven:ftb-library-forge-404465:8569579"
+    compileOnly "curse.maven:ftb-teams-forge-404468:8724782"
+    compileOnly "curse.maven:ftb-quests-forge-289412:8730556"
+    localRuntime "curse.maven:ftb-library-forge-404465:8569579"
+    localRuntime "curse.maven:ftb-teams-forge-404468:8724782"
+    localRuntime "curse.maven:ftb-quests-forge-289412:8730556"
+    localRuntime "curse.maven:architectury-api-419699:8492726"
+
+    // The bridge is reached only because KubeJS reads kubejs.plugins.txt, so nothing here is a
+    // hard dependency.
+    compileOnly "dev.latvian.mods:kubejs-neoforge:2101.7.2-build.374"
+    localRuntime "dev.latvian.mods:kubejs-neoforge:2101.7.2-build.374"
+
+    // Found the same way: CraftTweaker scans for @ZenRegister, nothing in this mod references the
+    // bridge classes.
+    compileOnly "com.blamejared.crafttweaker:CraftTweaker-neoforge-1.21.1:21.0.38"
+    localRuntime "com.blamejared.crafttweaker:CraftTweaker-neoforge-1.21.1:21.0.38"
+
+    // ---- Optional integrations, compile only ----
+
+    compileOnly "top.theillusivec4.curios:curios-neoforge:9.5.1+1.21.1"
+    compileOnly "io.wispforest:accessories-neoforge:1.1.0-beta.53+1.21.1"
+    // The adapter only loads when Spell Engine is present at runtime.
+    compileOnly "maven.modrinth:spell-engine:1.10.4+1.21.1-neoforge"
+
+    // ---- Test subjects ----
+
+    // Create, for exercising the fluid side of the recipe picker by hand. Nothing in this mod
+    // references Create: the fluid scanner reads a recipe's serialised form and names no mod, so
+    // this is a test subject rather than an integration. localRuntime keeps it out of the
+    // published jar entirely.
+    //
+    // The NeoForge build carries Flywheel, Ponder and Registrate inside its own jar, so they need
+    // no entries of their own. If the dev client ever reports one of them missing, jar-in-jar did
+    // not unpack and these are the coordinates:
+    //   localRuntime "maven.modrinth:flywheel:1.0.6+mc1.21.1-neoforge"
+    //   localRuntime "maven.modrinth:ponder:1.0.82+mc1.21.1-neoforge"
+    //   localRuntime "com.tterrag.registrate:Registrate:MC1.21-1.3.0+67"
+    localRuntime "maven.modrinth:create:6.0.10+mc1.21.1"
+
+    // ---- Unit tests ----
+
+    testImplementation platform('org.junit:junit-bom:5.10.2')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    // The moddev plugin does not wire the Minecraft/NeoForge runtime classpath (which bundles
+    // Gson) into the test source set, so unit tests that touch Gson directly need their own copy.
+    testImplementation 'com.google.code.gson:gson:2.10.1'
+}
+
+// Fills the ${} placeholders in src/main/templates. A property missing here fails the build.
+var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
+    var replaceProperties = [
+            minecraft_version      : minecraft_version,
+            minecraft_version_range: minecraft_version_range,
+            neo_version            : neo_version,
+            neo_version_range      : neo_version_range,
+            loader_version_range   : loader_version_range,
+            mod_id                 : mod_id,
+            mod_name               : mod_name,
+            mod_license            : mod_license,
+            mod_version            : mod_version,
+            mod_authors            : mod_authors,
+            mod_description        : mod_description,
+    ]
+    inputs.properties replaceProperties
+    expand replaceProperties
+    from "src/main/templates"
+    into "build/generated/sources/modMetadata"
+}
+sourceSets.main.resources.srcDir generateModMetadata
+neoForge.ideSyncTask generateModMetadata
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+// The jar ships the root license rather than a copy under resources. A copy there went stale
+// once already: the port exception landed in the root file and never reached the jar.
+tasks.named('jar', Jar) {
+    from('LICENSE.txt')
+}
+
+// IDEA stopped fetching sources and javadoc for dependencies on its own.
+idea {
+    module {
+        downloadSources = true
+        downloadJavadoc = true
+    }
+}
+
+tasks.named('test', Test) {
+    useJUnitPlatform()
+    testLogging {
+        events "passed", "skipped", "failed"
+    }
+    // The lock benchmark is an instrument, not a test: half a million iterations per
+    // measurement turn a three-second suite into thirty-five, and the suite runs after every
+    // step of a refactor. Off by default, on with `./gradlew test -Pbench`.
+    systemProperty 'historystages.bench', project.hasProperty('bench') ? 'true' : 'false'
+}

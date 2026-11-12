@@ -1,0 +1,79 @@
+apply plugin: "com.gradleup.shadow"
+
+architectury {
+    platformSetupLoomIde()
+    fabric()
+}
+
+loom {
+    runs {
+        client {
+            property "historystages.demoCategory", "true"
+        }
+        server {
+            programArg "--nogui"
+            runDir "run-server"
+            property "historystages.demoCategory", "true"
+        }
+        // Runs every fabric-gametest entrypoint and exits.
+        gametest {
+            server()
+            name "GameTest Server"
+            runDir "run-gametest"
+            vmArg "-Dfabric-api.gametest"
+            vmArg "-Dfabric-api.gametest.report-file=${project.layout.buildDirectory.get().asFile}/junit-gametest.xml"
+            property "historystages.demoCategory", "true"
+        }
+    }
+}
+
+configurations {
+    common
+    shadowCommon
+    compileClasspath.extendsFrom common
+    runtimeClasspath.extendsFrom common
+    developmentFabric.extendsFrom common
+}
+
+dependencies {
+    implementation "net.fabricmc:fabric-loader:${rootProject.fabric_loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${rootProject.fabric_api_version}"
+    implementation "dev.architectury:architectury-fabric:${rootProject.architectury_api_version}"
+    implementation "maven.modrinth:lootr:${rootProject.lootr_fabric_modrinth_id}"
+
+    common(project(path: ":common")) { transitive false }
+    shadowCommon(project(path: ":common", configuration: "transformProductionFabric")) { transitive false }
+}
+
+processResources {
+    var replaceProperties = [
+            version              : project.version,
+            minecraft_version    : rootProject.minecraft_version,
+            fabric_loader_version: rootProject.fabric_loader_version,
+            mod_id               : rootProject.mod_id,
+            mod_name             : rootProject.mod_name,
+            mod_license          : rootProject.mod_license,
+            mod_description      : rootProject.mod_description,
+    ]
+    inputs.properties replaceProperties
+    filesMatching("fabric.mod.json") {
+        expand replaceProperties
+    }
+}
+
+jar {
+    archiveClassifier = "raw"
+}
+
+shadowJar {
+    exclude "architectury.common.json"
+
+    dependsOn jar
+    mainSpec.sourcePaths.clear()
+    from(zipTree(jar.archiveFile))
+    configurations = [project.configurations.shadowCommon]
+    archiveClassifier = null
+    from rootProject.file("LICENSE.txt")
+}
+
+assemble.dependsOn shadowJar

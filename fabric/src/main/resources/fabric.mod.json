@@ -1,0 +1,45 @@
+{
+	"schemaVersion": 1,
+	"id": "${mod_id}",
+	"version": "${version}",
+	"name": "${mod_name}",
+	"description": "${mod_description}",
+	"authors": [
+		"Bananemdnsa",
+		"PixlStudios"
+	],
+	"contact": {
+		"homepage": "https://www.curseforge.com/minecraft/mc-mods/history-stages",
+		"sources": "https://github.com/Flix100000/History-Stages",
+		"issues": "https://github.com/Flix100000/History-Stages/issues",
+		"wiki": "https://historystages.github.io/"
+	},
+	"license": "${mod_license}",
+	"icon": "assets/historystages/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"net.bananemdnsa.historystages.fabric.HistoryStagesFabric"
+		],
+		"client": [
+			"net.bananemdnsa.historystages.fabric.HistoryStagesFabricClient"
+		]
+	},
+	"depends": {
+		"fabricloader": ">=${fabric_loader_version}",
+		"minecraft": ">=${minecraft_version} <26.3",
+		"java": ">=25",
+		"fabric-api": "*",
+		"architectury": ">=21.1",
+		"lootr": ">=0.4"
+	},
+	"suggests": {
+		"jade": ">=15",
+		"emi": ">=1.1",
+		"jei": ">=15",
+		"ftbquests": ">=2101",
+		"accessories": ">=1.1.0-beta",
+		"spell_engine": ">=1.9",
+		"bettercombat": ">=1"
+	}
+}

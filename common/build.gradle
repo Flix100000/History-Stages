@@ -1,0 +1,20 @@
+architectury {
+    common(rootProject.platforms.split(","))
+}
+
+dependencies {
+    // Only for the @Environment annotations; nothing else from Fabric Loader belongs in common.
+    implementation "net.fabricmc:fabric-loader:${rootProject.fabric_loader_version}"
+    implementation "dev.architectury:architectury:${rootProject.architectury_api_version}"
+
+    testImplementation platform("org.junit:junit-bom:5.10.2")
+    testImplementation "org.junit.jupiter:junit-jupiter"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+}
+
+tasks.named("test", Test) {
+    useJUnitPlatform()
+    testLogging {
+        events "passed", "skipped", "failed"
+    }
+}
