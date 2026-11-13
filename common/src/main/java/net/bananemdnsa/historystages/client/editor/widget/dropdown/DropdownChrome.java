@@ -3,7 +3,7 @@ package net.bananemdnsa.historystages.client.editor.widget.dropdown;
 import com.mojang.math.Axis;
 import net.bananemdnsa.historystages.client.editor.anim.Ease;
 import net.bananemdnsa.historystages.client.editor.anim.Fade;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 /**
  * Shared chrome for the editor's dropdowns, which all draw the same frame, the same caret and
@@ -37,7 +37,7 @@ public final class DropdownChrome {
      * @param flipped true when the popup sits above its button, so it must grow upwards
      * @return false when there is nothing to draw and {@link #end} must not be called
      */
-    public static boolean begin(GuiGraphics g, int px, int py, int pw, int ph, float t, boolean flipped) {
+    public static boolean begin(GuiGraphicsExtractor g, int px, int py, int pw, int ph, float t, boolean flipped) {
         float eased = Ease.outCubic(t);
         if (eased < 0.02f) return false;
 
@@ -45,8 +45,8 @@ public final class DropdownChrome {
         int clipTop = flipped ? py + ph - visibleH : py;
         int clipBottom = flipped ? py + ph : py + visibleH;
 
-        g.pose().pushPose();
-        g.pose().translate(0, 0, POPUP_Z);
+        g.pose().pushMatrix();
+        g.pose().translate(0, 0);
         g.enableScissor(px - 1, clipTop - 1, px + pw + 1, clipBottom + 1);
 
         g.fill(px - 1, py - 1, px + pw + 1, py + ph + 1, 0xFF555555);
@@ -55,9 +55,9 @@ public final class DropdownChrome {
     }
 
     /** Closes the layer opened by {@link #begin}. */
-    public static void end(GuiGraphics g) {
+    public static void end(GuiGraphicsExtractor g) {
         g.disableScissor();
-        g.pose().popPose();
+        g.pose().popMatrix();
     }
 
     /**
@@ -68,7 +68,7 @@ public final class DropdownChrome {
      * @param expanded whether the popup is open, which turns the frame gold
      * @param flip     caret rotation, 0 = pointing down
      */
-    public static void drawButton(GuiGraphics g, net.minecraft.client.gui.Font font, int x, int y,
+    public static void drawButton(GuiGraphicsExtractor g, net.minecraft.client.gui.Font font, int x, int y,
                                   int w, int h, String label, float hover, boolean expanded,
                                   float flip) {
         drawButton(g, font, x, y, w, h, label, hover, expanded, flip, 0xFFEEEEEE);
@@ -78,7 +78,7 @@ public final class DropdownChrome {
      * As above, with the label colour spelled out. The per-stage style editor draws an inherited
      * row's dropdown dimmed, which is the one case where the value shown is not the row's own.
      */
-    public static void drawButton(GuiGraphics g, net.minecraft.client.gui.Font font, int x, int y,
+    public static void drawButton(GuiGraphicsExtractor g, net.minecraft.client.gui.Font font, int x, int y,
                                   int w, int h, String label, float hover, boolean expanded,
                                   float flip, int textColor) {
         int border = expanded ? 0xFFFFCC00 : Fade.mix(0xFF4A4A4A, 0xFF888888, hover);
@@ -88,7 +88,7 @@ public final class DropdownChrome {
 
         // Clipped to the space left of the caret, so a long value cannot run into it.
         String text = font.plainSubstrByWidth(label, Math.max(0, w - 16));
-        g.drawString(font, text, x + 5, y + (h - 8) / 2 + 1, textColor, false);
+        g.text(font, text, x + 5, y + (h - 8) / 2 + 1, textColor, false);
 
         drawCaret(g, x + w - 7, y + h / 2 - 1, Fade.mix(0xFF999999, 0xFFDDDDDD, hover), flip);
     }
@@ -101,17 +101,17 @@ public final class DropdownChrome {
      * @param x left edge of the 5x3 caret glyph
      * @param y top edge of the glyph
      */
-    public static void drawCaret(GuiGraphics g, int x, int y, int color, float flip) {
+    public static void drawCaret(GuiGraphicsExtractor g, int x, int y, int color, float flip) {
         float cx = x + 2.5f;
         float cy = y + 1.5f;
-        g.pose().pushPose();
-        g.pose().translate(cx, cy, 0.0f);
+        g.pose().pushMatrix();
+        g.pose().translate(cx, cy);
         g.pose().mulPose(Axis.ZP.rotationDegrees(180.0f * Ease.outCubic(flip)));
-        g.pose().translate(-cx, -cy, 0.0f);
+        g.pose().translate(-cx, -cy);
         g.fill(x, y, x + 5, y + 1, color);
         g.fill(x + 1, y + 1, x + 4, y + 2, color);
         g.fill(x + 2, y + 2, x + 3, y + 3, color);
-        g.pose().popPose();
+        g.pose().popMatrix();
     }
 
     /**
@@ -119,7 +119,7 @@ public final class DropdownChrome {
      * from the left, so the row under the cursor is identifiable without relying on a brightness
      * step that is easy to miss on a dark popup.
      */
-    public static void drawRowHighlight(GuiGraphics g, int x, int y, int w, int h, float hover) {
+    public static void drawRowHighlight(GuiGraphicsExtractor g, int x, int y, int w, int h, float hover) {
         if (hover < 0.001f) return;
         g.fill(x, y, x + w, y + h, Fade.rgba(0xFFFFFF, 0.15f * hover));
         g.fill(x, y, x + 1, y + h, Fade.rgba(0xFFCC00, hover));

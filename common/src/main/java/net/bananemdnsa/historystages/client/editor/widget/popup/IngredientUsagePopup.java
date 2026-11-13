@@ -25,7 +25,7 @@ import net.bananemdnsa.historystages.client.editor.widget.EditorTooltip;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -271,7 +271,7 @@ public class IngredientUsagePopup {
 
     // ========== RENDER ==========
 
-    public void render(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    public void render(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         if (!visible) return;
 
         g.fill(0, 0, g.guiWidth(), g.guiHeight(), 0x88000000);
@@ -293,7 +293,7 @@ public class IngredientUsagePopup {
         renderFooter(g, font, mouseX, mouseY);
     }
 
-    private void renderHeader(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    private void renderHeader(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         int total = entriesByMode.get(mode).size();
         String key = mode == MODE_RECIPES
                 ? "editor.historystages.ingredient_usage.title"
@@ -303,12 +303,12 @@ public class IngredientUsagePopup {
         int cbX = allCbX();
         int titleMax = cbX - font.width(allLabel) - 12 - (panelX + PADDING);
         if (font.width(title) > titleMax) title = font.plainSubstrByWidth(title, titleMax - 8) + "...";
-        g.drawString(font, title, panelX + PADDING, panelY + 7, 0xFFFFFF, false);
-        g.drawString(font, allLabel, cbX - font.width(allLabel) - 5, panelY + 7, 0x999999, false);
+        g.text(font, title, panelX + PADDING, panelY + 7, 0xFFFFFF, false);
+        g.text(font, allLabel, cbX - font.width(allLabel) - 5, panelY + 7, 0x999999, false);
         renderCheckbox(g, cbX, panelY + 5, allTicked(selectable(null)), mouseX, mouseY, "all");
     }
 
-    private void renderList(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    private void renderList(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         int x = listX();
         int y = listY();
         hovered = null;
@@ -318,7 +318,7 @@ public class IngredientUsagePopup {
                     ? "editor.historystages.ingredient_usage.empty"
                     : "editor.historystages.ingredient_usage.no_match";
             String text = Component.translatable(key).getString();
-            g.drawString(font, text, x + (LIST_W - font.width(text)) / 2, y + listH() / 2 - 4,
+            g.text(font, text, x + (LIST_W - font.width(text)) / 2, y + listH() / 2 - 4,
                     0x777777, false);
             return;
         }
@@ -339,7 +339,7 @@ public class IngredientUsagePopup {
                         ? "editor.historystages.ingredient_usage.group.only_locked"
                         : "editor.historystages.ingredient_usage.group.works_without";
                 String text = Component.translatable(key, count(line.group())).getString();
-                g.drawString(font, text, x + 4, rowY + 6, color, false);
+                g.text(font, text, x + 4, rowY + 6, color, false);
                 g.fill(x, rowY + ROW_HEIGHT - 2, x + LIST_W, rowY + ROW_HEIGHT - 1, (color & 0x00FFFFFF) | 0x80000000);
                 renderCheckbox(g, rowCbX(), cbY - 1, allTicked(selectable(line.group())), mouseX, mouseY,
                         "group." + line.group());
@@ -360,7 +360,7 @@ public class IngredientUsagePopup {
                     rowHovered && !e.added() ? 0xFF353535 : isPinned ? 0xFF2D2D2D : 0xFF252525);
             if (isPinned) g.fill(x, rowY, x + 2, rowY + ROW_HEIGHT - 1, 0xFFFFCC00);
 
-            g.renderItem(e.stack(), x + 4, rowY + 1);
+            g.item(e.stack(), x + 4, rowY + 1);
             String note = e.added()
                     ? Component.translatable("editor.historystages.ingredient_usage.already_added").getString()
                     : e.note();
@@ -370,9 +370,9 @@ public class IngredientUsagePopup {
             String name = e.stack().getHoverName().getString();
             if (font.width(name) > textMax) name = font.plainSubstrByWidth(name, textMax - 6) + "...";
             int nameColor = e.added() ? 0x555555 : e.kind() == Kind.WORKS_WITHOUT ? 0x999999 : 0xDDDDDD;
-            g.drawString(font, name, textX, rowY + 5, nameColor, false);
+            g.text(font, name, textX, rowY + 5, nameColor, false);
             if (!note.isEmpty()) {
-                g.drawString(font, note, rowCbX() - 6 - font.width(note), rowY + 5, 0x666666, false);
+                g.text(font, note, rowCbX() - 6 - font.width(note), rowY + 5, 0x666666, false);
             }
             if (!e.added()) {
                 renderCheckbox(g, rowCbX(), cbY, selected().contains(e.id()), mouseX, mouseY, e.id());
@@ -390,7 +390,7 @@ public class IngredientUsagePopup {
         }
     }
 
-    private void renderDetail(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    private void renderDetail(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         int x = detailX();
         int y = listY();
         int w = detailW();
@@ -402,17 +402,17 @@ public class IngredientUsagePopup {
             List<net.minecraft.util.FormattedCharSequence> wrapped = font.split(Component.literal(hint), w - 8);
             int ty = y + listH() / 2 - wrapped.size() * 5;
             for (var line : wrapped) {
-                g.drawString(font, line, x + (w - font.width(line)) / 2, ty, 0x666666, false);
+                g.text(font, line, x + (w - font.width(line)) / 2, ty, 0x666666, false);
                 ty += 10;
             }
             renderLegend(g, font, x, y + listH() - 20);
             return;
         }
 
-        g.renderItem(e.stack(), x, y + 1);
+        g.item(e.stack(), x, y + 1);
         String name = e.stack().getHoverName().getString();
         if (font.width(name) > w - 22) name = font.plainSubstrByWidth(name, w - 28) + "...";
-        g.drawString(font, name, x + 20, y + 5, 0xFFFFFF, false);
+        g.text(font, name, x + 20, y + 5, 0xFFFFFF, false);
 
         int cardsTop = y + DETAIL_HEADER_H;
         int cardsH = listH() - DETAIL_HEADER_H - 22;
@@ -432,16 +432,16 @@ public class IngredientUsagePopup {
         renderLegend(g, font, x, y + listH() - 20);
     }
 
-    private void renderLegend(GuiGraphics g, Font font, int x, int y) {
+    private void renderLegend(GuiGraphicsExtractor g, Font font, int x, int y) {
         int sw = 7;
-        g.renderOutline(x, y + 1, sw, sw, RecipeCardRenderer.MARK_LOCKED_COLOR);
-        g.drawString(font, Component.translatable("editor.historystages.ingredient_usage.legend.locked").getString(),
+        g.outline(x, y + 1, sw, sw, RecipeCardRenderer.MARK_LOCKED_COLOR);
+        g.text(font, Component.translatable("editor.historystages.ingredient_usage.legend.locked").getString(),
                 x + sw + 4, y, 0x888888, false);
         g.fill(x, y + 11, x + 2, y + 12, RecipeCardRenderer.MARK_ALTERNATIVE_COLOR);
         g.fill(x + 4, y + 11, x + 6, y + 12, RecipeCardRenderer.MARK_ALTERNATIVE_COLOR);
         g.fill(x, y + 17, x + 2, y + 18, RecipeCardRenderer.MARK_ALTERNATIVE_COLOR);
         g.fill(x + 4, y + 17, x + 6, y + 18, RecipeCardRenderer.MARK_ALTERNATIVE_COLOR);
-        g.drawString(font, Component.translatable("editor.historystages.ingredient_usage.legend.alternative").getString(),
+        g.text(font, Component.translatable("editor.historystages.ingredient_usage.legend.alternative").getString(),
                 x + sw + 4, y + 10, 0x888888, false);
     }
 
@@ -451,11 +451,11 @@ public class IngredientUsagePopup {
         return Math.max(0, total - CARD_GAP - cardsH);
     }
 
-    private void renderFooter(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    private void renderFooter(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         int fy = footerY() + 5;
         int n = selected().size();
         String note = Component.translatable("editor.historystages.ingredient_usage.selected", n).getString();
-        g.drawString(font, note, panelX + PADDING, fy + 6, 0x888888, false);
+        g.text(font, note, panelX + PADDING, fy + 6, 0x888888, false);
 
         boolean overCancel = isIn(mouseX, mouseY, cancelX(), fy, CANCEL_W, BTN_H);
         boolean overAdd = n > 0 && isIn(mouseX, mouseY, addX(), fy, ADD_W, BTN_H);
@@ -474,7 +474,7 @@ public class IngredientUsagePopup {
         }
     }
 
-    private void renderCardTooltip(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    private void renderCardTooltip(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         Entry e = shownInDetail();
         if (e == null) return;
         int x = detailX();
@@ -518,7 +518,7 @@ public class IngredientUsagePopup {
         return text.toString();
     }
 
-    private void renderCheckbox(GuiGraphics g, int x, int y, boolean checked, int mx, int my, String hoverKey) {
+    private void renderCheckbox(GuiGraphicsExtractor g, int x, int y, boolean checked, int mx, int my, String hoverKey) {
         boolean over = mx >= x && mx < x + CHECKBOX_SIZE && my >= y && my < y + CHECKBOX_SIZE;
         float hp = Ease.outCubic(checkboxHover.computeIfAbsent(hoverKey, k -> new Anim())
                 .ramp(over, Timing.HOVER_IN_MS, Timing.HOVER_OUT_MS));
@@ -544,7 +544,7 @@ public class IngredientUsagePopup {
         }
     }
 
-    private void renderButton(GuiGraphics g, Font font, String text, int x, int y, int w, float hp, boolean enabled) {
+    private void renderButton(GuiGraphicsExtractor g, Font font, String text, int x, int y, int w, float hp, boolean enabled) {
         int bgAlpha = (int) (0x30 + hp * 0x20);
         int bgG = (int) (0xFF - hp * 0x33);
         int bgB = (int) (0xFF - hp * 0xFF);
@@ -555,7 +555,7 @@ public class IngredientUsagePopup {
         g.fill(x, y, x + 1, y + BTN_H, 0x15FFFFFF);
         g.fill(x + w - 1, y, x + w, y + BTN_H, 0x15FFFFFF);
         int gray = enabled ? (int) (0xCC + hp * 0x33) : 0x66;
-        g.drawString(font, text, x + (w - font.width(text)) / 2, y + (BTN_H - 8) / 2,
+        g.text(font, text, x + (w - font.width(text)) / 2, y + (BTN_H - 8) / 2,
                 (0xFF << 24) | (gray << 16) | (gray << 8) | gray, false);
     }
 

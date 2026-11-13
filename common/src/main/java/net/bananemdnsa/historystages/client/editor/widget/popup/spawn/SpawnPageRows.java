@@ -4,7 +4,7 @@ import net.bananemdnsa.historystages.api.editor.widget.NumberStepper;
 import net.bananemdnsa.historystages.api.editor.widget.SegmentBar;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
@@ -62,7 +62,7 @@ final class SpawnPageRows {
     private static final int GUTTER = 12;
 
     /** The area a tab may draw into this frame. */
-    record Frame(GuiGraphics g, Font font, int mouseX, int mouseY, int x, int y, int width, int height) {}
+    record Frame(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY, int x, int y, int width, int height) {}
 
     private interface ClickAction {
         void click(double mouseX, double mouseY);
@@ -75,7 +75,7 @@ final class SpawnPageRows {
     private final Map<String, SegmentBar.State> segmentStates = new HashMap<>();
     private final List<NumberStepper> steppers = new ArrayList<>();
 
-    private GuiGraphics g;
+    private GuiGraphicsExtractor g;
     private Font font;
     private int mouseX;
     private int mouseY;
@@ -260,7 +260,7 @@ final class SpawnPageRows {
         drawPadlock(g, x, y, color);
     }
 
-    static void drawPadlock(GuiGraphics g, int x, int y, int color) {
+    static void drawPadlock(GuiGraphicsExtractor g, int x, int y, int color) {
         net.bananemdnsa.historystages.client.editor.widget.popup.LockActionsPopup.drawPadlock(g, x, y, color);
     }
 
@@ -273,7 +273,7 @@ final class SpawnPageRows {
 
     private void label(String key, boolean active) {
         rowTip(key);
-        g.drawString(font, Component.translatable(key), left, cursorY + (ROW_H - font.lineHeight) / 2 + 1,
+        g.text(font, Component.translatable(key), left, cursorY + (ROW_H - font.lineHeight) / 2 + 1,
                 active ? 0xFFCCCCCC : 0xFF666666, false);
     }
 
@@ -316,7 +316,7 @@ final class SpawnPageRows {
         g.fill(boxX, boxY, boxX + BOX_S, boxY + BOX_S, checked ? fg : 0xFF555555);
         g.fill(boxX + 1, boxY + 1, boxX + BOX_S - 1, boxY + BOX_S - 1, 0xFF1A1A1A);
         if (checked) g.fill(boxX + 3, boxY + 3, boxX + BOX_S - 3, boxY + BOX_S - 3, fg);
-        g.drawString(font, Component.translatable(labelKey), boxX + BOX_S + 6,
+        g.text(font, Component.translatable(labelKey), boxX + BOX_S + 6,
                 cursorY + (ROW_H - font.lineHeight) / 2 + 1,
                 !active ? 0xFF555555 : hovered ? 0xFFFFFFFF : 0xFFCCCCCC, false);
 
@@ -344,7 +344,7 @@ final class SpawnPageRows {
             boolean hovered = inside(x, y, w, 12);
             g.fill(x, y, x + w, y + 12, hovered ? 0xFF3A2626 : 0xFF262626);
             g.fill(x, y + 11, x + w, y + 12, hovered ? 0xFFAA5555 : 0xFF3A3A3A);
-            g.drawString(font, text, x + 4, y + 2, id.startsWith("#") ? 0xFF8FD0FF : 0xFFCCCCCC, false);
+            g.text(font, text, x + 4, y + 2, id.startsWith("#") ? 0xFF8FD0FF : 0xFFCCCCCC, false);
             if (hovered) tooltip = id + "\n" + Component.translatable(TIP + "chip").getString();
             hits.add(new Hit(x, y, w, 12, (mx, my) -> {
                 playClick();
@@ -357,7 +357,7 @@ final class SpawnPageRows {
         boolean addHovered = inside(bx, by, addW, 12);
         g.fill(bx, by, bx + addW, by + 12, addHovered ? 0x50FFCC00 : 0x25FFCC00);
         g.fill(bx, by + 11, bx + addW, by + 12, addHovered ? 0xFFFFCC00 : 0x80FFCC00);
-        g.drawCenteredString(font, "+", bx + addW / 2, by + 2, 0xFFEEEEEE);
+        g.centeredText(font, "+", bx + addW / 2, by + 2, 0xFFEEEEEE);
         hits.add(new Hit(bx, by, addW, 12, (mx, my) -> {
             playClick();
             onAdd.run();
@@ -386,7 +386,7 @@ final class SpawnPageRows {
         max.setEnabled(!rowLocked);
         min.render(g, font, mouseX, mouseY);
         max.render(g, font, mouseX, mouseY);
-        g.drawCenteredString(font, "–", minX + sw + 6, y + 3, 0xFF888888);
+        g.centeredText(font, "–", minX + sw + 6, y + 3, 0xFF888888);
         cursorY += ROW_H;
     }
 
@@ -408,7 +408,7 @@ final class SpawnPageRows {
 
     void hint(String key) {
         for (FormattedCharSequence line : font.split(Component.translatable(key), right - left)) {
-            g.drawString(font, line, left, cursorY + 2, 0xFFC9A640, false);
+            g.text(font, line, left, cursorY + 2, 0xFFC9A640, false);
             cursorY += font.lineHeight + 1;
         }
         cursorY += 4;
@@ -419,7 +419,7 @@ final class SpawnPageRows {
         g.fill(x + 1, y + 1, x + CELL_S - 1, y + CELL_S - 1, 0xFF1A1A1A);
         if (checked) g.fill(x + 2, y + 2, x + CELL_S - 2, y + CELL_S - 2, 0xFFFFCC00);
         String text = Component.translatable(labelKey).getString();
-        g.drawString(font, text, x + CELL_S + 3, y + 1, checked ? 0xFFFFFFFF : 0xFF999999, false);
+        g.text(font, text, x + CELL_S + 3, y + 1, checked ? 0xFFFFFFFF : 0xFF999999, false);
         int w = CELL_S + 3 + font.width(text);
         if (tipText != null && inside(x, y - 2, w, CELL_S + 4)) tooltip = tipText;
         hits.add(new Hit(x, y - 2, w, CELL_S + 4, (mx, my) -> {

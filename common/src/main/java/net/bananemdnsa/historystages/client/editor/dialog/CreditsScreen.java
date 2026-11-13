@@ -5,7 +5,7 @@ import net.bananemdnsa.historystages.client.editor.widget.StyledButton;
 import net.bananemdnsa.historystages.api.editor.widget.AbstractModalScreen;
 import net.bananemdnsa.historystages.util.ModLinks;
 import net.minecraft.util.Util;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.ConfirmLinkScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -114,13 +114,13 @@ public class CreditsScreen extends AbstractModalScreen {
     }
 
     @Override
-    protected void renderContent(GuiGraphics g, int x, int y, int w, int mouseX, int mouseY) {
+    protected void renderContent(GuiGraphicsExtractor g, int x, int y, int w, int mouseX, int mouseY) {
         int centerX = x + w / 2;
         g.blit(LOGO, centerX - LOGO_SIZE / 2, y, 0f, 0f, LOGO_SIZE, LOGO_SIZE, LOGO_SIZE, LOGO_SIZE);
         int textY = y + LOGO_SIZE + LOGO_GAP;
-        g.drawCenteredString(this.font, Component.translatable("editor.historystages.credits.made_by"),
+        g.centeredText(this.font, Component.translatable("editor.historystages.credits.made_by"),
                 centerX, textY, SUBTITLE_GREY);
-        g.drawCenteredString(this.font, Component.translatable("editor.historystages.credits.authors"),
+        g.centeredText(this.font, Component.translatable("editor.historystages.credits.authors"),
                 centerX, textY + LINE_H, AUTHORS_COLOR);
         // The links themselves are widgets and are drawn by super.render().
     }

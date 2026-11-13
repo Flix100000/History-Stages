@@ -8,7 +8,7 @@ import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.resources.Identifier;
@@ -153,13 +153,13 @@ public final class NodeTextures {
     /**
      * Draws a textured quad with <em>floating point</em> corners through the current pose.
      *
-     * <p>{@link GuiGraphics#blit} and {@code fill} both take integers, so a line's thickness is
+     * <p>{@link GuiGraphicsExtractor#blit} and {@code fill} both take integers, so a line's thickness is
      * rounded to whole pixels before the pose rotates it — which is why a thin diagonal drawn that
      * way either snaps to two pixels or breaks apart entirely. Writing the vertices straight into
      * the buffer keeps sub-pixel sizes exact and lets the rasteriser and the texture filter do the
      * smoothing, which is how FTB Quests draws its dependency lines.
      */
-    public static void quad(GuiGraphics g, Identifier tex,
+    public static void quad(GuiGraphicsExtractor g, Identifier tex,
                             float x1, float y1, float x2, float y2, int color) {
         float a = ((color >>> 24) & 0xFF) / 255f;
         if (a == 0f) a = 1f;
@@ -185,7 +185,7 @@ public final class NodeTextures {
     /**
      * Draws one quad whose UV range may run past 1, so the texture repeats across it.
      *
-     * <p>The alternative is one {@link GuiGraphics#blit} per tile, and blit is not batched — each
+     * <p>The alternative is one {@link GuiGraphicsExtractor#blit} per tile, and blit is not batched — each
      * call uploads its own buffer and issues its own draw. A viewport's worth of 48px tiles is
      * hundreds of draw calls every frame, which drags the whole screen down. One quad is one
      * draw call at any zoom, and it cannot loop.
@@ -193,7 +193,7 @@ public final class NodeTextures {
      * <p>Relies on the texture's wrap mode being {@code GL_REPEAT}, which is the OpenGL default
      * and which Minecraft's texture loading does not change.
      */
-    public static void repeatingQuad(GuiGraphics g, Identifier tex,
+    public static void repeatingQuad(GuiGraphicsExtractor g, Identifier tex,
                                      float x1, float y1, float x2, float y2,
                                      float u1, float v1, float u2, float v2) {
         Matrix4f matrix = g.pose().last().pose();
@@ -215,7 +215,7 @@ public final class NodeTextures {
      * Blits the whole texture into a {@code w x h} box at (x,y), tinted by ARGB {@code color}.
      * Always restores the shader colour to white so later rendering is not tinted.
      */
-    public static void blit(GuiGraphics g, Identifier tex, int x, int y, int w, int h,
+    public static void blit(GuiGraphicsExtractor g, Identifier tex, int x, int y, int w, int h,
                             int texW, int texH, int color) {
         float a = ((color >>> 24) & 0xFF) / 255f;
         if (a == 0f) a = 1f; // colours passed without an alpha byte are fully opaque

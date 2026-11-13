@@ -18,7 +18,7 @@ import net.bananemdnsa.historystages.client.editor.anim.Ease;
 import net.bananemdnsa.historystages.client.editor.anim.Timing;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.player.LocalPlayer;
@@ -528,7 +528,7 @@ public class SearchableItemList implements PickerOverlay {
 
     // --- Rendering ---
 
-    public void render(GuiGraphics guiGraphics, Font font, int mouseX, int mouseY) {
+    public void render(GuiGraphicsExtractor guiGraphics, Font font, int mouseX, int mouseY) {
         if (!visible)
             return;
 
@@ -545,7 +545,7 @@ public class SearchableItemList implements PickerOverlay {
         }
     }
 
-    private void renderTabs(GuiGraphics guiGraphics, Font font, int mouseX, int mouseY) {
+    private void renderTabs(GuiGraphicsExtractor guiGraphics, Font font, int mouseX, int mouseY) {
         int tabY = panelY + PADDING;
         List<String> labels = tabLabels();
         int n = labels.size();
@@ -582,7 +582,7 @@ public class SearchableItemList implements PickerOverlay {
             guiGraphics.fill(tabXs[i], tabY, tabXs[i] + tabWs[i], tabY + TAB_HEIGHT, bg);
 
             int textColor = active ? 0xFFFFFF : (hovered ? 0xDDDDDD : 0x999999);
-            guiGraphics.drawString(font, labels.get(i), tabXs[i] + TAB_PAD, tabY + 3, textColor, false);
+            guiGraphics.text(font, labels.get(i), tabXs[i] + TAB_PAD, tabY + 3, textColor, false);
         }
 
         guiGraphics.fill(Math.round(tabIndicatorXAnim.value()), tabY + TAB_HEIGHT - 2,
@@ -592,7 +592,7 @@ public class SearchableItemList implements PickerOverlay {
                 0xFF555555);
     }
 
-    private void renderRegistryMode(GuiGraphics guiGraphics, Font font, int mouseX, int mouseY) {
+    private void renderRegistryMode(GuiGraphicsExtractor guiGraphics, Font font, int mouseX, int mouseY) {
         int topOffset = PADDING + TAB_HEIGHT + 4;
 
         if (modFilterSet != null && modFilterSet.isEmpty()) {
@@ -622,8 +622,8 @@ public class SearchableItemList implements PickerOverlay {
 
         renderAddButton(guiGraphics, font, mouseX, mouseY);
 
-        guiGraphics.pose().pushPose();
-        guiGraphics.pose().translate(0, 0, 300);
+        guiGraphics.pose().pushMatrix();
+        guiGraphics.pose().translate(0, 0);
         if (!filterUiHovered) {
             for (int row = 0; row < gridRows(); row++) {
                 for (int col = 0; col < GRID_COLS; col++) {
@@ -640,10 +640,10 @@ public class SearchableItemList implements PickerOverlay {
                 }
             }
         }
-        guiGraphics.pose().popPose();
+        guiGraphics.pose().popMatrix();
     }
 
-    private void renderEmptyState(GuiGraphics guiGraphics, Font font, int topOffset) {
+    private void renderEmptyState(GuiGraphicsExtractor guiGraphics, Font font, int topOffset) {
         String msg = Component.translatable("editor.historystages.no_mods_locked").getString();
         int maxW = panelW - PADDING * 4;
         List<String> lines = wrapText(font, msg, maxW);
@@ -652,7 +652,7 @@ public class SearchableItemList implements PickerOverlay {
         for (int i = 0; i < lines.size(); i++) {
             String l = lines.get(i);
             int lw = font.width(l);
-            guiGraphics.drawString(font, l, panelX + (panelW - lw) / 2, startY + i * 10, 0xFF888888, false);
+            guiGraphics.text(font, l, panelX + (panelW - lw) / 2, startY + i * 10, 0xFF888888, false);
         }
     }
 
@@ -674,11 +674,11 @@ public class SearchableItemList implements PickerOverlay {
         return lines;
     }
 
-    private void renderScrollbar(GuiGraphics guiGraphics, int gridX, int gridY) {
+    private void renderScrollbar(GuiGraphicsExtractor guiGraphics, int gridX, int gridY) {
         ItemSlotGrid.renderScrollbar(guiGraphics, gridX, gridY, GRID_COLS, gridRows(), scrollRow, maxScrollRow);
     }
 
-    private void renderSelectAllRow(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    private void renderSelectAllRow(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         int rowX = panelX + PADDING;
         int rowW = panelW - PADDING * 2;
         int btnW = (rowW - SELECTALL_BTN_GAP) / 2;
@@ -703,7 +703,7 @@ public class SearchableItemList implements PickerOverlay {
         return mouseX >= x && mouseX < x + w && mouseY >= y && mouseY < y + SELECTALL_BTN_H;
     }
 
-    private void drawSmallButton(GuiGraphics g, Font font, int x, int y, int w,
+    private void drawSmallButton(GuiGraphicsExtractor g, Font font, int x, int y, int w,
                                  String label, boolean accentYellow, boolean enabled, boolean hovered) {
         int border;
         int bg;
@@ -721,10 +721,10 @@ public class SearchableItemList implements PickerOverlay {
         }
         g.fill(x, y, x + w, y + SELECTALL_BTN_H, border);
         g.fill(x + 1, y + 1, x + w - 1, y + SELECTALL_BTN_H - 1, bg);
-        g.drawString(font, label, x + (w - font.width(label)) / 2, y + (SELECTALL_BTN_H - 8) / 2, text, false);
+        g.text(font, label, x + (w - font.width(label)) / 2, y + (SELECTALL_BTN_H - 8) / 2, text, false);
     }
 
-    private void renderAddButton(GuiGraphics guiGraphics, Font font, int mouseX, int mouseY) {
+    private void renderAddButton(GuiGraphicsExtractor guiGraphics, Font font, int mouseX, int mouseY) {
         int addBtnX = panelX + (panelW - ADD_BTN_W) / 2;
         int addBtnY = panelY + panelH - PADDING - ADD_BTN_H;
 
@@ -740,7 +740,7 @@ public class SearchableItemList implements PickerOverlay {
             guiGraphics.fill(addBtnX, addBtnY, addBtnX + ADD_BTN_W, addBtnY + ADD_BTN_H, 0x20FFFFFF);
             guiGraphics.fill(addBtnX, addBtnY, addBtnX + ADD_BTN_W, addBtnY + 1, 0x10FFFFFF);
             String addText = "Select an Item";
-            guiGraphics.drawString(font, addText, addBtnX + (ADD_BTN_W - font.width(addText)) / 2,
+            guiGraphics.text(font, addText, addBtnX + (ADD_BTN_W - font.width(addText)) / 2,
                     addBtnY + (ADD_BTN_H - 8) / 2, 0xFF666666, false);
         }
     }
@@ -787,7 +787,7 @@ public class SearchableItemList implements PickerOverlay {
         return matchesDropdownFilters(key.toString());
     }
 
-    private void renderInventoryMode(GuiGraphics guiGraphics, Font font, int mouseX, int mouseY) {
+    private void renderInventoryMode(GuiGraphicsExtractor guiGraphics, Font font, int mouseX, int mouseY) {
         LocalPlayer player = Minecraft.getInstance().player;
         if (player == null)
             return;
@@ -845,8 +845,8 @@ public class SearchableItemList implements PickerOverlay {
 
         renderAddButton(guiGraphics, font, mouseX, mouseY);
 
-        guiGraphics.pose().pushPose();
-        guiGraphics.pose().translate(0, 0, 300);
+        guiGraphics.pose().pushMatrix();
+        guiGraphics.pose().translate(0, 0);
         int hoveredSlot = getInventorySlotAt(mouseX, mouseY);
         if (hoveredSlot >= 0) {
             ItemStack stack = player.getInventory().getItem(hoveredSlot);
@@ -858,10 +858,10 @@ public class SearchableItemList implements PickerOverlay {
                 }
             }
         }
-        guiGraphics.pose().popPose();
+        guiGraphics.pose().popMatrix();
     }
 
-    private void renderSelectedMode(GuiGraphics guiGraphics, Font font, int mouseX, int mouseY) {
+    private void renderSelectedMode(GuiGraphicsExtractor guiGraphics, Font font, int mouseX, int mouseY) {
         int topOffset = PADDING + TAB_HEIGHT + 4;
         int searchX = panelX + PADDING;
         int searchY = panelY + topOffset;
@@ -903,7 +903,7 @@ public class SearchableItemList implements PickerOverlay {
                     guiGraphics.fill(slotX, slotY, slotX + SLOT_SIZE, slotY + SLOT_SIZE, borderColor);
                     guiGraphics.fill(slotX + 1, slotY + 1, slotX + SLOT_SIZE - 1, slotY + SLOT_SIZE - 1, bgColor);
 
-                    guiGraphics.renderItem(ref.entry.stack, slotX + 1, slotY + 1);
+                    guiGraphics.item(ref.entry.stack, slotX + 1, slotY + 1);
                     if (nbtFlagged) {
                         guiGraphics.fill(slotX + 1, slotY + 1, slotX + SLOT_SIZE - 1, slotY + SLOT_SIZE - 1,
                                 0x4066CCFF);
@@ -928,7 +928,7 @@ public class SearchableItemList implements PickerOverlay {
             String hint = Component.translatable("editor.historystages.search.selected.empty").getString();
             int gridH = gridRows() * SLOT_SIZE;
             int gridBlockW = GRID_COLS * SLOT_SIZE;
-            guiGraphics.drawString(font, hint, gridX + (gridBlockW - font.width(hint)) / 2,
+            guiGraphics.text(font, hint, gridX + (gridBlockW - font.width(hint)) / 2,
                     gridY + (gridH - 8) / 2, 0xFF888888, false);
         }
 
@@ -938,8 +938,8 @@ public class SearchableItemList implements PickerOverlay {
 
         renderAddButton(guiGraphics, font, mouseX, mouseY);
 
-        guiGraphics.pose().pushPose();
-        guiGraphics.pose().translate(0, 0, 300);
+        guiGraphics.pose().pushMatrix();
+        guiGraphics.pose().translate(0, 0);
         if (!filterUiHovered) {
             for (int row = 0; row < gridRows(); row++) {
                 for (int col = 0; col < GRID_COLS; col++) {
@@ -956,10 +956,10 @@ public class SearchableItemList implements PickerOverlay {
                 }
             }
         }
-        guiGraphics.pose().popPose();
+        guiGraphics.pose().popMatrix();
     }
 
-    private void renderInventorySlot(GuiGraphics guiGraphics, Font font, int x, int y,
+    private void renderInventorySlot(GuiGraphicsExtractor guiGraphics, Font font, int x, int y,
             ItemStack stack, int slotIndex, int mouseX, int mouseY, String placeholder) {
         boolean isEmpty = stack.isEmpty();
         boolean isAllowed = isEmpty || isItemAllowedByModFilter(stack);
@@ -988,14 +988,14 @@ public class SearchableItemList implements PickerOverlay {
         guiGraphics.fill(x + 1, y + 1, x + SLOT_SIZE - 1, y + SLOT_SIZE - 1, bgColor);
 
         if (!isEmpty) {
-            guiGraphics.renderItem(stack, x + 1, y + 1);
+            guiGraphics.item(stack, x + 1, y + 1);
             if (stack.getCount() > 1) {
-                guiGraphics.pose().pushPose();
-                guiGraphics.pose().translate(0, 0, 200);
+                guiGraphics.pose().pushMatrix();
+                guiGraphics.pose().translate(0, 0);
                 String count = String.valueOf(stack.getCount());
-                guiGraphics.drawString(font, count, x + SLOT_SIZE - 1 - font.width(count), y + SLOT_SIZE - 9, 0xFFFFFF,
+                guiGraphics.text(font, count, x + SLOT_SIZE - 1 - font.width(count), y + SLOT_SIZE - 9, 0xFFFFFF,
                         true);
-                guiGraphics.pose().popPose();
+                guiGraphics.pose().popMatrix();
             }
             if (sp > 0.001f) {
                 guiGraphics.fill(x + 1, y + 1, x + SLOT_SIZE - 1, y + SLOT_SIZE - 1,
@@ -1005,12 +1005,12 @@ public class SearchableItemList implements PickerOverlay {
                 guiGraphics.fill(x + 1, y + 1, x + SLOT_SIZE - 1, y + SLOT_SIZE - 1, 0xC0000000);
             }
         } else if (placeholder != null) {
-            guiGraphics.drawString(font, placeholder, x + (SLOT_SIZE - font.width(placeholder)) / 2, y + 5, 0xFF444444,
+            guiGraphics.text(font, placeholder, x + (SLOT_SIZE - font.width(placeholder)) / 2, y + 5, 0xFF444444,
                     false);
         }
     }
 
-    private void renderStyledButton(GuiGraphics guiGraphics, Font font, int x, int y, int w, int h,
+    private void renderStyledButton(GuiGraphicsExtractor guiGraphics, Font font, int x, int y, int w, int h,
             String text, float hoverProgress) {
         int bgAlpha = (int) (0x30 + hoverProgress * 0x20);
         int bgR = 0xFF;
@@ -1027,10 +1027,10 @@ public class SearchableItemList implements PickerOverlay {
 
         int textGray = (int) (0xCC + hoverProgress * 0x33);
         int textColor = (0xFF << 24) | (textGray << 16) | (textGray << 8) | textGray;
-        guiGraphics.drawString(font, text, x + (w - font.width(text)) / 2, y + (h - 8) / 2, textColor, false);
+        guiGraphics.text(font, text, x + (w - font.width(text)) / 2, y + (h - 8) / 2, textColor, false);
     }
 
-    private void renderTooltip(GuiGraphics guiGraphics, Font font, int mouseX, int mouseY, String text) {
+    private void renderTooltip(GuiGraphicsExtractor guiGraphics, Font font, int mouseX, int mouseY, String text) {
         ItemSlotGrid.renderTooltip(guiGraphics, font, mouseX, mouseY, text,
                 Minecraft.getInstance().getWindow().getGuiScaledWidth(),
                 Minecraft.getInstance().getWindow().getGuiScaledHeight());

@@ -1,5 +1,7 @@
 package net.bananemdnsa.historystages.client.editor.graph;
 
+import net.minecraft.client.input.MouseButtonInfo;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.bananemdnsa.historystages.GraphConfig;
 import net.bananemdnsa.historystages.client.cache.ClientDependencyCache;
 import net.bananemdnsa.historystages.client.editor.widget.MarqueeText;
@@ -21,7 +23,7 @@ import net.bananemdnsa.historystages.data.graph.GraphStageData;
 import net.bananemdnsa.historystages.network.PacketHandler;
 import net.bananemdnsa.historystages.network.serverbound.RequestStageDependencyPacket;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.resources.language.I18n;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -47,7 +49,7 @@ import java.util.Set;
  * <p>Modal on purpose. At this size the map behind it would be too far covered to be worth
  * keeping live, and {@link AbstractModalScreen} already draws the graph dimmed behind the box.
  * Its draw depth matters more than it looks: the base lifts the whole dialog above the ~232
- * that {@code GuiGraphics.renderItem} draws at, which is what lets this screen show real item
+ * that {@code GuiGraphicsExtractor.renderItem} draws at, which is what lets this screen show real item
  * icons without them punching through the frame.
  *
  * <p>Requirement rows render {@link RequirementResult} exactly as received from
@@ -580,7 +582,7 @@ public final class GraphDetailScreen extends AbstractModalScreen {
     // --- Drawing ------------------------------------------------------------------------------
 
     @Override
-    protected void renderContent(GuiGraphics g, int x, int y, int w, int mouseX, int mouseY) {
+    protected void renderContent(GuiGraphicsExtractor g, int x, int y, int w, int mouseX, int mouseY) {
         renderHeaderBand(g, x, y, w);
 
         int listTop = y + HEADER_BAND_H;
@@ -611,7 +613,7 @@ public final class GraphDetailScreen extends AbstractModalScreen {
      * the line rather than sitting on its own under the title, which is where the base class
      * would have put it — two stacked lines of chrome before any content had begun.
      */
-    private void renderHeaderBand(GuiGraphics g, int x, int y, int w) {
+    private void renderHeaderBand(GuiGraphicsExtractor g, int x, int y, int w) {
         g.fill(x, y, x + w, y + HEADER_BAND_H - 1, HEADER_BAND_COLOR);
         g.fill(x, y + HEADER_BAND_H - 1, x + w, y + HEADER_BAND_H, HEADER_RULE_COLOR);
 
@@ -626,20 +628,20 @@ public final class GraphDetailScreen extends AbstractModalScreen {
         int idRoom = x + w - 3 - (px + 8);
         if (idRoom > 12) {
             String id = MarqueeText.truncate(this.font, node.stageId(), idRoom);
-            g.drawString(this.font, id, x + w - 3 - this.font.width(id), pillY + 2,
+            g.text(this.font, id, x + w - 3 - this.font.width(id), pillY + 2,
                     STAGE_ID_COLOR, false);
         }
     }
 
     /** @return x just past the pill drawn */
-    private int drawPill(GuiGraphics g, int x, int y, String text, int color) {
+    private int drawPill(GuiGraphicsExtractor g, int x, int y, String text, int color) {
         return Badge.draw(g, this.font, text, x, y, color & 0xFFFFFF);
     }
 
-    private void drawRow(GuiGraphics g, Row row, int left, int right, int top) {
+    private void drawRow(GuiGraphicsExtractor g, Row row, int left, int right, int top) {
         switch (row) {
             case SectionRow r -> {
-                g.drawString(this.font, r.title(), left, top + 2, SECTION_TEXT_COLOR, false);
+                g.text(this.font, r.title(), left, top + 2, SECTION_TEXT_COLOR, false);
                 // Rule sits below the text with air on both sides, not flush against the entry
                 // that follows it.
                 g.fill(left, top + 13, right, top + 14, SECTION_RULE_COLOR);
@@ -649,11 +651,11 @@ public final class GraphDetailScreen extends AbstractModalScreen {
                 g.fill(left, top, right, top + blockH, LEAD_BG_COLOR);
                 g.fill(left, top + blockH, right, top + blockH + 1, LEAD_RULE_COLOR);
                 for (int i = 0; i < r.lines().size(); i++) {
-                    g.drawString(this.font, r.lines().get(i), left + ENTRY_INDENT,
+                    g.text(this.font, r.lines().get(i), left + ENTRY_INDENT,
                             top + LEAD_PAD_TOP + i * LINE_H, TEXT_COLOR, false);
                 }
             }
-            case LineRow r -> g.drawString(this.font, r.text(), left + ENTRY_INDENT, top,
+            case LineRow r -> g.text(this.font, r.text(), left + ENTRY_INDENT, top,
                     r.color(), false);
             case EntryRow r -> {
                 g.fill(left, top, left + STRIPE_W, top + r.height(), r.stripeColor());
@@ -661,8 +663,8 @@ public final class GraphDetailScreen extends AbstractModalScreen {
                 int textLeft = left + ENTRY_INDENT;
                 int textTop = top;
                 if (!r.icon().isEmpty()) {
-                    g.renderItem(r.icon(), textLeft, top + (r.height() - ICON_SIZE) / 2);
-                    g.renderItemDecorations(this.font, r.icon(), textLeft, top + (r.height() - ICON_SIZE) / 2);
+                    g.item(r.icon(), textLeft, top + (r.height() - ICON_SIZE) / 2);
+                    g.itemDecorations(this.font, r.icon(), textLeft, top + (r.height() - ICON_SIZE) / 2);
                     textLeft += ICON_SIZE + 3;
                     // Single-line entries centre against the icon; taller ones start at the top,
                     // where centring would push the first line away from its own stripe.
@@ -671,7 +673,7 @@ public final class GraphDetailScreen extends AbstractModalScreen {
                     }
                 }
                 for (int i = 0; i < r.lines().size(); i++) {
-                    g.drawString(this.font, r.lines().get(i), textLeft, textTop + i * LINE_H,
+                    g.text(this.font, r.lines().get(i), textLeft, textTop + i * LINE_H,
                             TEXT_COLOR, false);
                 }
                 drawAmount(g, r.amount(), right, textTop);
@@ -681,9 +683,9 @@ public final class GraphDetailScreen extends AbstractModalScreen {
         }
     }
 
-    private void drawAmount(GuiGraphics g, String amount, int right, int top) {
+    private void drawAmount(GuiGraphicsExtractor g, String amount, int right, int top) {
         if (amount.isEmpty()) return;
-        g.drawString(this.font, amount, right - this.font.width(amount), top, AMOUNT_TEXT_COLOR, false);
+        g.text(this.font, amount, right - this.font.width(amount), top, AMOUNT_TEXT_COLOR, false);
     }
 
     // --- Input --------------------------------------------------------------------------------
@@ -707,18 +709,26 @@ public final class GraphDetailScreen extends AbstractModalScreen {
     }
 
     @Override
+    public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+        return mouseDragged(event.x(), event.y(), event.button(), dragX, dragY);
+    }
+
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
         if (scrollbar.isDragging()) {
             scroll = scrollbar.scrollFor(mouseY);
             return true;
         }
-        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+        return super.mouseDragged(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)), dragX, dragY);
     }
 
     @Override
+    public boolean mouseReleased(MouseButtonEvent event) {
+        return mouseReleased(event.x(), event.y(), event.button());
+    }
+
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
         scrollbar.mouseReleased();
-        return super.mouseReleased(mouseX, mouseY, button);
+        return super.mouseReleased(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)));
     }
 
     // --- Text ---------------------------------------------------------------------------------

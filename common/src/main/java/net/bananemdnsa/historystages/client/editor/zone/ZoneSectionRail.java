@@ -9,7 +9,7 @@ import net.bananemdnsa.historystages.client.editor.anim.Ease;
 import net.bananemdnsa.historystages.client.editor.anim.Fade;
 import net.bananemdnsa.historystages.client.editor.anim.Timing;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 /**
  * The strip of section names down the left of the zone screen.
@@ -41,7 +41,7 @@ public final class ZoneSectionRail {
         return sectionCount * ENTRY_H;
     }
 
-    public void render(GuiGraphics g, Font font, int x, int y, List<Section> sections,
+    public void render(GuiGraphicsExtractor g, Font font, int x, int y, List<Section> sections,
                        int active, int mouseX, int mouseY, boolean blocked) {
         for (int i = 0; i < sections.size(); i++) {
             Section section = sections.get(i);
@@ -59,12 +59,12 @@ public final class ZoneSectionRail {
                 g.fill(x, top, x + 1, top + ENTRY_H, Fade.rgba(ACCENT, hp * 0.8f));
             }
 
-            g.drawString(font, section.title(), x + 8, top + (ENTRY_H - 8) / 2,
+            g.text(font, section.title(), x + 8, top + (ENTRY_H - 8) / 2,
                     i == active || hovered ? TEXT_ACTIVE : TEXT, false);
 
             if (section.count() >= 0) {
                 String number = section.count() == 0 ? "–" : String.valueOf(section.count());
-                g.drawString(font, number, x + WIDTH - 8 - font.width(number),
+                g.text(font, number, x + WIDTH - 8 - font.width(number),
                         top + (ENTRY_H - 8) / 2, COUNT, false);
             }
         }

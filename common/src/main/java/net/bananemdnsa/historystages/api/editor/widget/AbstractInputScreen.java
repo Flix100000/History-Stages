@@ -1,12 +1,14 @@
 package net.bananemdnsa.historystages.api.editor.widget;
 
+import net.minecraft.client.input.MouseButtonInfo;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.Minecraft;
 import net.bananemdnsa.historystages.api.editor.widget.InputField;
 import net.bananemdnsa.historystages.api.editor.widget.InputValues;
 
 import net.bananemdnsa.historystages.api.editor.widget.AbstractModalScreen;
 
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -77,7 +79,7 @@ public abstract class AbstractInputScreen extends AbstractModalScreen {
         return 0;
     }
 
-    protected void renderExtraContent(GuiGraphics g, int x, int y, int w, int mouseX, int mouseY) {
+    protected void renderExtraContent(GuiGraphicsExtractor g, int x, int y, int w, int mouseX, int mouseY) {
     }
 
     /**
@@ -298,7 +300,7 @@ public abstract class AbstractInputScreen extends AbstractModalScreen {
     // ============ Rendering ============
 
     @Override
-    protected void renderContent(GuiGraphics g, int x, int y, int w, int mouseX, int mouseY) {
+    protected void renderContent(GuiGraphicsExtractor g, int x, int y, int w, int mouseX, int mouseY) {
         // Reads the rectangles buildContentWidgets laid out rather than deriving them a second
         // time. The two arithmetics used to sit side by side and had to be kept identical by
         // hand; sharing them is what stops frames and hit areas from drifting apart.
@@ -314,7 +316,7 @@ public abstract class AbstractInputScreen extends AbstractModalScreen {
                 int fw = rect[2];
 
                 if (f.label() != null) {
-                    g.drawString(this.font, f.label(), fx, fy - LABEL_H, LABEL_GREY, false);
+                    g.text(this.font, f.label(), fx, fy - LABEL_H, LABEL_GREY, false);
                 }
 
                 int border = boxes.get(k).isFocused() ? ACCENT_GOLD : FIELD_BORDER;
@@ -333,7 +335,7 @@ public abstract class AbstractInputScreen extends AbstractModalScreen {
         cy += extraContentHeight();
 
         if (currentError != null) {
-            g.drawCenteredString(this.font, currentError, x + w / 2, cy + 2, ERROR_RED);
+            g.centeredText(this.font, currentError, x + w / 2, cy + 2, ERROR_RED);
         }
     }
 
@@ -377,15 +379,23 @@ public abstract class AbstractInputScreen extends AbstractModalScreen {
     }
 
     @Override
+    public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+        return mouseDragged(event.x(), event.y(), event.button(), dragX, dragY);
+    }
+
     public boolean mouseDragged(double mx, double my, int button, double dx, double dy) {
         if (extraContentMouseDragged(mx, my, button)) return true;
-        return super.mouseDragged(mx, my, button, dx, dy);
+        return super.mouseDragged(new MouseButtonEvent(mx, my, new MouseButtonInfo(button, 0)), dx, dy);
     }
 
     @Override
+    public boolean mouseReleased(MouseButtonEvent event) {
+        return mouseReleased(event.x(), event.y(), event.button());
+    }
+
     public boolean mouseReleased(double mx, double my, int button) {
         if (extraContentMouseReleased(mx, my, button)) return true;
-        return super.mouseReleased(mx, my, button);
+        return super.mouseReleased(new MouseButtonEvent(mx, my, new MouseButtonInfo(button, 0)));
     }
 
     @Override

@@ -1,7 +1,7 @@
 package net.bananemdnsa.historystages.client.editor.widget;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
@@ -37,7 +37,7 @@ public final class FluidIcon {
      * unknown id or a fluid with no usable texture — a missing-texture chequerboard inside a
      * recipe card would read as a fault in the recipe.
      */
-    public static void draw(GuiGraphics g, String fluidId, int x, int y, int size) {
+    public static void draw(GuiGraphicsExtractor g, String fluidId, int x, int y, int size) {
         Fluid fluid = fluidOf(fluidId);
         if (fluid == null) return;
 

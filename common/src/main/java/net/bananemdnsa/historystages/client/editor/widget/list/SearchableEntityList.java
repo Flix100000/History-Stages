@@ -11,7 +11,7 @@ import net.bananemdnsa.historystages.client.editor.anim.Ease;
 import net.bananemdnsa.historystages.client.editor.anim.Timing;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
@@ -421,7 +421,7 @@ public class SearchableEntityList implements PickerOverlay {
         return multiSelect ? "Add Entities (" + totalSelectionCount() + ")" : "Add Entity";
     }
 
-    public void render(GuiGraphics guiGraphics, Font font, int mouseX, int mouseY) {
+    public void render(GuiGraphicsExtractor guiGraphics, Font font, int mouseX, int mouseY) {
         if (!visible)
             return;
 
@@ -438,7 +438,7 @@ public class SearchableEntityList implements PickerOverlay {
         }
     }
 
-    private void renderTabs(GuiGraphics guiGraphics, Font font, int mouseX, int mouseY) {
+    private void renderTabs(GuiGraphicsExtractor guiGraphics, Font font, int mouseX, int mouseY) {
         int tabY = panelY + PADDING;
         List<String> labels = tabLabels();
         int n = labels.size();
@@ -475,7 +475,7 @@ public class SearchableEntityList implements PickerOverlay {
             guiGraphics.fill(tabXs[i], tabY, tabXs[i] + tabWs[i], tabY + TAB_HEIGHT, bg);
 
             int textColor = active ? 0xFFFFFF : (hovered ? 0xDDDDDD : 0x999999);
-            guiGraphics.drawString(font, labels.get(i), tabXs[i] + TAB_PAD, tabY + 3, textColor, false);
+            guiGraphics.text(font, labels.get(i), tabXs[i] + TAB_PAD, tabY + 3, textColor, false);
         }
 
         guiGraphics.fill(Math.round(tabIndicatorXAnim.value()), tabY + TAB_HEIGHT - 2,
@@ -485,7 +485,7 @@ public class SearchableEntityList implements PickerOverlay {
                 0xFF555555);
     }
 
-    private void renderRegistryMode(GuiGraphics guiGraphics, Font font, int mouseX, int mouseY) {
+    private void renderRegistryMode(GuiGraphicsExtractor guiGraphics, Font font, int mouseX, int mouseY) {
         int topOffset = PADDING + TAB_HEIGHT + 4;
         int searchX = panelX + PADDING;
         int searchY = panelY + topOffset;
@@ -526,7 +526,7 @@ public class SearchableEntityList implements PickerOverlay {
         }
     }
 
-    private void renderSelectedMode(GuiGraphics guiGraphics, Font font, int mouseX, int mouseY) {
+    private void renderSelectedMode(GuiGraphicsExtractor guiGraphics, Font font, int mouseX, int mouseY) {
         int topOffset = PADDING + TAB_HEIGHT + 4;
         int searchX = panelX + PADDING;
         int searchY = panelY + topOffset;
@@ -561,7 +561,7 @@ public class SearchableEntityList implements PickerOverlay {
         if (selectedSnapshot.isEmpty()) {
             String hint = Component.translatable("editor.historystages.search.selected.empty").getString();
             int listH = visibleRows() * ROW_HEIGHT;
-            guiGraphics.drawString(font, hint, listX + (listW - font.width(hint)) / 2,
+            guiGraphics.text(font, hint, listX + (listW - font.width(hint)) / 2,
                     listY + (listH - 8) / 2, 0xFF888888, false);
         }
 
@@ -574,7 +574,7 @@ public class SearchableEntityList implements PickerOverlay {
 
     private enum RowState { NORMAL, SELECTED, DESELECTED }
 
-    private void renderEntityRow(GuiGraphics guiGraphics, Font font, int listX, int rowY, int listW,
+    private void renderEntityRow(GuiGraphicsExtractor guiGraphics, Font font, int listX, int rowY, int listW,
             String id, String displayName, boolean rowHovered, RowState state) {
         float hp = Ease.outCubic(entityRowHover.computeIfAbsent(id, k -> new Anim())
                 .ramp(rowHovered, Timing.HOVER_IN_MS, Timing.HOVER_OUT_MS));
@@ -614,10 +614,10 @@ public class SearchableEntityList implements PickerOverlay {
         int textColor = state == RowState.DESELECTED
                 ? (rowHovered ? 0xFFCC8888 : 0xFF885555)
                 : (rowHovered ? 0xFFFFFF : 0xBBBBBB);
-        guiGraphics.drawString(font, text, listX + 20, rowY + 6, textColor, false);
+        guiGraphics.text(font, text, listX + 20, rowY + 6, textColor, false);
     }
 
-    private void renderScrollbar(GuiGraphics guiGraphics, int listX, int listW, int listY) {
+    private void renderScrollbar(GuiGraphicsExtractor guiGraphics, int listX, int listW, int listY) {
         int scrollBarX = listX + listW + 2;
         int scrollBarTop = listY;
         int scrollBarBottom = listY + visibleRows() * ROW_HEIGHT;
@@ -631,7 +631,7 @@ public class SearchableEntityList implements PickerOverlay {
         guiGraphics.fill(scrollBarX, thumbY, scrollBarX + 4, thumbY + thumbHeight, 0xFF888888);
     }
 
-    private void renderAddButton(GuiGraphics guiGraphics, Font font, int mouseX, int mouseY) {
+    private void renderAddButton(GuiGraphicsExtractor guiGraphics, Font font, int mouseX, int mouseY) {
         int addBtnW = panelW - PADDING * 2;
         int addBtnX = panelX + PADDING;
         int addBtnY = panelY + panelH - PADDING - ADD_BTN_H;
@@ -648,7 +648,7 @@ public class SearchableEntityList implements PickerOverlay {
             guiGraphics.fill(addBtnX, addBtnY, addBtnX + addBtnW, addBtnY + ADD_BTN_H, 0x20FFFFFF);
             guiGraphics.fill(addBtnX, addBtnY, addBtnX + addBtnW, addBtnY + 1, 0x10FFFFFF);
             String addText = "Select an Entity";
-            guiGraphics.drawString(font, addText, addBtnX + (addBtnW - font.width(addText)) / 2,
+            guiGraphics.text(font, addText, addBtnX + (addBtnW - font.width(addText)) / 2,
                     addBtnY + (ADD_BTN_H - 8) / 2, 0xFF666666, false);
         }
     }
@@ -667,7 +667,7 @@ public class SearchableEntityList implements PickerOverlay {
         return getEntityIdFromSpawnEgg(player.getInventory().getItem(slot)) != null;
     }
 
-    private void renderInventoryMode(GuiGraphics guiGraphics, Font font, int mouseX, int mouseY) {
+    private void renderInventoryMode(GuiGraphicsExtractor guiGraphics, Font font, int mouseX, int mouseY) {
         LocalPlayer player = Minecraft.getInstance().player;
         if (player == null)
             return;
@@ -770,28 +770,28 @@ public class SearchableEntityList implements PickerOverlay {
             EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.getValue(Identifier.tryParse(selectedEntityId));
             if (type != null) {
                 String entityName = type.getDescription().getString();
-                guiGraphics.pose().pushPose();
-                guiGraphics.pose().translate(0, 0, 300);
+                guiGraphics.pose().pushMatrix();
+                guiGraphics.pose().translate(0, 0);
                 int nameW = font.width(entityName);
                 int nameX = previewX + (PREVIEW_SIZE - nameW) / 2;
                 if (nameW > PREVIEW_SIZE - 4) {
                     entityName = font.plainSubstrByWidth(entityName, PREVIEW_SIZE - 10) + "..";
                     nameX = previewX + 2;
                 }
-                guiGraphics.drawString(font, entityName, nameX, previewY + previewH - 11,
+                guiGraphics.text(font, entityName, nameX, previewY + previewH - 11,
                         Fade.rgba(0xFFCC00, intro), false);
-                guiGraphics.pose().popPose();
+                guiGraphics.pose().popMatrix();
             }
         } else {
-            guiGraphics.pose().pushPose();
-            guiGraphics.pose().translate(0, 0, 300);
+            guiGraphics.pose().pushMatrix();
+            guiGraphics.pose().translate(0, 0);
             String hint1 = "Select a";
             String hint2 = "Spawn Egg";
-            guiGraphics.drawString(font, hint1, previewX + (PREVIEW_SIZE - font.width(hint1)) / 2,
+            guiGraphics.text(font, hint1, previewX + (PREVIEW_SIZE - font.width(hint1)) / 2,
                     previewY + previewH / 2 - 8, 0xFF555555, false);
-            guiGraphics.drawString(font, hint2, previewX + (PREVIEW_SIZE - font.width(hint2)) / 2,
+            guiGraphics.text(font, hint2, previewX + (PREVIEW_SIZE - font.width(hint2)) / 2,
                     previewY + previewH / 2 + 2, 0xFF555555, false);
-            guiGraphics.pose().popPose();
+            guiGraphics.pose().popMatrix();
         }
 
         int addBtnW = panelW - PADDING * 2;
@@ -814,12 +814,12 @@ public class SearchableEntityList implements PickerOverlay {
                     && !player.getInventory().getItem(previewSlot).isEmpty();
             String addText = hasNonEggSelection ? "Not a Spawn Egg!" : "Select a Spawn Egg";
             int textColor = hasNonEggSelection ? 0xFFFF6666 : 0xFF666666;
-            guiGraphics.drawString(font, addText, addBtnX + (addBtnW - font.width(addText)) / 2,
+            guiGraphics.text(font, addText, addBtnX + (addBtnW - font.width(addText)) / 2,
                     addBtnY + (ADD_BTN_H - 8) / 2, textColor, false);
         }
 
-        guiGraphics.pose().pushPose();
-        guiGraphics.pose().translate(0, 0, 300);
+        guiGraphics.pose().pushMatrix();
+        guiGraphics.pose().translate(0, 0);
         int hoveredSlot = getInventorySlotAt(mouseX, mouseY);
         if (hoveredSlot >= 0) {
             ItemStack stack = player.getInventory().getItem(hoveredSlot);
@@ -835,7 +835,7 @@ public class SearchableEntityList implements PickerOverlay {
                 }
             }
         }
-        guiGraphics.pose().popPose();
+        guiGraphics.pose().popMatrix();
     }
 
     /** Most recently selected inventory slot (insertion order), or -1. */
@@ -847,7 +847,7 @@ public class SearchableEntityList implements PickerOverlay {
         return last;
     }
 
-    private void renderInventorySlot(GuiGraphics guiGraphics, Font font, int x, int y,
+    private void renderInventorySlot(GuiGraphicsExtractor guiGraphics, Font font, int x, int y,
             ItemStack stack, int slotIndex, int mouseX, int mouseY, String placeholder) {
         boolean isEmpty = stack.isEmpty();
         boolean isSpawnEgg = !isEmpty && stack.getItem() instanceof SpawnEggItem;
@@ -868,14 +868,14 @@ public class SearchableEntityList implements PickerOverlay {
         guiGraphics.fill(x + 1, y + 1, x + SLOT_SIZE - 1, y + SLOT_SIZE - 1, bgColor);
 
         if (!isEmpty) {
-            guiGraphics.renderItem(stack, x + 1, y + 1);
+            guiGraphics.item(stack, x + 1, y + 1);
             if (stack.getCount() > 1) {
-                guiGraphics.pose().pushPose();
-                guiGraphics.pose().translate(0, 0, 200);
+                guiGraphics.pose().pushMatrix();
+                guiGraphics.pose().translate(0, 0);
                 String count = String.valueOf(stack.getCount());
-                guiGraphics.drawString(font, count, x + SLOT_SIZE - 1 - font.width(count), y + SLOT_SIZE - 9, 0xFFFFFF,
+                guiGraphics.text(font, count, x + SLOT_SIZE - 1 - font.width(count), y + SLOT_SIZE - 9, 0xFFFFFF,
                         true);
-                guiGraphics.pose().popPose();
+                guiGraphics.pose().popMatrix();
             }
             if (!isSpawnEgg) {
                 guiGraphics.fill(x + 1, y + 1, x + SLOT_SIZE - 1, y + SLOT_SIZE - 1, 0x80000000);
@@ -885,12 +885,12 @@ public class SearchableEntityList implements PickerOverlay {
                         Fade.rgba(0xFFCC00, 0.25f * sp));
             }
         } else if (placeholder != null) {
-            guiGraphics.drawString(font, placeholder, x + (SLOT_SIZE - font.width(placeholder)) / 2, y + 5, 0xFF444444,
+            guiGraphics.text(font, placeholder, x + (SLOT_SIZE - font.width(placeholder)) / 2, y + 5, 0xFF444444,
                     false);
         }
     }
 
-    private void renderStyledButton(GuiGraphics guiGraphics, Font font, int x, int y, int w, int h,
+    private void renderStyledButton(GuiGraphicsExtractor guiGraphics, Font font, int x, int y, int w, int h,
             String text, float hoverProgress) {
         int bgAlpha = (int) (0x30 + hoverProgress * 0x20);
         int bgR = 0xFF;
@@ -907,10 +907,10 @@ public class SearchableEntityList implements PickerOverlay {
 
         int textGray = (int) (0xCC + hoverProgress * 0x33);
         int textColor = (0xFF << 24) | (textGray << 16) | (textGray << 8) | textGray;
-        guiGraphics.drawString(font, text, x + (w - font.width(text)) / 2, y + (h - 8) / 2, textColor, false);
+        guiGraphics.text(font, text, x + (w - font.width(text)) / 2, y + (h - 8) / 2, textColor, false);
     }
 
-    private void renderTooltip(GuiGraphics guiGraphics, Font font, int mouseX, int mouseY, String text) {
+    private void renderTooltip(GuiGraphicsExtractor guiGraphics, Font font, int mouseX, int mouseY, String text) {
         int tooltipW = font.width(text) + 8;
         int tooltipH = 16;
         int screenW = Minecraft.getInstance().getWindow().getGuiScaledWidth();
@@ -927,7 +927,7 @@ public class SearchableEntityList implements PickerOverlay {
             tooltipY = 4;
         guiGraphics.fill(tooltipX - 2, tooltipY - 2, tooltipX + tooltipW + 2, tooltipY + tooltipH, 0xFF1A1A1A);
         guiGraphics.fill(tooltipX - 1, tooltipY - 1, tooltipX + tooltipW + 1, tooltipY + tooltipH - 1, 0xFF0D0D1A);
-        guiGraphics.drawString(font, text, tooltipX + 2, tooltipY + 2, 0xFFFFFF, false);
+        guiGraphics.text(font, text, tooltipX + 2, tooltipY + 2, 0xFFFFFF, false);
     }
 
     private int[] getInvLayout() {
@@ -1352,7 +1352,7 @@ public class SearchableEntityList implements PickerOverlay {
         }
     }
 
-    private void renderSelectAllRow(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    private void renderSelectAllRow(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         int rowX = panelX + PADDING;
         int rowW = panelW - PADDING * 2;
         int btnW = (rowW - SELECTALL_BTN_GAP) / 2;
@@ -1377,7 +1377,7 @@ public class SearchableEntityList implements PickerOverlay {
         return mouseX >= x && mouseX < x + w && mouseY >= y && mouseY < y + SELECTALL_BTN_H;
     }
 
-    private void drawSmallButton(GuiGraphics g, Font font, int x, int y, int w,
+    private void drawSmallButton(GuiGraphicsExtractor g, Font font, int x, int y, int w,
                                  String label, boolean accentYellow, boolean enabled, boolean hovered) {
         int border;
         int bg;
@@ -1395,7 +1395,7 @@ public class SearchableEntityList implements PickerOverlay {
         }
         g.fill(x, y, x + w, y + SELECTALL_BTN_H, border);
         g.fill(x + 1, y + 1, x + w - 1, y + SELECTALL_BTN_H - 1, bg);
-        g.drawString(font, label, x + (w - font.width(label)) / 2, y + (SELECTALL_BTN_H - 8) / 2, text, false);
+        g.text(font, label, x + (w - font.width(label)) / 2, y + (SELECTALL_BTN_H - 8) / 2, text, false);
     }
 
     public boolean mouseDragged(double mouseX, double mouseY) {

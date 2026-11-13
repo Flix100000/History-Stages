@@ -1,5 +1,9 @@
 package net.bananemdnsa.historystages.client.editor;
 
+import net.minecraft.client.input.CharacterEvent;
+import net.minecraft.client.input.MouseButtonInfo;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.input.KeyEvent;
 import net.bananemdnsa.historystages.client.editor.anim.Anim;
 import net.bananemdnsa.historystages.client.editor.anim.Ease;
 import net.bananemdnsa.historystages.client.editor.anim.Fade;
@@ -41,7 +45,7 @@ import net.bananemdnsa.historystages.data.settings.StageSettingsGroups;
 import net.bananemdnsa.historystages.data.temporary.TemporaryConfig;
 import net.bananemdnsa.historystages.research.TierMode;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
@@ -746,12 +750,16 @@ public class StageSettingsScreen extends Screen {
                     }
 
                     @Override
+                    public boolean keyPressed(KeyEvent event) {
+                        return keyPressed(event.key(), event.scancode(), event.modifiers());
+                    }
+
                     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
                         if (keyCode == 257 || keyCode == 335) { // Enter / numpad Enter
                             setValue(String.valueOf(values.get(intField)));
                             return true;
                         }
-                        return super.keyPressed(keyCode, scanCode, modifiers);
+                        return super.keyPressed(new KeyEvent(keyCode, scanCode, modifiers));
                     }
                 };
                 box.setMaxLength(10);
@@ -986,14 +994,14 @@ public class StageSettingsScreen extends Screen {
         return Math.max(INDIV_HINT_H, wrapSmall(text, maxW).size() * SMALL_LINE_H);
     }
 
-    private void drawSmallWrapped(GuiGraphics g, String text, int x, int y, int maxW, int color) {
+    private void drawSmallWrapped(GuiGraphicsExtractor g, String text, int x, int y, int maxW, int color) {
         List<FormattedCharSequence> lines = wrapSmall(text, maxW);
         for (int i = 0; i < lines.size(); i++) {
-            g.pose().pushPose();
-            g.pose().translate(x, y + i * SMALL_LINE_H, 0);
-            g.pose().scale(SMALL_SCALE, SMALL_SCALE, 1.0f);
-            g.drawString(this.font, lines.get(i), 0, 0, color, false);
-            g.pose().popPose();
+            g.pose().pushMatrix();
+            g.pose().translate(x, y + i * SMALL_LINE_H);
+            g.pose().scale(SMALL_SCALE, SMALL_SCALE);
+            g.text(this.font, lines.get(i), 0, 0, color, false);
+            g.pose().popMatrix();
         }
     }
 
@@ -1424,6 +1432,10 @@ public class StageSettingsScreen extends Screen {
     }
 
     @Override
+    public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+        return mouseDragged(event.x(), event.y(), event.button(), dragX, dragY);
+    }
+
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
         // The picker sits on top and owns the pointer while it is open. Without this its own
         // scrollbar takes the press, sets itself dragging, and then never hears another mouse
@@ -1439,10 +1451,14 @@ public class StageSettingsScreen extends Screen {
             updateScrollFromMouse(mouseY);
             return true;
         }
-        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+        return super.mouseDragged(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)), dragX, dragY);
     }
 
     @Override
+    public boolean mouseReleased(MouseButtonEvent event) {
+        return mouseReleased(event.x(), event.y(), event.button());
+    }
+
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
         // Likewise: without this the picker's drag flag is never cleared, so its thumb keeps
         // rendering as held and the next press behaves as though the button were still down.
@@ -1457,7 +1473,7 @@ public class StageSettingsScreen extends Screen {
             scrollBarDragging = false;
             return true;
         }
-        return super.mouseReleased(mouseX, mouseY, button);
+        return super.mouseReleased(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)));
     }
 
     private void updateScrollFromMouse(double mouseY) {
@@ -1624,6 +1640,10 @@ public class StageSettingsScreen extends Screen {
     }
 
     @Override
+    public boolean keyPressed(KeyEvent event) {
+        return keyPressed(event.key(), event.scancode(), event.modifiers());
+    }
+
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (lockActionsPopup.isVisible()) {
             if (keyCode == 256) lockActionsPopup.hide(); // ESC discards, like a click outside
@@ -1649,31 +1669,43 @@ public class StageSettingsScreen extends Screen {
                 || (nameTextField != null && nameTextField.isFocused())
                 || (tooltipTextField != null && tooltipTextField.isFocused())
                 || isAnyAddonFieldFocused()) {
-            return super.keyPressed(keyCode, scanCode, modifiers);
+            return super.keyPressed(new KeyEvent(keyCode, scanCode, modifiers));
         }
         if (keyCode == 256) { // ESC
             if (modeDropdownOpen) { modeDropdownOpen = false; return true; }
             confirmDiscard();
             return true;
         }
-        return super.keyPressed(keyCode, scanCode, modifiers);
+        return super.keyPressed(new KeyEvent(keyCode, scanCode, modifiers));
     }
 
     @Override
+    public boolean charTyped(CharacterEvent event) {
+        return charTyped((char) event.codepoint(), 0);
+    }
+
     public boolean charTyped(char c, int modifiers) {
         if (spawnControlPopup.isVisible()) return spawnControlPopup.charTyped(c);
         syncPickerState();
         if (itemPickerOverlay != null) return itemPickerOverlay.charTyped(c);
-        return super.charTyped(c, modifiers);
+        return super.charTyped(new CharacterEvent(c));
     }
 
     @Override
-    public void renderBackground(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+    public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        renderBackground(graphics, mouseX, mouseY, partialTick);
+    }
+
+    public void renderBackground(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
         // No-op — we draw our own background in render() and want to avoid 1.21's menu blur shader
     }
 
     @Override
-    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        render(graphics, mouseX, mouseY, partialTick);
+    }
+
+    public void render(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
         syncPickerState();
 
         guiGraphics.fill(0, 0, this.width, this.height, 0xE0101010);
@@ -1685,7 +1717,7 @@ public class StageSettingsScreen extends Screen {
         layoutAll();
 
         // --- Fixed title bar (above the viewport) ---
-        guiGraphics.drawCenteredString(this.font,
+        guiGraphics.centeredText(this.font,
                 Component.translatable("editor.historystages.stage_settings.title"),
                 this.width / 2, 8, 0xFFFFFF);
         guiGraphics.fill(10, 18, this.width - 10, 19, 0xFF555555);
@@ -1694,16 +1726,16 @@ public class StageSettingsScreen extends Screen {
         guiGraphics.enableScissor(0, viewTop, this.width, viewBottom);
 
         int labelX = 30;
-        guiGraphics.drawString(this.font,
+        guiGraphics.text(this.font,
                 Component.translatable("editor.historystages.field.stage_id").getString(),
                 labelX, 27 - renderScroll, 0xAAAAAA, false);
-        guiGraphics.drawString(this.font,
+        guiGraphics.text(this.font,
                 Component.translatable("editor.historystages.field.display_name").getString(),
                 labelX, 49 - renderScroll, 0xAAAAAA, false);
-        guiGraphics.drawString(this.font,
+        guiGraphics.text(this.font,
                 Component.translatable("editor.historystages.mode.label").getString(),
                 labelX, 71 - renderScroll, 0xAAAAAA, false);
-        guiGraphics.drawString(this.font,
+        guiGraphics.text(this.font,
                 Component.translatable("editor.historystages.field.description"),
                 labelX, 93 - renderScroll, 0xAAAAAA, false);
 
@@ -1741,16 +1773,16 @@ public class StageSettingsScreen extends Screen {
 
         if (editMode == StageMode.DEFAULT) {
             int cardLabelX = cardX + 12;
-            guiGraphics.drawString(this.font,
+            guiGraphics.text(this.font,
                     Component.translatable("editor.historystages.field.research_time").getString(),
                     cardLabelX, bodyY + 5, 0xAAAAAA, false);
-            guiGraphics.drawString(this.font,
+            guiGraphics.text(this.font,
                     Component.translatable("editor.historystages.field.min_pedestal_tier").getString(),
                     cardLabelX, bodyY + 27, 0xAAAAAA, false);
-            guiGraphics.drawString(this.font,
+            guiGraphics.text(this.font,
                     Component.translatable("editor.historystages.field.pedestal_tier_mode").getString(),
                     cardLabelX, bodyY + 49, 0xAAAAAA, false);
-            guiGraphics.drawString(this.font,
+            guiGraphics.text(this.font,
                     Component.translatable("editor.historystages.field.scroll_completion").getString(),
                     cardLabelX, bodyY + 71, 0xAAAAAA, false);
             tierDropdown.renderButton(guiGraphics, this.font, mouseX, mouseY);
@@ -1759,12 +1791,12 @@ public class StageSettingsScreen extends Screen {
             int count = editAutoTrigger == null ? 0 : editAutoTrigger.getTriggers().size();
             if (count == 0) {
                 String warn = Component.translatable("editor.historystages.auto_trigger.no_triggers_warn").getString();
-                guiGraphics.drawString(this.font, warn, cardX + 12, bodyY + FIELD_HEIGHT + 8, 0xFFAA55, false);
+                guiGraphics.text(this.font, warn, cardX + 12, bodyY + FIELD_HEIGHT + 8, 0xFFAA55, false);
             }
         } else if (editMode == StageMode.CONDITIONAL) {
             int rowY = conditionalNotifyRowY();
             int toggleX = conditionalNotifyToggleX();
-            guiGraphics.drawString(this.font,
+            guiGraphics.text(this.font,
                     Component.translatable("editor.historystages.relock.notify").getString(),
                     cardX + 12, rowY + 3, 0xAAAAAA, false);
             boolean notify = shownNotify();
@@ -1774,14 +1806,14 @@ public class StageSettingsScreen extends Screen {
                     rowY + INDIV_TOGGLE_H + INDIV_HINT_GAP, cardW - 24, 0x888888);
         } else if (editMode == StageMode.EXTERNAL) {
             String help = Component.translatable("editor.historystages.mode.external.help").getString();
-            guiGraphics.drawString(this.font, help, cardX + 12, bodyY + 6, 0xAAAAAA, false);
+            guiGraphics.text(this.font, help, cardX + 12, bodyY + 6, 0xAAAAAA, false);
         } else if (editMode == StageMode.TEMPORARY) {
             int cardLabelX = cardX + 12;
-            guiGraphics.drawString(this.font,
+            guiGraphics.text(this.font,
                     Component.translatable("editor.historystages.temporary.duration").getString(),
                     cardLabelX, bodyY + 22 + 5, 0xAAAAAA, false);
             durationUnitDropdown.renderButton(guiGraphics, this.font, mouseX, mouseY);
-            guiGraphics.drawString(this.font,
+            guiGraphics.text(this.font,
                     Component.translatable("editor.historystages.temporary.max_triggers").getString(),
                     cardLabelX, bodyY + 44 + 5, 0xAAAAAA, false);
             String maxHint = editTemporary != null && editTemporary.isUnlimited()
@@ -1789,7 +1821,7 @@ public class StageSettingsScreen extends Screen {
                     : Component.translatable("editor.historystages.temporary.max_triggers.hint").getString();
             drawSmallText(guiGraphics, maxHint, maxTriggersField.getX() + 52, bodyY + 44 + 6, 0x888888);
             if (editTemporary != null && editTemporary.allowsMultiple()) {
-                guiGraphics.drawString(this.font,
+                guiGraphics.text(this.font,
                         Component.translatable("editor.historystages.temporary.cooldown").getString(),
                         cardLabelX, bodyY + 66 + 5, 0xAAAAAA, false);
                 cooldownUnitDropdown.renderButton(guiGraphics, this.font, mouseX, mouseY);
@@ -1817,7 +1849,7 @@ public class StageSettingsScreen extends Screen {
         }
 
         // Fixed Back/Save buttons (the only auto-rendered widgets), outside the viewport
-        super.render(guiGraphics, mouseX, mouseY, partialTick);
+        super.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
 
         // Confirmation ring around Save. It swells and fades once, which is enough to be seen
         // without competing with the unsaved indicator that just went away.
@@ -1850,7 +1882,7 @@ public class StageSettingsScreen extends Screen {
         }
 
         if (!saveError.isEmpty()) {
-            guiGraphics.drawCenteredString(this.font, saveError, this.width / 2, this.height - 38, 0xFF5555);
+            guiGraphics.centeredText(this.font, saveError, this.width / 2, this.height - 38, 0xFF5555);
         }
 
         // Popups (must be last so they overlay everything; drawn unclipped)
@@ -1885,29 +1917,29 @@ public class StageSettingsScreen extends Screen {
         // after the picker's panel fills, so the cards and button labels underneath would
         // otherwise bleed through it.
         if (itemPickerOverlay != null) {
-            guiGraphics.pose().pushPose();
-            guiGraphics.pose().translate(0, 0, 200);
+            guiGraphics.pose().pushMatrix();
+            guiGraphics.pose().translate(0, 0);
             guiGraphics.fill(0, 0, this.width, this.height, 0x80000000);
             itemPickerOverlay.render(guiGraphics, this.font, mouseX, mouseY);
-            guiGraphics.pose().popPose();
+            guiGraphics.pose().popMatrix();
         }
         if (lockActionsPopup.isVisible()) {
-            guiGraphics.pose().pushPose();
-            guiGraphics.pose().translate(0, 0, 200);
+            guiGraphics.pose().pushMatrix();
+            guiGraphics.pose().translate(0, 0);
             lockActionsPopup.render(guiGraphics, this.font, this.width, this.height, mouseX, mouseY);
-            guiGraphics.pose().popPose();
+            guiGraphics.pose().popMatrix();
         }
         if (spawnControlPopup.isVisible()) {
-            guiGraphics.pose().pushPose();
-            guiGraphics.pose().translate(0, 0, 200);
+            guiGraphics.pose().pushMatrix();
+            guiGraphics.pose().translate(0, 0);
             spawnControlPopup.render(guiGraphics, this.font, mouseX, mouseY);
-            guiGraphics.pose().popPose();
+            guiGraphics.pose().popMatrix();
         }
         if (interactionActionsPopup.isVisible()) {
-            guiGraphics.pose().pushPose();
-            guiGraphics.pose().translate(0, 0, 200);
+            guiGraphics.pose().pushMatrix();
+            guiGraphics.pose().translate(0, 0);
             interactionActionsPopup.render(guiGraphics, this.font, mouseX, mouseY);
-            guiGraphics.pose().popPose();
+            guiGraphics.pose().popMatrix();
         }
     }
 
@@ -1924,12 +1956,12 @@ public class StageSettingsScreen extends Screen {
         };
     }
 
-    private void renderCard(GuiGraphics g, int x, int y, int w, int h, String headerKey) {
+    private void renderCard(GuiGraphicsExtractor g, int x, int y, int w, int h, String headerKey) {
         renderCard(g, x, y, w, h, headerKey, 0xFFCC00, null);
     }
 
     /** A card with its own header colour and, when {@code accentEdge} is set, a coloured top edge (re-lock card). */
-    private void renderCard(GuiGraphics g, int x, int y, int w, int h, String headerKey,
+    private void renderCard(GuiGraphicsExtractor g, int x, int y, int w, int h, String headerKey,
                             int headerColor, Integer accentEdge) {
         // Outer border
         g.fill(x, y, x + w, y + h, 0xFF555555);
@@ -1941,17 +1973,17 @@ public class StageSettingsScreen extends Screen {
         // An accent edge is two pixels so it reads as colour, not as a slightly different border.
         if (accentEdge != null) g.fill(x, y, x + w, y + 2, accentEdge);
         // Header text
-        g.drawString(this.font, Component.translatable(headerKey).getString(),
+        g.text(this.font, Component.translatable(headerKey).getString(),
                 x + 8, y + 7, headerColor, false);
     }
 
-    private void renderRelockCardContent(GuiGraphics g, int mouseX, int mouseY) {
+    private void renderRelockCardContent(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         if (relockCardH <= 0) return;
         int labelX = relockCardX + 12;
         // Re-unlocking means nothing without a lock trigger, so that row stays grey until one exists.
         boolean hasLocks = lockTriggerCount() > 0;
 
-        g.drawString(this.font, Component.translatable("editor.historystages.relock.re_unlockable").getString(),
+        g.text(this.font, Component.translatable("editor.historystages.relock.re_unlockable").getString(),
                 labelX, reUnlockRowY + 3, hasLocks ? 0xAAAAAA : 0x666666, false);
         boolean reUnlockable = editLockTrigger != null && editLockTrigger.isReUnlockable();
         reUnlockToggle.update(reUnlockable, hasLocks
@@ -1960,7 +1992,7 @@ public class StageSettingsScreen extends Screen {
         ToggleControl.draw(g, this.font, relockToggleX, reUnlockRowY, reUnlockable, reUnlockToggle, !hasLocks);
 
         // Unlock messages follow this switch too, so it stays live without lock triggers.
-        g.drawString(this.font, Component.translatable("editor.historystages.relock.notify").getString(),
+        g.text(this.font, Component.translatable("editor.historystages.relock.notify").getString(),
                 labelX, relockNotifyRowY + 3, 0xAAAAAA, false);
         boolean notify = shownNotify();
         notifyToggle.update(notify,
@@ -1973,20 +2005,20 @@ public class StageSettingsScreen extends Screen {
         }
     }
 
-    private void renderDisplayCardContent(GuiGraphics g, int mouseX, int mouseY) {
+    private void renderDisplayCardContent(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         if (displayCardH <= 0) return;
         int labelX = displayCardX + 12;
 
-        g.drawString(this.font, Component.translatable("editor.historystages.display.name").getString(),
+        g.text(this.font, Component.translatable("editor.historystages.display.name").getString(),
                 labelX, displayNameRowY + 5, 0xAAAAAA, false);
-        g.drawString(this.font, Component.translatable("editor.historystages.display.tooltip").getString(),
+        g.text(this.font, Component.translatable("editor.historystages.display.tooltip").getString(),
                 labelX, displayTooltipRowY + 5, 0xAAAAAA, false);
 
         nameModeDropdown.renderButton(g, this.font, mouseX, mouseY);
         tooltipModeDropdown.renderButton(g, this.font, mouseX, mouseY);
 
         // Show-lock-hints toggle button (DependencyEditorScreen style)
-        g.drawString(this.font, Component.translatable("editor.historystages.display.show_lock_hints").getString(),
+        g.text(this.font, Component.translatable("editor.historystages.display.show_lock_hints").getString(),
                 labelX, lockHintsRowY + 3, 0xAAAAAA, false);
         boolean showLockHints = editHiddenDisplay.isShowLockHints();
         lockHintsToggle.update(showLockHints, ToggleControl.segmentAt(
@@ -1995,11 +2027,11 @@ public class StageSettingsScreen extends Screen {
                 lockHintsToggle, false);
     }
 
-    private void renderLockCardContent(GuiGraphics g, int mouseX, int mouseY) {
+    private void renderLockCardContent(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         if (lockCardH <= 0) return;
         int labelX = lockCardX + 12;
 
-        g.drawString(this.font,
+        g.text(this.font,
                 Component.translatable("editor.historystages.locks.interchangeable").getString(),
                 labelX, interchangeableRowY + 3, 0xAAAAAA, false);
 
@@ -2021,18 +2053,18 @@ public class StageSettingsScreen extends Screen {
     }
 
     /** Label and hint; the button itself is a content widget. */
-    private void renderFixedActionsRow(GuiGraphics g, int rowY, String labelKey) {
+    private void renderFixedActionsRow(GuiGraphicsExtractor g, int rowY, String labelKey) {
         int labelX = lockCardX + 12;
-        g.drawString(this.font, Component.translatable(labelKey).getString(), labelX, rowY + 3, 0xAAAAAA, false);
+        g.text(this.font, Component.translatable(labelKey).getString(), labelX, rowY + 3, 0xAAAAAA, false);
         drawSmallText(g, Component.translatable(labelKey + ".hint").getString(),
                 labelX, rowY + INDIV_TOGGLE_H + INDIV_HINT_GAP, 0x888888);
     }
 
-    private void renderIndividualCardContent(GuiGraphics g, int mouseX, int mouseY) {
+    private void renderIndividualCardContent(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         if (!isIndividual || indivCardH <= 0) return;
         int labelX = indivCardX + 12;
 
-        g.drawString(this.font,
+        g.text(this.font,
                 Component.translatable("editor.historystages.individual.lose_on_death").getString(),
                 labelX, loseRowY + 3, 0xAAAAAA, false);
 
@@ -2048,7 +2080,7 @@ public class StageSettingsScreen extends Screen {
         // Temporary and conditional stages never share, so the switch goes grey there, the same
         // way the re-unlock switch does without lock triggers.
         boolean canShare = editMode.allowsTeamSharing();
-        g.drawString(this.font,
+        g.text(this.font,
                 Component.translatable("editor.historystages.individual.share_with_team").getString(),
                 labelX, shareRowY + 3, canShare ? 0xAAAAAA : 0x666666, false);
         shareToggle.update(editShareWithTeam, canShare
@@ -2066,14 +2098,14 @@ public class StageSettingsScreen extends Screen {
      * dropdown button. INTEGER/TEXT rows are plain {@link EditBox}es and already render themselves
      * as part of {@link #contentWidgets}.
      */
-    private void renderAddonCardsContent(GuiGraphics g, int mouseX, int mouseY) {
+    private void renderAddonCardsContent(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         for (AddonCard card : addonCards) {
             if (card.h <= 0) continue;
             int labelX = card.x + 12;
             for (AddonFieldRow row : card.rows) {
                 boolean isToggle = row.field.kind() == SettingKind.BOOL;
                 int labelY = isToggle ? row.rowY + 3 : row.rowY + 5;
-                g.drawString(this.font, Component.translatable(row.field.langKey()).getString(),
+                g.text(this.font, Component.translatable(row.field.langKey()).getString(),
                         labelX, labelY, 0xAAAAAA, false);
 
                 if (isToggle) {
@@ -2095,7 +2127,7 @@ public class StageSettingsScreen extends Screen {
      * button already shows is the honest fallback then.
      */
     @SuppressWarnings("unchecked")
-    private void renderAddonItemIcon(GuiGraphics g, AddonCard card, AddonFieldRow row) {
+    private void renderAddonItemIcon(GuiGraphicsExtractor g, AddonCard card, AddonFieldRow row) {
         if (row.button == null) return;
         Setting<String> field = (Setting<String>) row.field;
         String id = card.values.get(field);
@@ -2104,11 +2136,11 @@ public class StageSettingsScreen extends Screen {
         if (rl == null) return;
         Item item = BuiltInRegistries.ITEM.getValue(rl);
         if (item == null || item == Items.AIR) return;
-        g.renderItem(new ItemStack(item), row.button.getX() + 3, row.rowY + 1);
+        g.item(new ItemStack(item), row.button.getX() + 3, row.rowY + 1);
     }
 
     /** Draws one BOOL row's switch, the same one the config rows and the cards above use. */
-    private void renderAddonToggle(GuiGraphics g, AddonCard card, AddonFieldRow row, int mouseX, int mouseY) {
+    private void renderAddonToggle(GuiGraphicsExtractor g, AddonCard card, AddonFieldRow row, int mouseX, int mouseY) {
         boolean value = boolValue(card.values, row.field);
         row.toggle.update(value,
                 ToggleControl.segmentAt(this.font, row.toggleX, row.rowY, mouseX, mouseY));
@@ -2242,7 +2274,7 @@ public class StageSettingsScreen extends Screen {
                 SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
     }
 
-    private void renderModeDropdownButton(GuiGraphics g, int mouseX, int mouseY) {
+    private void renderModeDropdownButton(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         boolean hovered = mouseX >= modeDropdownX && mouseX <= modeDropdownX + modeDropdownW
                 && mouseY >= modeDropdownY && mouseY < modeDropdownY + FIELD_HEIGHT;
         float hp = Ease.outCubic(modeHover.ramp(hovered, Timing.HOVER_IN_MS, Timing.HOVER_OUT_MS));
@@ -2254,7 +2286,7 @@ public class StageSettingsScreen extends Screen {
                 Fade.mix(0x60FFCC00, 0xFFFFCC00, hp));
 
         String label = Component.translatable(modeLabelKey(editMode)).getString();
-        g.drawString(this.font, label, modeDropdownX + 6, modeDropdownY + 5, 0xFFFFFF, false);
+        g.text(this.font, label, modeDropdownX + 6, modeDropdownY + 5, 0xFFFFFF, false);
 
         // Turned by the same progress that reveals the popup, replacing the two static
         // glyphs that used to swap in a single frame.
@@ -2262,7 +2294,7 @@ public class StageSettingsScreen extends Screen {
                 Fade.mix(0xFF999999, 0xFFDDDDDD, hp), modeOpen.value());
     }
 
-    private void renderModeDropdownPopup(GuiGraphics g, int mouseX, int mouseY) {
+    private void renderModeDropdownPopup(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         // Called every frame regardless of state so the popup can roll back up on close.
         float t = modeOpen.ramp(modeDropdownOpen ? 1.0f : 0.0f, Timing.POPUP_MS);
         if (t < 0.02f) return;
@@ -2292,14 +2324,18 @@ public class StageSettingsScreen extends Screen {
                     ? Fade.mix(0xFFFFCC00, 0xFFFFFFFF, rh)
                     : Fade.mix(0xFFDDDDDD, 0xFFFFFFFF, rh);
             int textX = px + 8 + Math.round(rh * 2.0f);
-            g.drawString(this.font, name, textX, rowY + 3, nameColor, false);
-            g.drawString(this.font, desc, textX, rowY + 13, 0x888888, false);
+            g.text(this.font, name, textX, rowY + 3, nameColor, false);
+            g.text(this.font, desc, textX, rowY + 13, 0x888888, false);
         }
 
         DropdownChrome.end(g);
     }
 
     @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        return mouseClicked(event.x(), event.y(), event.button());
+    }
+
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (lockActionsPopup.isVisible()) return lockActionsPopup.mouseClicked(mouseX, mouseY, button);
         if (spawnControlPopup.isVisible()) return spawnControlPopup.mouseClicked(mouseX, mouseY, button);
@@ -2383,15 +2419,15 @@ public class StageSettingsScreen extends Screen {
         if (button == 0 && handleLockCardClick(mouseX, mouseY)) return true;
         if (button == 0 && handleIndividualCardClick(mouseX, mouseY)) return true;
         if (button == 0 && handleAddonCardsClick(mouseX, mouseY)) return true;
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)), false);
     }
 
-    private void drawSmallText(GuiGraphics g, String text, int x, int y, int color) {
-        g.pose().pushPose();
-        g.pose().translate(x, y, 0);
-        g.pose().scale(SMALL_SCALE, SMALL_SCALE, 1.0f);
-        g.drawString(this.font, text, 0, 0, color, false);
-        g.pose().popPose();
+    private void drawSmallText(GuiGraphicsExtractor g, String text, int x, int y, int color) {
+        g.pose().pushMatrix();
+        g.pose().translate(x, y);
+        g.pose().scale(SMALL_SCALE, SMALL_SCALE);
+        g.text(this.font, text, 0, 0, color, false);
+        g.pose().popMatrix();
     }
 
     /** Whether an INTEGER/TEXT field in any addon card currently has keyboard focus. */

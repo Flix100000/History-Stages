@@ -8,7 +8,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.client.gui.Font;
 import com.mojang.math.Axis;
 
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 /**
  * The flat map, painted.
@@ -46,7 +46,7 @@ public final class ZoneMapRenderer {
 
     private ZoneMapRenderer() {}
 
-    public static void backdrop(GuiGraphics g, int x, int y, int w, int h) {
+    public static void backdrop(GuiGraphicsExtractor g, int x, int y, int w, int h) {
         g.fill(x, y, x + w, y + h, BACKDROP);
         g.fill(x, y, x + w, y + 1, BORDER);
         g.fill(x, y + h - 1, x + w, y + h, BORDER);
@@ -60,7 +60,7 @@ public final class ZoneMapRenderer {
      * <p>Between two samplings the map may be dragged on, and the picture has to travel with it —
      * pinning it to the box instead would make the ground slide under the shapes.
      */
-    public static void terrain(GuiGraphics g, int x, int y, ZoneMapView view,
+    public static void terrain(GuiGraphicsExtractor g, int x, int y, ZoneMapView view,
                                ZoneTerrainTexture texture, ZoneTerrainSampler.Surface surface) {
         if (texture == null || texture.isEmpty() || surface == null) return;
 
@@ -75,7 +75,7 @@ public final class ZoneMapRenderer {
     }
 
     /** @param labels whether the major lines carry their coordinate; off on the thumbnail, it is too small */
-    public static void grid(GuiGraphics g, Font font, int x, int y, int w, int h,
+    public static void grid(GuiGraphicsExtractor g, Font font, int x, int y, int w, int h,
                             ZoneMapView view, boolean labels) {
         int minor = view.minorGridStep();
         int major = view.majorGridStep();
@@ -86,7 +86,7 @@ public final class ZoneMapRenderer {
             boolean big = Math.floorMod(wx, major) == 0;
             g.fill(px, y + 1, px + 1, y + h - 1, big ? GRID_MAJOR : GRID_MINOR);
             if (labels && big) {
-                g.drawString(font, Long.toString(wx), px + 2, y + 3, GRID_LABEL, false);
+                g.text(font, Long.toString(wx), px + 2, y + 3, GRID_LABEL, false);
             }
         }
 
@@ -96,12 +96,12 @@ public final class ZoneMapRenderer {
             boolean big = Math.floorMod(wz, major) == 0;
             g.fill(x + 1, pz, x + w - 1, pz + 1, big ? GRID_MAJOR : GRID_MINOR);
             if (labels && big) {
-                g.drawString(font, Long.toString(wz), x + 3, pz + 2, GRID_LABEL, false);
+                g.text(font, Long.toString(wz), x + 3, pz + 2, GRID_LABEL, false);
             }
         }
     }
 
-    public static void shapes(GuiGraphics g, Font font, int x, int y, ZoneMapView view,
+    public static void shapes(GuiGraphicsExtractor g, Font font, int x, int y, ZoneMapView view,
                               List<ZoneShape> shapes, int selected, boolean numbers) {
         // The selected one goes last so a shape overlapping it cannot paint over it.
         for (int i = 0; i < shapes.size(); i++) {
@@ -112,7 +112,7 @@ public final class ZoneMapRenderer {
         }
     }
 
-    private static void draw(GuiGraphics g, Font font, int ox, int oy, ZoneMapView view,
+    private static void draw(GuiGraphicsExtractor g, Font font, int ox, int oy, ZoneMapView view,
                              ZoneShape shape, int index, boolean hot, boolean numbers) {
         ZoneMapView.Rect r = view.rectFor(shape);
         int line = hot ? HOT_LINE : SHAPE_LINE;
@@ -128,11 +128,11 @@ public final class ZoneMapRenderer {
             String label = Integer.toString(index + 1);
             int cx = Math.round(ox + r.x() + r.w() / 2f) - font.width(label) / 2;
             int cy = Math.round(oy + r.y() + r.h() / 2f) - 4;
-            g.drawString(font, label, cx, cy, line, true);
+            g.text(font, label, cx, cy, line, true);
         }
     }
 
-    private static void rect(GuiGraphics g, float fx, float fy, float fw, float fh,
+    private static void rect(GuiGraphicsExtractor g, float fx, float fy, float fw, float fh,
                              int line, int fill) {
         int x0 = Math.round(fx);
         int y0 = Math.round(fy);
@@ -154,7 +154,7 @@ public final class ZoneMapRenderer {
      * for something this small. The first and last row are drawn entirely in the outline colour —
      * they are the cap of the circle, and leaving them filled makes the top and bottom look open.
      */
-    private static void ellipse(GuiGraphics g, float fx, float fy, float fw, float fh,
+    private static void ellipse(GuiGraphicsExtractor g, float fx, float fy, float fw, float fh,
                                 int line, int fill) {
         int rows = Math.max(1, Math.round(fh));
         float rx = Math.max(0.5f, fw / 2f);
@@ -195,7 +195,7 @@ public final class ZoneMapRenderer {
      * @param yawDegrees the player's yaw as Minecraft keeps it
      * @return true if the marker had to be clamped, so the caller can write the distance beside it
      */
-    public static boolean player(GuiGraphics g, int x, int y, int w, int h, ZoneMapView view,
+    public static boolean player(GuiGraphicsExtractor g, int x, int y, int w, int h, ZoneMapView view,
                                  double worldX, double worldZ, float yawDegrees) {
         float px = x + view.screenX(worldX);
         float pz = y + view.screenZ(worldZ);
@@ -205,17 +205,17 @@ public final class ZoneMapRenderer {
 
         // Yaw zero faces south, which is downwards on a map, and the marker is drawn pointing up.
         // The two zero points sit opposite each other, so the offset is exactly half a turn.
-        g.pose().pushPose();
-        g.pose().translate(cx, cz, 0);
+        g.pose().pushMatrix();
+        g.pose().translate(cx, cz);
         g.pose().mulPose(Axis.ZP.rotationDegrees(yawDegrees + 180));
-        g.pose().scale(MARKER_SCALE, MARKER_SCALE, 1);
+        g.pose().scale(MARKER_SCALE, MARKER_SCALE);
         g.blit(clamped ? MARKER_OFF_MAP : MARKER_ICON, -4, -4, 8, 8, 0, 0, 8, 8, 8, 8);
-        g.pose().popPose();
+        g.pose().popMatrix();
 
         return clamped;
     }
 
-    public static void scaleBar(GuiGraphics g, Font font, int x, int y, int w, int h,
+    public static void scaleBar(GuiGraphicsExtractor g, Font font, int x, int y, int w, int h,
                                 ZoneMapView view) {
         int blocks = view.scaleBarBlocks(Math.min(90, w / 3));
         int px = Math.max(4, (int) Math.round(blocks / view.blocksPerPixel()));
@@ -223,6 +223,6 @@ public final class ZoneMapRenderer {
         int by = y + h - 10;
 
         g.fill(bx, by, bx + px, by + 2, SCALE_BAR);
-        g.drawString(font, Integer.toString(blocks), bx, by - 10, GRID_LABEL, true);
+        g.text(font, Integer.toString(blocks), bx, by - 10, GRID_LABEL, true);
     }
 }

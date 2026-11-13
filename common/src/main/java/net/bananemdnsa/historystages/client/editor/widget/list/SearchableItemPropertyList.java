@@ -5,7 +5,7 @@ import net.bananemdnsa.historystages.client.editor.nbt.CriterionCard;
 import net.bananemdnsa.historystages.client.editor.nbt.NbtCriterion;
 
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 
 import java.util.Collection;
@@ -74,10 +74,10 @@ public class SearchableItemPropertyList extends AbstractSearchableList<NbtCriter
     }
 
     @Override
-    protected void renderRow(GuiGraphics g, Font font, NbtCriterion entry,
+    protected void renderRow(GuiGraphicsExtractor g, Font font, NbtCriterion entry,
                              int x, int y, int w, int h, boolean hovered, int rowIndex) {
         String title = CriterionCard.titleOf(entry);
-        g.drawString(font, title, x + 3, y + 4, hovered ? 0xFFFFFF : 0xBBBBBB, false);
+        g.text(font, title, x + 3, y + 4, hovered ? 0xFFFFFF : 0xBBBBBB, false);
 
         String preview = CriterionCard.previewOf(entry);
         if (preview.isEmpty()) return;
@@ -88,6 +88,6 @@ public class SearchableItemPropertyList extends AbstractSearchableList<NbtCriter
         if (font.width(preview) > room) {
             preview = font.plainSubstrByWidth(preview, room - font.width("...")) + "...";
         }
-        g.drawString(font, preview, x + w - 6 - font.width(preview), y + 4, 0x777777, false);
+        g.text(font, preview, x + w - 6 - font.width(preview), y + 4, 0x777777, false);
     }
 }

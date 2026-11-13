@@ -1,5 +1,9 @@
 package net.bananemdnsa.historystages.client.editor;
 
+import net.minecraft.client.input.CharacterEvent;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonInfo;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.bananemdnsa.historystages.client.editor.anim.Anim;
 import net.bananemdnsa.historystages.client.editor.anim.Ease;
 import net.bananemdnsa.historystages.client.editor.anim.Fade;
@@ -33,7 +37,7 @@ import net.bananemdnsa.historystages.network.PacketHandler;
 import net.bananemdnsa.historystages.network.serverbound.SaveStageGraphStylePacket;
 import net.bananemdnsa.historystages.network.serverbound.SaveStylePresetPacket;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
@@ -736,24 +740,32 @@ public class StageStyleScreen extends Screen {
     // --- Render -------------------------------------------------------------------------------
 
     @Override
-    public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+    public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        renderBackground(graphics, mouseX, mouseY, partialTick);
+    }
+
+    public void renderBackground(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
         // Own background, drawn in render() — avoids 1.21's menu blur shader, as the config
         // screen and the style screen do.
     }
 
     @Override
-    public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        render(graphics, mouseX, mouseY, partialTick);
+    }
+
+    public void render(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
         smoothScroll.approach((float) scrollOffset, Timing.SCROLL_HALF_LIFE_MS);
         smoothScroll.settle((float) scrollOffset, 0.5f);
 
         g.fill(0, 0, this.width, this.height, 0xE0101010);
-        g.drawCenteredString(this.font, this.title, this.width / 2, 10, 0xFFFFFF);
+        g.centeredText(this.font, this.title, this.width / 2, 10, 0xFFFFFF);
         if (stageId != null) {
             ConfigEditorScreen.drawSmallText(g, stageId, this.width / 2 - this.font.width(stageId) / 4,
                     24, 0xFF999999);
         }
         if (presetDropdown != null) {
-            g.drawString(this.font, Component.translatable("editor.historystages.graph.preset.label"),
+            g.text(this.font, Component.translatable("editor.historystages.graph.preset.label"),
                     presetLabelX, PRESET_ROW_Y + 5, 0xFFCCCCCC, false);
             presetDropdown.renderButton(g, this.font, mouseX, mouseY);
         }
@@ -802,7 +814,7 @@ public class StageStyleScreen extends Screen {
                     dotX + 9, this.height - 24, 0xFFCC00);
         }
 
-        super.render(g, mouseX, mouseY, partialTick);
+        super.extractRenderState(g, mouseX, mouseY, partialTick);
 
         if (openDropdown != null) {
             openDropdown.renderButton(g, this.font, mouseX, mouseY);
@@ -817,11 +829,11 @@ public class StageStyleScreen extends Screen {
         if (pickerOpen()) {
             // Lifted above the rows: text is flushed after the panel's fills, so the row labels
             // would otherwise show through it.
-            g.pose().pushPose();
-            g.pose().translate(0, 0, 200);
+            g.pose().pushMatrix();
+            g.pose().translate(0, 0);
             g.fill(0, 0, this.width, this.height, 0x80000000);
             texturePicker.render(g, this.font, mouseX, mouseY);
-            g.pose().popPose();
+            g.pose().popMatrix();
             hoveredDesc = null;
         }
 
@@ -834,7 +846,7 @@ public class StageStyleScreen extends Screen {
                 mouseX, mouseY, this.width, this.height);
     }
 
-    private void renderTabs(GuiGraphics g, int mouseX, int mouseY) {
+    private void renderTabs(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         for (String option : tabs()) {
             int[] r = switchRects.get(option);
             if (r == null) continue;
@@ -852,7 +864,7 @@ public class StageStyleScreen extends Screen {
             String label = Component.translatable(TAB_ALL.equals(option) || TAB_BACKGROUND.equals(option)
                     ? "editor.historystages.graph.style.tab." + option
                     : "editor.historystages.config.graph.style.state." + option).getString();
-            g.drawCenteredString(this.font, label, r[0] + r[2] / 2, r[1] + 4,
+            g.centeredText(this.font, label, r[0] + r[2] / 2, r[1] + 4,
                     active ? 0xFFFFFF : Fade.mix(0xFF999999, 0xFFDDDDDD, hp));
         }
     }
@@ -874,7 +886,7 @@ public class StageStyleScreen extends Screen {
      * single node would be a guess: its values land on three different graph.toml blocks, and
      * which of them the author is looking at is the whole question.
      */
-    private void renderPreview(GuiGraphics g, int x, int y, int h) {
+    private void renderPreview(GuiGraphicsExtractor g, int x, int y, int h) {
         int w = this.width - x - 24;
         if (w < 60 || h < 40) return;
 
@@ -902,7 +914,7 @@ public class StageStyleScreen extends Screen {
      * The canvas as this stage's player would see it, with the stage's own unlocked node on it —
      * a background is only worth choosing against the node colours that will sit on top of it.
      */
-    private void renderBackgroundPreview(GuiGraphics g, int x, int y, int w, int h) {
+    private void renderBackgroundPreview(GuiGraphicsExtractor g, int x, int y, int w, int h) {
         ResolvedCanvasBackground bg = CanvasBackgrounds.withOverride(buffer.background);
 
         g.enableScissor(x, y, x + w, y + h);
@@ -930,12 +942,12 @@ public class StageStyleScreen extends Screen {
         int lineY = y + h - 4 - hint.size() * 10;
         g.fill(x, lineY - 3, x + w, y + h, 0xA0000000);
         for (FormattedCharSequence line : hint) {
-            g.drawString(this.font, line, x + 4, lineY, 0xFFBBBBBB, false);
+            g.text(this.font, line, x + 4, lineY, 0xFFBBBBBB, false);
             lineY += 10;
         }
     }
 
-    private void renderPreviewNode(GuiGraphics g, NodeState state, int x, int y, int w, int h) {
+    private void renderPreviewNode(GuiGraphicsExtractor g, NodeState state, int x, int y, int w, int h) {
         ResolvedStyle style = previewStyle(state);
 
         int cx = x + w / 2;
@@ -957,7 +969,7 @@ public class StageStyleScreen extends Screen {
             String sample = Component.translatable("ID".equals(style.label())
                     ? "editor.historystages.config.graph.style.sample_id"
                     : "editor.historystages.config.graph.style.sample_name").getString();
-            g.drawCenteredString(this.font, sample, cx, cy + r + 4, style.labelColor());
+            g.centeredText(this.font, sample, cx, cy + r + 4, style.labelColor());
         }
 
         if (TAB_ALL.equals(tab)) {
@@ -1027,6 +1039,10 @@ public class StageStyleScreen extends Screen {
     }
 
     @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        return mouseClicked(event.x(), event.y(), event.button());
+    }
+
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (pickerOpen()) {
             if (!texturePicker.mouseClicked(mouseX, mouseY)) texturePicker = null;
@@ -1062,7 +1078,7 @@ public class StageStyleScreen extends Screen {
             return true;
         }
 
-        if (super.mouseClicked(mouseX, mouseY, button)) return true;
+        if (super.mouseClicked(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)), false)) return true;
 
         if (maxScroll > 0 && mouseX >= scrollbarX() - 1 && mouseX <= scrollbarX() + 4
                 && mouseY >= rowsTop() && mouseY <= rowsBottom) {
@@ -1175,6 +1191,10 @@ public class StageStyleScreen extends Screen {
     }
 
     @Override
+    public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+        return mouseDragged(event.x(), event.y(), event.button(), dragX, dragY);
+    }
+
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
         // The picker's own scrollbar needs the drags too, or it takes the press and never moves.
         if (pickerOpen() && texturePicker.mouseDragged(mouseX, mouseY)) return true;
@@ -1182,17 +1202,21 @@ public class StageStyleScreen extends Screen {
             updateScrollFromMouse(mouseY);
             return true;
         }
-        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+        return super.mouseDragged(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)), dragX, dragY);
     }
 
     @Override
+    public boolean mouseReleased(MouseButtonEvent event) {
+        return mouseReleased(event.x(), event.y(), event.button());
+    }
+
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
         if (pickerOpen() && texturePicker.mouseReleased()) return true;
         if (draggingScrollbar) {
             draggingScrollbar = false;
             return true;
         }
-        return super.mouseReleased(mouseX, mouseY, button);
+        return super.mouseReleased(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)));
     }
 
     @Override
@@ -1206,6 +1230,10 @@ public class StageStyleScreen extends Screen {
     }
 
     @Override
+    public boolean keyPressed(KeyEvent event) {
+        return keyPressed(event.key(), event.scancode(), event.modifiers());
+    }
+
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (pickerOpen()) {
             if (keyCode == 256) {
@@ -1214,12 +1242,16 @@ public class StageStyleScreen extends Screen {
             }
             return texturePicker.keyPressed(keyCode);
         }
-        return super.keyPressed(keyCode, scanCode, modifiers);
+        return super.keyPressed(new KeyEvent(keyCode, scanCode, modifiers));
     }
 
     @Override
+    public boolean charTyped(CharacterEvent event) {
+        return charTyped((char) event.codepoint(), 0);
+    }
+
     public boolean charTyped(char c, int modifiers) {
         if (pickerOpen()) return texturePicker.charTyped(c);
-        return super.charTyped(c, modifiers);
+        return super.charTyped(new CharacterEvent(c));
     }
 }

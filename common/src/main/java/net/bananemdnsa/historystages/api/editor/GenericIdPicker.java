@@ -8,7 +8,7 @@ import java.util.function.Supplier;
 
 import net.bananemdnsa.historystages.api.editor.widget.AbstractSearchableList;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 
 /**
@@ -60,7 +60,7 @@ public final class GenericIdPicker extends AbstractSearchableList<String> {
     }
 
     @Override
-    protected void renderRow(GuiGraphics g, Font font, String entry,
+    protected void renderRow(GuiGraphicsExtractor g, Font font, String entry,
                              int x, int y, int w, int h, boolean hovered, int rowIndex) {
         drawRowText(g, font, entry, x, y, w, hovered);
     }

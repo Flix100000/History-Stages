@@ -5,7 +5,7 @@ import net.bananemdnsa.historystages.client.editor.widget.popup.DimensionFilterP
 import net.bananemdnsa.historystages.client.editor.widget.popup.InteractionActionsPopup;
 import net.bananemdnsa.historystages.client.editor.widget.popup.SpawnSourcesPopup;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 /**
  * Presents the mod's filter popups as {@link PickerOverlay}s, so a host can render them and feed
@@ -41,7 +41,7 @@ public final class PopupOverlays {
             }
 
             @Override
-            public void render(GuiGraphics g, Font font, int mouseX, int mouseY) {
+            public void render(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
                 popup.render(g, font, mouseX, mouseY);
             }
 
@@ -81,7 +81,7 @@ public final class PopupOverlays {
             }
 
             @Override
-            public void render(GuiGraphics g, Font font, int mouseX, int mouseY) {
+            public void render(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
                 popup.render(g, font, mouseX, mouseY);
             }
 
@@ -116,7 +116,7 @@ public final class PopupOverlays {
             }
 
             @Override
-            public void render(GuiGraphics g, Font font, int mouseX, int mouseY) {
+            public void render(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
                 popup.render(g, font, mouseX, mouseY);
             }
 

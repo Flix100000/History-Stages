@@ -1,7 +1,7 @@
 package net.bananemdnsa.historystages.client.editor.graph;
 
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 
 import java.util.ArrayList;
@@ -86,24 +86,24 @@ public final class GraphShortcutPanel {
         return mx >= x && mx < x + width && my >= y && my < y + height;
     }
 
-    public void render(GuiGraphics g, Font font) {
+    public void render(GuiGraphicsExtractor g, Font font) {
         g.fill(x - 1, y - 1, x + width + 1, y + height + 1, FRAME);
         g.fill(x, y, x + width, y + height, BODY);
         g.fill(x - 1, y - 1, x + width + 1, y + 1, GOLD);
 
         int ty = y + PAD;
-        g.drawString(font, Component.translatable("editor.historystages.graph.keys.title"), x + PAD, ty, GOLD, false);
+        g.text(font, Component.translatable("editor.historystages.graph.keys.title"), x + PAD, ty, GOLD, false);
         ty += 12;
         for (Section section : sections) {
-            g.drawString(font, section.title(), x + PAD, ty + 2, SECTION_TEXT, false);
+            g.text(font, section.title(), x + PAD, ty + 2, SECTION_TEXT, false);
             g.fill(x + PAD, ty + 11, x + width - PAD, ty + 12, SECTION_RULE);
             ty += SECTION_H;
             for (Row row : section.rows()) {
                 int kx = x + PAD;
                 g.fill(kx, ty, kx + font.width(row.key()) + KEY_PAD * 2, ty + 11, KEY_FRAME);
                 g.fill(kx + 1, ty + 1, kx + font.width(row.key()) + KEY_PAD * 2 - 1, ty + 10, KEY_BG);
-                g.drawString(font, row.key(), kx + KEY_PAD, ty + 2, KEY_TEXT, false);
-                g.drawString(font, row.action(), x + PAD + keyColumnW + COLUMN_GAP, ty + 2, ACTION_TEXT, false);
+                g.text(font, row.key(), kx + KEY_PAD, ty + 2, KEY_TEXT, false);
+                g.text(font, row.action(), x + PAD + keyColumnW + COLUMN_GAP, ty + 2, ACTION_TEXT, false);
                 ty += ROW_H;
             }
         }

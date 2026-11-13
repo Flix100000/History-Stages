@@ -18,7 +18,7 @@ import net.bananemdnsa.historystages.client.editor.widget.SearchPanelChrome;
 import net.bananemdnsa.historystages.data.lock.ItemTypeChoices;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -166,7 +166,7 @@ public class ItemTypesPopup implements PickerOverlay {
     // ========== RENDER ==========
 
     @Override
-    public void render(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    public void render(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         if (!visible) return;
 
         g.fill(0, 0, g.guiWidth(), g.guiHeight(), 0x88000000);
@@ -180,24 +180,24 @@ public class ItemTypesPopup implements PickerOverlay {
         searchBar.render(g, font, mouseX, mouseY);
     }
 
-    private void renderHeader(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    private void renderHeader(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         String title = Component.translatable("editor.historystages.item_types.title_for",
                 subjectName, entries.size()).getString();
         String allLabel = Component.translatable("editor.historystages.ingredient_usage.all").getString();
         int cbX = allCbX();
         int titleMax = cbX - font.width(allLabel) - 12 - (panelX + PADDING);
         if (font.width(title) > titleMax) title = font.plainSubstrByWidth(title, titleMax - 8) + "...";
-        g.drawString(font, title, panelX + PADDING, panelY + 7, 0xFFFFFF, false);
-        g.drawString(font, allLabel, cbX - font.width(allLabel) - 5, panelY + 7, 0x999999, false);
+        g.text(font, title, panelX + PADDING, panelY + 7, 0xFFFFFF, false);
+        g.text(font, allLabel, cbX - font.width(allLabel) - 5, panelY + 7, 0x999999, false);
         renderCheckbox(g, cbX, panelY + 5, allVisibleTicked(), mouseX, mouseY, "all");
     }
 
-    private void renderList(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    private void renderList(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         int x = listX();
         int y = listY();
         if (visibleRows.isEmpty()) {
             String text = Component.translatable("editor.historystages.ingredient_usage.no_match").getString();
-            g.drawString(font, text, x + (LIST_W - font.width(text)) / 2, y + listH() / 2 - 4, 0x777777, false);
+            g.text(font, text, x + (LIST_W - font.width(text)) / 2, y + listH() / 2 - 4, 0x777777, false);
             return;
         }
 
@@ -214,14 +214,14 @@ public class ItemTypesPopup implements PickerOverlay {
             g.fill(x, rowY, x + LIST_W, rowY + ROW_HEIGHT - 1, rowHovered ? 0xFF353535 : 0xFF252525);
             if (rowHovered) g.fill(x, rowY, x + 2, rowY + ROW_HEIGHT - 1, 0xFFFFCC00);
 
-            g.renderItem(e.stack(), x + 4, rowY + 1);
+            g.item(e.stack(), x + 4, rowY + 1);
             int nsW = font.width(e.namespace());
             int textX = x + 24;
             int textMax = rowCbX() - 6 - nsW - 6 - textX;
             String name = e.name();
             if (font.width(name) > textMax) name = font.plainSubstrByWidth(name, textMax - 6) + "...";
-            g.drawString(font, name, textX, rowY + 5, locked ? 0xDDDDDD : 0x888888, false);
-            g.drawString(font, e.namespace(), rowCbX() - 6 - nsW, rowY + 5, 0x666666, false);
+            g.text(font, name, textX, rowY + 5, locked ? 0xDDDDDD : 0x888888, false);
+            g.text(font, e.namespace(), rowCbX() - 6 - nsW, rowY + 5, 0x666666, false);
             renderCheckbox(g, rowCbX(), rowY + (ROW_HEIGHT - CHECKBOX_SIZE) / 2, locked, mouseX, mouseY, e.id());
         }
         g.disableScissor();
@@ -236,11 +236,11 @@ public class ItemTypesPopup implements PickerOverlay {
         }
     }
 
-    private void renderFooter(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    private void renderFooter(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         int fy = footerY() + 5;
         String note = Component.translatable("editor.historystages.item_types.count",
                 ticked.size(), entries.size()).getString();
-        g.drawString(font, note, panelX + PADDING, fy + 6, 0x888888, false);
+        g.text(font, note, panelX + PADDING, fy + 6, 0x888888, false);
 
         boolean overCancel = isIn(mouseX, mouseY, cancelX(), fy, CANCEL_W, BTN_H);
         boolean overDone = isIn(mouseX, mouseY, doneX(), fy, DONE_W, BTN_H);
@@ -250,7 +250,7 @@ public class ItemTypesPopup implements PickerOverlay {
                 doneX(), fy, DONE_W, Ease.outCubic(doneHover.ramp(overDone, Timing.HOVER_IN_MS, Timing.HOVER_OUT_MS)));
     }
 
-    private void renderCheckbox(GuiGraphics g, int x, int y, boolean checked, int mx, int my, String hoverKey) {
+    private void renderCheckbox(GuiGraphicsExtractor g, int x, int y, boolean checked, int mx, int my, String hoverKey) {
         boolean over = mx >= x && mx < x + CHECKBOX_SIZE && my >= y && my < y + CHECKBOX_SIZE;
         float hp = Ease.outCubic(checkboxHover.computeIfAbsent(hoverKey, k -> new Anim())
                 .ramp(over, Timing.HOVER_IN_MS, Timing.HOVER_OUT_MS));
@@ -276,7 +276,7 @@ public class ItemTypesPopup implements PickerOverlay {
         }
     }
 
-    private void renderButton(GuiGraphics g, Font font, String text, int x, int y, int w, float hp) {
+    private void renderButton(GuiGraphicsExtractor g, Font font, String text, int x, int y, int w, float hp) {
         int bgAlpha = (int) (0x30 + hp * 0x20);
         int bgG = (int) (0xFF - hp * 0x33);
         int bgB = (int) (0xFF - hp * 0xFF);
@@ -287,7 +287,7 @@ public class ItemTypesPopup implements PickerOverlay {
         g.fill(x, y, x + 1, y + BTN_H, 0x15FFFFFF);
         g.fill(x + w - 1, y, x + w, y + BTN_H, 0x15FFFFFF);
         int gray = (int) (0xCC + hp * 0x33);
-        g.drawString(font, text, x + (w - font.width(text)) / 2, y + (BTN_H - 8) / 2,
+        g.text(font, text, x + (w - font.width(text)) / 2, y + (BTN_H - 8) / 2,
                 (0xFF << 24) | (gray << 16) | (gray << 8) | gray, false);
     }
 

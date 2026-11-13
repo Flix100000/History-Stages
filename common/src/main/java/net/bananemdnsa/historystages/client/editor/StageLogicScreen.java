@@ -1,5 +1,9 @@
 package net.bananemdnsa.historystages.client.editor;
 
+import net.minecraft.client.input.CharacterEvent;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonInfo;
+import net.minecraft.client.input.MouseButtonEvent;
 import com.google.gson.JsonArray;
 import net.bananemdnsa.historystages.api.editor.widget.PickerOverlay;
 import net.bananemdnsa.historystages.api.stage.StageScope;
@@ -16,7 +20,7 @@ import net.bananemdnsa.historystages.client.editor.widget.dropdown.DropdownOverl
 import net.bananemdnsa.historystages.client.editor.widget.dropdown.EnumDropdown;
 import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.data.logic.LogicBlockTypes;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
@@ -141,20 +145,28 @@ public class StageLogicScreen extends Screen {
     // ---- rendering --------------------------------------------------------------------
 
     @Override
-    public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+    public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        renderBackground(graphics, mouseX, mouseY, partialTick);
+    }
+
+    public void renderBackground(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
         // Drawn in render(); the default would add 1.21's blur.
     }
 
     @Override
-    public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        render(graphics, mouseX, mouseY, partialTick);
+    }
+
+    public void render(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
         g.fill(0, 0, this.width, this.height, 0xE0101010);
         smoothScroll.approach((float) scrollOffset, Timing.SCROLL_HALF_LIFE_MS);
         smoothScroll.settle((float) scrollOffset, 0.5f);
 
         String title = Component.translatable("editor.historystages.logic.title_for", stageName).getString();
-        g.drawCenteredString(this.font, title, this.width / 2, 8, 0xFFCC00);
+        g.centeredText(this.font, title, this.width / 2, 8, 0xFFCC00);
         String hint = Component.translatable("editor.historystages.logic.hint").getString();
-        g.drawString(this.font, this.font.plainSubstrByWidth(hint, this.width - PADDING * 2 - addButton.getWidth() - 12),
+        g.text(this.font, this.font.plainSubstrByWidth(hint, this.width - PADDING * 2 - addButton.getWidth() - 12),
                 PADDING + addButton.getWidth() + 10, TOOLBAR_Y + 5, 0x888888, false);
         g.fill(PADDING, HEADER_HEIGHT - 6, this.width - PADDING, HEADER_HEIGHT - 5, 0x40FFCC00);
 
@@ -163,7 +175,7 @@ public class StageLogicScreen extends Screen {
         g.enableScissor(0, top, this.width, bottom);
         if (draft.blocks.isEmpty()) {
             String empty = Component.translatable("editor.historystages.logic.empty").getString();
-            g.drawString(this.font, empty, (this.width - this.font.width(empty)) / 2, (top + bottom) / 2 - 4, 0x7A7A7A, false);
+            g.text(this.font, empty, (this.width - this.font.width(empty)) / 2, (top + bottom) / 2 - 4, 0x7A7A7A, false);
         } else {
             boolean pickerOpen = pickerOverlay != null || (addMenu != null && addMenu.isVisible());
             int hoverX = pickerOpen ? -1 : mouseX;
@@ -182,36 +194,40 @@ public class StageLogicScreen extends Screen {
         scrollbar.render(g, scrollbarX(), top, bottom, smoothScroll.value(), maxScroll, mouseX, mouseY);
         if (dirty) renderUnsavedMarker(g);
 
-        super.render(g, mouseX, mouseY, partialTick);
+        super.extractRenderState(g, mouseX, mouseY, partialTick);
 
         syncPickerState();
         if (pickerOverlay != null) {
-            g.pose().pushPose();
-            g.pose().translate(0, 0, 200);
+            g.pose().pushMatrix();
+            g.pose().translate(0, 0);
             g.fill(0, 0, this.width, this.height, 0x80000000);
             pickerOverlay.render(g, this.font, mouseX, mouseY);
-            g.pose().popPose();
+            g.pose().popMatrix();
         } else if (addMenu != null && addMenu.isVisible()) {
-            g.pose().pushPose();
-            g.pose().translate(0, 0, 200);
+            g.pose().pushMatrix();
+            g.pose().translate(0, 0);
             addMenu.render(g, this.font, mouseX, mouseY);
-            g.pose().popPose();
+            g.pose().popMatrix();
         }
     }
 
-    private void renderUnsavedMarker(GuiGraphics g) {
+    private void renderUnsavedMarker(GuiGraphicsExtractor g) {
         float phase = (System.currentTimeMillis() % (long) Timing.BREATHE_PERIOD_MS) / Timing.BREATHE_PERIOD_MS;
         int alpha = (int) ((0.35f + 0.45f * Ease.breathe(phase)) * 255);
         String label = Component.translatable("editor.historystages.unsaved").getString();
         int labelX = this.width - PADDING - 100 - 8 - this.font.width(label);
         int y = this.height - 24;
         g.fill(labelX - 10, y + 1, labelX - 4, y + 7, (alpha << 24) | 0xFFCC00);
-        g.drawString(this.font, label, labelX, y, 0xFFCC00, false);
+        g.text(this.font, label, labelX, y, 0xFFCC00, false);
     }
 
     // ---- input ------------------------------------------------------------------------
 
     @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        return mouseClicked(event.x(), event.y(), event.button());
+    }
+
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         syncPickerState();
         if (pickerOverlay != null) {
@@ -240,7 +256,7 @@ public class StageLogicScreen extends Screen {
                 y += built.height() + CARD_GAP;
             }
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)), false);
     }
 
     private void handleHit(int index, LogicBlockCard.Hit hit) {
@@ -360,6 +376,10 @@ public class StageLogicScreen extends Screen {
     }
 
     @Override
+    public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+        return mouseDragged(event.x(), event.y(), event.button(), dragX, dragY);
+    }
+
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
         syncPickerState();
         if (pickerOverlay != null && pickerOverlay.mouseDragged(mouseX, mouseY)) return true;
@@ -367,10 +387,14 @@ public class StageLogicScreen extends Screen {
             scrollOffset = scrollbar.scrollFor(mouseY);
             return true;
         }
-        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+        return super.mouseDragged(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)), dragX, dragY);
     }
 
     @Override
+    public boolean mouseReleased(MouseButtonEvent event) {
+        return mouseReleased(event.x(), event.y(), event.button());
+    }
+
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
         syncPickerState();
         if (pickerOverlay != null && pickerOverlay.mouseReleased()) return true;
@@ -378,10 +402,14 @@ public class StageLogicScreen extends Screen {
             scrollbar.mouseReleased();
             return true;
         }
-        return super.mouseReleased(mouseX, mouseY, button);
+        return super.mouseReleased(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)));
     }
 
     @Override
+    public boolean keyPressed(KeyEvent event) {
+        return keyPressed(event.key(), event.scancode(), event.modifiers());
+    }
+
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         syncPickerState();
         if (pickerOverlay != null && pickerOverlay.keyPressed(keyCode)) {
@@ -389,14 +417,18 @@ public class StageLogicScreen extends Screen {
             return true;
         }
         if (addMenu != null && addMenu.isVisible() && addMenu.keyPressed(keyCode)) return true;
-        return super.keyPressed(keyCode, scanCode, modifiers);
+        return super.keyPressed(new KeyEvent(keyCode, scanCode, modifiers));
     }
 
     @Override
+    public boolean charTyped(CharacterEvent event) {
+        return charTyped((char) event.codepoint(), 0);
+    }
+
     public boolean charTyped(char c, int modifiers) {
         syncPickerState();
         if (pickerOverlay != null && pickerOverlay.charTyped(c)) return true;
-        return super.charTyped(c, modifiers);
+        return super.charTyped(new CharacterEvent(c));
     }
 
     /** Escape goes back to the stage, not out of the editor. */

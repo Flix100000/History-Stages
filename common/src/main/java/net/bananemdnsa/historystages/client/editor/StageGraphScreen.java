@@ -1,5 +1,9 @@
 package net.bananemdnsa.historystages.client.editor;
 
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.CharacterEvent;
+import net.minecraft.client.input.MouseButtonInfo;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.bananemdnsa.historystages.GraphConfig;
 import net.bananemdnsa.historystages.client.cache.ClientIndividualStageCache;
 import net.bananemdnsa.historystages.client.cache.ClientStageCache;
@@ -38,7 +42,7 @@ import net.bananemdnsa.historystages.network.serverbound.AssignStylePresetPacket
 import net.bananemdnsa.historystages.network.serverbound.SaveStageGraphStylePacket;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.resources.language.I18n;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
@@ -347,12 +351,20 @@ public class StageGraphScreen extends Screen {
     }
 
     @Override
-    public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+    public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        renderBackground(graphics, mouseX, mouseY, partialTick);
+    }
+
+    public void renderBackground(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
         // No-op — render() draws its own opaque background; this avoids 1.21's menu blur shader.
     }
 
     @Override
-    public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        render(graphics, mouseX, mouseY, partialTick);
+    }
+
+    public void render(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
         g.fill(0, 0, this.width, this.height, BACKGROUND_COLOR);
 
         refreshOnUnlockChange();
@@ -391,32 +403,32 @@ public class StageGraphScreen extends Screen {
             legend.render(g, this.font, mouseX, mouseY);
         }
 
-        g.drawCenteredString(this.font, this.title, this.width / 2, 8, TITLE_COLOR);
+        g.centeredText(this.font, this.title, this.width / 2, 8, TITLE_COLOR);
 
         if (undoButton != null) undoButton.active = history.canUndo();
         if (redoButton != null) redoButton.active = history.canRedo();
         Component help = Component.translatable("editor.historystages.graph.button.help");
         helpButton.setMessage(shortcutsOpen ? help.copy().withStyle(ChatFormatting.GOLD) : help);
 
-        super.render(g, mouseX, mouseY, partialTick); // the top-bar buttons
+        super.extractRenderState(g, mouseX, mouseY, partialTick); // the top-bar buttons
 
         if (shortcutsOpen) {
             shortcutPanel.layout(this.font, this.width - TOP_BAR_RIGHT_MARGIN, TOP_BAR_H + 2, mode == Mode.EDITOR);
             // Item icons on the map are drawn around z 150, so anything lower lets them shine
             // through. Same layer as the legend, the other panel floating over the map.
-            g.pose().pushPose();
-            g.pose().translate(0, 0, 400);
+            g.pose().pushMatrix();
+            g.pose().translate(0, 0);
             shortcutPanel.render(g, this.font);
-            g.pose().popPose();
+            g.pose().popMatrix();
         }
 
         // Rendered last, above everything above, with a z-translate — same convention as
         // StageOverviewScreen's context menu. Above the shortcut panel, which can sit under it.
         if (contextMenu != null && contextMenu.isVisible()) {
-            g.pose().pushPose();
-            g.pose().translate(0, 0, 450);
+            g.pose().pushMatrix();
+            g.pose().translate(0, 0);
             contextMenu.render(g, this.font, mouseX, mouseY);
-            g.pose().popPose();
+            g.pose().popMatrix();
         } else {
             renderButtonTooltip(g, mouseX, mouseY);
         }
@@ -427,7 +439,7 @@ public class StageGraphScreen extends Screen {
      * because a greyed-out button does not report hover — and "nothing to undo" is exactly when
      * the tooltip is worth reading.
      */
-    private void renderButtonTooltip(GuiGraphics g, int mouseX, int mouseY) {
+    private void renderButtonTooltip(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         String key = null;
         String text = null;
         if (over(undoButton, mouseX, mouseY)) {
@@ -478,6 +490,10 @@ public class StageGraphScreen extends Screen {
     // underneath. The detail view is a separate screen and takes no part in this routing.
 
     @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        return mouseClicked(event.x(), event.y(), event.button());
+    }
+
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (contextMenu != null && contextMenu.isVisible()) {
             contextMenu.mouseClicked(mouseX, mouseY, button);
@@ -488,7 +504,7 @@ public class StageGraphScreen extends Screen {
         if (legend != null && legend.mouseClicked(mouseX, mouseY, button)) return true;
         if (mode == Mode.EDITOR && button == 1 && tryOpenContextMenu(mouseX, mouseY)) return true;
         if (handleCanvasClick(mouseX, mouseY, button)) return true;
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)), false);
     }
 
     /** Right-click on a node: builds and shows {@link #contextMenu}. Editor mode only. */
@@ -651,15 +667,23 @@ public class StageGraphScreen extends Screen {
     }
 
     @Override
+    public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+        return mouseDragged(event.x(), event.y(), event.button(), dragX, dragY);
+    }
+
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
         // Before the canvas: a scrollbar drag starts inside the sidebar but travels well past
         // its edges, and must not turn into a pan the moment the cursor leaves the strip.
         if (sidebar != null && sidebar.mouseDragged(mouseY)) return true;
         if (canvas.mouseDragged(mouseX, mouseY, button, dragX, dragY)) return true;
-        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+        return super.mouseDragged(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)), dragX, dragY);
     }
 
     @Override
+    public boolean mouseReleased(MouseButtonEvent event) {
+        return mouseReleased(event.x(), event.y(), event.button());
+    }
+
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
         if (sidebar != null) sidebar.mouseReleased();
         boolean handled = canvas.mouseReleased(mouseX, mouseY, button);
@@ -680,7 +704,7 @@ public class StageGraphScreen extends Screen {
             return true;
         }
         if (handled) return true;
-        return super.mouseReleased(mouseX, mouseY, button);
+        return super.mouseReleased(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)));
     }
 
     @Override
@@ -692,12 +716,20 @@ public class StageGraphScreen extends Screen {
     }
 
     @Override
+    public boolean charTyped(CharacterEvent event) {
+        return charTyped((char) event.codepoint(), 0);
+    }
+
     public boolean charTyped(char codePoint, int modifiers) {
         if (sidebar != null && sidebar.charTyped(codePoint)) return true;
-        return super.charTyped(codePoint, modifiers);
+        return super.charTyped(new CharacterEvent(codePoint));
     }
 
     @Override
+    public boolean keyPressed(KeyEvent event) {
+        return keyPressed(event.key(), event.scancode(), event.modifiers());
+    }
+
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         // The sidebar consumes ESC only to close its filter dropdown or to leave the search
         // field; otherwise it falls through to super, whose onClose() closes this screen.
@@ -720,7 +752,7 @@ public class StageGraphScreen extends Screen {
                     Minecraft.getInstance().hasControlDown(), Minecraft.getInstance().hasShiftDown());
             if (action != null && runShortcut(action)) return true;
         }
-        return super.keyPressed(keyCode, scanCode, modifiers);
+        return super.keyPressed(new KeyEvent(keyCode, scanCode, modifiers));
     }
 
     /** @return false when the key means nothing in this view, so it can fall through */

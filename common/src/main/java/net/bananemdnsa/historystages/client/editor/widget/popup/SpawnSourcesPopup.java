@@ -3,7 +3,7 @@ package net.bananemdnsa.historystages.client.editor.widget.popup;
 import net.bananemdnsa.historystages.data.lock.EntitySpawnLockEntry;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
@@ -61,7 +61,7 @@ public class SpawnSourcesPopup {
         this.visible = true;
     }
 
-    public void render(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    public void render(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         if (!visible) return;
 
         int rows = (SOURCE_KEYS.length + COLS - 1) / COLS;
@@ -92,14 +92,14 @@ public class SpawnSourcesPopup {
         g.fill(popupX - 1, popupY - 1, popupX + popupW + 1, popupY + popupH + 1, 0xFF333333);
         g.fill(popupX, popupY, popupX + popupW, popupY + popupH, 0xFF1A1A1A);
 
-        g.drawCenteredString(font,
+        g.centeredText(font,
                 Component.translatable("editor.historystages.spawn_sources.title"),
                 popupX + popupW / 2, popupY + 5, 0xFFFFFFFF);
         int accentW = 40;
         int accentX = popupX + (popupW - accentW) / 2;
         g.fill(accentX, popupY + 15, accentX + accentW, popupY + 16, 0xFFFFCC00);
 
-        g.drawCenteredString(font,
+        g.centeredText(font,
                 Component.translatable("editor.historystages.spawn_sources.hint"),
                 popupX + popupW / 2, popupY + HEADER_H, 0x888888);
 
@@ -131,7 +131,7 @@ public class SpawnSourcesPopup {
             int textColor = blocked ? 0xFFFFFF : 0x999999;
             int dotColor  = blocked ? 0xFFFFCC00 : 0xFF555555;
             g.fill(tx + 4, ty + 6, tx + 7, ty + 9, dotColor);
-            g.drawString(font,
+            g.text(font,
                     Component.translatable("editor.historystages.spawn_sources.source." + src),
                     tx + 10, ty + 3, textColor, false);
         }
@@ -154,7 +154,7 @@ public class SpawnSourcesPopup {
         int lineY = descY + 2;
         for (FormattedCharSequence line : descLines) {
             int lineW = font.width(line);
-            g.drawString(font, line, popupX + (popupW - lineW) / 2, lineY, descColor, false);
+            g.text(font, line, popupX + (popupW - lineW) / 2, lineY, descColor, false);
             lineY += font.lineHeight + 1;
         }
 
@@ -166,7 +166,7 @@ public class SpawnSourcesPopup {
         boolean allHov = mouseX >= allX && mouseX < allX + qBtnW && mouseY >= btnY && mouseY < btnY + btnH;
         g.fill(allX, btnY, allX + qBtnW, btnY + btnH, allHov ? 0x25FFFFFF : 0x10FFFFFF);
         g.fill(allX, btnY + btnH - 1, allX + qBtnW, btnY + btnH, allHov ? 0x80FFFFFF : 0x40FFFFFF);
-        g.drawCenteredString(font,
+        g.centeredText(font,
                 Component.translatable("editor.historystages.lock_actions.btn_all"),
                 allX + qBtnW / 2, btnY + 3, allHov ? 0xFFFFFF : 0xCCCCCC);
 
@@ -174,7 +174,7 @@ public class SpawnSourcesPopup {
         boolean noneHov = mouseX >= noneX && mouseX < noneX + qBtnW && mouseY >= btnY && mouseY < btnY + btnH;
         g.fill(noneX, btnY, noneX + qBtnW, btnY + btnH, noneHov ? 0x25FFFFFF : 0x10FFFFFF);
         g.fill(noneX, btnY + btnH - 1, noneX + qBtnW, btnY + btnH, noneHov ? 0x80FFFFFF : 0x40FFFFFF);
-        g.drawCenteredString(font,
+        g.centeredText(font,
                 Component.translatable("editor.historystages.lock_actions.btn_none"),
                 noneX + qBtnW / 2, btnY + 3, noneHov ? 0xFFFFFF : 0xCCCCCC);
 
@@ -183,7 +183,7 @@ public class SpawnSourcesPopup {
         boolean doneHov = mouseX >= doneX && mouseX < doneX + doneW && mouseY >= btnY && mouseY < btnY + btnH;
         g.fill(doneX, btnY, doneX + doneW, btnY + btnH, doneHov ? 0x50FFCC00 : 0x25FFCC00);
         g.fill(doneX, btnY + btnH - 1, doneX + doneW, btnY + btnH, doneHov ? 0xFFFFCC00 : 0x80FFCC00);
-        g.drawCenteredString(font,
+        g.centeredText(font,
                 Component.translatable("editor.historystages.lock_actions.btn_done"),
                 doneX + doneW / 2, btnY + 3, doneHov ? 0xFFFFFF : 0xEEEEEE);
     }

@@ -20,7 +20,7 @@ import net.bananemdnsa.historystages.compat.reliableremover.ReliableRemoverCompa
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -562,7 +562,7 @@ public class SearchableRecipeList implements PickerOverlay {
     // ========== RENDERING ==========
 
     @Override
-    public void render(GuiGraphics guiGraphics, Font font, int mouseX, int mouseY) {
+    public void render(GuiGraphicsExtractor guiGraphics, Font font, int mouseX, int mouseY) {
         if (!visible)
             return;
 
@@ -597,7 +597,7 @@ public class SearchableRecipeList implements PickerOverlay {
                                         GUESS_MARK);
                             }
                         } else {
-                            gg.renderItem(entry.stack(), sx + 1, sy + 1);
+                            gg.item(entry.stack(), sx + 1, sy + 1);
                         }
                     },
                     i -> filteredItems.get(i).id().equals(selectedItemId),
@@ -612,16 +612,16 @@ public class SearchableRecipeList implements PickerOverlay {
         renderAddButton(guiGraphics, font, mouseX, mouseY);
 
         // Tooltips last and lifted, or the panel below paints over them.
-        guiGraphics.pose().pushPose();
-        guiGraphics.pose().translate(0, 0, 300);
+        guiGraphics.pose().pushMatrix();
+        guiGraphics.pose().translate(0, 0);
         if (!filterUiHovered) {
             renderMasterTooltip(guiGraphics, font, gridX, gridY, rows, mouseX, mouseY);
             renderCardTooltip(guiGraphics, font, mouseX, mouseY);
         }
-        guiGraphics.pose().popPose();
+        guiGraphics.pose().popMatrix();
     }
 
-    private void renderTabs(GuiGraphics guiGraphics, Font font, int mouseX, int mouseY) {
+    private void renderTabs(GuiGraphicsExtractor guiGraphics, Font font, int mouseX, int mouseY) {
         int tabY = panelY + PADDING;
         List<String> labels = tabLabels();
         int n = labels.size();
@@ -652,7 +652,7 @@ public class SearchableRecipeList implements PickerOverlay {
             int bg = active ? 0x40FFCC00 : (hovered ? 0x25FFFFFF : 0x15FFFFFF);
             guiGraphics.fill(tabXs[i], tabY, tabXs[i] + tabWs[i], tabY + TAB_HEIGHT, bg);
             int textColor = active ? 0xFFFFFF : (hovered ? 0xDDDDDD : 0x999999);
-            guiGraphics.drawString(font, labels.get(i), tabXs[i] + TAB_PAD, tabY + 3, textColor, false);
+            guiGraphics.text(font, labels.get(i), tabXs[i] + TAB_PAD, tabY + 3, textColor, false);
         }
 
         guiGraphics.fill(Math.round(tabIndicatorX.value()), tabY + TAB_HEIGHT - 2,
@@ -661,7 +661,7 @@ public class SearchableRecipeList implements PickerOverlay {
                 tabY + TAB_HEIGHT + 1, 0xFF555555);
     }
 
-    private void renderSelectAllRow(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    private void renderSelectAllRow(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         int rowX = panelX + PADDING;
         int rowW = panelW - PADDING * 2;
         int btnW = (rowW - SELECTALL_BTN_GAP) / 2;
@@ -685,7 +685,7 @@ public class SearchableRecipeList implements PickerOverlay {
         return mouseX >= x && mouseX < x + w && mouseY >= y && mouseY < y + SELECTALL_BTN_H;
     }
 
-    private void drawSmallButton(GuiGraphics g, Font font, int x, int y, int w,
+    private void drawSmallButton(GuiGraphicsExtractor g, Font font, int x, int y, int w,
                                  String label, boolean accentYellow, boolean enabled, boolean hovered) {
         int border;
         int bg;
@@ -703,10 +703,10 @@ public class SearchableRecipeList implements PickerOverlay {
         }
         g.fill(x, y, x + w, y + SELECTALL_BTN_H, border);
         g.fill(x + 1, y + 1, x + w - 1, y + SELECTALL_BTN_H - 1, bg);
-        g.drawString(font, label, x + (w - font.width(label)) / 2, y + (SELECTALL_BTN_H - 8) / 2, text, false);
+        g.text(font, label, x + (w - font.width(label)) / 2, y + (SELECTALL_BTN_H - 8) / 2, text, false);
     }
 
-    private void renderDetail(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    private void renderDetail(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         int x = detailX();
         int y = contentTopY();
         int w = detailWidth();
@@ -722,19 +722,19 @@ public class SearchableRecipeList implements PickerOverlay {
         if (currentTab != TAB_SELECTED) {
             ItemStack header = detailRecipes.isEmpty() ? ItemStack.EMPTY : detailRecipes.get(0).result();
             if (!header.isEmpty()) {
-                g.renderItem(header, x, headerY);
-                g.drawString(font, trimToWidth(font, header.getHoverName().getString(), w - 22),
+                g.item(header, x, headerY);
+                g.text(font, trimToWidth(font, header.getHoverName().getString(), w - 22),
                         x + 20, headerY + 5, 0xFFFFFFFF, false);
             } else if (selectedItemId != null) {
                 // A fluid entry: its recipes have no item result to take the header from.
                 FluidIcon.draw(g, selectedItemId, x, headerY, 16);
-                g.drawString(font, trimToWidth(font, FluidIcon.nameOf(selectedItemId), w - 22),
+                g.text(font, trimToWidth(font, FluidIcon.nameOf(selectedItemId), w - 22),
                         x + 20, headerY + 5, 0xFFFFFFFF, false);
             }
         } else {
             String label = Component.translatable("editor.historystages.search.tab.selected",
                     selected.size()).getString();
-            g.drawString(font, label, x, headerY + 5, 0xFFFFFFFF, false);
+            g.text(font, label, x, headerY + 5, 0xFFFFFFFF, false);
         }
 
         // Says why there is less here than on a global stage, rather than leaving the author to
@@ -742,7 +742,7 @@ public class SearchableRecipeList implements PickerOverlay {
         if (individualScope) {
             int hintY = headerY + DETAIL_HEADER_H;
             for (FormattedText line : scopeHintLines()) {
-                g.drawString(font, line.getString(), x, hintY, 0xFF888888, false);
+                g.text(font, line.getString(), x, hintY, 0xFF888888, false);
                 hintY += HINT_LINE_H;
             }
         }
@@ -769,7 +769,7 @@ public class SearchableRecipeList implements PickerOverlay {
         if (hiddenByFilter > 0) {
             String note = Component.translatable(
                     "editor.historystages.recipes.hidden_by_filter", hiddenByFilter).getString();
-            g.drawString(font, trimToWidth(font, note, w), x, listY + listH + 1, 0xFF777777, false);
+            g.text(font, trimToWidth(font, note, w), x, listY + listH + 1, 0xFF777777, false);
         }
 
         int maxScroll = CardStackGeometry.maxScroll(detailHeights, listH);
@@ -782,7 +782,7 @@ public class SearchableRecipeList implements PickerOverlay {
      * The detail column's scrollbar. Its own, not {@link ItemSlotGrid}'s: that one measures in
      * rows of equal height, and these cards are not.
      */
-    private void renderDetailScrollbar(GuiGraphics g, int x, int listY, int listH, int maxScroll) {
+    private void renderDetailScrollbar(GuiGraphicsExtractor g, int x, int listY, int listH, int maxScroll) {
         int total = CardStackGeometry.totalHeight(detailHeights);
         g.fill(x, listY, x + DETAIL_SCROLLBAR_W, listY + listH, 0xFF252525);
         int thumbH = Math.max(10, (int) ((float) listH / total * listH));
@@ -790,7 +790,7 @@ public class SearchableRecipeList implements PickerOverlay {
         g.fill(x, thumbY, x + DETAIL_SCROLLBAR_W, thumbY + thumbH, 0xFF888888);
     }
 
-    private void renderAddButton(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    private void renderAddButton(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         int btnX = panelX + (panelW - ADD_BTN_W) / 2;
         int btnY = panelY + panelH - PADDING - ADD_BTN_H;
         boolean canAdd = !selected.isEmpty();
@@ -807,12 +807,12 @@ public class SearchableRecipeList implements PickerOverlay {
             g.fill(btnX, btnY, btnX + ADD_BTN_W, btnY + ADD_BTN_H, 0x20FFFFFF);
             g.fill(btnX, btnY, btnX + ADD_BTN_W, btnY + 1, 0x10FFFFFF);
             String label = Component.translatable("editor.historystages.search.add.empty").getString();
-            g.drawString(font, label, btnX + (ADD_BTN_W - font.width(label)) / 2,
+            g.text(font, label, btnX + (ADD_BTN_W - font.width(label)) / 2,
                     btnY + (ADD_BTN_H - 8) / 2, 0xFF666666, false);
         }
     }
 
-    private void renderMasterTooltip(GuiGraphics g, Font font, int gridX, int gridY, int rows,
+    private void renderMasterTooltip(GuiGraphicsExtractor g, Font font, int gridX, int gridY, int rows,
                                      int mouseX, int mouseY) {
         if (currentTab == TAB_SELECTED) return;
         int index = GridGeometry.indexAt(gridX, gridY, ItemSlotGrid.SLOT_SIZE, MASTER_COLS, rows,
@@ -836,7 +836,7 @@ public class SearchableRecipeList implements PickerOverlay {
      * card draws only the namespace, so the full id — the thing that actually gets locked —
      * belongs here, where someone debugging a lock can read it.
      */
-    private void renderCardTooltip(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    private void renderCardTooltip(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         int i = cardIndexAt(mouseX, mouseY);
         if (i < 0) return;
         RecipeInfo info = detailRecipes.get(i);
@@ -874,12 +874,12 @@ public class SearchableRecipeList implements PickerOverlay {
     /**
      * Every tooltip in this panel, in the editor's own look.
      *
-     * <p>The card ones used to come from {@code GuiGraphics.renderTooltip}, which brings vanilla's
+     * <p>The card ones used to come from {@code GuiGraphicsExtractor.renderTooltip}, which brings vanilla's
      * border and gradient — beside the panel's own chrome that reads as a second application
      * sitting on top of the first. No hover delay here on purpose: the grid never had one, and
      * adding it in one picker but not its twin would only move the inconsistency.
      */
-    private void drawTooltip(GuiGraphics g, Font font, String text, int mouseX, int mouseY) {
+    private void drawTooltip(GuiGraphicsExtractor g, Font font, String text, int mouseX, int mouseY) {
         Minecraft mc = Minecraft.getInstance();
         EditorTooltip.draw(g, font, text, mouseX, mouseY,
                 mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight());
@@ -900,11 +900,11 @@ public class SearchableRecipeList implements PickerOverlay {
         return font.plainSubstrByWidth(text, Math.max(0, width - font.width("..."))) + "...";
     }
 
-    private void drawWrapped(GuiGraphics g, Font font, String text, int x, int y, int w, int color) {
+    private void drawWrapped(GuiGraphicsExtractor g, Font font, String text, int x, int y, int w, int color) {
         int lineY = y;
         for (FormattedText line : font.getSplitter().splitLines(
                 Component.literal(text), w, net.minecraft.network.chat.Style.EMPTY)) {
-            g.drawString(font, line.getString(), x, lineY, color, false);
+            g.text(font, line.getString(), x, lineY, color, false);
             lineY += HINT_LINE_H;
         }
     }

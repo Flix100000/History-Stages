@@ -15,7 +15,7 @@ import net.bananemdnsa.historystages.client.editor.widget.dropdown.DropdownChrom
 import net.bananemdnsa.historystages.api.editor.TabInputContext;
 import net.bananemdnsa.historystages.api.editor.TabRenderContext;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -55,7 +55,7 @@ public final class EditorRowList {
     /** Draws into the box a row reserved at its left. */
     @FunctionalInterface
     public interface RowPainter {
-        void paint(GuiGraphics g, int x, int y, int width, int height);
+        void paint(GuiGraphicsExtractor g, int x, int y, int width, int height);
     }
 
     /** Describes one row. Called once per visible row, per frame. */
@@ -409,7 +409,7 @@ public final class EditorRowList {
 
     private void drawRow(TabRenderContext ctx, Row row, int index, int y, boolean hovered,
                          long slideElapsed) {
-        GuiGraphics g = ctx.graphics();
+        GuiGraphicsExtractor g = ctx.graphics();
         Font font = ctx.font();
 
         float slide = 1.0f;
@@ -511,7 +511,7 @@ public final class EditorRowList {
                         slotHovered ? 0xFF3D3520 : 0xFF2A2A2A);
                 // Centred: the same as the old 3px inset for a button sized to its label.
                 int labelX = slot.caret() ? slotX + 3 : slotX + (slotW - font.width(slot.text())) / 2;
-                g.drawString(font, slot.text(), labelX, textY,
+                g.text(font, slot.text(), labelX, textY,
                         slotHovered ? 0xFFCC00 : 0xCCCCCC, false);
                 if (slot.caret()) {
                     float flip = caretAnim.computeIfAbsent(index, k -> new Anim())
@@ -535,17 +535,17 @@ public final class EditorRowList {
         // Cut rather than marqueed: two lines chasing each other under one cursor is noise, and
         // the subtitle is a summary — losing its tail costs less than the movement.
         if (twoLine && available > 0) {
-            g.drawString(font, font.plainSubstrByWidth(row.subtitle, available),
+            g.text(font, font.plainSubstrByWidth(row.subtitle, available),
                     textX, cardY + 16, row.subtitleColour, false);
         }
     }
 
-    private void drawText(GuiGraphics g, Font font, String text, int x, int cardY, int textY,
+    private void drawText(GuiGraphicsExtractor g, Font font, String text, int x, int cardY, int textY,
                           int available, int index, boolean hovered) {
         int colour = hovered ? 0xFFFFFF : 0xBBBBBB;
         int textWidth = font.width(text);
         if (textWidth <= available) {
-            g.drawString(font, text, x, textY, colour, false);
+            g.text(font, text, x, textY, colour, false);
             return;
         }
         if (hovered && index == hoveredRow) {
@@ -557,11 +557,11 @@ public final class EditorRowList {
                 float position = progress % cycle;
                 int offset = position <= span ? (int) position : (int) (cycle - position);
                 g.enableScissor(x, cardY, x + available, cardY + rowHeight);
-                g.drawString(font, text, x - offset, textY, colour, false);
+                g.text(font, text, x - offset, textY, colour, false);
                 g.disableScissor();
                 return;
             }
         }
-        g.drawString(font, font.plainSubstrByWidth(text, available - 8) + "...", x, textY, colour, false);
+        g.text(font, font.plainSubstrByWidth(text, available - 8) + "...", x, textY, colour, false);
     }
 }

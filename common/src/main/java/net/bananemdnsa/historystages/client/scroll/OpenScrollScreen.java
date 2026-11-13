@@ -1,5 +1,8 @@
 package net.bananemdnsa.historystages.client.scroll;
 
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonInfo;
+import net.minecraft.client.input.MouseButtonEvent;
 import dev.architectury.networking.NetworkManager;
 import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.HistoryStages;
@@ -34,7 +37,7 @@ import net.bananemdnsa.historystages.screen.OpenScrollPagination;
 import net.bananemdnsa.historystages.screen.OpenScrollTabs;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
@@ -79,7 +82,7 @@ public class OpenScrollScreen extends Screen {
     /** Laid over a locked item so its shape survives but its identity does not. */
     private static final int SILHOUETTE = 0xB0241A0F;
     /**
-     * Depth for anything that has to cover an item. {@code GuiGraphics.renderItem} pushes the
+     * Depth for anything that has to cover an item. {@code GuiGraphicsExtractor.renderItem} pushes the
      * icon to +150 and a 3D block model spans a little further still, so draw order alone never
      * puts a wash on top — it has to be lifted past the icon explicitly.
      */
@@ -695,12 +698,20 @@ public class OpenScrollScreen extends Screen {
     // --- rendering ---
 
     @Override
-    public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+    public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        renderBackground(graphics, mouseX, mouseY, partialTick);
+    }
+
+    public void renderBackground(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
         // Own background, drawn in render() — avoids 1.21's menu blur shader, as the config screen does.
     }
 
     @Override
-    public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        render(graphics, mouseX, mouseY, partialTick);
+    }
+
+    public void render(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
         rebuildIfStale();
         hoverTooltip = List.of();
         // Dimmed rather than blurred: the world keeps running behind a scroll you are only reading.
@@ -721,13 +732,13 @@ public class OpenScrollScreen extends Screen {
             renderEmptyNotice(g);
         }
         renderFooter(g);
-        super.render(g, mouseX, mouseY, partialTick);
+        super.extractRenderState(g, mouseX, mouseY, partialTick);
         if (!hoverTooltip.isEmpty()) {
-            g.renderComponentTooltip(this.font, hoverTooltip, mouseX, mouseY);
+            g.setComponentTooltipForNextFrame(this.font, hoverTooltip, mouseX, mouseY);
         }
     }
 
-    private void renderTabs(GuiGraphics g, int mouseX, int mouseY) {
+    private void renderTabs(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         int x = leftPos + OpenScrollGeometry.CONTENT_X;
         boolean icons = tabStyle == OpenScrollTabStyle.ICONS;
         int y = topPos + OpenScrollGeometry.tabsTop(icons);
@@ -747,7 +758,7 @@ public class OpenScrollScreen extends Screen {
                 }
                 continue;
             }
-            g.drawString(this.font, tab.label(), x + tab.x(), y, ink, false);
+            g.text(this.font, tab.label(), x + tab.x(), y, ink, false);
             // The underline is what marks the active chapter — no coloured box, no second heading.
             if (active) {
                 g.fill(x + tab.x(), y + OpenScrollGeometry.TABS_HEIGHT,
@@ -760,7 +771,7 @@ public class OpenScrollScreen extends Screen {
     }
 
     /** Same mark as under an active word, sized to the icon. {@code top} is the panel's top edge. */
-    public static void drawIconUnderline(GuiGraphics g, int iconX, int top, int rgb) {
+    public static void drawIconUnderline(GuiGraphicsExtractor g, int iconX, int top, int rgb) {
         int y = top + OpenScrollGeometry.TAB_ICON_UNDERLINE_Y;
         g.fill(iconX, y, iconX + OpenScrollGeometry.TAB_ICON_SIZE, y + 1, 0xFF000000 | rgb);
     }
@@ -778,7 +789,7 @@ public class OpenScrollScreen extends Screen {
      * The icons ship as white silhouettes (the artist's are black; recoloured on import) so the
      * shader colour turns them into whatever ink the pack configured — black would stay black. Shared with the editor preview, which must not drift from the real thing.
      */
-    public static void drawChapterIcon(GuiGraphics g, OpenScrollChapter chapter, int x, int y, int rgb) {
+    public static void drawChapterIcon(GuiGraphicsExtractor g, OpenScrollChapter chapter, int x, int y, int rgb) {
         int size = OpenScrollGeometry.TAB_ICON_SIZE;
         g.setColor(((rgb >> 16) & 0xFF) / 255f, ((rgb >> 8) & 0xFF) / 255f, (rgb & 0xFF) / 255f, 1f);
         // The texture is 8x8; blitting it into the larger square scales it with nearest filtering.
@@ -792,16 +803,16 @@ public class OpenScrollScreen extends Screen {
     }
 
     /** Only the chevron and the writing rule — the text and caret belong to the {@link EditBox}. */
-    private void renderSearchLine(GuiGraphics g) {
+    private void renderSearchLine(GuiGraphicsExtractor g) {
         int x = leftPos + OpenScrollGeometry.CONTENT_X;
         int y = topPos + OpenScrollGeometry.SEARCH_Y;
         boolean focused = search != null && search.isFocused();
-        g.drawString(this.font, "»", x, y, focused ? inkHeading : inkFaint, false);
+        g.text(this.font, "»", x, y, focused ? inkHeading : inkFaint, false);
         g.fill(x + 9, y + 9, x + OpenScrollGeometry.CONTENT_WIDTH, y + 10,
                 withAlpha(inkFaint, focused ? 0xB0 : 0x73));
     }
 
-    private void renderFooter(GuiGraphics g) {
+    private void renderFooter(GuiGraphicsExtractor g) {
         if (!footerShown) return;
         int x = leftPos + OpenScrollGeometry.CONTENT_X;
         g.fill(x, topPos + OpenScrollGeometry.RULE_BOTTOM_Y,
@@ -811,14 +822,14 @@ public class OpenScrollScreen extends Screen {
         // The arrows are widgets now, so the counter is only a counter — no ink chevrons beside it.
         Component line = Component.translatable("gui.historystages.open_scroll.sheet",
                 sheet + 1, sheetCount);
-        g.drawString(this.font, line,
+        g.text(this.font, line,
                 x + (OpenScrollGeometry.CONTENT_WIDTH - this.font.width(line)) / 2,
                 topPos + OpenScrollGeometry.FOOT_Y, inkFaint, false);
     }
 
     // --- the overview page ---
 
-    private void renderOverview(GuiGraphics g) {
+    private void renderOverview(GuiGraphicsExtractor g) {
         int x = leftPos + OpenScrollGeometry.CONTENT_X;
         int width = OpenScrollGeometry.CONTENT_WIDTH;
         int y = topPos + OpenScrollGeometry.RULE_TOP_Y + 4;
@@ -841,28 +852,28 @@ public class OpenScrollScreen extends Screen {
     }
 
     /** renderItem always draws 16x16, and the page wants 32x32, so the pose does the doubling. */
-    private int drawOverviewIcon(GuiGraphics g, int x, int y, int width) {
+    private int drawOverviewIcon(GuiGraphicsExtractor g, int x, int y, int width) {
         ItemStack icon = ClientToastHandler.resolveIcon(document.iconId());
-        g.pose().pushPose();
+        g.pose().pushMatrix();
         g.pose().translate((float) (x + (width - OVERVIEW_ICON_SIZE) / 2), (float) y, 0.0f);
-        g.pose().scale(2.0f, 2.0f, 1.0f);
-        g.renderItem(icon, 0, 0);
-        g.pose().popPose();
+        g.pose().scale(2.0f, 2.0f);
+        g.item(icon, 0, 0);
+        g.pose().popMatrix();
         return y + OVERVIEW_ICON_SIZE + 2;
     }
 
-    private int drawOverviewTitle(GuiGraphics g, int x, int y, int width) {
+    private int drawOverviewTitle(GuiGraphicsExtractor g, int x, int y, int width) {
         Component title = formatted(document.displayName());
-        g.drawString(this.font, title, x + (width - this.font.width(title)) / 2, y, inkHeading, false);
+        g.text(this.font, title, x + (width - this.font.width(title)) / 2, y, inkHeading, false);
         return y + LINE_ADVANCE + 1;
     }
 
-    private int drawOverviewDescription(GuiGraphics g, int x, int y) {
+    private int drawOverviewDescription(GuiGraphicsExtractor g, int x, int y) {
         int first = overviewStarts.get(sheet);
         int last = sheet + 1 < overviewStarts.size()
                 ? overviewStarts.get(sheet + 1) : descriptionLines.size();
         for (int i = first; i < last; i++) {
-            g.drawString(this.font, descriptionLines.get(i), x, y, inkBody, false);
+            g.text(this.font, descriptionLines.get(i), x, y, inkBody, false);
             y += LINE_ADVANCE;
         }
         return y + 1;
@@ -873,28 +884,28 @@ public class OpenScrollScreen extends Screen {
      * text block on any language with longer words, and a tally that overflows the page is worse
      * than a tally that takes three rows.
      */
-    private int drawOverviewCounts(GuiGraphics g, int x, int y, int width) {
+    private int drawOverviewCounts(GuiGraphicsExtractor g, int x, int y, int width) {
         int[] values = {document.itemCount(), document.creatureCount(), document.worldCount()};
         String[] keys = {"items", "creatures", "world"};
         for (int i = 0; i < keys.length; i++) {
             Component line = Component.translatable(
                     "gui.historystages.open_scroll.counts." + keys[i], values[i]);
-            g.drawString(this.font, line, x + (width - this.font.width(line)) / 2, y, inkFaint, false);
+            g.text(this.font, line, x + (width - this.font.width(line)) / 2, y, inkFaint, false);
             y += LINE_ADVANCE;
         }
         return y + 1;
     }
 
-    private void drawCentredWrapped(GuiGraphics g, Component text, int x, int y, int width) {
+    private void drawCentredWrapped(GuiGraphicsExtractor g, Component text, int x, int y, int width) {
         for (FormattedCharSequence line : this.font.split(text, width)) {
-            g.drawString(this.font, line, x + (width - this.font.width(line)) / 2, y, inkBody, false);
+            g.text(this.font, line, x + (width - this.font.width(line)) / 2, y, inkBody, false);
             y += LINE_ADVANCE;
         }
     }
 
     // --- the icon grid ---
 
-    private void renderGrid(GuiGraphics g, int mouseX, int mouseY) {
+    private void renderGrid(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         int top = topPos + OpenScrollGeometry.contentY(searchShown());
         int first = sheet * cellsPerSheet;
         int last = Math.min(cells.size(), first + cellsPerSheet);
@@ -920,7 +931,7 @@ public class OpenScrollScreen extends Screen {
      * grey stone slot on parchment is the same borrowed-widget mistake the search box used to be.
      * Its job is grouping — without it the icons float and nothing says where one entry ends.
      */
-    private void drawSlot(GuiGraphics g, int x, int y) {
+    private void drawSlot(GuiGraphicsExtractor g, int x, int y) {
         int size = OpenScrollGeometry.CELL;
         g.fill(x, y, x + size, y + size, withAlpha(inkFaint, 0x14));
         g.fill(x, y, x + size, y + 1, withAlpha(inkFaint, 0x40));
@@ -929,7 +940,7 @@ public class OpenScrollScreen extends Screen {
         g.fill(x + size - 1, y, x + size, y + size, withAlpha(inkFaint, 0x40));
     }
 
-    private void renderCell(GuiGraphics g, IconCell cell, int x, int y) {
+    private void renderCell(GuiGraphicsExtractor g, IconCell cell, int x, int y) {
         drawSlot(g, x, y);
         // A stage that hides even the name gets a hole in the parchment rather than a shape.
         if (cell.hidden() && hidesName) {
@@ -940,17 +951,17 @@ public class OpenScrollScreen extends Screen {
             renderCreature(g, cell, x, y);
             return;
         }
-        g.renderItem(cell.stack(), x + 1, y + 1);
+        g.item(cell.stack(), x + 1, y + 1);
         if (cell.hidden()) {
             // Inset by one so the wash darkens the item without swallowing the box around it.
             // Lifted above the item: renderItem draws at +150 in the GUI matrix and the depth
             // test is on here, so a wash at the ambient depth loses to the icon it is meant to
             // hide no matter how late it is drawn.
-            g.pose().pushPose();
-            g.pose().translate(0.0f, 0.0f, ITEM_OVERLAY_Z);
+            g.pose().pushMatrix();
+            g.pose().translate(0.0f, 0.0f);
             g.fill(x + 1, y + 1, x + OpenScrollGeometry.CELL - 1,
                     y + OpenScrollGeometry.CELL - 1, SILHOUETTE);
-            g.pose().popPose();
+            g.pose().popMatrix();
         }
     }
 
@@ -959,7 +970,7 @@ public class OpenScrollScreen extends Screen {
      * washed over the way a flat item icon can, and a recognisable silhouette would give the mob
      * away anyway.
      */
-    private void renderCreature(GuiGraphics g, IconCell cell, int x, int y) {
+    private void renderCreature(GuiGraphicsExtractor g, IconCell cell, int x, int y) {
         if (cell.hidden()) {
             g.fill(x + 1, y + 1, x + OpenScrollGeometry.CELL - 1, y + OpenScrollGeometry.CELL - 1, HOLE);
             return;
@@ -973,7 +984,7 @@ public class OpenScrollScreen extends Screen {
 
     // --- the text list ---
 
-    private void renderRows(GuiGraphics g, int mouseX, int mouseY) {
+    private void renderRows(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         int x = leftPos + OpenScrollGeometry.CONTENT_X;
         int y = topPos + OpenScrollGeometry.contentY(searchShown());
         int first = rowStarts.get(sheet);
@@ -992,7 +1003,7 @@ public class OpenScrollScreen extends Screen {
                 g.fill(x, y - 1, x + OpenScrollGeometry.CONTENT_WIDTH, y + height - 2,
                         withAlpha(inkFaint, 0x12));
             }
-            g.drawString(this.font, row.text(), row.heading() ? x : x + 2, y,
+            g.text(this.font, row.text(), row.heading() ? x : x + 2, y,
                     row.heading() ? inkFaint : inkBody, false);
             if (!row.heading() && !row.tooltip().isEmpty()
                     && mouseX >= x && mouseX < x + OpenScrollGeometry.CONTENT_WIDTH
@@ -1006,9 +1017,9 @@ public class OpenScrollScreen extends Screen {
         }
     }
 
-    private void renderEmptyNotice(GuiGraphics g) {
+    private void renderEmptyNotice(GuiGraphicsExtractor g) {
         if (filter.isEmpty() || !cells.isEmpty() || !rows.isEmpty()) return;
-        g.drawString(this.font, Component.translatable("gui.historystages.open_scroll.no_results"),
+        g.text(this.font, Component.translatable("gui.historystages.open_scroll.no_results"),
                 leftPos + OpenScrollGeometry.CONTENT_X,
                 topPos + OpenScrollGeometry.contentY(searchShown()), inkFaint, false);
     }
@@ -1042,6 +1053,10 @@ public class OpenScrollScreen extends Screen {
     // --- input ---
 
     @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        return mouseClicked(event.x(), event.y(), event.button());
+    }
+
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         int px = leftPos + OpenScrollGeometry.CONTENT_X;
         boolean icons = tabStyle == OpenScrollTabStyle.ICONS;
@@ -1070,7 +1085,7 @@ public class OpenScrollScreen extends Screen {
 
         // Everything else, the search box included, is a widget — let Screen route the click so
         // focus, selection and double-click-to-select-a-word all behave the way they do elsewhere.
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)), false);
     }
 
     private boolean overSearch(double mouseX, double mouseY) {
@@ -1079,14 +1094,18 @@ public class OpenScrollScreen extends Screen {
     }
 
     @Override
+    public boolean keyPressed(KeyEvent event) {
+        return keyPressed(event.key(), event.scancode(), event.modifiers());
+    }
+
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         // Escape closes the document even while the search line has focus, which is what every
         // other screen in the mod does and what a player expects from a book.
-        if (keyCode == GLFW.GLFW_KEY_ESCAPE) return super.keyPressed(keyCode, scanCode, modifiers);
+        if (keyCode == GLFW.GLFW_KEY_ESCAPE) return super.keyPressed(new KeyEvent(keyCode, scanCode, modifiers));
         // While the box has focus the arrow keys move the caret. Turning sheets under a typing
         // reader would be the same mistake as a text field that scrolls the page.
         if (search != null && search.isFocused()) {
-            return super.keyPressed(keyCode, scanCode, modifiers);
+            return super.keyPressed(new KeyEvent(keyCode, scanCode, modifiers));
         }
         if (keyCode == GLFW.GLFW_KEY_LEFT) {
             turnTo(sheet - 1);
@@ -1096,7 +1115,7 @@ public class OpenScrollScreen extends Screen {
             turnTo(sheet + 1);
             return true;
         }
-        return super.keyPressed(keyCode, scanCode, modifiers);
+        return super.keyPressed(new KeyEvent(keyCode, scanCode, modifiers));
     }
 
     private void setFilter(String text) {
@@ -1137,7 +1156,11 @@ public class OpenScrollScreen extends Screen {
         }
 
         @Override
-        public void renderWidget(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+        protected void extractWidgetRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+            renderWidget(graphics, mouseX, mouseY, partialTick);
+        }
+
+        public void renderWidget(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
             if (!this.isVisible()) return;
             var font = OpenScrollScreen.this.font;
             String value = getValue();
@@ -1145,7 +1168,7 @@ public class OpenScrollScreen extends Screen {
             int y = getY() + (getHeight() - 8) / 2;
 
             if (value.isEmpty() && !isFocused()) {
-                g.drawString(font, hint, x, y, inkFaint, false);
+                g.text(font, hint, x, y, inkFaint, false);
                 return;
             }
 
@@ -1168,7 +1191,7 @@ public class OpenScrollScreen extends Screen {
                 }
             }
 
-            g.drawString(font, shown, x, y, inkBody, false);
+            g.text(font, shown, x, y, inkBody, false);
 
             if (isFocused() && (System.currentTimeMillis() / 500) % 2 == 0) {
                 int cx = x + font.width(value.substring(start, cursor));

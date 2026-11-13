@@ -1,5 +1,7 @@
 package net.bananemdnsa.historystages.client.editor;
 
+import net.minecraft.client.input.MouseButtonInfo;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.bananemdnsa.historystages.api.editor.TabInputContext;
 import net.bananemdnsa.historystages.api.editor.TabRenderContext;
 import net.bananemdnsa.historystages.api.editor.widget.EditorRowList;
@@ -12,7 +14,7 @@ import net.bananemdnsa.historystages.data.graph.GraphStageData;
 import net.bananemdnsa.historystages.network.PacketHandler;
 import net.bananemdnsa.historystages.network.serverbound.DeleteStylePresetPacket;
 import net.bananemdnsa.historystages.network.serverbound.SaveStylePresetPacket;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
@@ -57,14 +59,22 @@ public class StylePresetsScreen extends Screen {
     // --- rendering ---
 
     @Override
-    public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+    public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        renderBackground(graphics, mouseX, mouseY, partialTick);
+    }
+
+    public void renderBackground(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
         // Drawn in render(); leaving this empty keeps 1.21's blur out of the editor.
     }
 
     @Override
-    public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        render(graphics, mouseX, mouseY, partialTick);
+    }
+
+    public void render(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
         g.fill(0, 0, this.width, this.height, 0xE0101010);
-        g.drawCenteredString(this.font, this.title, this.width / 2, 6, 0xFFFFFF);
+        g.centeredText(this.font, this.title, this.width / 2, 6, 0xFFFFFF);
         g.fill(MARGIN, 19, this.width - MARGIN, 20, 0x40FFFFFF);
 
         presets = GraphStageData.get().presetsByName();
@@ -80,7 +90,7 @@ public class StylePresetsScreen extends Screen {
             int y = LIST_TOP + 20;
             for (var line : this.font.split(Component.translatable("editor.historystages.graph.preset.manage.empty"),
                     Math.min(360, this.width - MARGIN * 4))) {
-                g.drawCenteredString(this.font, line, this.width / 2, y, GREY_TEXT);
+                g.centeredText(this.font, line, this.width / 2, y, GREY_TEXT);
                 y += 11;
             }
         } else {
@@ -93,7 +103,7 @@ public class StylePresetsScreen extends Screen {
         }
         g.fill(MARGIN, listBottom + 1, this.width - MARGIN, listBottom + 2, 0xFF555555);
 
-        super.render(g, mouseX, mouseY, partialTick);
+        super.extractRenderState(g, mouseX, mouseY, partialTick);
     }
 
     private void describe(EditorRowList.Row row, Map.Entry<String, GraphStageData.Preset> entry) {
@@ -179,8 +189,12 @@ public class StylePresetsScreen extends Screen {
     }
 
     @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        return mouseClicked(event.x(), event.y(), event.button());
+    }
+
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (super.mouseClicked(mouseX, mouseY, button)) return true;
+        if (super.mouseClicked(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)), false)) return true;
         if (button != 0) return false;
         TabInputContext ctx = input(mouseX, mouseY);
         if (rows.mouseClicked(ctx)) return true;

@@ -3,7 +3,7 @@ package net.bananemdnsa.historystages.client.editor.graph;
 import net.bananemdnsa.historystages.client.editor.widget.MarqueeText;
 import net.bananemdnsa.historystages.client.editor.widget.Scrollbar;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -91,7 +91,7 @@ final class GraphUnplacedTray {
     }
 
     /** {@code dragging} is the stage currently being pulled out of the tray, drawn at the cursor instead. */
-    void render(GuiGraphics g, Font font, int mouseX, int mouseY, StageGraphModel.Node dragging) {
+    void render(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY, StageGraphModel.Node dragging) {
         if (w <= 0 || h <= 0) return;
         g.fill(x, y, x + w, y + h, BG);
         g.fill(x, y, x + w, y + 1, ACCENT);
@@ -100,9 +100,9 @@ final class GraphUnplacedTray {
         String count = String.valueOf(rows.size());
         int textY = y + 4;
         int countX = x + w - Scrollbar.WIDTH - 2 - font.width(count);
-        g.drawString(font, count, countX, textY, COUNT_TEXT, false);
+        g.text(font, count, countX, textY, COUNT_TEXT, false);
         String title = chevron + Component.translatable("editor.historystages.graph.unplaced").getString();
-        g.drawString(font, MarqueeText.truncate(font, title, countX - 6 - (x + ROW_LEFT_PAD)),
+        g.text(font, MarqueeText.truncate(font, title, countX - 6 - (x + ROW_LEFT_PAD)),
                 x + ROW_LEFT_PAD, textY, HEADER_TEXT, false);
 
         if (!expanded || rows.isEmpty()) return;
@@ -129,10 +129,10 @@ final class GraphUnplacedTray {
             int textRight = x + w - Scrollbar.WIDTH - 2;
             if (node.individual()) {
                 int tagX = textRight - font.width(tag);
-                g.drawString(font, tag, tagX, rowTop + 4, TAG_TEXT, false);
+                g.text(font, tag, tagX, rowTop + 4, TAG_TEXT, false);
                 textRight = tagX - 4;
             }
-            g.drawString(font, MarqueeText.truncate(font, label(node), Math.max(0, textRight - textLeft)),
+            g.text(font, MarqueeText.truncate(font, label(node), Math.max(0, textRight - textLeft)),
                     textLeft, rowTop + 4, hovered ? ACCENT : ROW_TEXT, false);
         }
         g.disableScissor();
@@ -140,7 +140,7 @@ final class GraphUnplacedTray {
         scrollbar.render(g, x + w - Scrollbar.WIDTH - 1, top, bottom, scroll, maxScroll, mouseX, mouseY);
     }
 
-    private void drawIcon(GuiGraphics g, StageGraphModel.Node node, int left, int top) {
+    private void drawIcon(GuiGraphicsExtractor g, StageGraphModel.Node node, int left, int top) {
         if (node.icon() == null || node.icon().isEmpty()) return;
         ItemStack stack = icons.computeIfAbsent(node.icon(), key -> {
             Identifier rl = Identifier.tryParse(key);
@@ -149,11 +149,11 @@ final class GraphUnplacedTray {
             return item == null || item == Items.AIR ? ItemStack.EMPTY : new ItemStack(item);
         });
         if (stack.isEmpty()) return;
-        g.pose().pushPose();
-        g.pose().translate(left, top, 0);
-        g.pose().scale(ICON_SIZE / 16f, ICON_SIZE / 16f, 1f);
-        g.renderItem(stack, 0, 0);
-        g.pose().popPose();
+        g.pose().pushMatrix();
+        g.pose().translate(left, top);
+        g.pose().scale(ICON_SIZE / 16f, ICON_SIZE / 16f);
+        g.item(stack, 0, 0);
+        g.pose().popMatrix();
     }
 
     boolean contains(double mx, double my) {

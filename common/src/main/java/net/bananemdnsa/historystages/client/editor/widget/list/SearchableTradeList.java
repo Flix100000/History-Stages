@@ -13,7 +13,7 @@ import net.bananemdnsa.historystages.client.ClientTradeGoods;
 import net.bananemdnsa.historystages.client.scroll.OpenScrollNames;
 import net.bananemdnsa.historystages.data.lock.TradePreview;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -176,9 +176,9 @@ public class SearchableTradeList extends AbstractSearchableList<TradeRow> {
     }
 
     @Override
-    protected void renderHeaderRow(GuiGraphics g, Font font, TradeRow row,
+    protected void renderHeaderRow(GuiGraphicsExtractor g, Font font, TradeRow row,
                                    int x, int y, int w, int h) {
-        g.drawString(font, row.caption(), x + 3, y + 4, 0xFFFFCC00, false);
+        g.text(font, row.caption(), x + 3, y + 4, 0xFFFFCC00, false);
         g.fill(x + 3, y + h - 1, x + w - 3, y + h, 0x40FFCC00);
     }
 
@@ -195,7 +195,7 @@ public class SearchableTradeList extends AbstractSearchableList<TradeRow> {
      * is itself the top row, where repeating it would just be the same word twice.
      */
     @Override
-    protected void renderStickyCaption(GuiGraphics g, Font font, int x, int y, int w,
+    protected void renderStickyCaption(GuiGraphicsExtractor g, Font font, int x, int y, int w,
                                        int firstVisibleIndex) {
         if (filteredEntries.isEmpty()) return;
         int start = Math.min(Math.max(firstVisibleIndex, 0), filteredEntries.size() - 1);
@@ -203,7 +203,7 @@ public class SearchableTradeList extends AbstractSearchableList<TradeRow> {
         for (int i = start; i >= 0; i--) {
             TradeRow row = filteredEntries.get(i);
             if (row.isHeader()) {
-                g.drawString(font, row.caption(), x + 3, y + 2, 0xFF8A8A8A, false);
+                g.text(font, row.caption(), x + 3, y + 2, 0xFF8A8A8A, false);
                 return;
             }
         }
@@ -214,16 +214,16 @@ public class SearchableTradeList extends AbstractSearchableList<TradeRow> {
      * has been picked as it did in the picker.
      */
     @Override
-    protected void renderRow(GuiGraphics g, Font font, TradeRow row,
+    protected void renderRow(GuiGraphicsExtractor g, Font font, TradeRow row,
                              int x, int y, int w, int h, boolean hovered, int rowIndex) {
         TradePreview offer = row.offer();
-        g.drawString(font, String.valueOf(offer.level()), x + 3, y + 4,
+        g.text(font, String.valueOf(offer.level()), x + 3, y + 4,
                 hovered ? 0xFFAAAAAA : 0xFF6A6A6A, false);
 
         int zone = x + 12;
         drawPrice(g, font, offer.costAId(), offer.costACount(), 0, zone, y, hovered);
         drawPrice(g, font, offer.costBId(), offer.costBCount(), 1, zone, y, hovered);
-        g.drawString(font, "→", zone + TradeRowGeometry.arrowX(), y + 4, 0xFF777777, false);
+        g.text(font, "→", zone + TradeRowGeometry.arrowX(), y + 4, 0xFF777777, false);
         drawStack(g, offer.resultId(), zone + TradeRowGeometry.wareIconX(), y);
 
         int textX = zone + TradeRowGeometry.WIDTH;
@@ -232,25 +232,25 @@ public class SearchableTradeList extends AbstractSearchableList<TradeRow> {
         drawRowText(g, font, name, textX, y, x + w - textX - 3, hovered);
     }
 
-    private void drawPrice(GuiGraphics g, Font font, String itemId, int count, int slot,
+    private void drawPrice(GuiGraphicsExtractor g, Font font, String itemId, int count, int slot,
                            int zoneX, int y, boolean hovered) {
         if (itemId == null) return;
         drawStack(g, itemId, zoneX + TradeRowGeometry.priceIconX(slot), y);
         if (count > 1) {
-            g.drawString(font, String.valueOf(count),
+            g.text(font, String.valueOf(count),
                     zoneX + TradeRowGeometry.priceCountX(slot), y + 4,
                     hovered ? 0xFFFFFFFF : 0xFFBBBBBB, false);
         }
     }
 
-    private void drawStack(GuiGraphics g, String itemId, int x, int y) {
+    private void drawStack(GuiGraphicsExtractor g, String itemId, int x, int y) {
         ItemStack stack = stackOf(itemId);
         if (stack.isEmpty()) return;
-        g.pose().pushPose();
-        g.pose().translate(x, y, 0);
-        g.pose().scale(0.75f, 0.75f, 1.0f);
-        g.renderItem(stack, 0, 0);
-        g.pose().popPose();
+        g.pose().pushMatrix();
+        g.pose().translate(x, y);
+        g.pose().scale(0.75f, 0.75f);
+        g.item(stack, 0, 0);
+        g.pose().popMatrix();
     }
 
     private static ItemStack stackOf(String itemId) {

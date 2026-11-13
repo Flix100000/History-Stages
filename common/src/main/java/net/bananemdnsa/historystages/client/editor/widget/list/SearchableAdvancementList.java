@@ -7,7 +7,7 @@ import net.bananemdnsa.historystages.mixin.ClientAdvancementsAccessor;
 import net.minecraft.advancements.AdvancementHolder;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.multiplayer.ClientAdvancements;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 
@@ -83,7 +83,7 @@ public class SearchableAdvancementList extends AbstractSearchableList<String> {
     }
 
     @Override
-    protected void renderRow(GuiGraphics g, Font font, String entry,
+    protected void renderRow(GuiGraphicsExtractor g, Font font, String entry,
                              int x, int y, int w, int h, boolean hovered, int rowIndex) {
         drawRowMarqueeText(g, font, entry, x, y, w, h, hovered, rowIndex);
     }

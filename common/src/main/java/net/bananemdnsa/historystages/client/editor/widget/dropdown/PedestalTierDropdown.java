@@ -7,7 +7,7 @@ import net.bananemdnsa.historystages.client.editor.anim.Timing;
 import net.bananemdnsa.historystages.init.ModBlocks;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
@@ -83,7 +83,7 @@ public class PedestalTierDropdown {
         return mx >= g[0] && mx < g[0] + g[2] && my >= g[1] && my < g[1] + g[3];
     }
 
-    public void renderButton(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    public void renderButton(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         boolean hovered = mouseX >= buttonX && mouseX < buttonX + buttonW
                 && mouseY >= buttonY && mouseY < buttonY + BUTTON_HEIGHT;
         float hp = Ease.outCubic(buttonHover.ramp(hovered, Timing.HOVER_IN_MS, Timing.HOVER_OUT_MS));
@@ -99,7 +99,7 @@ public class PedestalTierDropdown {
                 Fade.mix(0xFF999999, 0xFFDDDDDD, hp), open.value());
     }
 
-    public void renderPopup(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    public void renderPopup(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         float t = open.ramp(expanded ? 1.0f : 0.0f, Timing.POPUP_MS);
         if (t < 0.02f) return;
 
@@ -121,15 +121,15 @@ public class PedestalTierDropdown {
         DropdownChrome.end(g);
     }
 
-    private static void drawRow(GuiGraphics g, Font font, int x, int y, int tier, boolean selected) {
+    private static void drawRow(GuiGraphicsExtractor g, Font font, int x, int y, int tier, boolean selected) {
         Block block = blockForTier(tier);
         if (block != null) {
             ItemStack stack = new ItemStack(block);
-            g.renderItem(stack, x, y);
+            g.item(stack, x, y);
         }
         String name = tierName(tier);
         int textColor = selected ? 0xFFFFCC00 : 0xFFEEEEEE;
-        g.drawString(font, name, x + 20, y + 5, textColor, false);
+        g.text(font, name, x + 20, y + 5, textColor, false);
     }
 
     private static String tierName(int tier) {

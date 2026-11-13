@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.dialog;
 
+import net.minecraft.client.input.CharacterEvent;
 import net.bananemdnsa.historystages.api.editor.widget.AbstractInputScreen;
 import net.bananemdnsa.historystages.api.editor.widget.InputField;
 import net.bananemdnsa.historystages.api.editor.widget.InputValues;
@@ -19,7 +20,7 @@ import net.bananemdnsa.historystages.data.lock.NamedLockEntry;
 import net.bananemdnsa.historystages.data.lock.engine.StageLocks;
 import net.bananemdnsa.historystages.network.serverbound.SaveDisguisePacket;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
@@ -144,7 +145,7 @@ public class DisguiseDialog extends AbstractInputScreen {
     // --- content ---
 
     @Override
-    protected void renderExtraContent(GuiGraphics g, int x, int y, int w, int mouseX, int mouseY) {
+    protected void renderExtraContent(GuiGraphicsExtractor g, int x, int y, int w, int mouseX, int mouseY) {
         int row = y;
         int controlX = x + w - SLOT_W;
 
@@ -180,7 +181,7 @@ public class DisguiseDialog extends AbstractInputScreen {
         row += ROW_H + 4;
 
         for (Component line : infoLines()) {
-            g.drawString(this.font, this.font.plainSubstrByWidth(line.getString(), w), x, row,
+            g.text(this.font, this.font.plainSubstrByWidth(line.getString(), w), x, row,
                     line.getStyle().getColor() != null ? line.getStyle().getColor().getValue() : LABEL_GREY, false);
             row += LINE_H;
         }
@@ -188,7 +189,7 @@ public class DisguiseDialog extends AbstractInputScreen {
 
         Warning warning = warning();
         if (warning != Warning.NONE) {
-            g.drawString(this.font, this.font.plainSubstrByWidth("⚠ " + warningText(warning).getString(), w),
+            g.text(this.font, this.font.plainSubstrByWidth("⚠ " + warningText(warning).getString(), w),
                     x, row, WARN, false);
         }
         row += LINE_H + 4;
@@ -200,40 +201,40 @@ public class DisguiseDialog extends AbstractInputScreen {
             removeX = x + w - removeW;
             removeY = row;
             boolean hover = inside(mouseX, mouseY, removeX, removeY, removeW, 9);
-            g.drawString(this.font, hover ? remove.copy().withStyle(s -> s.withUnderlined(true)) : remove,
+            g.text(this.font, hover ? remove.copy().withStyle(s -> s.withUnderlined(true)) : remove,
                     removeX, removeY, REMOVE_RED, false);
         }
     }
 
-    private void label(GuiGraphics g, String langKey, int x, int rowY) {
-        g.drawString(this.font, Component.translatable(langKey), x, rowY + 5, 0xFFE0E0E0, false);
+    private void label(GuiGraphicsExtractor g, String langKey, int x, int rowY) {
+        g.text(this.font, Component.translatable(langKey), x, rowY + 5, 0xFFE0E0E0, false);
     }
 
     /** A picker slot: icon plus name, or "Choose…" when empty. */
-    private void slot(GuiGraphics g, int sx, int sy, int sw, @Nullable String id, int mouseX, int mouseY) {
+    private void slot(GuiGraphicsExtractor g, int sx, int sy, int sw, @Nullable String id, int mouseX, int mouseY) {
         boolean hover = inside(mouseX, mouseY, sx, sy, sw, SLOT_H);
         g.fill(sx, sy, sx + sw, sy + SLOT_H, hover ? 0xFF888888 : FIELD_BORDER);
         g.fill(sx + 1, sy + 1, sx + sw - 1, sy + SLOT_H - 1, hover ? 0xFF252525 : FIELD_BG);
         if (id == null) {
-            g.drawString(this.font, Component.translatable("editor.historystages.disguise.choose"),
+            g.text(this.font, Component.translatable("editor.historystages.disguise.choose"),
                     sx + 6, sy + 5, LABEL_GREY, false);
             return;
         }
         int textX = sx + 4;
         Item item = id.startsWith("#") ? null : Disguises.itemById(id);
         if (item != null) {
-            g.renderItem(new ItemStack(item), sx + 1, sy + 1);
+            g.item(new ItemStack(item), sx + 1, sy + 1);
             textX = sx + 20;
         }
         String name = keyName(id).getString();
-        g.drawString(this.font, this.font.plainSubstrByWidth(name, sx + sw - 4 - textX), textX, sy + 5, 0xFFEEEEEE, false);
+        g.text(this.font, this.font.plainSubstrByWidth(name, sx + sw - 4 - textX), textX, sy + 5, 0xFFEEEEEE, false);
     }
 
-    private void button(GuiGraphics g, int bx, int by, int bw, Component text, int mouseX, int mouseY) {
+    private void button(GuiGraphicsExtractor g, int bx, int by, int bw, Component text, int mouseX, int mouseY) {
         boolean hover = inside(mouseX, mouseY, bx, by, bw, SLOT_H);
         g.fill(bx, by, bx + bw, by + SLOT_H, hover ? ACCENT_GOLD : FIELD_BORDER);
         g.fill(bx + 1, by + 1, bx + bw - 1, by + SLOT_H - 1, hover ? 0xFF252525 : FIELD_BG);
-        g.drawCenteredString(this.font, text, bx + bw / 2, by + 5, 0xFFEEEEEE);
+        g.centeredText(this.font, text, bx + bw / 2, by + 5, 0xFFEEEEEE);
     }
 
     private static boolean inside(double mx, double my, int x, int y, int w, int h) {
@@ -404,15 +405,15 @@ public class DisguiseDialog extends AbstractInputScreen {
     }
 
     @Override
-    public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+    public void render(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
         boolean picking = overlayUp();
         super.render(g, picking ? -1 : mouseX, picking ? -1 : mouseY, partialTick);
         if (!picking) return;
-        g.pose().pushPose();
-        g.pose().translate(0, 0, 600);
+        g.pose().pushMatrix();
+        g.pose().translate(0, 0);
         g.fill(0, 0, this.width, this.height, 0x80000000);
         overlay.render(g, this.font, mouseX, mouseY);
-        g.pose().popPose();
+        g.pose().popMatrix();
     }
 
     @Override
@@ -458,8 +459,12 @@ public class DisguiseDialog extends AbstractInputScreen {
     }
 
     @Override
+    public boolean charTyped(CharacterEvent event) {
+        return charTyped((char) event.codepoint(), 0);
+    }
+
     public boolean charTyped(char c, int modifiers) {
         if (overlayUp()) return overlay.charTyped(c);
-        return super.charTyped(c, modifiers);
+        return super.charTyped(new CharacterEvent(c));
     }
 }

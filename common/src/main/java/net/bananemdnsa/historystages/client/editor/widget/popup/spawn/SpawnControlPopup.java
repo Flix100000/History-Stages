@@ -15,7 +15,7 @@ import net.bananemdnsa.historystages.data.lock.spawn.TimeOfDay;
 import net.bananemdnsa.historystages.data.lock.spawn.WeatherCondition;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.util.FormattedCharSequence;
@@ -399,7 +399,7 @@ public class SpawnControlPopup {
 
     // ---- the dialog ----------------------------------------------------------------
 
-    public void render(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    public void render(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         if (!visible) return;
 
         // Fit the window rather than run off it: the summary gives up lines first, then the page
@@ -420,13 +420,13 @@ public class SpawnControlPopup {
         g.fill(panelX - 1, panelY - 1, panelX + panelW + 1, panelY + panelH + 1, 0xFF333333);
         g.fill(panelX, panelY, panelX + panelW, panelY + panelH, 0xFF1A1A1A);
 
-        g.drawCenteredString(font, fixing ? Component.translatable(K + "fixing.title")
+        g.centeredText(font, fixing ? Component.translatable(K + "fixing.title")
                         : Component.translatable(K + "title", entityId),
                 panelX + panelW / 2, panelY + 6, 0xFFFFFFFF);
         g.fill(panelX + panelW / 2 - 20, panelY + 17, panelX + panelW / 2 + 20, panelY + 18, 0xFFFFCC00);
 
         int phaseY = panelY + HEADER_H;
-        g.drawString(font, Component.translatable(K + "phase"),
+        g.text(font, Component.translatable(K + "phase"),
                 panelX + PAD, phaseY + (PHASE_ROW_H - font.lineHeight) / 2 + 1, 0xFFCCCCCC, false);
         phaseDropdown.setPosition(panelX + panelW - PAD - phaseDropdown.getWidth(),
                 phaseY + (PHASE_ROW_H - EnumDropdown.BUTTON_HEIGHT) / 2);
@@ -460,7 +460,7 @@ public class SpawnControlPopup {
      * The explanation for whatever the cursor is resting on. Drawn with no delay: a dialog this
      * dense is being read on purpose, and a row hidden behind a timer helps nobody.
      */
-    private void renderTooltip(GuiGraphics g, Font font, int mouseX, int mouseY, int phaseY) {
+    private void renderTooltip(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY, int phaseY) {
         if (phaseDropdown.isShowing()) return;
         String tip = inBox(mouseX, mouseY, panelX, phaseY, panelW, PHASE_ROW_H)
                 ? Component.translatable(phaseLocked() ? K + "tip.fixed_by_stage"
@@ -489,7 +489,7 @@ public class SpawnControlPopup {
      * The phase sits in the header, not in a tab, so it gets its padlock here: left of the
      * dropdown. On a mob a fixed phase veils the dropdown the way a fixed row is veiled.
      */
-    private void renderPhaseLock(GuiGraphics g, int mouseX, int mouseY, int phaseY) {
+    private void renderPhaseLock(GuiGraphicsExtractor g, int mouseX, int mouseY, int phaseY) {
         if (!fixing && fixed == null) return;
         int lockX = phaseLockX();
         int lockY = phaseY + (PHASE_ROW_H - 8) / 2;
@@ -514,7 +514,7 @@ public class SpawnControlPopup {
         return !fixing && fixed != null && fixed.isFixed(FixedSpawnRule.PHASE);
     }
 
-    private void renderTabs(GuiGraphics g, Font font, int mouseX, int mouseY, int bodyY) {
+    private void renderTabs(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY, int bodyY) {
         List<Tab> tabs = visibleTabs();
         for (int i = 0; i < tabs.size(); i++) {
             int ty = tabY(bodyY, i);
@@ -525,16 +525,16 @@ public class SpawnControlPopup {
             } else if (inBox(mouseX, mouseY, panelX, ty, TAB_W, TAB_H)) {
                 g.fill(panelX, ty, panelX + TAB_W, ty + TAB_H, 0xFF202020);
             }
-            g.drawString(font, Component.translatable(tabs.get(i).key()), panelX + 8, ty + 5,
+            g.text(font, Component.translatable(tabs.get(i).key()), panelX + 8, ty + 5,
                     on ? 0xFFFFFFFF : 0xFF888888, false);
             String badge = tabs.get(i).badge().get();
             if (badge != null) {
-                g.drawString(font, badge, panelX + TAB_W - 6 - font.width(badge), ty + 5, 0xFFFFCC00, false);
+                g.text(font, badge, panelX + TAB_W - 6 - font.width(badge), ty + 5, 0xFFFFCC00, false);
             }
         }
     }
 
-    private void renderSummary(GuiGraphics g, Font font, int y, int height) {
+    private void renderSummary(GuiGraphicsExtractor g, Font font, int y, int height) {
         g.fill(panelX, y, panelX + panelW, y + height, 0xFF151515);
         g.fill(panelX, y, panelX + panelW, y + 1, 0xFF333333);
         // A rule for no mob in particular has no sentence worth reading; say how fixing works.
@@ -545,7 +545,7 @@ public class SpawnControlPopup {
         int fits = Math.max(1, (height - 8) / (font.lineHeight + 1));
         int ly = y + 5;
         for (int i = 0; i < Math.min(fits, lines.size()); i++) {
-            g.drawString(font, lines.get(i), panelX + PAD, ly, 0xFFB0B0B0, false);
+            g.text(font, lines.get(i), panelX + PAD, ly, 0xFFB0B0B0, false);
             ly += font.lineHeight + 1;
         }
     }
@@ -585,20 +585,20 @@ public class SpawnControlPopup {
 
     // ---- footer and input ----------------------------------------------------------
 
-    private void renderFooter(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    private void renderFooter(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         int btnY = panelY + panelH - BTN_H - 6;
         drawButton(g, font, mouseX, mouseY, resetX(), btnY, resetW(font), K + "reset", false);
         drawButton(g, font, mouseX, mouseY, doneX(), btnY, 52, "editor.historystages.lock_actions.btn_done", true);
     }
 
-    private void drawButton(GuiGraphics g, Font font, int mouseX, int mouseY, int x, int y, int w, String key,
+    private void drawButton(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY, int x, int y, int w, String key,
                             boolean primary) {
         boolean hov = inBox(mouseX, mouseY, x, y, w, BTN_H);
         int face = primary ? (hov ? 0x50FFCC00 : 0x25FFCC00) : (hov ? 0xFF303030 : 0xFF262626);
         int edge = primary ? (hov ? 0xFFFFCC00 : 0x80FFCC00) : (hov ? 0xFF888888 : 0xFF555555);
         g.fill(x, y, x + w, y + BTN_H, face);
         g.fill(x, y + BTN_H - 1, x + w, y + BTN_H, edge);
-        g.drawCenteredString(font, Component.translatable(key), x + w / 2, y + 4, hov ? 0xFFFFFF : 0xDDDDDD);
+        g.centeredText(font, Component.translatable(key), x + w / 2, y + 4, hov ? 0xFFFFFF : 0xDDDDDD);
     }
 
     public boolean mouseClicked(double mouseX, double mouseY) {

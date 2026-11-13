@@ -3,7 +3,7 @@ package net.bananemdnsa.historystages.client.editor.widget;
 import net.bananemdnsa.historystages.client.editor.anim.Timing;
 import net.minecraft.util.Util;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 /**
  * A single-line label that truncates when it does not fit and, once its row has been hovered
@@ -30,14 +30,14 @@ public final class MarqueeText {
      * @param clipBottom  visible area so a half-scrolled row cannot draw outside it
      * @param animate   false when the player has editor animations switched off: truncate only
      */
-    public void draw(GuiGraphics g, Font font, String key, String text, int x, int y,
+    public void draw(GuiGraphicsExtractor g, Font font, String key, String text, int x, int y,
                      int available, int clipTop, int clipBottom, int color,
                      boolean hovered, boolean animate) {
         if (available <= 0) return;
 
         int textWidth = font.width(text);
         if (textWidth <= available) {
-            g.drawString(font, text, x, y, color, false);
+            g.text(font, text, x, y, color, false);
             return;
         }
 
@@ -56,7 +56,7 @@ public final class MarqueeText {
                 float pos = travelled % cycle;
                 int offset = Math.round(pos <= span ? pos : cycle - pos);
                 g.enableScissor(x, clipTop, x + available, clipBottom);
-                g.drawString(font, text, x - offset, y, color, false);
+                g.text(font, text, x - offset, y, color, false);
                 g.disableScissor();
                 return;
             }
@@ -64,7 +64,7 @@ public final class MarqueeText {
             activeKey = null;
         }
 
-        g.drawString(font, truncate(font, text, available), x, y, color, false);
+        g.text(font, truncate(font, text, available), x, y, color, false);
     }
 
     /** The truncated form on its own, for callers that only need the string. */

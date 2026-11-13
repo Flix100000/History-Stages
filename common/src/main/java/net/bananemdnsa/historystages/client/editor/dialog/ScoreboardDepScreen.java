@@ -4,7 +4,7 @@ import net.bananemdnsa.historystages.api.editor.widget.AbstractInputScreen;
 import net.bananemdnsa.historystages.api.editor.widget.InputField;
 import net.bananemdnsa.historystages.api.editor.widget.InputValues;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
@@ -113,12 +113,12 @@ public class ScoreboardDepScreen extends AbstractInputScreen {
     }
 
     @Override
-    protected void renderExtraContent(GuiGraphics g, int x, int y, int w, int mouseX, int mouseY) {
+    protected void renderExtraContent(GuiGraphicsExtractor g, int x, int y, int w, int mouseX, int mouseY) {
         dropdownX = x;
         dropdownY = y + DROPDOWN_INSET_Y;
         dropdownW = w;
 
-        g.drawString(this.font, Component.translatable("editor.historystages.dep.dialog.operator"),
+        g.text(this.font, Component.translatable("editor.historystages.dep.dialog.operator"),
                 x, y, LABEL_GREY, false);
 
         // A dropdown has no isFocused() of its own, so the gold ring is driven by the slot the
@@ -131,7 +131,7 @@ public class ScoreboardDepScreen extends AbstractInputScreen {
         g.fill(dropdownX + 1, dropdownY + 1, dropdownX + dropdownW - 1, dropdownY + DROPDOWN_H - 1, bg);
 
         int textY = dropdownY + (DROPDOWN_H - 8) / 2;
-        g.drawString(this.font, operators[opIndex], dropdownX + 6, textY, 0xFFEEEEEE, false);
+        g.text(this.font, operators[opIndex], dropdownX + 6, textY, 0xFFEEEEEE, false);
 
         // Pixel-art caret on the right, matching the other dropdowns in the editor.
         int cx = dropdownX + dropdownW - 9;
@@ -151,8 +151,8 @@ public class ScoreboardDepScreen extends AbstractInputScreen {
 
         // The popup is an overlay: it overflows extraContentHeight() and must beat both the
         // error line and the widgets drawn after renderContent, hence the z translate.
-        g.pose().pushPose();
-        g.pose().translate(0, 0, 300);
+        g.pose().pushMatrix();
+        g.pose().translate(0, 0);
 
         int[] geom = popupGeometry();
         int px = geom[0], py = geom[1], pw = geom[2], ph = geom[3];
@@ -163,10 +163,10 @@ public class ScoreboardDepScreen extends AbstractInputScreen {
             int iy = py + POPUP_PAD + i * OPTION_H;
             boolean optHover = mouseX >= px && mouseX < px + pw && mouseY >= iy && mouseY < iy + OPTION_H;
             if (optHover) g.fill(px + 1, iy, px + pw - 1, iy + OPTION_H, 0x25FFFFFF);
-            g.drawString(this.font, operators[i], px + 6, iy + (OPTION_H - 8) / 2,
+            g.text(this.font, operators[i], px + 6, iy + (OPTION_H - 8) / 2,
                     i == opIndex ? ACCENT_GOLD : 0xFFEEEEEE, false);
         }
-        g.pose().popPose();
+        g.pose().popMatrix();
     }
 
     @Override

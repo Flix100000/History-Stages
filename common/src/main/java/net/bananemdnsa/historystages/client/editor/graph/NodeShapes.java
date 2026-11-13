@@ -1,6 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.graph;
 
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.resources.Identifier;
 
 /**
@@ -22,7 +22,7 @@ public final class NodeShapes {
      * one. The single place that maps a style's shape name onto a draw call, so the graph canvas
      * and the editor's style preview cannot end up drawing different things.
      */
-    public static void draw(GuiGraphics g, String shape, int cx, int cy, int r,
+    public static void draw(GuiGraphicsExtractor g, String shape, int cx, int cy, int r,
                             int fill, int border, int bw) {
         switch (shape) {
             case "CIRCLE" -> circle(g, cx, cy, r, fill, border, bw);
@@ -34,7 +34,7 @@ public final class NodeShapes {
     }
 
     /** Small status-tick badge in the node's bottom-right corner. */
-    public static void checkmark(GuiGraphics g, int cx, int cy, int r, int badgeColor) {
+    public static void checkmark(GuiGraphicsExtractor g, int cx, int cy, int r, int badgeColor) {
         int br = Math.max(4, Math.round(r * 0.45f));
         int bx = cx + r - br / 2;
         int by = cy + r - br / 2;
@@ -54,7 +54,7 @@ public final class NodeShapes {
      * The status badge a style's {@code checkmark} switch turns on: a tick in general, the
      * no-entry sign for a blocked stage. One switch, so the node style screens need no second one.
      */
-    public static void statusBadge(GuiGraphics g, net.bananemdnsa.historystages.data.graph.NodeState state,
+    public static void statusBadge(GuiGraphicsExtractor g, net.bananemdnsa.historystages.data.graph.NodeState state,
                                    int cx, int cy, int r, int badgeColor) {
         if (state == net.bananemdnsa.historystages.data.graph.NodeState.BLOCKED) {
             blockedBadge(g, cx, cy, r);
@@ -67,7 +67,7 @@ public final class NodeShapes {
      * The "blocked" badge: a red disc with a white bar, top right, where the tick sits bottom
      * right. Drawn from shapes rather than a font glyph, which the default font may not have.
      */
-    public static void blockedBadge(GuiGraphics g, int cx, int cy, int r) {
+    public static void blockedBadge(GuiGraphicsExtractor g, int cx, int cy, int r) {
         int br = Math.max(4, Math.round(r * 0.45f));
         int bx = cx + r - br / 2;
         int by = cy - r + br / 2;
@@ -78,19 +78,19 @@ public final class NodeShapes {
         g.fill(bx - half, by - barH / 2 - barH % 2 + 1, bx + half, by + barH / 2 + 1, 0xFFFFFFFF);
     }
 
-    public static void circle(GuiGraphics g, int cx, int cy, int r, int fill, int border, int bw) {
+    public static void circle(GuiGraphicsExtractor g, int cx, int cy, int r, int fill, int border, int bw) {
         ring(g, NodeTextures.circle(), cx, cy, r, fill, border, bw);
     }
 
-    public static void diamond(GuiGraphics g, int cx, int cy, int r, int fill, int border, int bw) {
+    public static void diamond(GuiGraphicsExtractor g, int cx, int cy, int r, int fill, int border, int bw) {
         ring(g, NodeTextures.diamond(), cx, cy, r, fill, border, bw);
     }
 
-    public static void hexagon(GuiGraphics g, int cx, int cy, int r, int fill, int border, int bw) {
+    public static void hexagon(GuiGraphicsExtractor g, int cx, int cy, int r, int fill, int border, int bw) {
         ring(g, NodeTextures.hexagon(), cx, cy, r, fill, border, bw);
     }
 
-    public static void rect(GuiGraphics g, int cx, int cy, int r, int fill, int border, int bw) {
+    public static void rect(GuiGraphicsExtractor g, int cx, int cy, int r, int fill, int border, int bw) {
         ring(g, NodeTextures.rect(), cx, cy, r, fill, border, bw);
     }
 
@@ -101,11 +101,11 @@ public final class NodeShapes {
      * the corner geometry; only {@code r} (the drawn size of the whole shape) is under caller
      * control here.
      */
-    public static void rounded(GuiGraphics g, int cx, int cy, int r, int fill, int border, int bw) {
+    public static void rounded(GuiGraphicsExtractor g, int cx, int cy, int r, int fill, int border, int bw) {
         ring(g, NodeTextures.rounded(), cx, cy, r, fill, border, bw);
     }
 
-    private static void ring(GuiGraphics g, Identifier tex, int cx, int cy, int r,
+    private static void ring(GuiGraphicsExtractor g, Identifier tex, int cx, int cy, int r,
                              int fill, int border, int bw) {
         if (r <= 0) return;
         blit(g, tex, cx, cy, r, border);
@@ -114,7 +114,7 @@ public final class NodeShapes {
     }
 
     /** Blits {@code tex} centred at (cx,cy) scaled to a {@code rad}-radius box, tinted {@code color}. */
-    private static void blit(GuiGraphics g, Identifier tex, int cx, int cy, int rad, int color) {
+    private static void blit(GuiGraphicsExtractor g, Identifier tex, int cx, int cy, int rad, int color) {
         int size = rad * 2;
         NodeTextures.blit(g, tex, cx - rad, cy - rad, size, size,
                 NodeTextures.SIZE, NodeTextures.SIZE, color);

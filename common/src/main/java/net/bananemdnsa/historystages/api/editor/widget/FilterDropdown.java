@@ -8,7 +8,7 @@ import net.bananemdnsa.historystages.client.editor.anim.Fade;
 import net.bananemdnsa.historystages.client.editor.anim.Timing;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.sounds.SoundEvents;
 
@@ -133,7 +133,7 @@ public class FilterDropdown {
         return buttonY;
     }
 
-    public void renderButton(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    public void renderButton(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         if (options.isEmpty())
             return;
         boolean hovered = mouseX >= buttonX && mouseX < buttonX + BUTTON_SIZE
@@ -161,7 +161,7 @@ public class FilterDropdown {
     }
 
     /** Renders the dropdown popup. Call AFTER all other UI so it draws on top. */
-    public void renderPopup(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    public void renderPopup(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         if (options.isEmpty()) return;
 
         // Kept rendering past the click that closed it, so the popup rolls back up.
@@ -188,7 +188,7 @@ public class FilterDropdown {
             int boxX = px + 6;
             int boxY = rowY + 3;
             Checkbox.draw(g, boxX, boxY, mark, box, false);
-            g.drawString(font, opt.label, boxX + Checkbox.SIZE + 5 + Math.round(rh * 2.0f), rowY + 4,
+            g.text(font, opt.label, boxX + Checkbox.SIZE + 5 + Math.round(rh * 2.0f), rowY + 4,
                     0xFFEEEEEE, false);
         }
         DropdownChrome.end(g);

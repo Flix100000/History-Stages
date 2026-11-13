@@ -2,7 +2,7 @@ package net.bananemdnsa.historystages.client.editor.nbt;
 
 import net.bananemdnsa.historystages.api.editor.widget.Badge;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 
@@ -280,7 +280,7 @@ public final class CriterionCard {
     // Drawing
     // =============================================
 
-    public void render(GuiGraphics g, Built built, int x, int y, int mouseX, int mouseY) {
+    public void render(GuiGraphicsExtractor g, Built built, int x, int y, int mouseX, int mouseY) {
         g.fill(x, y, x + built.width(), y + built.height(), CARD_BORDER);
         g.fill(x + 1, y + 1, x + built.width() - 1, y + built.height() - 1, CARD_BG);
 
@@ -293,23 +293,23 @@ public final class CriterionCard {
                 // A pixel taller than the header line, centred on it so the text stays put.
                 case BADGE -> Badge.draw(g, font, piece.text(), px, py - 1, piece.w(), piece.color() & 0xFFFFFF);
                 case TITLE, SUBTITLE, TEXT ->
-                        g.drawString(font, piece.text(), px, py, piece.color());
-                case LINK -> g.drawString(font, piece.text(), px, py,
+                        g.text(font, piece.text(), px, py, piece.color());
+                case LINK -> g.text(font, piece.text(), px, py,
                         hovered ? 0xFFFFE066 : piece.color());
                 case FIELD -> renderField(g, piece, px, py, hovered);
-                case REMOVE -> g.drawString(font, piece.text(), px + 2, py + 1,
+                case REMOVE -> g.text(font, piece.text(), px + 2, py + 1,
                         hovered ? REMOVE_HOVER : piece.color());
                 case ADD -> {
                     g.fill(px, py, px + piece.w(), py + piece.h(),
                             hovered ? 0x40FFCC00 : 0x20FFFFFF);
-                    g.drawString(font, piece.text(), px + 6, py + 2,
+                    g.text(font, piece.text(), px + 6, py + 2,
                             hovered ? LINK_COLOR : piece.color());
                 }
             }
         }
     }
 
-    private void renderField(GuiGraphics g, Piece piece, int px, int py, boolean hovered) {
+    private void renderField(GuiGraphicsExtractor g, Piece piece, int px, int py, boolean hovered) {
         g.fill(px - 1, py - 1, px + piece.w() + 1, py + piece.h() + 1,
                 hovered ? FIELD_BORDER_HOVER : FIELD_BORDER);
         g.fill(px, py, px + piece.w(), py + piece.h(), FIELD_BG);
@@ -317,7 +317,7 @@ public final class CriterionCard {
         boolean empty = piece.text() == null || piece.text().isEmpty();
         String shown = fit(empty ? (piece.hint() == null ? "" : piece.hint()) : piece.text(),
                 piece.w() - 8);
-        g.drawString(font, shown, px + 4, py + (piece.h() - 8) / 2,
+        g.text(font, shown, px + 4, py + (piece.h() - 8) / 2,
                 empty ? FIELD_HINT : piece.color());
     }
 

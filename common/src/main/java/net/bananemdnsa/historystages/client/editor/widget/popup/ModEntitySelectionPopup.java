@@ -8,7 +8,7 @@ import net.bananemdnsa.historystages.client.editor.anim.Ease;
 import net.bananemdnsa.historystages.client.editor.anim.Timing;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
@@ -196,7 +196,7 @@ public class ModEntitySelectionPopup {
         return getCbAttackX() - COL_PITCH;
     }
 
-    public void render(GuiGraphics guiGraphics, Font font, int mouseX, int mouseY) {
+    public void render(GuiGraphicsExtractor guiGraphics, Font font, int mouseX, int mouseY) {
         if (!visible) return;
 
         int visibleRows = Math.min(VISIBLE_ROWS, entities.size());
@@ -213,7 +213,7 @@ public class ModEntitySelectionPopup {
         if (font.width(title) > panelW - PADDING * 2 - 150) {
             title = font.plainSubstrByWidth(title, panelW - PADDING * 2 - 156) + "...";
         }
-        guiGraphics.drawString(font, title, panelX + PADDING, panelY + 7, 0xFFFFFF, false);
+        guiGraphics.text(font, title, panelX + PADDING, panelY + 7, 0xFFFFFF, false);
 
         // Column headers with hover tooltips
         int cbSpawnX = getCbSpawnX();
@@ -236,11 +236,11 @@ public class ModEntitySelectionPopup {
         boolean interactHeaderHovered = mouseX >= interactLabelX - 2 && mouseX < interactLabelX + interactLabelW + 2
                 && mouseY >= panelY + 4 && mouseY < panelY + 16;
 
-        guiGraphics.drawString(font, spawnLabel, spawnLabelX, panelY + 7,
+        guiGraphics.text(font, spawnLabel, spawnLabelX, panelY + 7,
                 spawnHeaderHovered ? 0xDDDDDD : 0x999999, false);
-        guiGraphics.drawString(font, attackLabel, attackLabelX, panelY + 7,
+        guiGraphics.text(font, attackLabel, attackLabelX, panelY + 7,
                 attackHeaderHovered ? 0xDDDDDD : 0x999999, false);
-        guiGraphics.drawString(font, interactLabel, interactLabelX, panelY + 7,
+        guiGraphics.text(font, interactLabel, interactLabelX, panelY + 7,
                 interactHeaderHovered ? 0xDDDDDD : 0x999999, false);
 
         // Select-all checkboxes below labels
@@ -313,17 +313,17 @@ public class ModEntitySelectionPopup {
                     float pos = scrollProg % cycle;
                     int scrollOff = pos <= maxMarquee ? (int) pos : (int) (cycle - pos);
                     guiGraphics.enableScissor(textStartX, rowY, textStartX + textAvailW, rowY + ROW_HEIGHT);
-                    guiGraphics.drawString(font, text, textStartX - scrollOff, rowY + 7, textColor, false);
+                    guiGraphics.text(font, text, textStartX - scrollOff, rowY + 7, textColor, false);
                     guiGraphics.disableScissor();
                 } else {
                     String truncated = font.plainSubstrByWidth(text, textAvailW - 8) + "...";
-                    guiGraphics.drawString(font, truncated, textStartX, rowY + 7, textColor, false);
+                    guiGraphics.text(font, truncated, textStartX, rowY + 7, textColor, false);
                 }
             } else if (textW > textAvailW) {
                 String truncated = font.plainSubstrByWidth(text, textAvailW - 8) + "...";
-                guiGraphics.drawString(font, truncated, textStartX, rowY + 7, textColor, false);
+                guiGraphics.text(font, truncated, textStartX, rowY + 7, textColor, false);
             } else {
-                guiGraphics.drawString(font, text, textStartX, rowY + 7, textColor, false);
+                guiGraphics.text(font, text, textStartX, rowY + 7, textColor, false);
             }
 
             // Spawnlock checkbox
@@ -390,9 +390,9 @@ public class ModEntitySelectionPopup {
         }
     }
 
-    private void renderTooltip(GuiGraphics guiGraphics, Font font, String text, int mouseX, int mouseY) {
-        guiGraphics.pose().pushPose();
-        guiGraphics.pose().translate(0, 0, 400);
+    private void renderTooltip(GuiGraphicsExtractor guiGraphics, Font font, String text, int mouseX, int mouseY) {
+        guiGraphics.pose().pushMatrix();
+        guiGraphics.pose().translate(0, 0);
 
         int tooltipW = font.width(text) + 8;
         int tooltipH = 16;
@@ -407,12 +407,12 @@ public class ModEntitySelectionPopup {
 
         guiGraphics.fill(tooltipX - 2, tooltipY - 2, tooltipX + tooltipW + 2, tooltipY + tooltipH + 2, 0xFF3D3D3D);
         guiGraphics.fill(tooltipX, tooltipY, tooltipX + tooltipW, tooltipY + tooltipH, 0xFF0D0D0D);
-        guiGraphics.drawString(font, text, tooltipX + 4, tooltipY + 4, 0xCCCCCC, false);
+        guiGraphics.text(font, text, tooltipX + 4, tooltipY + 4, 0xCCCCCC, false);
 
-        guiGraphics.pose().popPose();
+        guiGraphics.pose().popMatrix();
     }
 
-    private void renderStyledButton(GuiGraphics guiGraphics, Font font, String text, int x, int y, int w, int h, float hoverProgress) {
+    private void renderStyledButton(GuiGraphicsExtractor guiGraphics, Font font, String text, int x, int y, int w, int h, float hoverProgress) {
         // Background: white-tint to gold-tint
         int bgAlpha = (int) (0x30 + hoverProgress * 0x20);
         int bgR = 0xFF;
@@ -432,10 +432,10 @@ public class ModEntitySelectionPopup {
         // Text
         int textGray = (int) (0xCC + hoverProgress * 0x33);
         int textColor = (0xFF << 24) | (textGray << 16) | (textGray << 8) | textGray;
-        guiGraphics.drawString(font, text, x + (w - font.width(text)) / 2, y + (h - 8) / 2, textColor, false);
+        guiGraphics.text(font, text, x + (w - font.width(text)) / 2, y + (h - 8) / 2, textColor, false);
     }
 
-    private void renderCheckbox(GuiGraphics guiGraphics, int x, int y, boolean checked, int mouseX, int mouseY, String hoverKey) {
+    private void renderCheckbox(GuiGraphicsExtractor guiGraphics, int x, int y, boolean checked, int mouseX, int mouseY, String hoverKey) {
         boolean hovered = mouseX >= x && mouseX < x + CHECKBOX_SIZE && mouseY >= y && mouseY < y + CHECKBOX_SIZE;
 
         // Smooth hover transition
@@ -475,7 +475,7 @@ public class ModEntitySelectionPopup {
         }
     }
 
-    private static void renderSpinningEntity(GuiGraphics guiGraphics, int x, int y, int scale, float angleDegrees, LivingEntity entity) {
+    private static void renderSpinningEntity(GuiGraphicsExtractor guiGraphics, int x, int y, int scale, float angleDegrees, LivingEntity entity) {
         float origBodyRot = entity.yBodyRot;
         float origYRot = entity.getYRot();
         float origXRot = entity.getXRot();

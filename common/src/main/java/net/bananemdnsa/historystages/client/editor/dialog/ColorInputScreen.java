@@ -10,7 +10,7 @@ import net.bananemdnsa.historystages.api.editor.widget.InputField;
 import net.bananemdnsa.historystages.api.editor.widget.InputValues;
 import net.bananemdnsa.historystages.data.graph.GraphColors;
 import net.bananemdnsa.historystages.data.graph.GraphConfigCodec;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
@@ -303,7 +303,7 @@ public class ColorInputScreen extends AbstractInputScreen {
     // ============ Rendering ============
 
     @Override
-    protected void renderExtraContent(GuiGraphics g, int x, int y, int w, int mouseX, int mouseY) {
+    protected void renderExtraContent(GuiGraphicsExtractor g, int x, int y, int w, int mouseX, int mouseY) {
         this.extraX = x;
         this.extraY = y;
         this.extraW = w;
@@ -365,7 +365,7 @@ public class ColorInputScreen extends AbstractInputScreen {
      * @return the x the next swatch starts at; unchanged when the colour was unusable and
      *         nothing was drawn, so a missing default leaves no gap.
      */
-    private int renderFixed(GuiGraphics g, int x, String labelSuffix, String value,
+    private int renderFixed(GuiGraphicsExtractor g, int x, String labelSuffix, String value,
                             Anim hover, int mouseX, int mouseY) {
         if (!GraphColors.isValid(value)) return x;
 
@@ -377,7 +377,7 @@ public class ColorInputScreen extends AbstractInputScreen {
         Component label = Component.translatable("editor.historystages.color." + labelSuffix);
         int textX = x + PALETTE_H + FIXED_LABEL_GAP;
         // The label brightens with its swatch, so the pair reads as one control.
-        g.drawString(this.font, label, textX, py + 3,
+        g.text(this.font, label, textX, py + 3,
                 Fade.mix(0xFF000000 | LABEL_GREY, 0xFFFFFFFF, h), false);
         return textX + this.font.width(label) + FIXED_PAIR_GAP;
     }
@@ -392,7 +392,7 @@ public class ColorInputScreen extends AbstractInputScreen {
      *
      * @return the eased hover progress, for callers that tie something else to the same state
      */
-    private static float drawSwatch(GuiGraphics g, int x, int y, int rgb, Anim hover,
+    private static float drawSwatch(GuiGraphicsExtractor g, int x, int y, int rgb, Anim hover,
                                     int mouseX, int mouseY) {
         boolean hovered = mouseX >= x && mouseX < x + PALETTE_H
                 && mouseY >= y && mouseY < y + PALETTE_H;
@@ -406,13 +406,13 @@ public class ColorInputScreen extends AbstractInputScreen {
     }
 
     /** White ring inside a black one, so the cursor reads against any colour underneath it. */
-    private static void drawRing(GuiGraphics g, int cx, int cy) {
+    private static void drawRing(GuiGraphicsExtractor g, int cx, int cy) {
         drawSquareOutline(g, cx, cy, 4, 0xFF000000);
         drawSquareOutline(g, cx, cy, 3, 0xFFFFFFFF);
     }
 
     /** Hollow square of half-width {@code r} centred on {@code cx, cy}. */
-    private static void drawSquareOutline(GuiGraphics g, int cx, int cy, int r, int argb) {
+    private static void drawSquareOutline(GuiGraphicsExtractor g, int cx, int cy, int r, int argb) {
         g.fill(cx - r, cy - r, cx + r + 1, cy - r + 1, argb);
         g.fill(cx - r, cy + r, cx + r + 1, cy + r + 1, argb);
         g.fill(cx - r, cy - r, cx - r + 1, cy + r + 1, argb);

@@ -5,7 +5,7 @@ import net.bananemdnsa.historystages.data.ItemEntry;
 import net.bananemdnsa.historystages.client.editor.anim.Timing;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -162,7 +162,7 @@ public class InteractionItemsPopup {
         return stack;
     }
 
-    public void render(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    public void render(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         if (!visible) return;
 
         int rows = Math.max(1, Math.min(VISIBLE_ROWS, entryCount()));
@@ -180,7 +180,7 @@ public class InteractionItemsPopup {
         g.fill(popupX - 1, popupY - 1, popupX + popupW + 1, popupY + popupH + 1, 0xFF333333);
         g.fill(popupX, popupY, popupX + popupW, popupY + popupH, 0xFF1A1A1A);
 
-        g.drawCenteredString(font,
+        g.centeredText(font,
                 Component.translatable("editor.historystages.interaction_items.title"),
                 popupX + popupW / 2, popupY + 5, 0xFFFFFFFF);
         int accentW = 40;
@@ -190,7 +190,7 @@ public class InteractionItemsPopup {
         Component hint = entryCount() == 0
                 ? Component.translatable("editor.historystages.interaction_items.hint_empty")
                 : Component.translatable("editor.historystages.interaction_items.hint");
-        g.drawCenteredString(font, hint, popupX + popupW / 2, popupY + HEADER_H, 0x888888);
+        g.centeredText(font, hint, popupX + popupW / 2, popupY + HEADER_H, 0x888888);
 
         int listY = popupY + HEADER_H + HINT_H + 4;
         int rowX = popupX + PAD;
@@ -218,11 +218,11 @@ public class InteractionItemsPopup {
             // Item icon
             ItemStack icon = iconFor(entry.getId());
             if (!icon.isEmpty()) {
-                g.pose().pushPose();
-                g.pose().translate(rowX + 2, ry + 1, 0);
-                g.pose().scale(0.85f, 0.85f, 1.0f);
-                g.renderItem(icon, 0, 0);
-                g.pose().popPose();
+                g.pose().pushMatrix();
+                g.pose().translate(rowX + 2, ry + 1);
+                g.pose().scale(0.85f, 0.85f);
+                g.item(icon, 0, 0);
+                g.pose().popMatrix();
             }
 
             String nbt = Component.translatable("editor.historystages.badge.nbt").getString();
@@ -246,17 +246,17 @@ public class InteractionItemsPopup {
                     float pos = scrollProg % cycle;
                     int scrollOff = pos <= maxMarquee ? (int) pos : (int) (cycle - pos);
                     g.enableScissor(textStartX, ry, textStartX + textAvailW, ry + ROW_H);
-                    g.drawString(font, text, textStartX - scrollOff, ry + 5, textColor, false);
+                    g.text(font, text, textStartX - scrollOff, ry + 5, textColor, false);
                     g.disableScissor();
                 } else {
-                    g.drawString(font, font.plainSubstrByWidth(text, textAvailW - 8) + "...",
+                    g.text(font, font.plainSubstrByWidth(text, textAvailW - 8) + "...",
                             textStartX, ry + 5, textColor, false);
                 }
             } else if (textW > textAvailW) {
-                g.drawString(font, font.plainSubstrByWidth(text, textAvailW - 8) + "...",
+                g.text(font, font.plainSubstrByWidth(text, textAvailW - 8) + "...",
                         textStartX, ry + 5, textColor, false);
             } else {
-                g.drawString(font, text, textStartX, ry + 5, textColor, false);
+                g.text(font, text, textStartX, ry + 5, textColor, false);
             }
         }
 
@@ -297,7 +297,7 @@ public class InteractionItemsPopup {
                 isIn(mouseX, mouseY, doneX, btnY, doneW), true);
     }
 
-    private void drawButton(GuiGraphics g, Font font, int x, int y, int w, String label, boolean hovered, boolean accent) {
+    private void drawButton(GuiGraphicsExtractor g, Font font, int x, int y, int w, String label, boolean hovered, boolean accent) {
         int bg = accent
                 ? (hovered ? 0x50FFCC00 : 0x25FFCC00)
                 : (hovered ? 0x25FFFFFF : 0x10FFFFFF);
@@ -306,7 +306,7 @@ public class InteractionItemsPopup {
                 : (hovered ? 0x80FFFFFF : 0x40FFFFFF);
         g.fill(x, y, x + w, y + BTN_H, bg);
         g.fill(x, y + BTN_H - 1, x + w, y + BTN_H, line);
-        g.drawCenteredString(font, label, x + w / 2, y + 3, hovered ? 0xFFFFFF : 0xCCCCCC);
+        g.centeredText(font, label, x + w / 2, y + 3, hovered ? 0xFFFFFF : 0xCCCCCC);
     }
 
     private boolean isIn(double mouseX, double mouseY, int x, int y, int w) {

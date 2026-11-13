@@ -5,7 +5,7 @@ import net.bananemdnsa.historystages.client.editor.anim.Ease;
 import net.bananemdnsa.historystages.client.editor.anim.Fade;
 import net.bananemdnsa.historystages.client.editor.anim.Timing;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.network.chat.Component;
 
@@ -80,7 +80,11 @@ public class StyledButton extends Button {
     }
 
     @Override
-    public void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+    protected void extractWidgetRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        renderWidget(graphics, mouseX, mouseY, partialTick);
+    }
+
+    public void renderWidget(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
         // Hover from the grown bounds (this.isHovered() reflects the un-grown assigned box).
         boolean hovered = this.active && overEffective(mouseX, mouseY);
 
@@ -123,7 +127,7 @@ public class StyledButton extends Button {
 
         // Text — brightens with hover, greyed out while inactive.
         int textGray = this.active ? (int) (0xCC + hp * 0x33) : 0x66;
-        guiGraphics.drawCenteredString(Minecraft.getInstance().font, this.getMessage(),
+        guiGraphics.centeredText(Minecraft.getInstance().font, this.getMessage(),
                 x + w / 2, y + (h - 8) / 2, Fade.grey(textGray));
     }
 

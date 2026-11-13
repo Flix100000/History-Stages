@@ -1,5 +1,8 @@
 package net.bananemdnsa.historystages.client.editor;
 
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonInfo;
+import net.minecraft.client.input.MouseButtonEvent;
 import java.util.List;
 import java.util.function.IntConsumer;
 import java.util.function.ObjIntConsumer;
@@ -13,7 +16,7 @@ import net.bananemdnsa.historystages.data.lock.ZoneMapView;
 import net.bananemdnsa.historystages.data.lock.ZoneRayPick;
 import net.bananemdnsa.historystages.data.lock.ZoneRowText;
 import net.bananemdnsa.historystages.data.lock.ZoneShape;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -277,11 +280,19 @@ public final class ZoneMapScreen extends Screen {
      * because {@code Screen#render} paints the background after everything drawn before it.
      */
     @Override
-    public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+    public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        renderBackground(graphics, mouseX, mouseY, partialTick);
+    }
+
+    public void renderBackground(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
     }
 
     @Override
-    public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        render(graphics, mouseX, mouseY, partialTick);
+    }
+
+    public void render(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
         g.fill(0, 0, this.width, this.height, BACKDROP);
 
         view = view.resized(mapW(), mapH());
@@ -298,10 +309,10 @@ public final class ZoneMapScreen extends Screen {
         renderList(g, mouseX, mouseY);
         renderBar(g, mouseX, mouseY);
 
-        super.render(g, mouseX, mouseY, partialTick);
+        super.extractRenderState(g, mouseX, mouseY, partialTick);
     }
 
-    private void renderFlat(GuiGraphics g) {
+    private void renderFlat(GuiGraphicsExtractor g) {
         ZoneMapRenderer.terrain(g, mapX(), mapY(), view, terrain, surface);
         ZoneMapRenderer.grid(g, this.font, mapX(), mapY(), mapW(), mapH(), view, true);
         ZoneMapRenderer.shapes(g, this.font, mapX(), mapY(), view, zone.getShapes(), selected, true);
@@ -315,17 +326,17 @@ public final class ZoneMapScreen extends Screen {
     }
 
     /** Written into the corner rather than beside the arrow: at the frame there is no room for it. */
-    private void drawDistance(GuiGraphics g) {
+    private void drawDistance(GuiGraphicsExtractor g) {
         if (this.minecraft == null || this.minecraft.player == null) return;
 
         double dx = this.minecraft.player.getX() - view.centreX();
         double dz = this.minecraft.player.getZ() - view.centreZ();
         Component text = Component.translatable("editor.historystages.zone.map.player_away",
                 (int) Math.round(Math.sqrt(dx * dx + dz * dz)));
-        g.drawString(this.font, text, mapX() + 5, mapY() + mapH() - 12, LABEL_GREY, true);
+        g.text(this.font, text, mapX() + 5, mapY() + mapH() - 12, LABEL_GREY, true);
     }
 
-    private void renderList(GuiGraphics g, int mouseX, int mouseY) {
+    private void renderList(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         List<ZoneShape> shapes = zone.getShapes();
         if (shapes.isEmpty()) return;
 
@@ -333,7 +344,7 @@ public final class ZoneMapScreen extends Screen {
         int y = listY();
         g.fill(x, y, x + LIST_W, y + listH(), PANEL_BG);
         g.fill(x, y, x + LIST_W, y + 1, PANEL_EDGE);
-        g.drawString(this.font, Component.translatable("editor.historystages.zone.section.shapes"),
+        g.text(this.font, Component.translatable("editor.historystages.zone.section.shapes"),
                 x + 5, y + 3, LABEL_GREY, false);
 
         for (int i = 0; i < shapes.size(); i++) {
@@ -341,12 +352,12 @@ public final class ZoneMapScreen extends Screen {
             boolean hot = i == selected;
             boolean hover = mouseX >= x && mouseX < x + LIST_W && mouseY >= rowY && mouseY < rowY + ROW_H;
             if (hot || hover) g.fill(x + 1, rowY, x + LIST_W - 1, rowY + ROW_H, ROW_HOT);
-            g.drawString(this.font, (i + 1) + " · " + ZoneRowText.describeShape(shapes.get(i)),
+            g.text(this.font, (i + 1) + " · " + ZoneRowText.describeShape(shapes.get(i)),
                     x + 5, rowY + 2, hot ? ACCENT : TEXT, false);
         }
     }
 
-    private void renderBar(GuiGraphics g, int mouseX, int mouseY) {
+    private void renderBar(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         int y = this.height - BAR_H;
         g.fill(0, y, this.width, this.height, BAR_BG);
         g.fill(0, y, this.width, y + 1, BAR_EDGE);
@@ -357,7 +368,7 @@ public final class ZoneMapScreen extends Screen {
         Component readout = readout(mouseX, mouseY);
         int left = controlsRight() + 12;
         if (left + this.font.width(readout) <= this.width - MARGIN) {
-            g.drawString(this.font, readout, left, y + 9, LABEL_GREY, false);
+            g.text(this.font, readout, left, y + 9, LABEL_GREY, false);
         }
     }
 
@@ -397,8 +408,12 @@ public final class ZoneMapScreen extends Screen {
     // -------------------------------------------------------------------------------------
 
     @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        return mouseClicked(event.x(), event.y(), event.button());
+    }
+
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (super.mouseClicked(mouseX, mouseY, button)) return true;
+        if (super.mouseClicked(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)), false)) return true;
 
         if (overList(mouseX, mouseY)) {
             int row = (int) ((mouseY - listY() - ROW_H) / ROW_H);
@@ -451,8 +466,12 @@ public final class ZoneMapScreen extends Screen {
     }
 
     @Override
+    public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+        return mouseDragged(event.x(), event.y(), event.button(), dragX, dragY);
+    }
+
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dx, double dy) {
-        if (!dragging) return super.mouseDragged(mouseX, mouseY, button, dx, dy);
+        if (!dragging) return super.mouseDragged(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)), dx, dy);
 
         view = view.movedByPixels(mouseX - lastMouseX, mouseY - lastMouseY);
 
@@ -462,9 +481,13 @@ public final class ZoneMapScreen extends Screen {
     }
 
     @Override
+    public boolean mouseReleased(MouseButtonEvent event) {
+        return mouseReleased(event.x(), event.y(), event.button());
+    }
+
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
         dragging = false;
-        return super.mouseReleased(mouseX, mouseY, button);
+        return super.mouseReleased(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)));
     }
 
     @Override
@@ -476,12 +499,16 @@ public final class ZoneMapScreen extends Screen {
     }
 
     @Override
+    public boolean keyPressed(KeyEvent event) {
+        return keyPressed(event.key(), event.scancode(), event.modifiers());
+    }
+
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
             this.minecraft.gui.setScreen(parent);
             return true;
         }
-        return super.keyPressed(keyCode, scanCode, modifiers);
+        return super.keyPressed(new KeyEvent(keyCode, scanCode, modifiers));
     }
 
     @Override

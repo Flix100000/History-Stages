@@ -7,7 +7,7 @@ import java.util.function.BiConsumer;
 import net.bananemdnsa.historystages.data.TradeProfessionEntry;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
@@ -71,7 +71,7 @@ public class TradeLevelsPopup {
         this.visible = true;
     }
 
-    public void render(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    public void render(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         if (!visible) return;
 
         int contentH = LEVEL_KEYS.length * ROW_H + (LEVEL_KEYS.length - 1) * ROW_GAP;
@@ -90,13 +90,13 @@ public class TradeLevelsPopup {
         g.fill(popupX - 1, popupY - 1, popupX + popupW + 1, popupY + popupH + 1, 0xFF333333);
         g.fill(popupX, popupY, popupX + popupW, popupY + popupH, 0xFF1A1A1A);
 
-        g.drawCenteredString(font, Component.translatable("editor.historystages.trade_levels.title"),
+        g.centeredText(font, Component.translatable("editor.historystages.trade_levels.title"),
                 popupX + popupW / 2, popupY + 5, 0xFFFFFFFF);
         int accentW = 40;
         g.fill(popupX + (popupW - accentW) / 2, popupY + 15,
                 popupX + (popupW + accentW) / 2, popupY + 16, 0xFFFFCC00);
 
-        g.drawCenteredString(font, Component.translatable("editor.historystages.trade_levels.hint"),
+        g.centeredText(font, Component.translatable("editor.historystages.trade_levels.hint"),
                 popupX + popupW / 2, popupY + HEADER_H, 0x888888);
 
         int rowW = popupW - 2 * PAD;
@@ -113,7 +113,7 @@ public class TradeLevelsPopup {
                     ? (hovered ? 0xFFFFCC00 : 0xB0FFCC00)
                     : (hovered ? 0x40FFFFFF : 0x20FFFFFF));
             g.fill(x + 4, y + 6, x + 7, y + 9, gated ? 0xFFFFCC00 : 0xFF555555);
-            g.drawString(font, Component.translatable("merchant.level." + level).getString()
+            g.text(font, Component.translatable("merchant.level." + level).getString()
                             + " §8(" + level + ")",
                     x + 10, y + 3, gated ? 0xFFFFFF : 0x999999, false);
             y += ROW_H + ROW_GAP;
@@ -192,7 +192,7 @@ public class TradeLevelsPopup {
         visible = false;
     }
 
-    private void drawButton(GuiGraphics g, Font font, int x, int y, int w,
+    private void drawButton(GuiGraphicsExtractor g, Font font, int x, int y, int w,
                             int mouseX, int mouseY, String langKey, boolean primary) {
         boolean hovered = inButton(mouseX, mouseY, x, y, w);
         g.fill(x, y, x + w, y + BTN_H, primary
@@ -201,7 +201,7 @@ public class TradeLevelsPopup {
         g.fill(x, y + BTN_H - 1, x + w, y + BTN_H, primary
                 ? (hovered ? 0xFFFFCC00 : 0x80FFCC00)
                 : (hovered ? 0x80FFFFFF : 0x40FFFFFF));
-        g.drawCenteredString(font, Component.translatable(langKey), x + w / 2, y + 3,
+        g.centeredText(font, Component.translatable(langKey), x + w / 2, y + 3,
                 hovered ? 0xFFFFFF : (primary ? 0xEEEEEE : 0xCCCCCC));
     }
 

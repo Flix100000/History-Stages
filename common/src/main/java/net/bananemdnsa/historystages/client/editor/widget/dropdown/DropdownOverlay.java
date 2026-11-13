@@ -2,7 +2,7 @@ package net.bananemdnsa.historystages.client.editor.widget.dropdown;
 
 import net.bananemdnsa.historystages.api.editor.widget.PickerOverlay;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import org.lwjgl.glfw.GLFW;
 
 /**
@@ -69,7 +69,7 @@ public final class DropdownOverlay implements PickerOverlay {
     }
 
     @Override
-    public void render(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    public void render(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         dropdown.renderPopup(g, font, mouseX, mouseY);
     }
 

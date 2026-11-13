@@ -6,7 +6,7 @@ import net.bananemdnsa.historystages.api.stage.StageScope;
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.StageManager;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 
 import java.util.ArrayList;
@@ -88,7 +88,7 @@ public class LogicStagePickerList extends AbstractSearchableList<LogicStagePicke
     }
 
     @Override
-    protected void renderRow(GuiGraphics g, Font font, Entry entry, int x, int y, int w, int h,
+    protected void renderRow(GuiGraphicsExtractor g, Font font, Entry entry, int x, int y, int w, int h,
                              boolean hovered, int rowIndex) {
         String tag = owner == StageScope.INDIVIDUAL
                 ? " " + Component.translatable(entry.scope == StageScope.GLOBAL

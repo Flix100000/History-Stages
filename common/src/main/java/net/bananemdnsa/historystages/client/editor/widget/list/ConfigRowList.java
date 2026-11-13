@@ -14,7 +14,7 @@ import net.bananemdnsa.historystages.data.graph.GraphColors;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -142,7 +142,7 @@ public class ConfigRowList {
      * Right-aligned rather than after the label, where the label column has no room to spare.
      * The shades are the hand-picked originals every other {@link Badge} is modelled on.
      */
-    private static void drawInheritTag(GuiGraphics g, Font font, String tag, int right, int y) {
+    private static void drawInheritTag(GuiGraphicsExtractor g, Font font, String tag, int right, int y) {
         int w = Badge.width(font, tag);
         Badge.draw(g, font, tag, right - 6 - w, inheritTagY(y), w, TAG_TEXT, TAG_FRAME, TAG_BG);
     }
@@ -200,7 +200,7 @@ public class ConfigRowList {
         return mouseX >= controlX && mouseX <= right - 5;
     }
 
-    public void renderRow(GuiGraphics guiGraphics, ConfigEditorScreen.ConfigEntry entry,
+    public void renderRow(GuiGraphicsExtractor guiGraphics, ConfigEditorScreen.ConfigEntry entry,
                           int left, int y, int right, int mouseX, int mouseY) {
         Font font = Minecraft.getInstance().font;
 
@@ -218,7 +218,7 @@ public class ConfigRowList {
         // Label. An inherited row is dimmed as a whole — the value it shows belongs to
         // graph.toml, not to this stage, and the difference has to be visible at a glance.
         String label = Component.translatable(entry.labelKey).getString();
-        guiGraphics.drawString(font, label, textLeft(entry, left) + 8 + Math.round(hp * 2.0f), y + 8,
+        guiGraphics.text(font, label, textLeft(entry, left) + 8 + Math.round(hp * 2.0f), y + 8,
                 entry.inherited
                         ? Fade.mix(INHERITED_TEXT, INHERITED_TEXT_HOVER, hp)
                         : Fade.mix(0xFFCCCCCC, 0xFFFFFFFF, hp), false);
@@ -232,7 +232,7 @@ public class ConfigRowList {
         // would show a made-up OFF and an ENUM row would look up a lang key that does not exist.
         // Such a row is inherited by definition, so it needs no clear × either.
         if (entry.varies) {
-            guiGraphics.drawString(font,
+            guiGraphics.text(font,
                     Component.translatable("editor.historystages.graph.style.varies").getString(),
                     controlX, y + 8, INHERITED_TEXT & 0xFFFFFF, false);
             return;
@@ -249,7 +249,7 @@ public class ConfigRowList {
                         entry.inherited);
             }
             case INTEGER, DOUBLE -> {
-                guiGraphics.drawString(font, entry.value, controlX, y + 8,
+                guiGraphics.text(font, entry.value, controlX, y + 8,
                         entry.inherited ? INHERITED_TEXT & 0xFFFFFF : 0xDDDDDD, false);
             }
             // A rich text row shows its raw value like any other string; the format codes in it
@@ -260,14 +260,14 @@ public class ConfigRowList {
                 if (availWidth > 0 && font.width(display) > availWidth) {
                     display = font.plainSubstrByWidth(display, availWidth - 10) + "...";
                 }
-                guiGraphics.drawString(font, display, controlX, y + 8, 0xDDDDDD, false);
+                guiGraphics.text(font, display, controlX, y + 8, 0xDDDDDD, false);
             }
             case ITEM_LIST -> {
                 int count = entry.value.isEmpty() ? 0 : entry.value.split(",").length;
                 String display = "[" + count + " items] \u00A77(click to edit)";
                 boolean listHovered = mouseX >= controlX && mouseX <= right - 5
                         && mouseY >= y + 2 && mouseY < y + ENTRY_HEIGHT - 2;
-                guiGraphics.drawString(font, display, controlX, y + 8,
+                guiGraphics.text(font, display, controlX, y + 8,
                         listHovered ? 0xFFCC00 : 0xDDDDDD, false);
             }
             case TAG_LIST -> {
@@ -275,7 +275,7 @@ public class ConfigRowList {
                 String display = "[" + count + " tags] \u00A77(click to edit)";
                 boolean listHovered = mouseX >= controlX && mouseX <= right - 5
                         && mouseY >= y + 2 && mouseY < y + ENTRY_HEIGHT - 2;
-                guiGraphics.drawString(font, display, controlX, y + 8,
+                guiGraphics.text(font, display, controlX, y + 8,
                         listHovered ? 0xFFCC00 : 0xDDDDDD, false);
             }
             case EFFECT_LIST -> {
@@ -284,7 +284,7 @@ public class ConfigRowList {
                         "editor.historystages.config.effects_summary", count).getString();
                 boolean listHovered = mouseX >= controlX && mouseX <= right - 5
                         && mouseY >= y + 2 && mouseY < y + ENTRY_HEIGHT - 2;
-                guiGraphics.drawString(font, display, controlX, y + 8,
+                guiGraphics.text(font, display, controlX, y + 8,
                         listHovered ? 0xFFCC00 : 0xDDDDDD, false);
             }
             case BOOSTER_LIST -> {
@@ -292,19 +292,19 @@ public class ConfigRowList {
                 String display = "[" + count + " boosters] \u00A77(click to edit)";
                 boolean listHovered = mouseX >= controlX && mouseX <= right - 5
                         && mouseY >= y + 2 && mouseY < y + ENTRY_HEIGHT - 2;
-                guiGraphics.drawString(font, display, controlX, y + 8,
+                guiGraphics.text(font, display, controlX, y + 8,
                         listHovered ? 0xFFCC00 : 0xDDDDDD, false);
             }
             case ITEM -> {
                 // Render a 16x16 item icon + the item ID text
                 ItemStack preview = resolveItemStack(entry.value);
                 if (!preview.isEmpty()) {
-                    guiGraphics.renderItem(preview, controlX, y + 3);
+                    guiGraphics.item(preview, controlX, y + 3);
                 }
                 String itemDisplay = entry.value.isEmpty() ? "\u00A77(none)" : entry.value;
                 boolean itemHovered = mouseX >= controlX && mouseX <= right - 5
                         && mouseY >= y + 2 && mouseY < y + ENTRY_HEIGHT - 2;
-                guiGraphics.drawString(font, itemDisplay, controlX + 18, y + 8,
+                guiGraphics.text(font, itemDisplay, controlX + 18, y + 8,
                         itemHovered ? 0xFFCC00 : 0xDDDDDD, false);
             }
             case ENUM -> {
@@ -324,7 +324,7 @@ public class ConfigRowList {
             case SUBSCREEN -> {
                 boolean subHovered = mouseX >= controlX && mouseX <= right - 5
                         && mouseY >= y + 2 && mouseY < y + ENTRY_HEIGHT - 2;
-                guiGraphics.drawString(font,
+                guiGraphics.text(font,
                         Component.translatable("editor.historystages.config.open_subscreen").getString(),
                         controlX, y + 8, subHovered ? 0xFFCC00 : 0xDDDDDD, false);
             }
@@ -340,7 +340,7 @@ public class ConfigRowList {
                 String shown = entry.value.isEmpty()
                         ? Component.translatable("editor.historystages.config.texture_none").getString()
                         : entry.value.replace("textures/block/", "").replace(".png", "");
-                guiGraphics.drawString(font, shown, controlX + 20, y + 8,
+                guiGraphics.text(font, shown, controlX + 20, y + 8,
                         texHovered ? 0xFFCC00 : 0xDDDDDD, false);
             }
             case COLOR -> {
@@ -352,7 +352,7 @@ public class ConfigRowList {
                 guiGraphics.fill(controlX - 1, y + 6, controlX + 11, y + 18, 0xFF555555);
                 guiGraphics.fill(controlX, y + 7, controlX + 10, y + 17,
                         0xFF000000 | GraphColors.parse(entry.value, 0));
-                guiGraphics.drawString(font, entry.value, controlX + 16, y + 8,
+                guiGraphics.text(font, entry.value, controlX + 16, y + 8,
                         entry.inherited ? INHERITED_TEXT & 0xFFFFFF
                                 : (colorHovered ? 0xFFCC00 : 0xDDDDDD), false);
             }
@@ -364,7 +364,7 @@ public class ConfigRowList {
         if (entry.clearable && !entry.inherited) {
             boolean clearHovered = mouseX >= clearX(left) && mouseX < clearX(left) + CLEAR_WIDTH
                     && mouseY >= y && mouseY < y + ENTRY_HEIGHT;
-            guiGraphics.drawString(font, "✕", clearX(left) + 2, y + 8,
+            guiGraphics.text(font, "✕", clearX(left) + 2, y + 8,
                     clearHovered ? 0xFFFF6666 : 0xFF888888, false);
         }
     }

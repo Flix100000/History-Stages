@@ -1,5 +1,7 @@
 package net.bananemdnsa.historystages.screen;
 
+import net.minecraft.client.input.MouseButtonInfo;
+import net.minecraft.client.input.MouseButtonEvent;
 import dev.architectury.networking.NetworkManager;
 import net.bananemdnsa.historystages.client.display.BlockedLines;
 import java.util.List;
@@ -24,7 +26,7 @@ import net.bananemdnsa.historystages.client.cache.ClientIndividualStageCache;
 import net.bananemdnsa.historystages.client.cache.ClientDependencyCache;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -207,19 +209,19 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
     }
 
     /** Draws {@code text} at the left margin. Shadowed — see the palette comment. */
-    private void drawLeft(GuiGraphics guiGraphics, Component text, int y, int colour) {
-        guiGraphics.drawString(this.font, text, PedestalLayout.TEXT_X, y, colour, true);
+    private void drawLeft(GuiGraphicsExtractor guiGraphics, Component text, int y, int colour) {
+        guiGraphics.text(this.font, text, PedestalLayout.TEXT_X, y, colour, true);
     }
 
     /** Draws {@code text} so its right edge lands on {@link PedestalLayout#TEXT_RIGHT}. */
-    private void drawRightAligned(GuiGraphics guiGraphics, Component text, int y, int colour) {
-        guiGraphics.drawString(this.font, text,
+    private void drawRightAligned(GuiGraphicsExtractor guiGraphics, Component text, int y, int colour) {
+        guiGraphics.text(this.font, text,
                 PedestalLayout.TEXT_RIGHT - this.font.width(text), y, colour, true);
     }
 
     /** Draws {@code text} centred across the panel body. */
-    private void drawCentred(GuiGraphics guiGraphics, Component text, int y, int colour) {
-        guiGraphics.drawString(this.font, text,
+    private void drawCentred(GuiGraphicsExtractor guiGraphics, Component text, int y, int colour) {
+        guiGraphics.text(this.font, text,
                 (PedestalLayout.WIDTH / 2) - (this.font.width(text) / 2), y, colour, true);
     }
 
@@ -228,7 +230,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
      * the left leaves free. Both lines on this panel are built this way, and in German the
      * two halves together are wider than the panel more often than not.
      */
-    private void drawSplitLine(GuiGraphics guiGraphics, int y,
+    private void drawSplitLine(GuiGraphicsExtractor guiGraphics, int y,
                                Component left, int leftColour, Component right, int rightColour) {
         Component leftCut = trimToWidth(left, slabTextWidth());
         drawLeft(guiGraphics, leftCut, y, leftColour);
@@ -248,8 +250,8 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
      * grows out from under it, so the same number sits over green at 20% and over the empty
      * rail at 0% and has to read on both.
      */
-    private void drawBarPercent(GuiGraphics guiGraphics, int percent) {
-        guiGraphics.drawString(this.font,
+    private void drawBarPercent(GuiGraphicsExtractor guiGraphics, int percent) {
+        guiGraphics.text(this.font,
                 Component.translatable("gui.historystages.pedestal.progress", percent),
                 PedestalLayout.BAR_TEXT_X, PedestalLayout.BAR_TEXT_Y, SLAB_PRIMARY, true);
     }
@@ -356,9 +358,9 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
     }
 
     /** Draws {@code text} cut to {@code maxWidth}, without a shadow — this is on parchment. */
-    private void drawTrimmed(GuiGraphics guiGraphics, Component text, int x, int y, int maxWidth,
+    private void drawTrimmed(GuiGraphicsExtractor guiGraphics, Component text, int x, int y, int maxWidth,
                              int colour) {
-        guiGraphics.drawString(this.font, trimToWidth(text, maxWidth), x, y, colour, false);
+        guiGraphics.text(this.font, trimToWidth(text, maxWidth), x, y, colour, false);
     }
 
     /** The live booster multiplier, or null when no booster is under the pedestal. */
@@ -383,7 +385,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
     }
 
     @Override
-    protected void renderLabels(GuiGraphics guiGraphics, int pMouseX, int pMouseY) {
+    protected void renderLabels(GuiGraphicsExtractor guiGraphics, int pMouseX, int pMouseY) {
         // No block-name title and no "Inventory" caption: the artwork says both already, and
         // the band below the parchment is the only place a label fits — two lines, no more.
 
@@ -533,7 +535,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
     }
 
     @Override
-    protected void renderBg(GuiGraphics guiGraphics, float pPartialTick, int pMouseX, int pMouseY) {
+    protected void renderBg(GuiGraphicsExtractor guiGraphics, float pPartialTick, int pMouseX, int pMouseY) {
         // Update dependency state in case it changed (scroll inserted/removed)
         boolean prevDeps = hasDependencies;
         checkDependencies();
@@ -575,10 +577,14 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
     }
 
     @Override
-    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float delta) {
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        render(graphics, mouseX, mouseY, partialTick);
+    }
+
+    public void render(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float delta) {
         pendingTooltip = null;
 
-        super.render(guiGraphics, mouseX, mouseY, delta);
+        super.extractRenderState(guiGraphics, mouseX, mouseY, delta);
 
         ItemStack stack = menu.getSlot(36).getItem();
         if (!stack.isEmpty()) {
@@ -599,10 +605,10 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
                 if (menu.isRunning()) {
                     int slotX = this.leftPos + PedestalLayout.SCROLL_SLOT_X;
                     int slotY = this.topPos + PedestalLayout.SCROLL_SLOT_Y;
-                    guiGraphics.pose().pushPose();
-                    guiGraphics.pose().translate(0, 0, SLOT_OVERLAY_Z);
+                    guiGraphics.pose().pushMatrix();
+                    guiGraphics.pose().translate(0, 0);
                     guiGraphics.fill(slotX, slotY, slotX + 16, slotY + 16, 0x80808080);
-                    guiGraphics.pose().popPose();
+                    guiGraphics.pose().popMatrix();
                 }
             }
         }
@@ -611,15 +617,15 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
         if (pendingTooltipLines == null) pendingTooltipLines = costTooltip(mouseX, mouseY);
         if (pendingTooltipLines == null) pendingTooltipLines = revokeTooltip(mouseX, mouseY);
         if (pendingTooltipLines != null) {
-            guiGraphics.pose().pushPose();
-            guiGraphics.pose().translate(0, 0, 500);
-            guiGraphics.renderComponentTooltip(this.font, pendingTooltipLines, mouseX, mouseY);
-            guiGraphics.pose().popPose();
+            guiGraphics.pose().pushMatrix();
+            guiGraphics.pose().translate(0, 0);
+            guiGraphics.setComponentTooltipForNextFrame(this.font, pendingTooltipLines, mouseX, mouseY);
+            guiGraphics.pose().popMatrix();
         } else if (pendingTooltip != null) {
-            guiGraphics.pose().pushPose();
-            guiGraphics.pose().translate(0, 0, 500);
-            guiGraphics.renderTooltip(this.font, pendingTooltip, mouseX, mouseY);
-            guiGraphics.pose().popPose();
+            guiGraphics.pose().pushMatrix();
+            guiGraphics.pose().translate(0, 0);
+            guiGraphics.setTooltipForNextFrame(this.font, pendingTooltip, mouseX, mouseY);
+            guiGraphics.pose().popMatrix();
         } else {
             renderTooltip(guiGraphics, mouseX, mouseY);
         }
@@ -641,6 +647,10 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
     }
 
     @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        return mouseClicked(event.x(), event.y(), event.button());
+    }
+
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (hasDependencies && button == 0) {
             ItemStack scroll = menu.getSlot(36).getItem();
@@ -678,7 +688,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
                 }
             }
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)), false);
     }
 
     /**
@@ -692,7 +702,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
      * The red "Blocked while" card at the top of the requirement list. Returns the y below it.
      * Lines are trimmed to the parchment; the status line's hover has the full text.
      */
-    private int drawBlockedCard(GuiGraphics g, String stageId, boolean individual, int y) {
+    private int drawBlockedCard(GuiGraphicsExtractor g, String stageId, boolean individual, int y) {
         List<BlockedLines.Line> reason = BlockedLines.reasonLines(
                 BlockedLines.forLocalPlayer(stageId, individual), individual);
         int h = 13 + reason.size() * 10 + 2;
@@ -806,7 +816,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
         return tag.contains("StageResearch") ? tag.getString("StageResearch") : null;
     }
 
-    private void renderDependencyPanel(GuiGraphics guiGraphics, int x, int y, int mouseX, int mouseY) {
+    private void renderDependencyPanel(GuiGraphicsExtractor guiGraphics, int x, int y, int mouseX, int mouseY) {
         ItemStack stack = menu.getSlot(36).getItem();
         if (stack.isEmpty()) return;
         CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
@@ -828,30 +838,30 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
                 : ClientStageCache.isStageUnlocked(stageId);
 
         if (isUnlocked) {
-            guiGraphics.pose().pushPose();
-            guiGraphics.pose().translate(0, 0, 100);
+            guiGraphics.pose().pushMatrix();
+            guiGraphics.pose().translate(0, 0);
             Component text = Component.translatable("screen.historystages.already_learned");
             int tw = this.font.width(text);
-            guiGraphics.drawString(this.font, text, x + (PedestalLayout.DEP_W / 2) - (tw / 2), y + 70,
+            guiGraphics.text(this.font, text, x + (PedestalLayout.DEP_W / 2) - (tw / 2), y + 70,
                     PANEL_ERROR, false);
-            guiGraphics.pose().popPose();
+            guiGraphics.pose().popMatrix();
             return;
         }
 
         if (result == null) {
-            guiGraphics.pose().pushPose();
-            guiGraphics.pose().translate(0, 0, 100);
-            guiGraphics.drawString(this.font,
+            guiGraphics.pose().pushMatrix();
+            guiGraphics.pose().translate(0, 0);
+            guiGraphics.text(this.font,
                     Component.translatable("gui.historystages.pedestal.loading"), x + 10, y + 20, PANEL_SECONDARY, false);
-            guiGraphics.pose().popPose();
+            guiGraphics.pose().popMatrix();
             return;
         }
 
         // Panel title
-        guiGraphics.pose().pushPose();
-        guiGraphics.pose().translate(0, 0, 100);
+        guiGraphics.pose().pushMatrix();
+        guiGraphics.pose().translate(0, 0);
         Component panelTitle = Component.translatable("gui.historystages.pedestal.requirements");
-        guiGraphics.drawString(this.font, panelTitle,
+        guiGraphics.text(this.font, panelTitle,
                 x + (PedestalLayout.DEP_W / 2) - (font.width(panelTitle) / 2),
                 y + PedestalLayout.DEP_TITLE_Y, PANEL_PRIMARY, false);
 
@@ -863,7 +873,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
         // shows only when a cost block changed it.
         String costLabel = costLabel(tag);
         if (!costLabel.isEmpty()) {
-            guiGraphics.drawString(this.font, costLabel, x + 5, y + 154, PANEL_SECONDARY, false);
+            guiGraphics.text(this.font, costLabel, x + 5, y + 154, PANEL_SECONDARY, false);
         }
 
         // Deposit progress bar (shows while an item is being processed)
@@ -888,7 +898,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
                 }
             }
         }
-        guiGraphics.pose().popPose();
+        guiGraphics.pose().popMatrix();
 
         // Clipped scrollable content area: the flat middle of the scroll, nothing wider.
         int clipX = x + PedestalLayout.DEP_CONTENT_X;
@@ -897,8 +907,8 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
         int clipH = PedestalLayout.DEP_LIST_H;
 
         guiGraphics.enableScissor(clipX, clipY, clipX + clipW, clipY + clipH);
-        guiGraphics.pose().pushPose();
-        guiGraphics.pose().translate(clipX, clipY - scrollAmount, 100);
+        guiGraphics.pose().pushMatrix();
+        guiGraphics.pose().translate(clipX, clipY - scrollAmount);
 
         int currentY = 0;
         if (menu.isLogicBlocked()) {
@@ -907,7 +917,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
         int groupIdx = 0;
         for (RequirementResult.GroupResult group : result.getGroups()) {
             if (result.getGroups().size() > 1) {
-                guiGraphics.drawString(this.font,
+                guiGraphics.text(this.font,
                         Component.translatable("gui.historystages.pedestal.group", groupIdx + 1),
                         CARD_PAD, currentY, 0x606060, false);
                 currentY += 12;
@@ -925,7 +935,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
                 ItemStack icon = requirementIcon(entry);
                 int textX = CARD_PAD;
                 if (!icon.isEmpty()) {
-                    guiGraphics.renderItem(icon, 1, currentY + (CARD_H - 16) / 2);
+                    guiGraphics.item(icon, 1, currentY + (CARD_H - 16) / 2);
                     textX = 18 + CARD_PAD;
                 }
                 int textW = PedestalLayout.DEP_CONTENT_W - CARD_PAD - textX;
@@ -950,7 +960,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
         }
         totalContentHeight = currentY;
 
-        guiGraphics.pose().popPose();
+        guiGraphics.pose().popMatrix();
         guiGraphics.disableScissor();
 
         // Suppress tooltip when hovering directly over the deposit slot

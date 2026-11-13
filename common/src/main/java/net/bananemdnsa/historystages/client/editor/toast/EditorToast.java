@@ -7,7 +7,7 @@ import net.bananemdnsa.historystages.client.toast.DismissibleToast;
 import net.minecraft.util.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.toasts.Toast;
 import net.minecraft.client.gui.components.toasts.ToastComponent;
 import net.minecraft.network.chat.Component;
@@ -91,7 +91,7 @@ public class EditorToast implements Toast, DismissibleToast {
      * know — the toast still reads fine without the head, and the alternative would be
      * a wrong default skin next to a named player.
      */
-    private static void drawFace(UUID uuid, GuiGraphics g, int x, int y) {
+    private static void drawFace(UUID uuid, GuiGraphicsExtractor g, int x, int y) {
         Minecraft mc = Minecraft.getInstance();
         PlayerInfo info = mc.getConnection() != null ? mc.getConnection().getPlayerInfo(uuid) : null;
         if (info != null) {
@@ -120,7 +120,7 @@ public class EditorToast implements Toast, DismissibleToast {
 
     /**
      * Wraps the message and derives the toast height. Idempotent and independent of
-     * {@link GuiGraphics}, so it can run before the first render via the shared font.
+     * {@link GuiGraphicsExtractor}, so it can run before the first render via the shared font.
      */
     private void ensureLayout() {
         if (wrappedMessage != null) {
@@ -133,7 +133,7 @@ public class EditorToast implements Toast, DismissibleToast {
     }
 
     @Override
-    public Visibility render(GuiGraphics g, ToastComponent toastComponent, long timeSinceLastVisible) {
+    public Visibility render(GuiGraphicsExtractor g, ToastComponent toastComponent, long timeSinceLastVisible) {
         Font font = toastComponent.getMinecraft().font;
 
         ensureLayout();
@@ -172,12 +172,12 @@ public class EditorToast implements Toast, DismissibleToast {
         }
 
         // Title
-        g.drawString(font, title, textX, 6, Fade.alpha(level.titleColor, fade), false);
+        g.text(font, title, textX, 6, Fade.alpha(level.titleColor, fade), false);
 
         // Message body (wrapped)
         int y = 18;
         for (FormattedCharSequence line : wrappedMessage) {
-            g.drawString(font, line, textX, y, Fade.alpha(0xFFDDDDDD, fade), false);
+            g.text(font, line, textX, y, Fade.alpha(0xFFDDDDDD, fade), false);
             y += 10;
         }
 

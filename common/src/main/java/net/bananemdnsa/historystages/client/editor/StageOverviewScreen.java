@@ -1,5 +1,9 @@
 package net.bananemdnsa.historystages.client.editor;
 
+import net.minecraft.client.input.CharacterEvent;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonInfo;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.client.editor.anim.Anim;
 import net.bananemdnsa.historystages.client.editor.anim.Ease;
@@ -38,7 +42,7 @@ import net.bananemdnsa.historystages.client.editor.widget.dropdown.PlayerPickerD
 import net.bananemdnsa.historystages.network.serverbound.RequestIndividualStatesPacket;
 import net.bananemdnsa.historystages.network.serverbound.ToggleIndividualStageLockPacket;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.bananemdnsa.historystages.client.editor.widget.StyledButton;
 import net.bananemdnsa.historystages.api.editor.widget.SearchBar;
 import net.minecraft.client.gui.screens.Screen;
@@ -472,7 +476,7 @@ public class StageOverviewScreen extends Screen {
      * row so the list reads as one thing; no lock button and no mode badge, because a
      * folder has neither.
      */
-    private void drawFolderRow(GuiGraphics g, StageFolderTree.Folder folder, boolean individual, int hoverKey,
+    private void drawFolderRow(GuiGraphicsExtractor g, StageFolderTree.Folder folder, boolean individual, int hoverKey,
                                int entryTop, int listLeft, int listRight, int listTop, int listBottom,
                                int mouseX, int mouseY, int accentColor) {
         int entryBottom = entryTop + ENTRY_HEIGHT - 2;
@@ -502,13 +506,13 @@ public class StageOverviewScreen extends Screen {
         }
 
         drawFolderIcon(g, contentLeft + 5, entryTop + 7, accentColor);
-        g.drawString(this.font, folder.name(), contentLeft + 16, entryTop + 4,
+        g.text(this.font, folder.name(), contentLeft + 16, entryTop + 4,
                 progress > 0.01f ? 0xFFFFFF : 0xEEEEEE, false);
 
         String info = Component.translatable("editor.historystages.folder.stage_count",
                 folder.stageCount()).getString();
         int infoColor = (int) (0x88 + progress * 0x33);
-        g.drawString(this.font, info, contentLeft + 22, entryTop + 15,
+        g.text(this.font, info, contentLeft + 22, entryTop + 15,
                 (0xFF << 24) | (infoColor << 16) | (infoColor << 8) | infoColor, false);
     }
 
@@ -525,7 +529,7 @@ public class StageOverviewScreen extends Screen {
      * the row's counterpart on stage rows is an emoji, but a folder symbol outside the
      * font's coverage would degrade to a missing-glyph box, and this cannot.
      */
-    private void drawFolderIcon(GuiGraphics g, int x, int y, int accentColor) {
+    private void drawFolderIcon(GuiGraphicsExtractor g, int x, int y, int accentColor) {
         int color = 0xFF000000 | (accentColor & 0xFFFFFF);
         for (int i = 0; i < 3; i++) {
             int barY = y + i * 3;
@@ -557,7 +561,7 @@ public class StageOverviewScreen extends Screen {
      * clickable x-range of each segment in {@link #breadcrumbHits}, so a click can jump
      * straight to an ancestor instead of pressing Back repeatedly.
      */
-    private void drawBreadcrumb(GuiGraphics g, int x, int y, int mouseX, int mouseY) {
+    private void drawBreadcrumb(GuiGraphicsExtractor g, int x, int y, int mouseX, int mouseY) {
         breadcrumbHits.clear();
         List<String> parts = StagePaths.breadcrumb(currentPath);
         int cx = x;
@@ -567,18 +571,22 @@ public class StageOverviewScreen extends Screen {
             int w = this.font.width(label);
             boolean last = i == parts.size() - 1;
             boolean hovered = !last && mouseX >= cx && mouseX <= cx + w && mouseY >= y && mouseY <= y + 10;
-            g.drawString(this.font, label, cx, y, last ? 0xFFFFFF : (hovered ? 0xFFCC00 : 0x888888), false);
+            g.text(this.font, label, cx, y, last ? 0xFFFFFF : (hovered ? 0xFFCC00 : 0x888888), false);
             if (!last) breadcrumbHits.add(new BreadcrumbHit(cx, cx + w, path));
             cx += w;
             if (!last) {
-                g.drawString(this.font, BREADCRUMB_SEPARATOR, cx, y, 0x555555, false);
+                g.text(this.font, BREADCRUMB_SEPARATOR, cx, y, 0x555555, false);
                 cx += this.font.width(BREADCRUMB_SEPARATOR);
             }
         }
     }
 
     @Override
-    public void renderBackground(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+    public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        renderBackground(graphics, mouseX, mouseY, partialTick);
+    }
+
+    public void renderBackground(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
         // No-op — we draw our own background in render() and want to avoid 1.21's menu blur shader
     }
 
@@ -597,7 +605,11 @@ public class StageOverviewScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        render(graphics, mouseX, mouseY, partialTick);
+    }
+
+    public void render(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
         // Refresh stage list if another admin changed definitions (broadcast via SyncStageDefinitionsPacket)
         int currentCount = StageManager.getStages().size();
         int currentIndividualCount = StageManager.getIndividualStages().size();
@@ -639,7 +651,7 @@ public class StageOverviewScreen extends Screen {
         organizeReveal.ramp(organizeMode, Timing.REVEAL_MS, Timing.REVEAL_MS);
 
         guiGraphics.fill(0, 0, this.width, this.height, 0xE0101010);
-        guiGraphics.drawCenteredString(this.font, this.title, this.width / 2, 10, 0xFFFFFF);
+        guiGraphics.centeredText(this.font, this.title, this.width / 2, 10, 0xFFFFFF);
 
         guiGraphics.blit(LOGO, LOGO_X, LOGO_Y, LOGO_SIZE, LOGO_SIZE, 0f, 0f,
                 LOGO_TEX, LOGO_TEX, LOGO_TEX, LOGO_TEX);
@@ -681,8 +693,8 @@ public class StageOverviewScreen extends Screen {
         float navT = Ease.inOutCubic(navSlide.ramp(1.0f, Timing.NAV_SLIDE_MS));
         boolean navigating = navT < 0.999f;
         if (navigating) {
-            guiGraphics.pose().pushPose();
-            guiGraphics.pose().translate((1.0f - navT) * NAV_SLIDE_PX * navDirection, 0.0f, 0.0f);
+            guiGraphics.pose().pushMatrix();
+            guiGraphics.pose().translate((1.0f - navT) * NAV_SLIDE_PX * navDirection, 0.0f);
         }
 
         boolean overlayOpen = contextMenu != null && contextMenu.isVisible();
@@ -725,7 +737,7 @@ public class StageOverviewScreen extends Screen {
                 int glLabelW = this.font.width(globalLabel);
                 int glLabelX = listLeft + 5;
                 guiGraphics.fill(glLabelX - 2, globalHeaderY + 3, glLabelX + glLabelW + 2, globalHeaderY + 15, 0xE0101010);
-                guiGraphics.drawString(this.font, globalLabel, glLabelX, globalHeaderY + 4, 0x888888, false);
+                guiGraphics.text(this.font, globalLabel, glLabelX, globalHeaderY + 4, 0x888888, false);
             }
         }
 
@@ -794,7 +806,7 @@ public class StageOverviewScreen extends Screen {
             // Lock/unlock icon
             String icon = unlocked ? "\u2714" : "\uD83D\uDD12";
             int iconColor = unlocked ? 0xFFCC00 : 0x888888;
-            guiGraphics.drawString(this.font, icon, contentLeft + 5, entryTop + 6, iconColor, false);
+            guiGraphics.text(this.font, icon, contentLeft + 5, entryTop + 6, iconColor, false);
 
             // Mode badge (placed to the LEFT of the lock button, vertically centered)
             long remainingTicks = EditorDataCache.getTemporaryActiveTicks(stageId);
@@ -808,7 +820,7 @@ public class StageOverviewScreen extends Screen {
             int countW = countText.isEmpty() ? 0 : this.font.width(countText) + 6;
             int countX = badgeX - countW;
             if (!countText.isEmpty()) {
-                guiGraphics.drawString(this.font, countText, countX + 2, badgeY + 2, 0xFFAAAAAA, false);
+                guiGraphics.text(this.font, countText, countX + 2, badgeY + 2, 0xFFAAAAAA, false);
             }
 
             // Stage name with marquee for long names. A search spans both trees, so the
@@ -834,20 +846,20 @@ public class StageOverviewScreen extends Screen {
                     float pos = scrollProg % cycle;
                     int scrollOff = pos <= maxMarquee ? (int) pos : (int) (cycle - pos);
                     guiGraphics.enableScissor(nameX, entryTop, nameX + nameAvailW, entryBottom);
-                    guiGraphics.drawString(this.font, displayText, nameX - scrollOff, entryTop + 4, nameColor, false);
+                    guiGraphics.text(this.font, displayText, nameX - scrollOff, entryTop + 4, nameColor, false);
                     guiGraphics.disableScissor();
                 } else {
-                    guiGraphics.drawString(this.font, displayText, nameX, entryTop + 4, nameColor, false);
+                    guiGraphics.text(this.font, displayText, nameX, entryTop + 4, nameColor, false);
                 }
             } else {
-                guiGraphics.drawString(this.font, displayText, nameX, entryTop + 4, nameColor, false);
+                guiGraphics.text(this.font, displayText, nameX, entryTop + 4, nameColor, false);
             }
 
             // Item count info
             int itemCount = CategoryEntryCounter.totalEntries(entry);
             String info = Component.translatable("editor.historystages.entries", itemCount).getString();
             int infoColor = (int) (0x88 + progress * 0x33);
-            guiGraphics.drawString(this.font, info, contentLeft + 22, entryTop + 15, (0xFF << 24) | (infoColor << 16) | (infoColor << 8) | infoColor, false);
+            guiGraphics.text(this.font, info, contentLeft + 22, entryTop + 15, (0xFF << 24) | (infoColor << 16) | (infoColor << 8) | infoColor, false);
             drawInfoBadges(guiGraphics, entry, info, contentLeft, entryTop + 15,
                     ClientLostStages.isLost(stageId, false));
 
@@ -863,7 +875,7 @@ public class StageOverviewScreen extends Screen {
 
                 int lockTextColor = lockBtnHovered ? 0xFFFFFF : 0xCCCCCC;
                 int textW = this.font.width(lockLabel);
-                guiGraphics.drawString(this.font, lockLabel, lockBtnX + (lockBtnW - textW) / 2, lockBtnY + 4, lockTextColor, false);
+                guiGraphics.text(this.font, lockLabel, lockBtnX + (lockBtnW - textW) / 2, lockBtnY + 4, lockTextColor, false);
             }
         }
 
@@ -905,7 +917,7 @@ public class StageOverviewScreen extends Screen {
                     int labelW = this.font.width(sectionLabel);
                     int labelX = listLeft + 5;
                     guiGraphics.fill(labelX - 2, sectionY + 3, labelX + labelW + 2, sectionY + 15, 0xE0101010);
-                    guiGraphics.drawString(this.font, sectionLabel, labelX, sectionY + 4, 0x888888, false);
+                    guiGraphics.text(this.font, sectionLabel, labelX, sectionY + 4, 0x888888, false);
                 }
             }
 
@@ -976,7 +988,7 @@ public class StageOverviewScreen extends Screen {
                     drawCheckbox(guiGraphics, listLeft + 4, entryTop + 8,
                             isSelected(stageId, true), 0xBBBBBB, cbReveal);
                 }
-                guiGraphics.drawString(this.font, stateIcon, contentLeft + 5, entryTop + 6, stateColor, false);
+                guiGraphics.text(this.font, stateIcon, contentLeft + 5, entryTop + 6, stateColor, false);
 
                 // Mode badge sits left of the lock button, same as on global rows. The
                 // countdown follows the picked player; under "@a" there is none to show.
@@ -993,7 +1005,7 @@ public class StageOverviewScreen extends Screen {
                 int countW = countText.isEmpty() ? 0 : this.font.width(countText) + 6;
                 int countX = modeLeft - countW;
                 if (!countText.isEmpty()) {
-                    guiGraphics.drawString(this.font, countText, countX + 2, badgeY + 2, 0xFFAAAAAA, false);
+                    guiGraphics.text(this.font, countText, countX + 2, badgeY + 2, 0xFFAAAAAA, false);
                 }
 
                 // Lose-on-death badge, left of the count. Individual stages only —
@@ -1031,20 +1043,20 @@ public class StageOverviewScreen extends Screen {
                         float pos = scrollProg % cycle;
                         int scrollOff = pos <= maxMarquee ? (int) pos : (int) (cycle - pos);
                         guiGraphics.enableScissor(nameX, entryTop, nameX + nameAvailW, entryBottom);
-                        guiGraphics.drawString(this.font, displayText, nameX - scrollOff, entryTop + 4, nameColor, false);
+                        guiGraphics.text(this.font, displayText, nameX - scrollOff, entryTop + 4, nameColor, false);
                         guiGraphics.disableScissor();
                     } else {
-                        guiGraphics.drawString(this.font, displayText, nameX, entryTop + 4, nameColor, false);
+                        guiGraphics.text(this.font, displayText, nameX, entryTop + 4, nameColor, false);
                     }
                 } else {
-                    guiGraphics.drawString(this.font, displayText, nameX, entryTop + 4, nameColor, false);
+                    guiGraphics.text(this.font, displayText, nameX, entryTop + 4, nameColor, false);
                 }
 
                 // Item count info
                 int itemCount = CategoryEntryCounter.totalEntries(entry);
                 String info = Component.translatable("editor.historystages.entries", itemCount).getString();
                 int infoColor = (int) (0x88 + progress * 0x33);
-                guiGraphics.drawString(this.font, info, contentLeft + 22, entryTop + 15, (0xFF << 24) | (infoColor << 16) | (infoColor << 8) | infoColor, false);
+                guiGraphics.text(this.font, info, contentLeft + 22, entryTop + 15, (0xFF << 24) | (infoColor << 16) | (infoColor << 8) | infoColor, false);
                 // Individual stages carry dependencies just like global ones, so the marker
                 // belongs on these rows too. No lost badge: these rows show the picked target's
                 // state, while the client only knows the local player's lost marks.
@@ -1059,7 +1071,7 @@ public class StageOverviewScreen extends Screen {
                     guiGraphics.fill(lockBtnX, lockBtnY + lockBtnH - 1, lockBtnX + lockBtnW, lockBtnY + lockBtnH, lockAccent);
                     int lockTextColor = lockBtnHovered ? 0xFFFFFF : 0xCCCCCC;
                     int lockTextW = this.font.width(lockLabel);
-                    guiGraphics.drawString(this.font, lockLabel, lockBtnX + (lockBtnW - lockTextW) / 2,
+                    guiGraphics.text(this.font, lockLabel, lockBtnX + (lockBtnW - lockTextW) / 2,
                             lockBtnY + 4, lockTextColor, false);
                 }
             }
@@ -1096,7 +1108,7 @@ public class StageOverviewScreen extends Screen {
         }
 
         if (navigating) {
-            guiGraphics.pose().popPose();
+            guiGraphics.pose().popMatrix();
         }
         guiGraphics.disableScissor();
 
@@ -1122,11 +1134,11 @@ public class StageOverviewScreen extends Screen {
             // long translation would otherwise run off the right edge.
             int statusW = Math.max(this.font.width(selectedText), this.font.width(hintText));
             int statusX = Math.min(BOTTOM_BAR_END + 10, Math.max(10, this.width - 10 - statusW));
-            guiGraphics.drawString(this.font, selectedText, statusX, this.height - 29, 0xFFCC00, false);
-            guiGraphics.drawString(this.font, hintText, statusX, this.height - 18, 0x888888, false);
+            guiGraphics.text(this.font, selectedText, statusX, this.height - 29, 0xFFCC00, false);
+            guiGraphics.text(this.font, hintText, statusX, this.height - 18, 0x888888, false);
         }
 
-        super.render(guiGraphics, mouseX, mouseY, partialTick);
+        super.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
 
         badgeTooltip.render(guiGraphics, this.font, hoveredBadgeKey, hoveredBadgeText,
                 mouseX, mouseY, this.width, this.height);
@@ -1137,10 +1149,10 @@ public class StageOverviewScreen extends Screen {
         menuCaret.ramp(headerMenuOpen, Timing.POPUP_MS, Timing.POPUP_MS);
         drawMenuButtonContent(guiGraphics);
 
-        guiGraphics.pose().pushPose();
-        guiGraphics.pose().translate(0, 0, 200);
+        guiGraphics.pose().pushMatrix();
+        guiGraphics.pose().translate(0, 0);
         contextMenu.render(guiGraphics, this.font, mouseX, mouseY);
-        guiGraphics.pose().popPose();
+        guiGraphics.pose().popMatrix();
 
         if (pickerVisible) {
             playerPicker.renderPopup(guiGraphics, this.font, effectiveMouseX, effectiveMouseY);
@@ -1153,17 +1165,21 @@ public class StageOverviewScreen extends Screen {
                 int ghostW = this.font.width(ghost) + 8;
                 int ghostX = Math.min(mouseX + 8, this.width - ghostW - 2);
                 int ghostY = Math.min(mouseY + 8, this.height - 16);
-                guiGraphics.pose().pushPose();
-                guiGraphics.pose().translate(0, 0, 400);
+                guiGraphics.pose().pushMatrix();
+                guiGraphics.pose().translate(0, 0);
                 guiGraphics.fill(ghostX, ghostY, ghostX + ghostW, ghostY + 14, 0xE0101010);
                 guiGraphics.fill(ghostX, ghostY + 13, ghostX + ghostW, ghostY + 14, 0xFFFFCC00);
-                guiGraphics.drawString(this.font, ghost, ghostX + 4, ghostY + 3, 0xFFFFFF, false);
-                guiGraphics.pose().popPose();
+                guiGraphics.text(this.font, ghost, ghostX + 4, ghostY + 3, 0xFFFFFF, false);
+                guiGraphics.pose().popMatrix();
             }
         }
     }
 
     @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        return mouseClicked(event.x(), event.y(), event.button());
+    }
+
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         // The context menu renders above the picker, so it also gets the click first —
         // otherwise the picker would swallow clicks aimed at a menu entry drawn on top of it.
@@ -1181,7 +1197,7 @@ public class StageOverviewScreen extends Screen {
         if (searchBox.mouseClicked(mouseX, mouseY)) return true;
         searchBox.setFocused(false);
 
-        if (super.mouseClicked(mouseX, mouseY, button)) return true;
+        if (super.mouseClicked(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)), false)) return true;
 
         int listTop = HEADER_HEIGHT + 5;
         int listBottom = this.height - 40;
@@ -1430,7 +1446,7 @@ public class StageOverviewScreen extends Screen {
      * placed independently — the gear centred by the button, the caret at a fixed offset from
      * the screen edge — which left the two looking unrelated.
      */
-    private void drawMenuButtonContent(GuiGraphics g) {
+    private void drawMenuButtonContent(GuiGraphicsExtractor g) {
         String gear = "⚙";
         int gearW = this.font.width(gear);
         int caretW = this.font.width("▾");
@@ -1438,7 +1454,7 @@ public class StageOverviewScreen extends Screen {
         int startX = menuButtonX() + (MENU_BUTTON_W - pairW) / 2;
         int textY = MENU_BUTTON_Y + (MENU_BUTTON_H - 8) / 2;
 
-        g.drawString(this.font, gear, startX, textY, 0xCCCCCC, false);
+        g.text(this.font, gear, startX, textY, 0xCCCCCC, false);
         drawMenuCaret(g, startX + gearW + MENU_ICON_GAP, textY);
     }
 
@@ -1446,16 +1462,16 @@ public class StageOverviewScreen extends Screen {
      * Flips the header caret between ▾ and ▴ over a few frames. Drawn on top of the
      * button rather than as its label, because a label cannot be rotated.
      */
-    private void drawMenuCaret(GuiGraphics g, int x, int y) {
+    private void drawMenuCaret(GuiGraphicsExtractor g, int x, int y) {
         String caret = "▾";
         float halfW = this.font.width(caret) / 2.0f;
-        g.pose().pushPose();
-        g.pose().translate(x + halfW, y + 4.0f, 100.0f);
+        g.pose().pushMatrix();
+        g.pose().translate(x + halfW, y + 4.0f);
         g.pose().mulPose(com.mojang.math.Axis.ZP.rotationDegrees(
                 Ease.outCubic(menuCaret.value()) * 180.0f));
-        g.pose().translate(-halfW, -4.0f, 0.0f);
-        g.drawString(this.font, caret, 0, 0, 0xFFCC00, false);
-        g.pose().popPose();
+        g.pose().translate(-halfW, -4.0f);
+        g.text(this.font, caret, 0, 0, 0xFFCC00, false);
+        g.pose().popMatrix();
     }
 
     /** Drops the header menu open under its button, right-aligned with it. */
@@ -1746,7 +1762,7 @@ public class StageOverviewScreen extends Screen {
      * @param reveal 0..1 opacity, so the column fades with the same animation that slides the
      *               row content aside instead of popping in at full strength.
      */
-    private void drawCheckbox(GuiGraphics g, int x, int y, boolean checked, int accent, float reveal) {
+    private void drawCheckbox(GuiGraphicsExtractor g, int x, int y, boolean checked, int accent, float reveal) {
         int border = checked ? (0xFF000000 | accent) : 0xFF777777;
         g.fill(x, y, x + CHECKBOX_SIZE, y + CHECKBOX_SIZE, Fade.alpha(0x40000000, reveal));
         g.fill(x, y, x + CHECKBOX_SIZE, y + 1, Fade.alpha(border, reveal));
@@ -1760,7 +1776,7 @@ public class StageOverviewScreen extends Screen {
     }
 
     /** Tinted box plus border marking a drop target — gold when accepted, red when refused. */
-    private void drawTargetOutline(GuiGraphics g, int[] rect, int color, float strength) {
+    private void drawTargetOutline(GuiGraphicsExtractor g, int[] rect, int color, float strength) {
         int alpha = (int) (0xFF * Math.max(0.0f, Math.min(1.0f, strength)));
         if (alpha < 4) return;
         int rgb = color & 0xFFFFFF;
@@ -1807,6 +1823,10 @@ public class StageOverviewScreen extends Screen {
     }
 
     @Override
+    public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+        return mouseDragged(event.x(), event.y(), event.button(), dragX, dragY);
+    }
+
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
         if (draggingScrollbar) {
             int listTop = HEADER_HEIGHT + 5;
@@ -1828,10 +1848,14 @@ public class StageOverviewScreen extends Screen {
             }
             return true;
         }
-        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+        return super.mouseDragged(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)), dragX, dragY);
     }
 
     @Override
+    public boolean mouseReleased(MouseButtonEvent event) {
+        return mouseReleased(event.x(), event.y(), event.button());
+    }
+
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
         if (draggingScrollbar) { draggingScrollbar = false; return true; }
 
@@ -1857,7 +1881,7 @@ public class StageOverviewScreen extends Screen {
             return true;
         }
 
-        return super.mouseReleased(mouseX, mouseY, button);
+        return super.mouseReleased(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)));
     }
 
     private void updateScrollFromMouse(double mouseY, int listTop, int listBottom) {
@@ -1877,17 +1901,25 @@ public class StageOverviewScreen extends Screen {
     }
 
     @Override
+    public boolean keyPressed(KeyEvent event) {
+        return keyPressed(event.key(), event.scancode(), event.modifiers());
+    }
+
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (playerPicker != null && playerPicker.isExpanded() && playerPicker.keyPressed(keyCode)) return true;
         if (searchBox.keyPressed(keyCode)) return true;
-        return super.keyPressed(keyCode, scanCode, modifiers);
+        return super.keyPressed(new KeyEvent(keyCode, scanCode, modifiers));
     }
 
     @Override
+    public boolean charTyped(CharacterEvent event) {
+        return charTyped((char) event.codepoint(), 0);
+    }
+
     public boolean charTyped(char codePoint, int modifiers) {
         if (playerPicker != null && playerPicker.charTyped(codePoint)) return true;
         if (searchBox.charTyped(codePoint)) return true;
-        return super.charTyped(codePoint, modifiers);
+        return super.charTyped(new CharacterEvent(codePoint));
     }
 
     @Override public boolean shouldCloseOnEsc() { return true; }
@@ -2027,12 +2059,12 @@ public class StageOverviewScreen extends Screen {
      * at (x, y). No-op for {@link StageMode#DEFAULT}. AUTO badges include the configured
      * trigger count (e.g. "Auto (3)"); empty AUTO badges additionally show a warn indicator.
      */
-    private void drawModeBadge(GuiGraphics g, StageEntry entry, long remainingTicks, int x, int y) {
+    private void drawModeBadge(GuiGraphicsExtractor g, StageEntry entry, long remainingTicks, int x, int y) {
         StageMode mode = entry.getMode();
         if (mode == StageMode.DEFAULT) return;
         int right = Badge.draw(g, this.font, modeBadgeLabel(entry, remainingTicks), x, y, 0xAAAAAA);
         if (mode.usesAutoTrigger() && isAutoEmpty(entry)) {
-            g.drawString(this.font, MODE_BADGE_WARN, right + 3, y + 2, 0xFFAA55, false);
+            g.text(this.font, MODE_BADGE_WARN, right + 3, y + 2, 0xFFAA55, false);
         }
     }
 
@@ -2045,7 +2077,7 @@ public class StageOverviewScreen extends Screen {
      *
      * @param info the info line they are placed behind, needed for its width
      */
-    private void drawInfoBadges(GuiGraphics g, StageEntry entry, String info, int contentLeft, int y,
+    private void drawInfoBadges(GuiGraphicsExtractor g, StageEntry entry, String info, int contentLeft, int y,
                                 boolean lost) {
         int x = contentLeft + 22 + this.font.width(info) + 6;
         if (entry.hasDependencies()) {
@@ -2113,7 +2145,7 @@ public class StageOverviewScreen extends Screen {
 
     private static final int TEAM_BADGE_COLOR = 0x55AAFF;
 
-    private void drawTeamBadge(GuiGraphics g, int x, int y, int row) {
+    private void drawTeamBadge(GuiGraphicsExtractor g, int x, int y, int row) {
         String label = teamBadgeLabel();
         if (Badge.contains(x, y, Badge.width(this.font, label), rowMouseX, rowMouseY)) {
             hoverBadge("team:" + row, "editor.historystages.badge.team.tooltip");
@@ -2125,7 +2157,7 @@ public class StageOverviewScreen extends Screen {
      * Draws the lose-on-death badge at (x, y). Same shape as the mode badge but
      * red, so a stage that can be taken away reads differently at a glance.
      */
-    private void drawDeathBadge(GuiGraphics g, int x, int y) {
+    private void drawDeathBadge(GuiGraphicsExtractor g, int x, int y) {
         Badge.draw(g, this.font, deathBadgeLabel(), x, y, 0xFF7777);
     }
 
@@ -2334,7 +2366,7 @@ public class StageOverviewScreen extends Screen {
          *                 the hover tint
          * @param selected index of the option currently in force
          */
-        private void drawDropdown(GuiGraphics g, int x, boolean open, int mouseX, int mouseY,
+        private void drawDropdown(GuiGraphicsExtractor g, int x, boolean open, int mouseX, int mouseY,
                                   Component[] labels, int[] colors, int selected) {
             int color = colors[selected];
             boolean hovered = inSlot(mouseX, mouseY, x, dropdownY, DROPDOWN_H);
@@ -2343,16 +2375,16 @@ public class StageOverviewScreen extends Screen {
             g.fill(x, dropdownY, x + DROPDOWN_W, dropdownY + DROPDOWN_H, hovered ? 0x40FFFFFF : 0x25FFFFFF);
             g.fill(x, dropdownY + DROPDOWN_H - 2, x + DROPDOWN_W, dropdownY + DROPDOWN_H,
                     hovered ? (color | 0xFF000000) : 0x60FFFFFF);
-            g.drawString(this.font, labels[selected], x + 4, dropdownY + 4, color, false);
+            g.text(this.font, labels[selected], x + 4, dropdownY + 4, color, false);
             // Arrow indicator
-            g.drawString(this.font, open ? "▲" : "▼", x + DROPDOWN_W - 10, dropdownY + 4, 0x999999, false);
+            g.text(this.font, open ? "▲" : "▼", x + DROPDOWN_W - 10, dropdownY + 4, 0x999999, false);
 
             if (!open) return;
 
             // The popup is an overlay: it overflows extraContentHeight() and must beat both the
             // error line and the widgets drawn after renderContent, hence the z translate.
-            g.pose().pushPose();
-            g.pose().translate(0, 0, 300);
+            g.pose().pushMatrix();
+            g.pose().translate(0, 0);
             int optY = dropdownY + POPUP_OFFSET_Y;
             int popupH = OPTION_H * labels.length;
 
@@ -2365,15 +2397,15 @@ public class StageOverviewScreen extends Screen {
                 boolean optHovered = inSlot(mouseX, mouseY, x, oy, OPTION_H);
                 if (optHovered) g.fill(x, oy, x + DROPDOWN_W, oy + OPTION_H, 0x30000000 | colors[i]);
                 if (i == selected) g.fill(x, oy, x + 2, oy + OPTION_H, 0xFF000000 | colors[i]);
-                g.drawString(this.font, labels[i], x + 6, oy + 4,
+                g.text(this.font, labels[i], x + 6, oy + 4,
                         optHovered ? 0xFFFFFF : (i == selected ? colors[i] : 0xAAAAAA), false);
             }
 
-            g.pose().popPose();
+            g.pose().popMatrix();
         }
 
         @Override
-        protected void renderExtraContent(GuiGraphics g, int x, int y, int w, int mouseX, int mouseY) {
+        protected void renderExtraContent(GuiGraphicsExtractor g, int x, int y, int w, int mouseX, int mouseY) {
             // Deliberately ignores the content column and anchors to the dialog's top-right, on
             // the title row, where this dropdown lived before the refactor.
             layoutDropdowns();

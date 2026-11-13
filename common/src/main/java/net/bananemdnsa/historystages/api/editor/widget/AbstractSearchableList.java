@@ -11,7 +11,7 @@ import net.bananemdnsa.historystages.client.editor.widget.SearchPanelChrome;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
@@ -186,7 +186,7 @@ public abstract class AbstractSearchableList<T> implements PickerOverlay {
     protected abstract boolean matchesQuery(T entry, String lowerCaseQuery);
 
     /** Renders the row contents within the given bounds. The background is already drawn. */
-    protected abstract void renderRow(GuiGraphics g, Font font, T entry,
+    protected abstract void renderRow(GuiGraphicsExtractor g, Font font, T entry,
                                       int x, int y, int w, int h, boolean hovered, int rowIndex);
 
     /**
@@ -196,7 +196,7 @@ public abstract class AbstractSearchableList<T> implements PickerOverlay {
      * SearchableStructureList decides the "#" prefix from its active tab, which is not the
      * tab being shown here.
      */
-    protected void renderSelectedRow(GuiGraphics g, Font font, String value, T entry,
+    protected void renderSelectedRow(GuiGraphicsExtractor g, Font font, String value, T entry,
                                      int x, int y, int w, int h, boolean hovered, int rowIndex) {
         renderRow(g, font, entry, x, y, w, h, hovered, rowIndex);
     }
@@ -289,7 +289,7 @@ public abstract class AbstractSearchableList<T> implements PickerOverlay {
     }
 
     /** Draws a caption row. Only called for indices {@link #isHeaderRow} claims. */
-    protected void renderHeaderRow(GuiGraphics g, Font font, T entry,
+    protected void renderHeaderRow(GuiGraphicsExtractor g, Font font, T entry,
                                    int x, int y, int w, int h) {
     }
 
@@ -307,31 +307,31 @@ public abstract class AbstractSearchableList<T> implements PickerOverlay {
      * Draws that strip. {@code firstVisibleIndex} is the topmost row currently drawn, which is
      * what decides which caption belongs up there.
      */
-    protected void renderStickyCaption(GuiGraphics g, Font font, int x, int y, int w,
+    protected void renderStickyCaption(GuiGraphicsExtractor g, Font font, int x, int y, int w,
                                        int firstVisibleIndex) {
     }
 
     /** Hook called after the list is rendered, while the panel is still on screen. */
-    protected void afterRender(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    protected void afterRender(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
     }
 
     /**
      * Renders a single-line text inside the row with simple "..."-truncation when too wide.
      * No marquee scroll on hover.
      */
-    protected final void drawRowText(GuiGraphics g, Font font, String text,
+    protected final void drawRowText(GuiGraphicsExtractor g, Font font, String text,
                                      int x, int y, int w, boolean hovered) {
         if (font.width(text) > w - 4) {
             text = font.plainSubstrByWidth(text, w - 10) + "...";
         }
-        g.drawString(font, text, x + 3, y + 4, hovered ? 0xFFFFFF : 0xBBBBBB, false);
+        g.text(font, text, x + 3, y + 4, hovered ? 0xFFFFFF : 0xBBBBBB, false);
     }
 
     /**
      * Like {@link #drawRowText} but, once the row has been hovered long enough and the text is
      * too wide to fit, scrolls it horizontally (marquee) inside the row's bounds.
      */
-    protected final void drawRowMarqueeText(GuiGraphics g, Font font, String text,
+    protected final void drawRowMarqueeText(GuiGraphicsExtractor g, Font font, String text,
                                             int x, int y, int w, int h,
                                             boolean hovered, int rowIndex) {
         // The row index alone is not a stable identity: scrolling or re-filtering puts a
@@ -689,7 +689,7 @@ public abstract class AbstractSearchableList<T> implements PickerOverlay {
         return -1;
     }
 
-    private void renderTabs(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    private void renderTabs(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         if (!tabBarVisible()) return;
         int tabY = panelY + PADDING;
         List<String> labels = allTabLabels();
@@ -728,7 +728,7 @@ public abstract class AbstractSearchableList<T> implements PickerOverlay {
             int bg = active ? 0x40FFCC00 : Fade.mix(0x15FFFFFF, 0x25FFFFFF, hp);
             g.fill(tabXs[i], tabY, tabXs[i] + tabWs[i], tabY + TAB_HEIGHT, bg);
             int textColor = active ? 0xFFFFFF : Fade.mix(0xFF999999, 0xFFDDDDDD, hp);
-            g.drawString(font, labels.get(i), tabXs[i] + TAB_PAD, tabY + 3, textColor, false);
+            g.text(font, labels.get(i), tabXs[i] + TAB_PAD, tabY + 3, textColor, false);
         }
 
         g.fill(Math.round(indicatorX), tabY + TAB_HEIGHT - 2,
@@ -789,7 +789,7 @@ public abstract class AbstractSearchableList<T> implements PickerOverlay {
      * language the item and entity pickers use. The subclass's {@link #renderRow} draws only
      * the contents on top, so it needs no knowledge of selection state.
      */
-    private void drawRowBackground(GuiGraphics g, int x, int y, int w, float hover, RowState state) {
+    private void drawRowBackground(GuiGraphicsExtractor g, int x, int y, int w, float hover, RowState state) {
         if (state == RowState.NORMAL) {
             g.fill(x, y, x + w, y + ROW_HEIGHT, Fade.mix(0xFF252525, 0xFF353535, hover));
             // Gold edge that grows in from the left, so a hovered row is identifiable at a
@@ -849,7 +849,7 @@ public abstract class AbstractSearchableList<T> implements PickerOverlay {
         return panelX + (panelW - total) / 2 + index * (ADD_BTN_W + PADDING);
     }
 
-    private void renderFooter(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    private void renderFooter(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         List<FooterButton> buttons = footerButtons();
         int y = addButtonY();
         for (int i = 0; i < buttons.size(); i++) {
@@ -865,7 +865,7 @@ public abstract class AbstractSearchableList<T> implements PickerOverlay {
         return multiSelect && !selected.isEmpty();
     }
 
-    private void renderAddButton(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    private void renderAddButton(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         int x = addButtonX();
         int y = addButtonY();
         boolean hovered = canConfirm() && isAddButtonAt(mouseX, mouseY);
@@ -879,12 +879,12 @@ public abstract class AbstractSearchableList<T> implements PickerOverlay {
             g.fill(x, y, x + ADD_BTN_W, y + ADD_BTN_H, 0x20FFFFFF);
             g.fill(x, y, x + ADD_BTN_W, y + 1, 0x10FFFFFF);
             String label = Component.translatable("editor.historystages.search.add.empty").getString();
-            g.drawString(font, label, x + (ADD_BTN_W - font.width(label)) / 2,
+            g.text(font, label, x + (ADD_BTN_W - font.width(label)) / 2,
                     y + (ADD_BTN_H - 8) / 2, 0xFF666666, false);
         }
     }
 
-    private void renderSelectAllRow(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    private void renderSelectAllRow(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         int rowX = panelX + PADDING;
         int rowW = panelW - PADDING * 2;
         int btnW = (rowW - SELECTALL_BTN_GAP) / 2;
@@ -909,7 +909,7 @@ public abstract class AbstractSearchableList<T> implements PickerOverlay {
         return mouseX >= x && mouseX < x + w && mouseY >= y && mouseY < y + SELECTALL_BTN_H;
     }
 
-    private void drawSmallButton(GuiGraphics g, Font font, int x, int y, int w,
+    private void drawSmallButton(GuiGraphicsExtractor g, Font font, int x, int y, int w,
                                  String label, boolean accentYellow, boolean enabled, boolean hovered) {
         int border;
         int bg;
@@ -927,7 +927,7 @@ public abstract class AbstractSearchableList<T> implements PickerOverlay {
         }
         g.fill(x, y, x + w, y + SELECTALL_BTN_H, border);
         g.fill(x + 1, y + 1, x + w - 1, y + SELECTALL_BTN_H - 1, bg);
-        g.drawString(font, label, x + (w - font.width(label)) / 2, y + (SELECTALL_BTN_H - 8) / 2, text, false);
+        g.text(font, label, x + (w - font.width(label)) / 2, y + (SELECTALL_BTN_H - 8) / 2, text, false);
     }
 
     private boolean confirmAndAdd() {
@@ -941,7 +941,7 @@ public abstract class AbstractSearchableList<T> implements PickerOverlay {
         return true;
     }
 
-    public void render(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    public void render(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         if (!visible) return;
 
         // Rises the last few pixels into place, matching the context menu's entrance. Only the
@@ -949,8 +949,8 @@ public abstract class AbstractSearchableList<T> implements PickerOverlay {
         // top, so fading the chrome alone would show the screen through the frame.
         float open = Ease.outCubic(panelOpen.ramp(1.0f, Timing.POPUP_MS));
         openOffsetY = (1.0f - open) * PANEL_RISE_PX;
-        g.pose().pushPose();
-        g.pose().translate(0.0f, openOffsetY, 0.0f);
+        g.pose().pushMatrix();
+        g.pose().translate(0.0f, openOffsetY);
 
         // From here on the whole method draws in panel space, the same space the hit tests use.
         // Without this the hover highlight would sit on the row the panel is sliding away from.
@@ -1035,7 +1035,7 @@ public abstract class AbstractSearchableList<T> implements PickerOverlay {
         // Selected tab with nothing selected: hint in the middle rather than a blank grid.
         if (isSelectedTabActive() && selectedSnapshot.isEmpty()) {
             String hint = Component.translatable("editor.historystages.search.selected.empty").getString();
-            g.drawString(font, hint, listX + (listW - font.width(hint)) / 2,
+            g.text(font, hint, listX + (listW - font.width(hint)) / 2,
                     listY + (listH - 8) / 2, 0xFF888888, false);
         }
 
@@ -1062,7 +1062,7 @@ public abstract class AbstractSearchableList<T> implements PickerOverlay {
 
         afterRender(g, font, mouseX, mouseY);
 
-        g.pose().popPose();
+        g.pose().popMatrix();
     }
 
     /**

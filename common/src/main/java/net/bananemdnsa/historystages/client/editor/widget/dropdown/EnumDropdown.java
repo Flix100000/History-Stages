@@ -6,7 +6,7 @@ import net.bananemdnsa.historystages.client.editor.anim.Fade;
 import net.bananemdnsa.historystages.client.editor.anim.Timing;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
@@ -126,7 +126,7 @@ public class EnumDropdown {
         return mx >= g[0] && mx < g[0] + g[2] && my >= g[1] && my < g[1] + g[3];
     }
 
-    public void renderButton(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    public void renderButton(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         boolean hovered = mouseX >= buttonX && mouseX < buttonX + buttonW
                 && mouseY >= buttonY && mouseY < buttonY + BUTTON_HEIGHT;
         float hp = Ease.outCubic(buttonHover.ramp(hovered, Timing.HOVER_IN_MS, Timing.HOVER_OUT_MS));
@@ -135,7 +135,7 @@ public class EnumDropdown {
                 labelFn.apply(current).getString(), hp, expanded, open.value());
     }
 
-    public void renderPopup(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    public void renderPopup(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         // Kept rendering past the click that closed it, so the popup rolls back up instead of
         // vanishing. open drives both the reveal here and the caret in renderButton.
         float t = open.ramp(expanded ? 1.0f : 0.0f, Timing.POPUP_MS);
@@ -155,7 +155,7 @@ public class EnumDropdown {
             DropdownChrome.drawRowHighlight(g, px + 1, rowY, pw - 2, ROW_HEIGHT, rh);
             String option = options.get(i);
             int textColor = option.equals(current) ? 0xFFFFCC00 : 0xFFEEEEEE;
-            g.drawString(font, labelFn.apply(option), px + 5 + Math.round(rh * 2.0f), rowY + 5,
+            g.text(font, labelFn.apply(option), px + 5 + Math.round(rh * 2.0f), rowY + 5,
                     textColor, false);
         }
         DropdownChrome.end(g);

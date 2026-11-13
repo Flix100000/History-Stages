@@ -6,7 +6,7 @@ import net.bananemdnsa.historystages.client.editor.anim.Fade;
 import net.bananemdnsa.historystages.client.editor.anim.Timing;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.PlayerFaceRenderer;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.multiplayer.PlayerInfo;
@@ -162,9 +162,9 @@ public class PlayerPickerDropdown {
     // --- rendering --------------------------------------------------------
 
     /** Face for a player, or a gold star for the "@a" entry. */
-    private static void drawIcon(GuiGraphics g, Font font, UUID uuid, int x, int y) {
+    private static void drawIcon(GuiGraphicsExtractor g, Font font, UUID uuid, int x, int y) {
         if (uuid == null) {
-            g.drawString(font, "★", x + 1, y + 1, 0xFFFFCC00, false);
+            g.text(font, "★", x + 1, y + 1, 0xFFFFCC00, false);
             return;
         }
         Minecraft mc = Minecraft.getInstance();
@@ -174,7 +174,7 @@ public class PlayerPickerDropdown {
         }
     }
 
-    public void renderButton(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    public void renderButton(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         refresh();
         boolean hovered = mouseX >= buttonX && mouseX < buttonX + buttonW
                 && mouseY >= buttonY && mouseY < buttonY + BUTTON_HEIGHT;
@@ -190,14 +190,14 @@ public class PlayerPickerDropdown {
         int textX = buttonX + 4 + FACE_SIZE + 4;
         int textRight = buttonX + buttonW - 12;
         g.enableScissor(textX, buttonY, textRight, buttonY + BUTTON_HEIGHT);
-        g.drawString(font, selectedLabel(), textX, buttonY + 5, 0xFFEEEEEE, false);
+        g.text(font, selectedLabel(), textX, buttonY + 5, 0xFFEEEEEE, false);
         g.disableScissor();
 
         DropdownChrome.drawCaret(g, buttonX + buttonW - 8, buttonY + BUTTON_HEIGHT / 2 - 1,
                 Fade.mix(0xFF999999, 0xFFDDDDDD, hp), open.value());
     }
 
-    public void renderPopup(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    public void renderPopup(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         float t = open.ramp(expanded ? 1.0f : 0.0f, Timing.POPUP_MS);
         if (t < 0.02f) return;
 
@@ -213,7 +213,7 @@ public class PlayerPickerDropdown {
         if (allSelected && !search.isEmpty()) {
             g.fill(px + 4, py + 3, px + 6 + font.width(search), py + SEARCH_HEIGHT - 3, 0xFF4A6A9A);
         }
-        g.drawString(font, shown, px + 5, py + 4, search.isEmpty() ? 0xFF666666 : 0xFFEEEEEE, false);
+        g.text(font, shown, px + 5, py + 4, search.isEmpty() ? 0xFF666666 : 0xFFEEEEEE, false);
         // The search row is always the keyboard target while the popup is open, so the
         // caret blinks unconditionally — there is no separate focus to win first. It is
         // hidden while everything is selected, matching SearchBar.
@@ -243,7 +243,7 @@ public class PlayerPickerDropdown {
             int textX = px + 4 + FACE_SIZE + 4;
             int textRight = px + pw - SCROLLBAR_W - 4;
             g.enableScissor(textX, rowY, textRight, rowY + ROW_HEIGHT);
-            g.drawString(font, label, textX, rowY + 5,
+            g.text(font, label, textX, rowY + 5,
                     Objects.equals(entry.uuid(), selected) ? 0xFFFFCC00 : 0xFFEEEEEE, false);
             g.disableScissor();
         }

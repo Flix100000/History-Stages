@@ -4,7 +4,7 @@ import net.bananemdnsa.historystages.api.editor.widget.AbstractModalScreen;
 import net.bananemdnsa.historystages.client.editor.graph.PresetSwatch;
 import net.bananemdnsa.historystages.data.graph.GraphStageData;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
@@ -84,10 +84,10 @@ public class StylePresetPickerScreen extends AbstractModalScreen {
     }
 
     @Override
-    protected void renderContent(GuiGraphics g, int x, int y, int w, int mouseX, int mouseY) {
+    protected void renderContent(GuiGraphicsExtractor g, int x, int y, int w, int mouseX, int mouseY) {
         if (noPresets()) {
             for (var line : this.font.split(Component.translatable("editor.historystages.graph.preset.pick.empty"), w)) {
-                g.drawCenteredString(this.font, line, x + w / 2, y + 4, 0xFF999999);
+                g.centeredText(this.font, line, x + w / 2, y + 4, 0xFF999999);
                 y += 10;
             }
             return;
@@ -104,11 +104,11 @@ public class StylePresetPickerScreen extends AbstractModalScreen {
                 g.fill(x, rowY, x + 1, rowY + ROW_H, 0xFFFFCC00);
             }
             if (id.isEmpty()) {
-                g.drawString(this.font, Component.translatable("editor.historystages.graph.preset.none"),
+                g.text(this.font, Component.translatable("editor.historystages.graph.preset.none"),
                         x + 22, rowY + 5, 0xFF999999, false);
             } else {
                 PresetSwatch.draw(g, id, x + 10, rowY + ROW_H / 2, 6);
-                g.drawString(this.font, GraphStageData.get().presets().get(id).name,
+                g.text(this.font, GraphStageData.get().presets().get(id).name,
                         x + 22, rowY + 5, hovered ? 0xFFFFCC00 : 0xFFEEEEEE, false);
             }
         }

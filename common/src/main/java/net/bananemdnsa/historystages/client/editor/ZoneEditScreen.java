@@ -1,5 +1,9 @@
 package net.bananemdnsa.historystages.client.editor;
 
+import net.minecraft.client.input.CharacterEvent;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonInfo;
+import net.minecraft.client.input.MouseButtonEvent;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -32,7 +36,7 @@ import net.bananemdnsa.historystages.data.lock.ZoneRowText;
 import net.bananemdnsa.historystages.data.lock.ZoneRules;
 import net.bananemdnsa.historystages.data.lock.ZoneShape;
 import net.bananemdnsa.historystages.data.lock.ZoneShapeType;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.CommonComponents;
@@ -534,15 +538,23 @@ public class ZoneEditScreen extends Screen {
 
     /** Own background, drawn in render — this dodges 1.21's menu blur, as the config screen does. */
     @Override
-    public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+    public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        renderBackground(graphics, mouseX, mouseY, partialTick);
+    }
+
+    public void renderBackground(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
     }
 
     @Override
-    public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        render(graphics, mouseX, mouseY, partialTick);
+    }
+
+    public void render(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
         nameBox.visible = active == Section.GENERAL;
 
         g.fill(0, 0, this.width, this.height, BACKDROP);
-        g.drawCenteredString(this.font, title(), this.width / 2, TITLE_Y, 0xFFFFFF);
+        g.centeredText(this.font, title(), this.width / 2, TITLE_Y, 0xFFFFFF);
         g.fill(MARGIN, HAIRLINE_Y, this.width - MARGIN, HAIRLINE_Y + 1, HAIRLINE);
         g.fill(MARGIN, contentBottom() + 4, this.width - MARGIN, contentBottom() + 5, SEPARATOR);
 
@@ -558,7 +570,7 @@ public class ZoneEditScreen extends Screen {
         renderRows(g, mouseX, mouseY, blocked);
 
         // Late, so the buttons sit on top of the sections rather than under them.
-        super.render(g, mouseX, mouseY, partialTick);
+        super.extractRenderState(g, mouseX, mouseY, partialTick);
 
         if (open != null) {
             open.render(g, this.font, mouseX, mouseY);
@@ -575,12 +587,12 @@ public class ZoneEditScreen extends Screen {
                 : Component.translatable("editor.historystages.zone.edit.title_named", zone.getName());
     }
 
-    private void renderNameField(GuiGraphics g, boolean blocked) {
+    private void renderNameField(GuiGraphicsExtractor g, boolean blocked) {
         int x = contentX();
         int w = Math.min(240, contentWidth());
         int fy = TOP + LABEL_H;
 
-        g.drawString(this.font, label("field.name"), x, TOP, LABEL_GREY, false);
+        g.text(this.font, label("field.name"), x, TOP, LABEL_GREY, false);
         g.fill(x - 1, fy - 1, x + w + 1, fy + FIELD_H + 1,
                 nameBox.isFocused() ? ACCENT : FIELD_BORDER);
         g.fill(x, fy, x + w, fy + FIELD_H, FIELD_BG);
@@ -592,7 +604,7 @@ public class ZoneEditScreen extends Screen {
     }
 
     /** @return the shape index under the cursor, so the map can pick it out. */
-    private int renderMap(GuiGraphics g, int mouseX, int mouseY, boolean blocked) {
+    private int renderMap(GuiGraphicsExtractor g, int mouseX, int mouseY, boolean blocked) {
         int size = mapSize();
         int hovered = blocked ? -1 : shapeRows.rowAt(inputContext(shapeListX(),
                 TOP - (int) scroll, shapeListWidth(), TOP, contentBottom(), mouseX, mouseY),
@@ -618,7 +630,7 @@ public class ZoneEditScreen extends Screen {
         return hovered;
     }
 
-    private void renderRows(GuiGraphics g, int mouseX, int mouseY, boolean blocked) {
+    private void renderRows(GuiGraphicsExtractor g, int mouseX, int mouseY, boolean blocked) {
         int x = rowsX();
         int top = rowsTop();
         int bottom = contentBottom();
@@ -636,7 +648,7 @@ public class ZoneEditScreen extends Screen {
         scrollbar.render(g, x + w + 2, top, bottom, scroll, maxScroll, mouseX, mouseY);
     }
 
-    private TabRenderContext context(GuiGraphics g, int x, int y, int width, int clipTop,
+    private TabRenderContext context(GuiGraphicsExtractor g, int x, int y, int width, int clipTop,
                                      int clipBottom, int mouseX, int mouseY, boolean blocked) {
         return new TabRenderContext(g, this.font, x, y, width, clipTop, clipBottom,
                 mouseX, mouseY, blocked, (key, text) -> {
@@ -713,6 +725,10 @@ public class ZoneEditScreen extends Screen {
     // -------------------------------------------------------------------------------------
 
     @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        return mouseClicked(event.x(), event.y(), event.button());
+    }
+
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         PickerOverlay open = openPicker();
         if (open != null) {
@@ -753,10 +769,14 @@ public class ZoneEditScreen extends Screen {
                 return true;
             }
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)), false);
     }
 
     @Override
+    public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+        return mouseDragged(event.x(), event.y(), event.button(), dragX, dragY);
+    }
+
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
         if (scrollbar.isDragging()) {
             scroll = scrollbar.scrollFor(mouseY);
@@ -764,15 +784,19 @@ public class ZoneEditScreen extends Screen {
         }
         PickerOverlay open = openPicker();
         if (open != null && open.mouseDragged(mouseX, mouseY)) return true;
-        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+        return super.mouseDragged(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)), dragX, dragY);
     }
 
     @Override
+    public boolean mouseReleased(MouseButtonEvent event) {
+        return mouseReleased(event.x(), event.y(), event.button());
+    }
+
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
         scrollbar.mouseReleased();
         PickerOverlay open = openPicker();
         if (open != null && open.mouseReleased()) return true;
-        return super.mouseReleased(mouseX, mouseY, button);
+        return super.mouseReleased(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)));
     }
 
     @Override
@@ -787,17 +811,25 @@ public class ZoneEditScreen extends Screen {
     }
 
     @Override
+    public boolean keyPressed(KeyEvent event) {
+        return keyPressed(event.key(), event.scancode(), event.modifiers());
+    }
+
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         PickerOverlay open = openPicker();
         if (open != null && open.keyPressed(keyCode)) return true;
-        return super.keyPressed(keyCode, scanCode, modifiers);
+        return super.keyPressed(new KeyEvent(keyCode, scanCode, modifiers));
     }
 
     @Override
+    public boolean charTyped(CharacterEvent event) {
+        return charTyped((char) event.codepoint(), 0);
+    }
+
     public boolean charTyped(char codePoint, int modifiers) {
         PickerOverlay open = openPicker();
         if (open != null && open.charTyped(codePoint)) return true;
-        return super.charTyped(codePoint, modifiers);
+        return super.charTyped(new CharacterEvent(codePoint));
     }
 
     // Escape counts as Cancel, not as leaving the editor: without this the default closes the

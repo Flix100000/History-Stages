@@ -1,6 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.widget;
 
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 /**
  * The editor's scrollbar: a draggable thumb that appears only while the content overflows.
@@ -43,7 +43,7 @@ public final class Scrollbar {
      * @param scroll     current offset, from 0 to {@code maxScroll}
      * @param maxScroll  0 or less draws nothing — content that fits needs no bar
      */
-    public void render(GuiGraphics g, int x, int top, int bottom,
+    public void render(GuiGraphicsExtractor g, int x, int top, int bottom,
                        float scroll, float maxScroll, int mouseX, int mouseY) {
         this.barX = x;
         this.trackTop = top;

@@ -4,7 +4,7 @@ import net.bananemdnsa.historystages.api.editor.widget.AbstractSearchableList;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.neoforged.fml.ModList;
@@ -70,7 +70,7 @@ public class SearchableModList extends AbstractSearchableList<SearchableModList.
     }
 
     @Override
-    protected void renderRow(GuiGraphics g, Font font, ModEntry entry,
+    protected void renderRow(GuiGraphicsExtractor g, Font font, ModEntry entry,
                              int x, int y, int w, int h, boolean hovered, int rowIndex) {
         String text = entry.displayName + " §7(" + entry.modId + ")";
         drawRowText(g, font, text, x, y, w, hovered);

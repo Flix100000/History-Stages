@@ -1,5 +1,9 @@
 package net.bananemdnsa.historystages.client.editor;
 
+import net.minecraft.client.input.CharacterEvent;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonInfo;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.bananemdnsa.historystages.client.editor.toast.EditorToast;
 import net.bananemdnsa.historystages.client.editor.toast.EditorToastHandler;
 import net.bananemdnsa.historystages.api.editor.widget.AbstractSearchableList;
@@ -57,7 +61,7 @@ import net.bananemdnsa.historystages.client.editor.anim.Anim;
 import net.bananemdnsa.historystages.client.editor.anim.Ease;
 import net.bananemdnsa.historystages.client.editor.anim.Timing;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -336,19 +340,27 @@ public class AutoTriggerEditorScreen extends Screen {
     // =============================================
 
     @Override
-    public void renderBackground(GuiGraphics g, int mx, int my, float pt) {
+    public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        renderBackground(graphics, mouseX, mouseY, partialTick);
+    }
+
+    public void renderBackground(GuiGraphicsExtractor g, int mx, int my, float pt) {
         // No-op — own background in render()
     }
 
     @Override
-    public void render(GuiGraphics g, int mx, int my, float pt) {
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        render(graphics, mouseX, mouseY, partialTick);
+    }
+
+    public void render(GuiGraphicsExtractor g, int mx, int my, float pt) {
         g.fill(0, 0, this.width, this.height, 0xE0101010);
 
         smoothScroll.approach(scrollOffset, Timing.SCROLL_HALF_LIFE_MS);
         smoothScroll.settle(scrollOffset, 0.5f);
 
         // Header
-        g.drawCenteredString(this.font, this.title, this.width / 2, 8, 0xFFFFFF);
+        g.centeredText(this.font, this.title, this.width / 2, 8, 0xFFFFFF);
         g.fill(10, 18, this.width - 10, 19, 0xFF555555);
 
         renderUnsavedMarker(g);
@@ -361,7 +373,7 @@ public class AutoTriggerEditorScreen extends Screen {
         if (!isOverlayActive()) renderListSearchBar(g, mx, my);
         renderList(g, mx, my);
 
-        super.render(g, mx, my, pt);
+        super.extractRenderState(g, mx, my, pt);
 
         // Drawn here so it sits above the screen but below any overlays.
         String tooltipKey = null;
@@ -392,28 +404,28 @@ public class AutoTriggerEditorScreen extends Screen {
         // through around the overlay's panel.
         boolean overlayActive = isOverlayActive();
         if (overlayActive) {
-            g.pose().pushPose();
-            g.pose().translate(0, 0, 200);
+            g.pose().pushMatrix();
+            g.pose().translate(0, 0);
             g.fill(0, 0, this.width, this.height, 0xC0000000);
-            g.pose().popPose();
+            g.pose().popMatrix();
         }
 
         // Searchable list overlay
         if (currentList != null && currentList.isVisible()) {
-            g.pose().pushPose();
-            g.pose().translate(0, 0, 220);
+            g.pose().pushMatrix();
+            g.pose().translate(0, 0);
             currentList.render(g, this.font, mx, my);
-            g.pose().popPose();
+            g.pose().popMatrix();
         }
 
         // Context menu always on top
-        g.pose().pushPose();
-        g.pose().translate(0, 0, 400);
+        g.pose().pushMatrix();
+        g.pose().translate(0, 0);
         contextMenu.render(g, this.font, mx, my);
-        g.pose().popPose();
+        g.pose().popMatrix();
     }
 
-    private void renderCombinePill(GuiGraphics g, int mx, int my) {
+    private void renderCombinePill(GuiGraphicsExtractor g, int mx, int my) {
         CombineMode active = trigger.resolvedMode();
         int x = pillX;
         int y = pillY;
@@ -423,7 +435,7 @@ public class AutoTriggerEditorScreen extends Screen {
         boolean anyActive = active == CombineMode.ANY;
         int anyBg = anyActive ? accentFill() : 0x25FFFFFF;
         g.fill(x, y, x + pillAnyW, y + h, anyBg);
-        g.drawString(this.font, combineLabel(CombineMode.ANY),
+        g.text(this.font, combineLabel(CombineMode.ANY),
                 x + (pillAnyW - this.font.width(combineLabel(CombineMode.ANY))) / 2,
                 y + 3, anyActive ? 0xFFFFFFFF : 0xFFCCCCCC, false);
 
@@ -431,7 +443,7 @@ public class AutoTriggerEditorScreen extends Screen {
         boolean allActive = active == CombineMode.ALL;
         int allBg = allActive ? accentFill() : 0x25FFFFFF;
         g.fill(x + pillAnyW, y, x + pillAnyW + pillAllW, y + h, allBg);
-        g.drawString(this.font, combineLabel(CombineMode.ALL),
+        g.text(this.font, combineLabel(CombineMode.ALL),
                 x + pillAnyW + (pillAllW - this.font.width(combineLabel(CombineMode.ALL))) / 2,
                 y + 3, allActive ? 0xFFFFFFFF : 0xFFCCCCCC, false);
 
@@ -444,13 +456,13 @@ public class AutoTriggerEditorScreen extends Screen {
         return 0x60000000 | (purpose.accent & 0xFFFFFF);
     }
 
-    private void renderListSearchBar(GuiGraphics g, int mx, int my) {
+    private void renderListSearchBar(GuiGraphicsExtractor g, int mx, int my) {
         if (listSearchBar == null) return;
         listSearchBar.setPosition(20, searchY, this.width - 40);
         listSearchBar.render(g, this.font, mx, my);
     }
 
-    private void renderAddButton(GuiGraphics g, int mx, int my) {
+    private void renderAddButton(GuiGraphicsExtractor g, int mx, int my) {
         boolean hov = isOver(mx, my, addBtnX, addBtnY, addBtnW, ADD_BTN_H);
         float hp = Ease.outCubic(addBtnHover.ramp(hov, Timing.HOVER_IN_MS, Timing.HOVER_OUT_MS));
         DropdownChrome.drawButton(g, this.font, addBtnX, addBtnY, addBtnW, ADD_BTN_H,
@@ -458,7 +470,7 @@ public class AutoTriggerEditorScreen extends Screen {
                 hp, addDropdownOpen, addOpen.value());
     }
 
-    private void renderList(GuiGraphics g, int mx, int my) {
+    private void renderList(GuiGraphicsExtractor g, int mx, int my) {
         segmentRects.clear();
         tagRects.clear();
         tagTooltipKeys.clear();
@@ -471,7 +483,7 @@ public class AutoTriggerEditorScreen extends Screen {
             String key = triggers.isEmpty()
                     ? "editor.historystages.auto_trigger.empty"
                     : "editor.historystages.auto_trigger.no_matches";
-            g.drawCenteredString(this.font, Component.translatable(key).getString(),
+            g.centeredText(this.font, Component.translatable(key).getString(),
                     listX + listW / 2, listY + listH / 2 - 4, 0x888888);
             return;
         }
@@ -528,7 +540,7 @@ public class AutoTriggerEditorScreen extends Screen {
         return null;
     }
 
-    private void renderRow(GuiGraphics g, TriggerCondition t, int idx, int top, int mx, int my) {
+    private void renderRow(GuiGraphicsExtractor g, TriggerCondition t, int idx, int top, int mx, int my) {
         int rowH = ROW_H - 2;
         boolean hov = !isInputBlocked()
                 && mx >= listX && mx <= listX + listW
@@ -549,7 +561,7 @@ public class AutoTriggerEditorScreen extends Screen {
         if (this.font.width(typeName) > TYPE_COL_W - 6) {
             typeName = this.font.plainSubstrByWidth(typeName, TYPE_COL_W - 12) + "...";
         }
-        g.drawString(this.font, typeName, iconX + ICON_W + 4, top + 7, 0xFFCCCCCC, false);
+        g.text(this.font, typeName, iconX + ICON_W + 4, top + 7, 0xFFCCCCCC, false);
 
         // Lock lists say per row how it locks: a state can lock on arriving or on ending, an
         // event only ever fires.
@@ -565,7 +577,7 @@ public class AutoTriggerEditorScreen extends Screen {
                         : "editor.historystages.lock_trigger.event";
                 String tag = Component.translatable(tagKey).getString();
                 int tagX = rightEdge - this.font.width(tag);
-                g.drawString(this.font, tag, tagX, top + 7, 0xFF777777, false);
+                g.text(this.font, tag, tagX, top + 7, 0xFF777777, false);
                 // Hovering the tag says why there is no switch; without it the row just looks broken.
                 tagRects.put(idx, new int[] { tagX, top + 5, this.font.width(tag) });
                 tagTooltipKeys.put(idx, tagKey + ".tooltip");
@@ -582,14 +594,14 @@ public class AutoTriggerEditorScreen extends Screen {
         if (this.font.width(value) > valueAvail) {
             value = this.font.plainSubstrByWidth(value, valueAvail - 10) + "...";
         }
-        g.drawString(this.font, value, valueX, top + 7, 0xFFFFFFFF, false);
+        g.text(this.font, value, valueX, top + 7, 0xFFFFFFFF, false);
     }
 
     /**
      * Draws the segment right-aligned against {@code right}, in the combine pill's look, and
      * records where it went. Returns its left edge.
      */
-    private int renderNegateSegment(GuiGraphics g, TriggerCondition t, int idx, int y, int right) {
+    private int renderNegateSegment(GuiGraphicsExtractor g, TriggerCondition t, int idx, int y, int right) {
         String reached = Component.translatable("editor.historystages.lock_trigger.reached").getString();
         String noLonger = Component.translatable("editor.historystages.lock_trigger.no_longer").getString();
         int leftW = this.font.width(reached) + 14;
@@ -599,9 +611,9 @@ public class AutoTriggerEditorScreen extends Screen {
         boolean negated = t instanceof NegatedTrigger;
 
         g.fill(x, y, x + leftW, y + h, negated ? 0x25FFFFFF : accentFill());
-        g.drawString(this.font, reached, x + 7, y + 3, negated ? 0xFFCCCCCC : 0xFFFFFFFF, false);
+        g.text(this.font, reached, x + 7, y + 3, negated ? 0xFFCCCCCC : 0xFFFFFFFF, false);
         g.fill(x + leftW, y, x + leftW + rightW, y + h, negated ? accentFill() : 0x25FFFFFF);
-        g.drawString(this.font, noLonger, x + leftW + 7, y + 3, negated ? 0xFFFFFFFF : 0xFFCCCCCC, false);
+        g.text(this.font, noLonger, x + leftW + 7, y + 3, negated ? 0xFFFFFFFF : 0xFFCCCCCC, false);
         g.fill(x, y + h, x + leftW + rightW, y + h + 1, accentFill());
 
         segmentRects.put(idx, new int[] { x, y, leftW, rightW });
@@ -628,7 +640,7 @@ public class AutoTriggerEditorScreen extends Screen {
         return -1;
     }
 
-    private void renderTriggerIcon(GuiGraphics g, TriggerCondition t, int x, int y) {
+    private void renderTriggerIcon(GuiGraphicsExtractor g, TriggerCondition t, int x, int y) {
         t = NegatedTrigger.unwrap(t);
         // Entities render their actual living-entity model (spinning), matching SearchableEntityList.
         if (t instanceof EntityTrigger et) {
@@ -647,7 +659,7 @@ public class AutoTriggerEditorScreen extends Screen {
         }
         // Items / blocks render via the item registry.
         ItemStack stack = iconStackFor(t);
-        if (!stack.isEmpty()) g.renderItem(stack, x, y);
+        if (!stack.isEmpty()) g.item(stack, x, y);
         // Other trigger types intentionally render no icon.
     }
 
@@ -728,7 +740,7 @@ public class AutoTriggerEditorScreen extends Screen {
         return new int[] { px, py, pw, ph };
     }
 
-    private void renderAddDropdown(GuiGraphics g, int mx, int my) {
+    private void renderAddDropdown(GuiGraphicsExtractor g, int mx, int my) {
         // A picker opened from this dropdown covers the screen at a lower depth than the popup,
         // so snap the reveal shut instead of letting it roll up over the picker.
         if (isOverlayActive()) {
@@ -761,7 +773,7 @@ public class AutoTriggerEditorScreen extends Screen {
             float rh = Ease.outCubic(addRowHover.computeIfAbsent(i, k -> new Anim())
                     .ramp(hov, Timing.HOVER_IN_MS, Timing.HOVER_OUT_MS));
             DropdownChrome.drawRowHighlight(g, px + 1, rowY, rowW - 2, ADD_ROW_H, rh);
-            g.drawString(this.font, rows.get(i).label(), px + 5 + Math.round(rh * 2.0f), rowY + 5,
+            g.text(this.font, rows.get(i).label(), px + 5 + Math.round(rh * 2.0f), rowY + 5,
                     0xFFEEEEEE, false);
         }
 
@@ -787,6 +799,10 @@ public class AutoTriggerEditorScreen extends Screen {
     // =============================================
 
     @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        return mouseClicked(event.x(), event.y(), event.button());
+    }
+
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         // Context menu first
         if (contextMenu.isVisible()) {
@@ -851,7 +867,7 @@ public class AutoTriggerEditorScreen extends Screen {
                 return true;
             }
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)), false);
     }
 
     private boolean isOverScrollbar(double mx, double my) {
@@ -998,6 +1014,10 @@ public class AutoTriggerEditorScreen extends Screen {
     }
 
     @Override
+    public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+        return mouseDragged(event.x(), event.y(), event.button(), dragX, dragY);
+    }
+
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
         if (draggingAddScrollbar) {
             updateAddScrollFromMouse(mouseY);
@@ -1009,18 +1029,26 @@ public class AutoTriggerEditorScreen extends Screen {
             updateScrollFromMouse(mouseY);
             return true;
         }
-        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+        return super.mouseDragged(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)), dragX, dragY);
     }
 
     @Override
+    public boolean mouseReleased(MouseButtonEvent event) {
+        return mouseReleased(event.x(), event.y(), event.button());
+    }
+
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
         if (draggingAddScrollbar) { draggingAddScrollbar = false; return true; }
         if (currentList != null && currentList.isVisible() && currentList.mouseReleased()) return true;
         if (draggingScrollbar) { draggingScrollbar = false; return true; }
-        return super.mouseReleased(mouseX, mouseY, button);
+        return super.mouseReleased(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)));
     }
 
     @Override
+    public boolean keyPressed(KeyEvent event) {
+        return keyPressed(event.key(), event.scancode(), event.modifiers());
+    }
+
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (currentList != null && currentList.isVisible()) {
             if (currentList.keyPressed(keyCode)) return true;
@@ -1031,16 +1059,20 @@ public class AutoTriggerEditorScreen extends Screen {
             this.minecraft.gui.setScreen(parent);
             return true;
         }
-        return super.keyPressed(keyCode, scanCode, modifiers);
+        return super.keyPressed(new KeyEvent(keyCode, scanCode, modifiers));
     }
 
     @Override
+    public boolean charTyped(CharacterEvent event) {
+        return charTyped((char) event.codepoint(), 0);
+    }
+
     public boolean charTyped(char c, int modifiers) {
         if (currentList != null && currentList.isVisible()) {
             if (currentList.charTyped(c)) return true;
         }
         if (listSearchBar != null && listSearchBar.charTyped(c)) return true;
-        return super.charTyped(c, modifiers);
+        return super.charTyped(new CharacterEvent(c));
     }
 
     // =============================================
@@ -1315,7 +1347,7 @@ public class AutoTriggerEditorScreen extends Screen {
      * <p>Changes here reach the parent immediately, so nothing is at risk — but this was the only
      * editor of nine where you had to go back a screen to find out that something was pending.
      */
-    private void renderUnsavedMarker(GuiGraphics g) {
+    private void renderUnsavedMarker(GuiGraphicsExtractor g) {
         if (!hasChanges) return;
         float phase = (System.currentTimeMillis() % (long) Timing.BREATHE_PERIOD_MS)
                 / Timing.BREATHE_PERIOD_MS;
@@ -1328,7 +1360,7 @@ public class AutoTriggerEditorScreen extends Screen {
         int labelX = saveBtnX - 8 - labelW;
         g.fill(labelX - 8, this.height - 17, labelX - 2, this.height - 11,
                 (dotAlpha << 24) | 0xFFCC00);
-        g.drawString(this.font, label, labelX, this.height - 18, 0xFFCC00, false);
+        g.text(this.font, label, labelX, this.height - 18, 0xFFCC00, false);
     }
 
     private void notifyChanged() {

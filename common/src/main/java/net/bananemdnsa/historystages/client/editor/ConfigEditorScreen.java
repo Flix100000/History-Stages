@@ -1,5 +1,9 @@
 package net.bananemdnsa.historystages.client.editor;
 
+import net.minecraft.client.input.CharacterEvent;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonInfo;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.bananemdnsa.historystages.platform.Services;
 import com.mojang.logging.LogUtils;
 import org.slf4j.Logger;
@@ -37,7 +41,7 @@ import net.bananemdnsa.historystages.client.editor.anim.Ease;
 import net.bananemdnsa.historystages.client.editor.anim.Fade;
 import net.bananemdnsa.historystages.client.editor.anim.Timing;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.bananemdnsa.historystages.client.editor.dialog.EffectValuesDialog;
 import net.bananemdnsa.historystages.client.editor.widget.StyledButton;
 import net.bananemdnsa.historystages.api.editor.widget.FormattedTextScreen;
@@ -1073,12 +1077,20 @@ public class ConfigEditorScreen extends Screen {
     }
 
     @Override
-    public void renderBackground(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+    public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        renderBackground(graphics, mouseX, mouseY, partialTick);
+    }
+
+    public void renderBackground(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
         // No-op — we draw our own background in render() and want to avoid 1.21's menu blur shader
     }
 
     @Override
-    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        render(graphics, mouseX, mouseY, partialTick);
+    }
+
+    public void render(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
         smoothScroll.approach((float) scrollOffset, Timing.SCROLL_HALF_LIFE_MS);
         smoothScroll.settle((float) scrollOffset, 0.5f);
         syncPickerState();
@@ -1087,7 +1099,7 @@ public class ConfigEditorScreen extends Screen {
         guiGraphics.fill(0, 0, this.width, this.height, 0xE0101010);
 
         // Title
-        guiGraphics.drawCenteredString(this.font, this.title, this.width / 2, 10, 0xFFFFFF);
+        guiGraphics.centeredText(this.font, this.title, this.width / 2, 10, 0xFFFFFF);
 
         // Separator above tabs
         guiGraphics.fill(10, tabY - 2, this.width - 10, tabY - 1, 0xFF555555);
@@ -1149,7 +1161,7 @@ public class ConfigEditorScreen extends Screen {
         for (ConfigSection section : sections) {
             // Section header
             guiGraphics.fill(contentLeft, y, contentRight, y + ConfigRowList.SECTION_HEADER_HEIGHT, 0x30FFFFFF);
-            guiGraphics.drawString(this.font,
+            guiGraphics.text(this.font,
                     Component.translatable(section.titleKey).getString(),
                     contentLeft + 5, y + 7, 0xFFCC00, false);
             y += ConfigRowList.SECTION_HEADER_HEIGHT;
@@ -1208,7 +1220,7 @@ public class ConfigEditorScreen extends Screen {
             drawSmallText(guiGraphics, Component.translatable("editor.historystages.unsaved").getString(), dotX + 9, this.height - 24, 0xFFCC00);
         }
 
-        super.render(guiGraphics, mouseX, mouseY, partialTick);
+        super.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
 
         // Enum picker popup. Outside the scissor above, so it is not clipped to the scrolling
         // list, and after super.render so it covers the buttons. It keeps being drawn after it
@@ -1233,11 +1245,11 @@ public class ConfigEditorScreen extends Screen {
         // panel fills, so the config rows and button labels underneath would otherwise bleed
         // through it. Same treatment the stage editor gives its own pickers.
         if (itemPickerOverlay != null) {
-            guiGraphics.pose().pushPose();
-            guiGraphics.pose().translate(0, 0, 200);
+            guiGraphics.pose().pushMatrix();
+            guiGraphics.pose().translate(0, 0);
             guiGraphics.fill(0, 0, this.width, this.height, 0x80000000);
             itemPickerOverlay.render(guiGraphics, this.font, mouseX, mouseY);
-            guiGraphics.pose().popPose();
+            guiGraphics.pose().popMatrix();
             // A config-row tooltip drawn on top of the picker makes no sense.
             currentHovered = null;
         }
@@ -1248,15 +1260,19 @@ public class ConfigEditorScreen extends Screen {
     }
 
     /** Package-private: the unsaved-changes marker is drawn on the style screen too. */
-    static void drawSmallText(GuiGraphics guiGraphics, String text, int x, int y, int color) {
-        guiGraphics.pose().pushPose();
-        guiGraphics.pose().translate(x, y, 0);
-        guiGraphics.pose().scale(SMALL_SCALE, SMALL_SCALE, 1.0f);
-        guiGraphics.drawString(Minecraft.getInstance().font, text, 0, 0, color, false);
-        guiGraphics.pose().popPose();
+    static void drawSmallText(GuiGraphicsExtractor guiGraphics, String text, int x, int y, int color) {
+        guiGraphics.pose().pushMatrix();
+        guiGraphics.pose().translate(x, y);
+        guiGraphics.pose().scale(SMALL_SCALE, SMALL_SCALE);
+        guiGraphics.text(Minecraft.getInstance().font, text, 0, 0, color, false);
+        guiGraphics.pose().popMatrix();
     }
 
     @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        return mouseClicked(event.x(), event.y(), event.button());
+    }
+
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         // Enum picker first: its popup is drawn on top of everything, so it must get the click
         // before the row underneath it does.
@@ -1288,7 +1304,7 @@ public class ConfigEditorScreen extends Screen {
             }
         }
 
-        if (super.mouseClicked(mouseX, mouseY, button)) return true;
+        if (super.mouseClicked(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)), false)) return true;
 
         int listTop = HEADER_HEIGHT;
         int listBottom = this.height - 40;
@@ -1502,6 +1518,10 @@ public class ConfigEditorScreen extends Screen {
     }
 
     @Override
+    public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+        return mouseDragged(event.x(), event.y(), event.button(), dragX, dragY);
+    }
+
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
         // The picker sits on top and owns the pointer while it is open. Without this its
         // scrollbar takes the press, sets itself dragging, and then never hears another mouse
@@ -1515,10 +1535,14 @@ public class ConfigEditorScreen extends Screen {
             updateScrollFromMouse(mouseY, listTop, listBottom);
             return true;
         }
-        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+        return super.mouseDragged(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)), dragX, dragY);
     }
 
     @Override
+    public boolean mouseReleased(MouseButtonEvent event) {
+        return mouseReleased(event.x(), event.y(), event.button());
+    }
+
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
         // Likewise: without this the picker's drag flag is never cleared, so its thumb keeps
         // rendering as held and the next press behaves as though the button were still down.
@@ -1526,7 +1550,7 @@ public class ConfigEditorScreen extends Screen {
         if (itemPickerOverlay != null && itemPickerOverlay.mouseReleased()) return true;
 
         if (draggingScrollbar) { draggingScrollbar = false; return true; }
-        return super.mouseReleased(mouseX, mouseY, button);
+        return super.mouseReleased(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)));
     }
 
     private void updateScrollFromMouse(double mouseY, int listTop, int listBottom) {
@@ -1540,6 +1564,10 @@ public class ConfigEditorScreen extends Screen {
     }
 
     @Override
+    public boolean keyPressed(KeyEvent event) {
+        return keyPressed(event.key(), event.scancode(), event.modifiers());
+    }
+
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         syncPickerState();
         if (itemPickerOverlay != null) {
@@ -1552,14 +1580,18 @@ public class ConfigEditorScreen extends Screen {
             tryClose();
             return true;
         }
-        return super.keyPressed(keyCode, scanCode, modifiers);
+        return super.keyPressed(new KeyEvent(keyCode, scanCode, modifiers));
     }
 
     @Override
+    public boolean charTyped(CharacterEvent event) {
+        return charTyped((char) event.codepoint(), 0);
+    }
+
     public boolean charTyped(char c, int modifiers) {
         syncPickerState();
         if (itemPickerOverlay != null) return itemPickerOverlay.charTyped(c);
-        return super.charTyped(c, modifiers);
+        return super.charTyped(new CharacterEvent(c));
     }
 
     @Override
@@ -2050,12 +2082,20 @@ public class ConfigEditorScreen extends Screen {
         }
 
         @Override
-        public void renderBackground(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+        public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+            renderBackground(graphics, mouseX, mouseY, partialTick);
+        }
+
+        public void renderBackground(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
             // No-op — avoid 1.21's menu blur shader
         }
 
         @Override
-        public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+        public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+            render(graphics, mouseX, mouseY, partialTick);
+        }
+
+        public void render(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
             smoothScroll.approach((float) scrollOffset, Timing.SCROLL_HALF_LIFE_MS);
             smoothScroll.settle((float) scrollOffset, 0.5f);
             syncOverlayState();
@@ -2070,10 +2110,10 @@ public class ConfigEditorScreen extends Screen {
             if (addButton != null) addButton.visible = !overlayOpen;
             if (!overlayOpen) {
                 // Title
-                guiGraphics.drawCenteredString(this.font, this.title, this.width / 2, 10, 0xFFFFFF);
+                guiGraphics.centeredText(this.font, this.title, this.width / 2, 10, 0xFFFFFF);
 
                 // Subtitle
-                guiGraphics.drawCenteredString(this.font, items.size() + " items", this.width / 2, 25, 0x999999);
+                guiGraphics.centeredText(this.font, items.size() + " items", this.width / 2, 25, 0x999999);
 
                 // Separator
                 guiGraphics.fill(30, LIST_TOP - 4, this.width - 30, LIST_TOP - 3, 0xFF555555);
@@ -2105,19 +2145,19 @@ public class ConfigEditorScreen extends Screen {
                     if (rl != null) {
                         Item item = BuiltInRegistries.ITEM.getValue(rl);
                         if (item != null) {
-                            guiGraphics.renderItem(new ItemStack(item), contentLeft + 2, y + 2);
+                            guiGraphics.item(new ItemStack(item), contentLeft + 2, y + 2);
                         }
                     }
 
                     // Item ID text
-                    guiGraphics.drawString(this.font, itemId, contentLeft + 22, y + 7, 0xCCCCCC, false);
+                    guiGraphics.text(this.font, itemId, contentLeft + 22, y + 7, 0xCCCCCC, false);
 
                     // Remove × button
                     int removeX = contentRight - 14;
                     boolean removeHovered = mouseX >= removeX && mouseX <= removeX + 12
                             && mouseY >= y + 2 && mouseY < y + ITEM_ROW_HEIGHT - 2
                             && mouseY >= LIST_TOP && mouseY <= listBottom;
-                    guiGraphics.drawString(this.font, "×", removeX + 2, y + 6,
+                    guiGraphics.text(this.font, "×", removeX + 2, y + 6,
                             removeHovered ? 0xFF5555 : 0x888888, false);
                 }
                 y += ITEM_ROW_HEIGHT;
@@ -2136,7 +2176,7 @@ public class ConfigEditorScreen extends Screen {
             // Separator above buttons
             guiGraphics.fill(30, listBottom + 1, this.width - 30, listBottom + 2, 0xFF555555);
 
-            super.render(guiGraphics, mouseX, mouseY, partialTick);
+            super.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
 
             // Overlay
             if (itemOverlay != null) {
@@ -2146,6 +2186,10 @@ public class ConfigEditorScreen extends Screen {
         }
 
         @Override
+        public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+            return mouseClicked(event.x(), event.y(), event.button());
+        }
+
         public boolean mouseClicked(double mouseX, double mouseY, int button) {
             syncOverlayState();
             if (itemOverlay != null) {
@@ -2155,7 +2199,7 @@ public class ConfigEditorScreen extends Screen {
                 return consumed || clearOverlay();
             }
 
-            if (super.mouseClicked(mouseX, mouseY, button)) return true;
+            if (super.mouseClicked(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)), false)) return true;
 
             int listBottom = this.height - 40;
             int contentLeft = 40;
@@ -2190,18 +2234,26 @@ public class ConfigEditorScreen extends Screen {
         }
 
         @Override
+        public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+            return mouseDragged(event.x(), event.y(), event.button(), dragX, dragY);
+        }
+
         public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
             if (draggingScrollbar) {
                 updateScrollFromMouse(mouseY, LIST_TOP, this.height - 40);
                 return true;
             }
-            return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+            return super.mouseDragged(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)), dragX, dragY);
         }
 
         @Override
+        public boolean mouseReleased(MouseButtonEvent event) {
+            return mouseReleased(event.x(), event.y(), event.button());
+        }
+
         public boolean mouseReleased(double mouseX, double mouseY, int button) {
             if (draggingScrollbar) { draggingScrollbar = false; return true; }
-            return super.mouseReleased(mouseX, mouseY, button);
+            return super.mouseReleased(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)));
         }
 
         private void updateScrollFromMouse(double mouseY, int listTop, int listBottom) {
@@ -2224,6 +2276,10 @@ public class ConfigEditorScreen extends Screen {
         }
 
         @Override
+        public boolean keyPressed(KeyEvent event) {
+            return keyPressed(event.key(), event.scancode(), event.modifiers());
+        }
+
         public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
             syncOverlayState();
             if (itemOverlay != null) {
@@ -2233,14 +2289,18 @@ public class ConfigEditorScreen extends Screen {
                 return consumed;
             }
             if (keyCode == 256) { saveAndClose(); return true; }
-            return super.keyPressed(keyCode, scanCode, modifiers);
+            return super.keyPressed(new KeyEvent(keyCode, scanCode, modifiers));
         }
 
         @Override
+        public boolean charTyped(CharacterEvent event) {
+            return charTyped((char) event.codepoint(), 0);
+        }
+
         public boolean charTyped(char c, int modifiers) {
             syncOverlayState();
             if (itemOverlay != null) return itemOverlay.charTyped(c);
-            return super.charTyped(c, modifiers);
+            return super.charTyped(new CharacterEvent(c));
         }
 
         @Override
@@ -2344,12 +2404,20 @@ public class ConfigEditorScreen extends Screen {
         }
 
         @Override
-        public void renderBackground(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+        public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+            renderBackground(graphics, mouseX, mouseY, partialTick);
+        }
+
+        public void renderBackground(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
             // No-op — avoid 1.21's menu blur shader
         }
 
         @Override
-        public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+        public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+            render(graphics, mouseX, mouseY, partialTick);
+        }
+
+        public void render(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
             smoothScroll.approach((float) scrollOffset, Timing.SCROLL_HALF_LIFE_MS);
             smoothScroll.settle((float) scrollOffset, 0.5f);
             syncOverlayState();
@@ -2364,10 +2432,10 @@ public class ConfigEditorScreen extends Screen {
             if (addButton != null) addButton.visible = !overlayOpen;
             if (!overlayOpen) {
                 // Title
-                guiGraphics.drawCenteredString(this.font, this.title, this.width / 2, 10, 0xFFFFFF);
+                guiGraphics.centeredText(this.font, this.title, this.width / 2, 10, 0xFFFFFF);
 
                 // Subtitle
-                guiGraphics.drawCenteredString(this.font, tags.size() + " tags", this.width / 2, 25, 0x999999);
+                guiGraphics.centeredText(this.font, tags.size() + " tags", this.width / 2, 25, 0x999999);
 
                 // Separator
                 guiGraphics.fill(30, LIST_TOP - 4, this.width - 30, LIST_TOP - 3, 0xFF555555);
@@ -2395,17 +2463,17 @@ public class ConfigEditorScreen extends Screen {
                     }
 
                     // Tag icon (#)
-                    guiGraphics.drawString(this.font, "\u00A7e#", contentLeft + 4, y + 7, 0xFFCC00, false);
+                    guiGraphics.text(this.font, "\u00A7e#", contentLeft + 4, y + 7, 0xFFCC00, false);
 
                     // Tag ID text
-                    guiGraphics.drawString(this.font, tagId, contentLeft + 16, y + 7, 0xCCCCCC, false);
+                    guiGraphics.text(this.font, tagId, contentLeft + 16, y + 7, 0xCCCCCC, false);
 
                     // Remove × button
                     int removeX = contentRight - 14;
                     boolean removeHovered = mouseX >= removeX && mouseX <= removeX + 12
                             && mouseY >= y + 2 && mouseY < y + TAG_ROW_HEIGHT - 2
                             && mouseY >= LIST_TOP && mouseY <= listBottom;
-                    guiGraphics.drawString(this.font, "×", removeX + 2, y + 6,
+                    guiGraphics.text(this.font, "×", removeX + 2, y + 6,
                             removeHovered ? 0xFF5555 : 0x888888, false);
                 }
                 y += TAG_ROW_HEIGHT;
@@ -2424,7 +2492,7 @@ public class ConfigEditorScreen extends Screen {
             // Separator above buttons
             guiGraphics.fill(30, listBottom + 1, this.width - 30, listBottom + 2, 0xFF555555);
 
-            super.render(guiGraphics, mouseX, mouseY, partialTick);
+            super.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
 
             // Overlay
             if (tagOverlay != null) {
@@ -2434,6 +2502,10 @@ public class ConfigEditorScreen extends Screen {
         }
 
         @Override
+        public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+            return mouseClicked(event.x(), event.y(), event.button());
+        }
+
         public boolean mouseClicked(double mouseX, double mouseY, int button) {
             syncOverlayState();
             if (tagOverlay != null) {
@@ -2442,7 +2514,7 @@ public class ConfigEditorScreen extends Screen {
                 return consumed || clearOverlay();
             }
 
-            if (super.mouseClicked(mouseX, mouseY, button)) return true;
+            if (super.mouseClicked(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)), false)) return true;
 
             int listBottom = this.height - 40;
             int contentLeft = 40;
@@ -2476,18 +2548,26 @@ public class ConfigEditorScreen extends Screen {
         }
 
         @Override
+        public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+            return mouseDragged(event.x(), event.y(), event.button(), dragX, dragY);
+        }
+
         public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
             if (draggingScrollbar) {
                 updateScrollFromMouse(mouseY, LIST_TOP, this.height - 40);
                 return true;
             }
-            return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+            return super.mouseDragged(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)), dragX, dragY);
         }
 
         @Override
+        public boolean mouseReleased(MouseButtonEvent event) {
+            return mouseReleased(event.x(), event.y(), event.button());
+        }
+
         public boolean mouseReleased(double mouseX, double mouseY, int button) {
             if (draggingScrollbar) { draggingScrollbar = false; return true; }
-            return super.mouseReleased(mouseX, mouseY, button);
+            return super.mouseReleased(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)));
         }
 
         private void updateScrollFromMouse(double mouseY, int listTop, int listBottom) {
@@ -2510,6 +2590,10 @@ public class ConfigEditorScreen extends Screen {
         }
 
         @Override
+        public boolean keyPressed(KeyEvent event) {
+            return keyPressed(event.key(), event.scancode(), event.modifiers());
+        }
+
         public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
             syncOverlayState();
             if (tagOverlay != null) {
@@ -2519,14 +2603,18 @@ public class ConfigEditorScreen extends Screen {
                 return consumed;
             }
             if (keyCode == 256) { saveAndClose(); return true; }
-            return super.keyPressed(keyCode, scanCode, modifiers);
+            return super.keyPressed(new KeyEvent(keyCode, scanCode, modifiers));
         }
 
         @Override
+        public boolean charTyped(CharacterEvent event) {
+            return charTyped((char) event.codepoint(), 0);
+        }
+
         public boolean charTyped(char c, int modifiers) {
             syncOverlayState();
             if (tagOverlay != null) return tagOverlay.charTyped(c);
-            return super.charTyped(c, modifiers);
+            return super.charTyped(new CharacterEvent(c));
         }
 
         @Override
@@ -2721,10 +2809,18 @@ public class ConfigEditorScreen extends Screen {
         }
 
         @Override
-        public void renderBackground(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {}
+        public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+            renderBackground(graphics, mouseX, mouseY, partialTick);
+        }
+
+        public void renderBackground(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {}
 
         @Override
-        public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+        public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+            render(graphics, mouseX, mouseY, partialTick);
+        }
+
+        public void render(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
             smoothScroll.approach((float) scrollOffset, Timing.SCROLL_HALF_LIFE_MS);
             smoothScroll.settle((float) scrollOffset, 0.5f);
             syncOverlayState();
@@ -2736,8 +2832,8 @@ public class ConfigEditorScreen extends Screen {
             if (backButton != null) backButton.visible = !overlayOpen;
             if (addButton != null) addButton.visible = !overlayOpen;
             if (!overlayOpen) {
-                guiGraphics.drawCenteredString(this.font, this.title, this.width / 2, 10, 0xFFFFFF);
-                guiGraphics.drawCenteredString(this.font, Component.translatable(
+                guiGraphics.centeredText(this.font, this.title, this.width / 2, 10, 0xFFFFFF);
+                guiGraphics.centeredText(this.font, Component.translatable(
                         "editor.historystages.config.effects_count", rows.size()).getString(),
                         this.width / 2, 25, 0x999999);
                 guiGraphics.fill(30, LIST_TOP - 4, this.width - 30, LIST_TOP - 3, 0xFF555555);
@@ -2771,7 +2867,7 @@ public class ConfigEditorScreen extends Screen {
                     String summary = Component.translatable("editor.historystages.config.effect_summary",
                             r.seconds, r.amplifier + 1).getString();
                     int summaryX = summaryRightX - this.font.width(summary);
-                    guiGraphics.drawString(this.font, summary, summaryX, y + 9, 0xAACCFF, false);
+                    guiGraphics.text(this.font, summary, summaryX, y + 9, 0xAACCFF, false);
 
                     String name = net.bananemdnsa.historystages.client.editor.widget.list
                             .SearchableEffectList.displayName(r.effectId);
@@ -2781,7 +2877,7 @@ public class ConfigEditorScreen extends Screen {
                     if (maxIdWidth > 0 && this.font.width(label) > maxIdWidth) {
                         label = this.font.plainSubstrByWidth(label, maxIdWidth - 6) + "...";
                     }
-                    guiGraphics.drawString(this.font, label, idX, y + 9,
+                    guiGraphics.text(this.font, label, idX, y + 9,
                             hovered ? 0xFFFFFF : 0xCCCCCC, false);
 
                     r.editButton.setX(editButtonX);
@@ -2790,7 +2886,7 @@ public class ConfigEditorScreen extends Screen {
                     boolean removeHovered = mouseX >= removeX && mouseX <= removeX + 12
                             && mouseY >= y + 2 && mouseY < y + ROW_HEIGHT - 2
                             && mouseY >= LIST_TOP && mouseY <= listBottom;
-                    guiGraphics.drawString(this.font, "×", removeX + 2, y + 8,
+                    guiGraphics.text(this.font, "×", removeX + 2, y + 8,
                             removeHovered ? 0xFF5555 : 0x888888, false);
                 }
                 y += ROW_HEIGHT;
@@ -2806,7 +2902,7 @@ public class ConfigEditorScreen extends Screen {
             }
             guiGraphics.fill(30, listBottom + 1, this.width - 30, listBottom + 2, 0xFF555555);
 
-            super.render(guiGraphics, mouseX, mouseY, partialTick);
+            super.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
 
             if (effectOverlay != null) {
                 guiGraphics.fill(0, 0, this.width, this.height, 0x80000000);
@@ -2815,6 +2911,10 @@ public class ConfigEditorScreen extends Screen {
         }
 
         @Override
+        public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+            return mouseClicked(event.x(), event.y(), event.button());
+        }
+
         public boolean mouseClicked(double mouseX, double mouseY, int button) {
             syncOverlayState();
             if (effectOverlay != null) {
@@ -2835,7 +2935,7 @@ public class ConfigEditorScreen extends Screen {
                 return true;
             }
 
-            if (super.mouseClicked(mouseX, mouseY, button)) return true;
+            if (super.mouseClicked(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)), false)) return true;
 
             if (mouseX < contentLeft || mouseX > contentRight || mouseY < LIST_TOP || mouseY > listBottom)
                 return false;
@@ -2855,18 +2955,26 @@ public class ConfigEditorScreen extends Screen {
         }
 
         @Override
+        public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+            return mouseDragged(event.x(), event.y(), event.button(), dragX, dragY);
+        }
+
         public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
             if (draggingScrollbar) {
                 updateScrollFromMouse(mouseY, LIST_TOP, this.height - 40);
                 return true;
             }
-            return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+            return super.mouseDragged(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)), dragX, dragY);
         }
 
         @Override
+        public boolean mouseReleased(MouseButtonEvent event) {
+            return mouseReleased(event.x(), event.y(), event.button());
+        }
+
         public boolean mouseReleased(double mouseX, double mouseY, int button) {
             if (draggingScrollbar) { draggingScrollbar = false; return true; }
-            return super.mouseReleased(mouseX, mouseY, button);
+            return super.mouseReleased(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)));
         }
 
         private void updateScrollFromMouse(double mouseY, int listTop, int listBottom) {
@@ -2884,6 +2992,10 @@ public class ConfigEditorScreen extends Screen {
         }
 
         @Override
+        public boolean keyPressed(KeyEvent event) {
+            return keyPressed(event.key(), event.scancode(), event.modifiers());
+        }
+
         public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
             syncOverlayState();
             if (effectOverlay != null) {
@@ -2893,14 +3005,18 @@ public class ConfigEditorScreen extends Screen {
                 return consumed;
             }
             if (keyCode == 256) { saveAndClose(); return true; }
-            return super.keyPressed(keyCode, scanCode, modifiers);
+            return super.keyPressed(new KeyEvent(keyCode, scanCode, modifiers));
         }
 
         @Override
+        public boolean charTyped(CharacterEvent event) {
+            return charTyped((char) event.codepoint(), 0);
+        }
+
         public boolean charTyped(char c, int modifiers) {
             syncOverlayState();
             if (effectOverlay != null) return effectOverlay.charTyped(c);
-            return super.charTyped(c, modifiers);
+            return super.charTyped(new CharacterEvent(c));
         }
 
         @Override
@@ -3059,7 +3175,7 @@ public class ConfigEditorScreen extends Screen {
          * scroll the full ID horizontally. Inlined from {@code AbstractSearchableList} so
          * this Screen-based editor doesn't have to inherit it.
          */
-        private void drawIdMaybeMarquee(GuiGraphics g, String text, int x, int y,
+        private void drawIdMaybeMarquee(GuiGraphicsExtractor g, String text, int x, int y,
                                         int w, int h, boolean hovered, int rowIndex) {
             int textW = this.font.width(text);
             int textColor = hovered ? 0xFFFFFF : 0xCCCCCC;
@@ -3070,7 +3186,7 @@ public class ConfigEditorScreen extends Screen {
                 }
             }
             if (textW <= w) {
-                g.drawString(this.font, text, x, y, textColor, false);
+                g.text(this.font, text, x, y, textColor, false);
                 return;
             }
             if (hovered && hoveredRow == rowIndex) {
@@ -3082,12 +3198,12 @@ public class ConfigEditorScreen extends Screen {
                     float pos = scrollProg % cycle;
                     int scrollOff = pos <= maxMarquee ? (int) pos : (int) (cycle - pos);
                     g.enableScissor(x, y - 4, x + w, y + h);
-                    g.drawString(this.font, text, x - scrollOff, y, textColor, false);
+                    g.text(this.font, text, x - scrollOff, y, textColor, false);
                     g.disableScissor();
                     return;
                 }
             }
-            g.drawString(this.font, this.font.plainSubstrByWidth(text, w - 6) + "...",
+            g.text(this.font, this.font.plainSubstrByWidth(text, w - 6) + "...",
                     x, y, textColor, false);
         }
 
@@ -3121,10 +3237,18 @@ public class ConfigEditorScreen extends Screen {
         }
 
         @Override
-        public void renderBackground(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {}
+        public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+            renderBackground(graphics, mouseX, mouseY, partialTick);
+        }
+
+        public void renderBackground(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {}
 
         @Override
-        public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+        public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+            render(graphics, mouseX, mouseY, partialTick);
+        }
+
+        public void render(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
             smoothScroll.approach((float) scrollOffset, Timing.SCROLL_HALF_LIFE_MS);
             smoothScroll.settle((float) scrollOffset, 0.5f);
             syncOverlayState();
@@ -3137,8 +3261,8 @@ public class ConfigEditorScreen extends Screen {
             if (backButton != null) backButton.visible = !overlayOpen;
             if (addButton != null) addButton.visible = !overlayOpen;
             if (!overlayOpen) {
-                guiGraphics.drawCenteredString(this.font, this.title, this.width / 2, 10, 0xFFFFFF);
-                guiGraphics.drawCenteredString(this.font, rows.size() + " boosters", this.width / 2, 25, 0x999999);
+                guiGraphics.centeredText(this.font, this.title, this.width / 2, 10, 0xFFFFFF);
+                guiGraphics.centeredText(this.font, rows.size() + " boosters", this.width / 2, 25, 0x999999);
                 guiGraphics.fill(30, LIST_TOP - 4, this.width - 30, LIST_TOP - 3, 0xFF555555);
             }
 
@@ -3150,7 +3274,7 @@ public class ConfigEditorScreen extends Screen {
             int editButtonX = removeX - 8 - 50; // edit button width 50
             int summaryRightX = editButtonX - 8;
 
-            // Buttons render via super.render() outside the scissor — toggle visible based on row clipping.
+            // Buttons render via super.extractRenderState(guiGraphics, mouseX, mouseY, partialTick) outside the scissor — toggle visible based on row clipping.
             guiGraphics.enableScissor(contentLeft - 5, LIST_TOP, contentRight + 5, listBottom);
 
             int y = LIST_TOP - Math.round(smoothScroll.value());
@@ -3180,7 +3304,7 @@ public class ConfigEditorScreen extends Screen {
                     if (rl != null) {
                         Item item = BuiltInRegistries.ITEM.getValue(rl);
                         if (item != null) {
-                            guiGraphics.renderItem(new ItemStack(item), contentLeft + 2, y + 5);
+                            guiGraphics.item(new ItemStack(item), contentLeft + 2, y + 5);
                         }
                     }
 
@@ -3188,7 +3312,7 @@ public class ConfigEditorScreen extends Screen {
                     String summary = formatSummary(r);
                     int summaryW = this.font.width(summary);
                     int summaryX = summaryRightX - summaryW;
-                    guiGraphics.drawString(this.font, summary, summaryX, y + 9, 0xAACCFF, false);
+                    guiGraphics.text(this.font, summary, summaryX, y + 9, 0xAACCFF, false);
 
                     int idX = contentLeft + 22;
                     int maxIdWidth = summaryX - idX - 8;
@@ -3202,7 +3326,7 @@ public class ConfigEditorScreen extends Screen {
                     boolean removeHovered = mouseX >= removeX && mouseX <= removeX + 12
                             && mouseY >= y + 2 && mouseY < y + ROW_HEIGHT - 2
                             && mouseY >= LIST_TOP && mouseY <= listBottom;
-                    guiGraphics.drawString(this.font, "×", removeX + 2, y + 8,
+                    guiGraphics.text(this.font, "×", removeX + 2, y + 8,
                             removeHovered ? 0xFF5555 : 0x888888, false);
                 }
                 y += ROW_HEIGHT;
@@ -3220,7 +3344,7 @@ public class ConfigEditorScreen extends Screen {
             }
             guiGraphics.fill(30, listBottom + 1, this.width - 30, listBottom + 2, 0xFF555555);
 
-            super.render(guiGraphics, mouseX, mouseY, partialTick);
+            super.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
 
             if (itemOverlay != null) {
                 guiGraphics.fill(0, 0, this.width, this.height, 0x80000000);
@@ -3229,6 +3353,10 @@ public class ConfigEditorScreen extends Screen {
         }
 
         @Override
+        public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+            return mouseClicked(event.x(), event.y(), event.button());
+        }
+
         public boolean mouseClicked(double mouseX, double mouseY, int button) {
             syncOverlayState();
             if (itemOverlay != null) {
@@ -3250,7 +3378,7 @@ public class ConfigEditorScreen extends Screen {
                 return true;
             }
 
-            if (super.mouseClicked(mouseX, mouseY, button)) return true;
+            if (super.mouseClicked(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)), false)) return true;
 
             if (mouseX < contentLeft || mouseX > contentRight || mouseY < LIST_TOP || mouseY > listBottom)
                 return false;
@@ -3271,18 +3399,26 @@ public class ConfigEditorScreen extends Screen {
         }
 
         @Override
+        public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+            return mouseDragged(event.x(), event.y(), event.button(), dragX, dragY);
+        }
+
         public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
             if (draggingScrollbar) {
                 updateScrollFromMouse(mouseY, LIST_TOP, this.height - 40);
                 return true;
             }
-            return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+            return super.mouseDragged(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)), dragX, dragY);
         }
 
         @Override
+        public boolean mouseReleased(MouseButtonEvent event) {
+            return mouseReleased(event.x(), event.y(), event.button());
+        }
+
         public boolean mouseReleased(double mouseX, double mouseY, int button) {
             if (draggingScrollbar) { draggingScrollbar = false; return true; }
-            return super.mouseReleased(mouseX, mouseY, button);
+            return super.mouseReleased(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)));
         }
 
         private void updateScrollFromMouse(double mouseY, int listTop, int listBottom) {
@@ -3304,6 +3440,10 @@ public class ConfigEditorScreen extends Screen {
         }
 
         @Override
+        public boolean keyPressed(KeyEvent event) {
+            return keyPressed(event.key(), event.scancode(), event.modifiers());
+        }
+
         public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
             syncOverlayState();
             if (itemOverlay != null) {
@@ -3313,14 +3453,18 @@ public class ConfigEditorScreen extends Screen {
                 return consumed;
             }
             if (keyCode == 256) { saveAndClose(); return true; }
-            return super.keyPressed(keyCode, scanCode, modifiers);
+            return super.keyPressed(new KeyEvent(keyCode, scanCode, modifiers));
         }
 
         @Override
+        public boolean charTyped(CharacterEvent event) {
+            return charTyped((char) event.codepoint(), 0);
+        }
+
         public boolean charTyped(char c, int modifiers) {
             syncOverlayState();
             if (itemOverlay != null) return itemOverlay.charTyped(c);
-            return super.charTyped(c, modifiers);
+            return super.charTyped(new CharacterEvent(c));
         }
 
         @Override
@@ -3446,14 +3590,22 @@ public class ConfigEditorScreen extends Screen {
         }
 
         @Override
-        public void renderBackground(GuiGraphics g, int mx, int my, float pt) {}
+        public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+            renderBackground(graphics, mouseX, mouseY, partialTick);
+        }
+
+        public void renderBackground(GuiGraphicsExtractor g, int mx, int my, float pt) {}
 
         @Override
-        public void render(GuiGraphics g, int mouseX, int mouseY, float pt) {
-            g.fill(0, 0, this.width, this.height, 0xC0000000);
-            super.render(g, mouseX, mouseY, pt);
+        public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+            render(graphics, mouseX, mouseY, partialTick);
+        }
 
-            g.drawCenteredString(this.font,
+        public void render(GuiGraphicsExtractor g, int mouseX, int mouseY, float pt) {
+            g.fill(0, 0, this.width, this.height, 0xC0000000);
+            super.extractRenderState(g, mouseX, mouseY, pt);
+
+            g.centeredText(this.font,
                     Component.translatable("editor.historystages.booster.edit_title"),
                     this.width / 2, 8, 0xFFFFFF);
 
@@ -3461,17 +3613,17 @@ public class ConfigEditorScreen extends Screen {
             Identifier rl = Identifier.tryParse(row.blockId);
             if (rl != null) {
                 Item item = BuiltInRegistries.ITEM.getValue(rl);
-                if (item != null) g.renderItem(new ItemStack(item), 30, 22);
+                if (item != null) g.item(new ItemStack(item), 30, 22);
             }
-            g.drawString(this.font, row.blockId, 52, 26, 0xCCCCCC, false);
+            g.text(this.font, row.blockId, 52, 26, 0xCCCCCC, false);
 
             int labelX = 30;
-            g.drawString(this.font, "Speed %", labelX, 49, 0xAAAAAA, false);
-            g.drawString(this.font, "Cost %",  labelX, 71, 0xAAAAAA, false);
-            g.drawString(this.font,
+            g.text(this.font, "Speed %", labelX, 49, 0xAAAAAA, false);
+            g.text(this.font, "Cost %",  labelX, 71, 0xAAAAAA, false);
+            g.text(this.font,
                     Component.translatable("editor.historystages.field.min_pedestal_tier").getString(),
                     labelX, 93, 0xAAAAAA, false);
-            g.drawString(this.font,
+            g.text(this.font,
                     Component.translatable("editor.historystages.field.pedestal_tier_mode").getString(),
                     labelX, 115, 0xAAAAAA, false);
 
@@ -3480,9 +3632,13 @@ public class ConfigEditorScreen extends Screen {
         }
 
         @Override
+        public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+            return mouseClicked(event.x(), event.y(), event.button());
+        }
+
         public boolean mouseClicked(double mouseX, double mouseY, int button) {
             if (tierDropdown != null && tierDropdown.mouseClicked(mouseX, mouseY)) return true;
-            return super.mouseClicked(mouseX, mouseY, button);
+            return super.mouseClicked(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)), false);
         }
 
         @Override

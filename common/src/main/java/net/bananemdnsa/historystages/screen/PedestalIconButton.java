@@ -1,6 +1,6 @@
 package net.bananemdnsa.historystages.screen;
 
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractButton;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
@@ -49,7 +49,11 @@ public class PedestalIconButton extends AbstractButton {
     }
 
     @Override
-    protected void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+    protected void extractWidgetRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        renderWidget(graphics, mouseX, mouseY, partialTick);
+    }
+
+    protected void renderWidget(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
         // Refreshed here because the pedestal's state changes underneath an open screen.
         // AbstractWidget.mouseClicked tests `active`, so keeping it current is what actually
         // blocks the click — the face below is only what the player sees.

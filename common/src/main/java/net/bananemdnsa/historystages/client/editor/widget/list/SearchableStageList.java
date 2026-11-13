@@ -8,7 +8,7 @@ import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.data.StageMode;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -83,7 +83,7 @@ public class SearchableStageList extends AbstractSearchableList<SearchableStageL
     }
 
     @Override
-    protected void renderRow(GuiGraphics g, Font font, StageListEntry entry,
+    protected void renderRow(GuiGraphicsExtractor g, Font font, StageListEntry entry,
                              int x, int y, int w, int h, boolean hovered, int rowIndex) {
         String text = entry.displayName + " §7(" + entry.id + ")";
         drawRowMarqueeText(g, font, text, x, y, w, h, hovered, rowIndex);

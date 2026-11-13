@@ -11,7 +11,7 @@ import net.bananemdnsa.historystages.api.editor.widget.SearchBar;
 import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.data.graph.GraphStageData;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 
@@ -458,7 +458,7 @@ public final class GraphSidebar {
 
     // --- Rendering ----------------------------------------------------------------------------
 
-    public void render(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    public void render(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         if (width <= 0 || height <= 0) return;
 
         g.fill(x, y, x + width, y + height, BG_COLOR);
@@ -478,13 +478,13 @@ public final class GraphSidebar {
     }
 
     /** Dashed gold frame over the whole sidebar: let go here and the dragged stages leave the map. */
-    private void renderDropZone(GuiGraphics g, Font font) {
+    private void renderDropZone(GuiGraphicsExtractor g, Font font) {
         int x1 = x + DROP_INSET, y1 = y + DROP_INSET;
         int x2 = x + width - DROP_INSET, y2 = y + height - DROP_INSET;
         if (x2 - x1 < 4 || y2 - y1 < 4) return;
 
-        g.pose().pushPose();
-        g.pose().translate(0, 0, 200); // above the tray's item icons
+        g.pose().pushMatrix();
+        g.pose().translate(0, 0); // above the tray's item icons
         g.fill(x1, y1, x2, y2, DROP_FILL);
         // Bounded by the side length up front, never by a running sum — see the grid loop in
         // GraphRenderer for why that matters.
@@ -504,13 +504,13 @@ public final class GraphSidebar {
                 font.split(Component.literal(dropHint), Math.max(10, x2 - x1 - 12));
         int textY = (y1 + y2) / 2 - lines.size() * font.lineHeight / 2;
         for (FormattedCharSequence line : lines) {
-            g.drawString(font, line, (x1 + x2 - font.width(line)) / 2, textY, DROP_EDGE, false);
+            g.text(font, line, (x1 + x2 - font.width(line)) / 2, textY, DROP_EDGE, false);
             textY += font.lineHeight;
         }
-        g.pose().popPose();
+        g.pose().popMatrix();
     }
 
-    private void renderBody(GuiGraphics g, Font font, int mouseX, int mouseY, boolean animate) {
+    private void renderBody(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY, boolean animate) {
         searchBar.setPosition(x + PADDING, y + PADDING, width - PADDING * 2);
         searchBar.render(g, font, mouseX, mouseY);
 
@@ -520,7 +520,7 @@ public final class GraphSidebar {
 
         if (positioned.isEmpty()) {
             String text = tr("editor.historystages.graph.sidebar.empty");
-            g.drawString(font, MarqueeText.truncate(font, text, width - PADDING * 2),
+            g.text(font, MarqueeText.truncate(font, text, width - PADDING * 2),
                     x + PADDING, top + 6, EMPTY_TEXT_COLOR, false);
             return;
         }
@@ -564,7 +564,7 @@ public final class GraphSidebar {
                 scroll, maxScroll, mouseX, mouseY);
     }
 
-    private void drawRow(GuiGraphics g, Font font, PositionedRow row, int top, boolean hovered,
+    private void drawRow(GuiGraphicsExtractor g, Font font, PositionedRow row, int top, boolean hovered,
                          String focused, boolean animate, int clipTop, int clipBottom) {
         switch (row.kind()) {
             case SECTION -> drawSection(g, font, row, top);
@@ -574,17 +574,17 @@ public final class GraphSidebar {
         }
     }
 
-    private void drawSection(GuiGraphics g, Font font, PositionedRow row, int top) {
+    private void drawSection(GuiGraphicsExtractor g, Font font, PositionedRow row, int top) {
         int textY = top + 3;
         drawCount(g, font, row.count(), textY);
         int available = textRight() - font.width(String.valueOf(row.count())) - 6 - (x + ROW_LEFT_PAD);
-        g.drawString(font, MarqueeText.truncate(font, row.text(), available),
+        g.text(font, MarqueeText.truncate(font, row.text(), available),
                 x + ROW_LEFT_PAD, textY, SECTION_TEXT_COLOR, false);
         g.fill(x + ROW_LEFT_PAD, top + SECTION_HEADER_HEIGHT - 1,
                 textRight(), top + SECTION_HEADER_HEIGHT, SEPARATOR_COLOR);
     }
 
-    private void drawFolder(GuiGraphics g, Font font, PositionedRow row, int top,
+    private void drawFolder(GuiGraphicsExtractor g, Font font, PositionedRow row, int top,
                             boolean hovered, boolean animate) {
         float hover = hoverProgress(row.key(), hovered, animate);
         if (hover > 0.01f) {
@@ -595,16 +595,16 @@ public final class GraphSidebar {
         int left = x + ROW_LEFT_PAD + row.depth() * INDENT_W;
         String chevron = isExpanded(row.key()) ? "▼ " : "▶ ";
         int textY = top + 4;
-        g.drawString(font, chevron, left, textY, COUNT_TEXT_COLOR, false);
+        g.text(font, chevron, left, textY, COUNT_TEXT_COLOR, false);
 
         drawCount(g, font, row.count(), textY);
         int nameLeft = left + font.width(chevron);
         int available = textRight() - font.width(String.valueOf(row.count())) - 6 - nameLeft;
-        g.drawString(font, MarqueeText.truncate(font, row.text(), available), nameLeft, textY,
+        g.text(font, MarqueeText.truncate(font, row.text(), available), nameLeft, textY,
                 Fade.mix(FOLDER_TEXT_COLOR, ROW_TEXT_COLOR_HOVER, hover), false);
     }
 
-    private void drawStage(GuiGraphics g, Font font, PositionedRow row, int top, boolean hovered,
+    private void drawStage(GuiGraphicsExtractor g, Font font, PositionedRow row, int top, boolean hovered,
                            boolean selected, boolean animate, int clipTop, int clipBottom) {
         int bottom = top + STAGE_ROW_HEIGHT;
         float hover = hoverProgress(row.key(), hovered, animate);
@@ -637,16 +637,16 @@ public final class GraphSidebar {
     }
 
     /** One faint vertical line per level above this row, so deep nesting stays readable. */
-    private void drawGuides(GuiGraphics g, int depth, int top, int rowHeight) {
+    private void drawGuides(GuiGraphicsExtractor g, int depth, int top, int rowHeight) {
         for (int level = 1; level <= depth; level++) {
             int gx = x + ROW_LEFT_PAD + level * INDENT_W - 3;
             g.fill(gx, top, gx + 1, top + rowHeight, GUIDE_COLOR);
         }
     }
 
-    private void drawCount(GuiGraphics g, Font font, int count, int textY) {
+    private void drawCount(GuiGraphicsExtractor g, Font font, int count, int textY) {
         String text = String.valueOf(count);
-        g.drawString(font, text, textRight() - font.width(text), textY, COUNT_TEXT_COLOR, false);
+        g.text(font, text, textRight() - font.width(text), textY, COUNT_TEXT_COLOR, false);
     }
 
     private float hoverProgress(String key, boolean hovered, boolean animate) {
@@ -662,14 +662,14 @@ public final class GraphSidebar {
      * within the sidebar it would carve a dead strip out of every row it crossed, and hovering a
      * row near the edge would light the handle instead.
      */
-    private void renderHandle(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    private void renderHandle(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         int hx = x + width;
         int hy = y + (height - HANDLE_H) / 2;
         boolean hovered = overHandle(mouseX, mouseY);
 
         g.fill(hx, hy, hx + HANDLE_W, hy + HANDLE_H, hovered ? HANDLE_BG_HOVER : HANDLE_BG);
         String glyph = open ? "◀" : "▶";
-        g.drawString(font, glyph, hx + (HANDLE_W - font.width(glyph)) / 2,
+        g.text(font, glyph, hx + (HANDLE_W - font.width(glyph)) / 2,
                 hy + (HANDLE_H - font.lineHeight) / 2, HANDLE_GLYPH_COLOR, false);
     }
 

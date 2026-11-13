@@ -12,7 +12,7 @@ import net.bananemdnsa.historystages.api.editor.widget.PickerOverlay;
 import net.bananemdnsa.historystages.api.editor.widget.ToggleControl;
 import net.bananemdnsa.historystages.api.lock.LockCategory;
 import net.bananemdnsa.historystages.data.StageEntry;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
 
@@ -97,8 +97,8 @@ public final class TradeLevelTab extends AbstractCategoryTab {
 
     @Override
     public boolean renderContent(TabRenderContext ctx) {
-        GuiGraphics g = ctx.graphics();
-        g.drawString(ctx.font(), Component.translatable(
+        GuiGraphicsExtractor g = ctx.graphics();
+        g.text(ctx.font(), Component.translatable(
                         "editor.historystages.trades.levels.caption").getString(),
                 ctx.x() + 6, ctx.y() + 4, 0xAAAAAA, false);
 
@@ -148,7 +148,7 @@ public final class TradeLevelTab extends AbstractCategoryTab {
     }
 
     private void renderLevel(TabRenderContext ctx, int y, int level) {
-        GuiGraphics g = ctx.graphics();
+        GuiGraphicsExtractor g = ctx.graphics();
         int right = ctx.x() + ctx.width();
         int bottom = y + EditorRowList.CARD_HEIGHT;
         boolean gated = isGated(level);
@@ -160,7 +160,7 @@ public final class TradeLevelTab extends AbstractCategoryTab {
         g.fill(ctx.x() + 1, y + 1, right - 1, bottom - 1, 0x20FFFFFF);
         if (gated) g.fill(ctx.x(), y, ctx.x() + 2, bottom, 0xCCFFCC00);
 
-        g.drawString(ctx.font(), Component.translatable("merchant.level." + level).getString()
+        g.text(ctx.font(), Component.translatable("merchant.level." + level).getString()
                         + " §8(" + level + ")",
                 ctx.x() + 6, y + 7, hovered ? 0xFFFFFF : 0xBBBBBB, false);
 

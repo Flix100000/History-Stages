@@ -7,7 +7,7 @@ import net.bananemdnsa.historystages.data.logic.Condition;
 import net.bananemdnsa.historystages.data.logic.LogicBlockTypes;
 import net.bananemdnsa.historystages.data.logic.LogicGroups;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 
 import java.util.ArrayList;
@@ -312,7 +312,7 @@ public final class LogicBlockCard {
 
     // ---- drawing ---------------------------------------------------------------------
 
-    public void render(GuiGraphics g, Built built, LogicDraft.Block block, int x, int y, int mouseX, int mouseY) {
+    public void render(GuiGraphicsExtractor g, Built built, LogicDraft.Block block, int x, int y, int mouseX, int mouseY) {
         g.fill(x, y, x + built.width(), y + built.height(), CARD_BORDER);
         g.fill(x + 1, y + 1, x + built.width() - 1, y + built.height() - 1, CARD_BG);
         g.fill(x, y, x + 3, y + built.height(), accent(block));
@@ -327,28 +327,28 @@ public final class LogicBlockCard {
                     g.fill(px + 1, py + 2, px + p.w() - 1, py + p.h() - 1, p.color());
                     g.fill(px, py, px + p.w(), py + 2, GOLD);
                 }
-                case TITLE, TEXT -> g.drawString(font, p.text(), px, py, p.color(), false);
+                case TITLE, TEXT -> g.text(font, p.text(), px, py, p.color(), false);
                 case PILL -> {
                     g.fill(px, py, px + p.w(), py + p.h(), p.color());
-                    g.drawString(font, p.text(), px + 3, py + 2, 0xFFFFFFFF, false);
+                    g.text(font, p.text(), px + 3, py + 2, 0xFFFFFFFF, false);
                 }
                 case SEG_ON, SEG_OFF -> {
                     boolean on = p.kind() == Kind.SEG_ON;
                     g.fill(px, py, px + p.w(), py + p.h(), 0xFF555555);
                     g.fill(px + 1, py + 1, px + p.w() - 1, py + p.h() - 1,
                             on ? GOLD : (hovered ? 0xFF3A3A3A : 0xFF222222));
-                    g.drawString(font, p.text(), px + 4, py + 2, on ? 0xFF111111 : (hovered ? 0xFFFFFFFF : p.color()), false);
+                    g.text(font, p.text(), px + 4, py + 2, on ? 0xFF111111 : (hovered ? 0xFFFFFFFF : p.color()), false);
                 }
                 case FIELD -> {
                     g.fill(px - 1, py - 1, px + p.w() + 1, py + p.h() + 1, hovered ? FIELD_BORDER_HOVER : FIELD_BORDER);
                     g.fill(px, py, px + p.w(), py + p.h(), FIELD_BG);
-                    g.drawString(font, fit(p.text(), p.w() - 8), px + 4, py + (p.h() - 8) / 2, p.color(), false);
+                    g.text(font, fit(p.text(), p.w() - 8), px + 4, py + (p.h() - 8) / 2, p.color(), false);
                 }
-                case ICON -> g.drawString(font, p.text(), px + 1, py + 2,
+                case ICON -> g.text(font, p.text(), px + 1, py + 2,
                         hovered ? (p.text().equals("✕") ? 0xFFFF6666 : GOLD) : p.color(), false);
                 case ADD -> {
                     g.fill(px, py, px + p.w(), py + p.h(), hovered ? 0x40FFCC00 : 0x20FFFFFF);
-                    g.drawString(font, p.text(), px + 6, py + 2, hovered ? GOLD : p.color(), false);
+                    g.text(font, p.text(), px + 6, py + 2, hovered ? GOLD : p.color(), false);
                 }
             }
         }

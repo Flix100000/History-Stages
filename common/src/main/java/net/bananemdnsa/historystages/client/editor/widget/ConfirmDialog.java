@@ -1,7 +1,7 @@
 package net.bananemdnsa.historystages.client.editor.widget;
 
 import net.bananemdnsa.historystages.api.editor.widget.AbstractModalScreen;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
@@ -60,10 +60,10 @@ public class ConfirmDialog extends AbstractModalScreen {
     }
 
     @Override
-    protected void renderContent(GuiGraphics g, int x, int y, int w, int mouseX, int mouseY) {
+    protected void renderContent(GuiGraphicsExtractor g, int x, int y, int w, int mouseX, int mouseY) {
         int cy = y + 8;
         for (FormattedCharSequence line : wrappedMessage) {
-            g.drawCenteredString(this.font, line, x + w / 2, cy, MESSAGE_GREY);
+            g.centeredText(this.font, line, x + w / 2, cy, MESSAGE_GREY);
             cy += LINE_H;
         }
     }

@@ -7,7 +7,7 @@ import net.bananemdnsa.historystages.client.editor.anim.Fade;
 import net.bananemdnsa.historystages.client.editor.anim.Timing;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 
 import java.util.function.Consumer;
@@ -153,7 +153,7 @@ public class SearchBar {
                 : width;
     }
 
-    public void render(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    public void render(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         int sx = x;
         int sy = y;
         int sw = searchFieldWidth();
@@ -188,8 +188,8 @@ public class SearchBar {
             g.fill(sx, sy, sx + sw, sy + HEIGHT, 0xFF0D0D0D);
         }
 
-        g.pose().pushPose();
-        g.pose().translate(0, 0, 300);
+        g.pose().pushMatrix();
+        g.pose().translate(0, 0);
         String displayText = text.isEmpty() ? "§7" + placeholder : text;
         int textW = font.width(text);
         // Text is clipped to the field and slides left once it outgrows it, so a long query
@@ -203,13 +203,13 @@ public class SearchBar {
             g.fill(textX - 1, sy + 3, textX + 1 + textW, sy + HEIGHT - 3, 0xFF4A6A9A);
         }
         int textColor = text.isEmpty() ? (lightStyle ? 0x999999 : 0x666666) : 0xFFFFFF;
-        g.drawString(font, displayText, textX, sy + 6, textColor, false);
+        g.text(font, displayText, textX, sy + 6, textColor, false);
         if (focused && !allSelected && (System.currentTimeMillis() / 500) % 2 == 0) {
             int cursorX = textX + (text.isEmpty() ? 0 : textW);
             g.fill(cursorX, sy + 4, cursorX + 1, sy + HEIGHT - 4, 0xFFFFFFFF);
         }
         g.disableScissor();
-        g.pose().popPose();
+        g.pose().popMatrix();
 
         int btnX = x + width - FilterDropdown.BUTTON_SIZE;
         int btnY = y + 1;

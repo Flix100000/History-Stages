@@ -7,7 +7,7 @@ import net.bananemdnsa.historystages.client.editor.anim.Timing;
 import net.bananemdnsa.historystages.data.temporary.DurationUnit;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
@@ -82,7 +82,7 @@ public class DurationUnitDropdown {
         return mx >= g[0] && mx < g[0] + g[2] && my >= g[1] && my < g[1] + g[3];
     }
 
-    public void renderButton(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    public void renderButton(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         boolean hovered = mouseX >= buttonX && mouseX < buttonX + buttonW
                 && mouseY >= buttonY && mouseY < buttonY + BUTTON_HEIGHT;
         float hp = Ease.outCubic(buttonHover.ramp(hovered, Timing.HOVER_IN_MS, Timing.HOVER_OUT_MS));
@@ -92,13 +92,13 @@ public class DurationUnitDropdown {
         g.fill(buttonX, buttonY, buttonX + buttonW, buttonY + BUTTON_HEIGHT, border);
         g.fill(buttonX + 1, buttonY + 1, buttonX + buttonW - 1, buttonY + BUTTON_HEIGHT - 1, bg);
 
-        g.drawString(font, label(unit), buttonX + 4, buttonY + 5, 0xFFEEEEEE, false);
+        g.text(font, label(unit), buttonX + 4, buttonY + 5, 0xFFEEEEEE, false);
 
         DropdownChrome.drawCaret(g, buttonX + buttonW - 7, buttonY + BUTTON_HEIGHT / 2 - 1,
                 Fade.mix(0xFF999999, 0xFFDDDDDD, hp), open.value());
     }
 
-    public void renderPopup(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    public void renderPopup(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         float t = open.ramp(expanded ? 1.0f : 0.0f, Timing.POPUP_MS);
         if (t < 0.02f) return;
 
@@ -119,7 +119,7 @@ public class DurationUnitDropdown {
             boolean selected = all[i] == unit;
             if (selected) g.fill(px + 1, rowY, px + 2, rowY + ROW_HEIGHT, 0xFFFFCC00);
             int textColor = selected ? 0xFFFFCC00 : 0xFFEEEEEE;
-            g.drawString(font, label(all[i]), px + 5 + Math.round(rh * 2.0f), rowY + 4,
+            g.text(font, label(all[i]), px + 5 + Math.round(rh * 2.0f), rowY + 4,
                     textColor, false);
         }
         DropdownChrome.end(g);

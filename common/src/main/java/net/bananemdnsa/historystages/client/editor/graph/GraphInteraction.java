@@ -4,7 +4,7 @@ import net.minecraft.client.Minecraft;
 import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.data.graph.GraphPos;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
@@ -170,7 +170,7 @@ final class GraphInteraction {
     // --- Drawing ------------------------------------------------------------------------------
 
     /** Inside the map's clip and camera transform: the cells a drag would land on. */
-    void renderInMap(GuiGraphics g, int mouseX, int mouseY) {
+    void renderInMap(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         if (!dragStarted || model == null) return;
         StageGraphModel.Node grabbed = draggedKey == null ? null : model.nodes().get(draggedKey);
         if (grabbed == null) {
@@ -187,13 +187,13 @@ final class GraphInteraction {
     }
 
     /** Fixed on screen, above the map: the rubber band and the label following the cursor. */
-    void renderOverlay(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    void renderOverlay(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         if (band != null) drawBand(g);
         if (dragStarted) drawDragGhost(g, font, mouseX, mouseY);
     }
 
     /** Crosshair over a grid cell. */
-    private void drawDropTarget(GuiGraphics g, int gridX, int gridY) {
+    private void drawDropTarget(GuiGraphicsExtractor g, int gridX, int gridY) {
         int cx = camera.screenX(gridX);
         int cy = camera.screenY(gridY);
         int r = Math.max(6, Math.round(GraphRenderer.BASE_NODE_RADIUS * camera.zoom()));
@@ -201,7 +201,7 @@ final class GraphInteraction {
         g.fill(cx - 1, cy - r, cx + 1, cy + r, DROP_TARGET_COLOR);
     }
 
-    private void drawBand(GuiGraphics g) {
+    private void drawBand(GuiGraphicsExtractor g) {
         int x1 = (int) Math.min(band[0], band[2]);
         int y1 = (int) Math.min(band[1], band[3]);
         int x2 = (int) Math.max(band[0], band[2]);
@@ -216,7 +216,7 @@ final class GraphInteraction {
     }
 
     /** Small label following the cursor, naming whatever is currently being dragged. */
-    private void drawDragGhost(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    private void drawDragGhost(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         int count = draggedCount();
         String label = count > 1
                 ? Component.translatable("editor.historystages.graph.drag.many", count).getString()
@@ -226,12 +226,12 @@ final class GraphInteraction {
         int w = font.width(label) + 8;
         int gx = mouseX + 10;
         int gy = mouseY + 10;
-        g.pose().pushPose();
-        g.pose().translate(0, 0, 300); // above nodes/edges, below modal dialogs
+        g.pose().pushMatrix();
+        g.pose().translate(0, 0); // above nodes/edges, below modal dialogs
         g.fill(gx, gy, gx + w, gy + 14, GHOST_BG);
         g.fill(gx, gy + 13, gx + w, gy + 14, GHOST_ACCENT);
-        g.drawString(font, label, gx + 4, gy + 3, 0xFFFFFFFF, false);
-        g.pose().popPose();
+        g.text(font, label, gx + 4, gy + 3, 0xFFFFFFFF, false);
+        g.pose().popMatrix();
     }
 
     private static String labelFor(StageGraphModel.Node node) {

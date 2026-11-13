@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.function.IntPredicate;
 
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.world.item.ItemStack;
 
 /**
@@ -57,7 +57,7 @@ public final class ItemSlotGrid {
      */
     @FunctionalInterface
     public interface SlotPainter {
-        void paint(GuiGraphics g, int index, int x, int y);
+        void paint(GuiGraphicsExtractor g, int index, int x, int y);
     }
 
     /**
@@ -71,12 +71,12 @@ public final class ItemSlotGrid {
      * @param suppressHover true while a filter popup covers the grid, so a slot under the popup
      *                      does not light up as if it were reachable
      */
-    public static void render(GuiGraphics g, int gridX, int gridY, int cols, int visibleRows,
+    public static void render(GuiGraphicsExtractor g, int gridX, int gridY, int cols, int visibleRows,
                               int scrollRow, List<ItemStack> stacks,
                               IntPredicate isSelected,
                               int mouseX, int mouseY, boolean suppressHover) {
         render(g, gridX, gridY, cols, visibleRows, scrollRow, stacks.size(),
-                (gg, index, x, y) -> gg.renderItem(stacks.get(index), x + 1, y + 1),
+                (gg, index, x, y) -> gg.item(stacks.get(index), x + 1, y + 1),
                 isSelected, mouseX, mouseY, suppressHover);
     }
 
@@ -85,7 +85,7 @@ public final class ItemSlotGrid {
      *
      * @param entryCount how many entries exist; cells past it draw chrome only
      */
-    public static void render(GuiGraphics g, int gridX, int gridY, int cols, int visibleRows,
+    public static void render(GuiGraphicsExtractor g, int gridX, int gridY, int cols, int visibleRows,
                               int scrollRow, int entryCount, SlotPainter painter,
                               IntPredicate isSelected,
                               int mouseX, int mouseY, boolean suppressHover) {
@@ -122,7 +122,7 @@ public final class ItemSlotGrid {
     }
 
     /** Draws the scrollbar to the right of the grid. Call only when something scrolls. */
-    public static void renderScrollbar(GuiGraphics g, int gridX, int gridY, int cols,
+    public static void renderScrollbar(GuiGraphicsExtractor g, int gridX, int gridY, int cols,
                                        int visibleRows, int scrollRow, int maxScrollRow) {
         int x = gridX + cols * SLOT_SIZE + 2;
         int trackHeight = visibleRows * SLOT_SIZE;
@@ -145,7 +145,7 @@ public final class ItemSlotGrid {
      *
      * <p>Lifted in Z by the caller, not here — the caller knows what else is on screen.
      */
-    public static void renderTooltip(GuiGraphics g, Font font, int mouseX, int mouseY, String text,
+    public static void renderTooltip(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY, String text,
                                      int screenW, int screenH) {
         int w = font.width(text) + 8;
         int h = 16;
@@ -157,6 +157,6 @@ public final class ItemSlotGrid {
         if (y < 4) y = 4;
         g.fill(x - 2, y - 2, x + w + 2, y + h, 0xFF1A1A1A);
         g.fill(x - 1, y - 1, x + w + 1, y + h - 1, 0xFF0D0D1A);
-        g.drawString(font, text, x + 2, y + 2, 0xFFFFFF, false);
+        g.text(font, text, x + 2, y + 2, 0xFFFFFF, false);
     }
 }

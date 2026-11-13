@@ -8,7 +8,7 @@ import net.bananemdnsa.historystages.client.editor.anim.Timing;
 import net.bananemdnsa.historystages.data.graph.ResolvedCanvasBackground;
 import net.bananemdnsa.historystages.data.graph.ResolvedStyle;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
@@ -92,7 +92,7 @@ final class GraphRenderer {
      * focused one. {@code overlay} runs inside the same clip and camera transform, after the
      * nodes — the interaction draws its drop targets there.
      */
-    void renderMap(GuiGraphics g, Font font, ResolvedCanvasBackground bg, int mouseX, int mouseY,
+    void renderMap(GuiGraphicsExtractor g, Font font, ResolvedCanvasBackground bg, int mouseX, int mouseY,
                    String focusedKey, Set<String> selected, Runnable overlay) {
         int right = Math.min(camera.viewX() + camera.viewW(), camera.clipRight());
         if (right <= camera.viewX()) return;
@@ -105,10 +105,10 @@ final class GraphRenderer {
         // panning, so they shift by a pixel against each other — the map appears to shiver
         // rather than slide. One grid plus one shared offset keeps them locked together and the
         // motion smooth.
-        g.pose().pushPose();
+        g.pose().pushMatrix();
         float panX = camera.panX();
         float panY = camera.panY();
-        g.pose().translate(panX - (float) Math.floor(panX), panY - (float) Math.floor(panY), 0f);
+        g.pose().translate(panX - (float) Math.floor(panX), panY - (float) Math.floor(panY));
 
         switch (bg.mode()) {
             case "GRID" -> drawGrid(g);
@@ -149,7 +149,7 @@ final class GraphRenderer {
             overlay.run();
         }
 
-        g.pose().popPose();
+        g.pose().popMatrix();
         g.disableScissor();
     }
 
@@ -167,7 +167,7 @@ final class GraphRenderer {
      * graph exactly as the grid does — a background that stayed still while the map moved would
      * read as a window rather than as ground.
      *
-     * <p>One quad with a repeating UV range, not one blit per tile. {@code GuiGraphics.blit} is
+     * <p>One quad with a repeating UV range, not one blit per tile. {@code GuiGraphicsExtractor.blit} is
      * not batched: every call is its own draw, so a screenful of tiles cost hundreds of draws a
      * frame and made the whole graph, sidebar included, feel sluggish. This is a single draw at
      * any zoom, with no loop to bound.
@@ -177,7 +177,7 @@ final class GraphRenderer {
      * leaves the plain fill that is already on screen; a missing-texture chequerboard behind the
      * whole graph would be far worse than a colour.
      */
-    private void drawBackgroundTexture(GuiGraphics g, String texture) {
+    private void drawBackgroundTexture(GuiGraphicsExtractor g, String texture) {
         Identifier tex = Identifier.tryParse(texture);
         if (tex == null) return;
 
@@ -195,7 +195,7 @@ final class GraphRenderer {
                 u1, v1, u1 + camera.viewW() / tile, v1 + camera.viewH() / tile);
     }
 
-    private void drawGrid(GuiGraphics g) {
+    private void drawGrid(GuiGraphicsExtractor g) {
         double cellSpacing = (double) camera.cellSize() * camera.zoom();
         if (cellSpacing <= 0.0) return;
 
@@ -245,7 +245,7 @@ final class GraphRenderer {
     }
 
 
-    private void drawNodeShape(GuiGraphics g, StageGraphModel.Node node, float hoverT) {
+    private void drawNodeShape(GuiGraphicsExtractor g, StageGraphModel.Node node, float hoverT) {
         ResolvedStyle style = StageGraphConfig.styleFor(node.stageId(), node.individual(), node.state());
         int cx = camera.screenX(node.pos().x());
         int cy = camera.screenY(node.pos().y());
@@ -254,10 +254,10 @@ final class GraphRenderer {
         float scale = 1f + HOVER_LIFT * Ease.outCubic(hoverT);
         boolean scaled = Math.abs(scale - 1f) > 1.0e-3f;
         if (scaled) {
-            g.pose().pushPose();
-            g.pose().translate(cx, cy, 0);
-            g.pose().scale(scale, scale, 1f);
-            g.pose().translate(-cx, -cy, 0);
+            g.pose().pushMatrix();
+            g.pose().translate(cx, cy);
+            g.pose().scale(scale, scale);
+            g.pose().translate(-cx, -cy);
         }
 
         int bw = Math.max(0, Math.round(style.borderWidth() * camera.zoom()));
@@ -267,7 +267,7 @@ final class GraphRenderer {
             NodeShapes.statusBadge(g, node.state(), cx, cy, r, style.border());
         }
 
-        if (scaled) g.pose().popPose();
+        if (scaled) g.pose().popMatrix();
     }
 
     /**
@@ -277,7 +277,7 @@ final class GraphRenderer {
      * has a side of about 1.41× the radius, and the diamond is the tightest of the five shapes.
      * Below a few pixels the sprite is a smudge rather than a symbol, so it is dropped instead.
      */
-    private void drawNodeIcon(GuiGraphics g, StageGraphModel.Node node, int cx, int cy, int r) {
+    private void drawNodeIcon(GuiGraphicsExtractor g, StageGraphModel.Node node, int cx, int cy, int r) {
         if (node.icon() == null || node.icon().isEmpty()) return;
         ItemStack stack = iconStack(node.icon());
         if (stack.isEmpty()) return;
@@ -285,11 +285,11 @@ final class GraphRenderer {
         float side = r * 1.25f;
         if (side < 6f) return;
 
-        g.pose().pushPose();
-        g.pose().translate(cx - side / 2f, cy - side / 2f, 0);
-        g.pose().scale(side / 16f, side / 16f, 1f);
-        g.renderItem(stack, 0, 0);
-        g.pose().popPose();
+        g.pose().pushMatrix();
+        g.pose().translate(cx - side / 2f, cy - side / 2f);
+        g.pose().scale(side / 16f, side / 16f);
+        g.item(stack, 0, 0);
+        g.pose().popMatrix();
     }
 
     /** Cached: this runs once per visible node per frame, and a registry lookup is not free. */
@@ -303,7 +303,7 @@ final class GraphRenderer {
         });
     }
 
-    private void drawLabel(GuiGraphics g, Font font, StageGraphModel.Node node) {
+    private void drawLabel(GuiGraphicsExtractor g, Font font, StageGraphModel.Node node) {
         ResolvedStyle style = StageGraphConfig.styleFor(node.stageId(), node.individual(), node.state());
         if ("NONE".equals(style.label())) return;
         String text = "ID".equals(style.label()) ? node.stageId() : node.label();
@@ -311,15 +311,15 @@ final class GraphRenderer {
 
         int cx = camera.screenX(node.pos().x());
         int topY = camera.screenY(node.pos().y()) + nodeRadius(style) + 2;
-        g.pose().pushPose();
-        g.pose().translate(cx, topY, 0);
-        g.pose().scale(camera.zoom(), camera.zoom(), 1f);
+        g.pose().pushMatrix();
+        g.pose().translate(cx, topY);
+        g.pose().scale(camera.zoom(), camera.zoom());
         int tw = font.width(text);
-        g.drawString(font, text, -tw / 2, 0, style.labelColor(), false);
-        g.pose().popPose();
+        g.text(font, text, -tw / 2, 0, style.labelColor(), false);
+        g.pose().popMatrix();
     }
 
-    private void drawFocusHighlight(GuiGraphics g, StageGraphModel.Node node) {
+    private void drawFocusHighlight(GuiGraphicsExtractor g, StageGraphModel.Node node) {
         ResolvedStyle style = StageGraphConfig.styleFor(node.stageId(), node.individual(), node.state());
         int cx = camera.screenX(node.pos().x());
         int cy = camera.screenY(node.pos().y());
@@ -335,7 +335,7 @@ final class GraphRenderer {
 
     private record Point(float x, float y) {}
 
-    private void drawEdge(GuiGraphics g, StageGraphModel.Edge edge) {
+    private void drawEdge(GuiGraphicsExtractor g, StageGraphModel.Edge edge) {
         StageGraphModel.Node from = model.nodes().get(edge.fromKey());
         StageGraphModel.Node to = model.nodes().get(edge.toKey());
         if (from == null || to == null) return; // StageGraphModel guarantees both exist; defensive only
@@ -451,7 +451,7 @@ final class GraphRenderer {
      * lines look heavier the further out you went — they were the only thing that stopped
      * getting smaller.
      */
-    private void drawPath(GuiGraphics g, float[] xs, float[] ys, int color, float thickness,
+    private void drawPath(GuiGraphicsExtractor g, float[] xs, float[] ys, int color, float thickness,
                           float dashLen, float gapLen) {
         // Thickness stays a float all the way to the vertex buffer. Rounding it to whole pixels is
         // what forced a two-pixel floor before: an integer-sized rotated rectangle either snaps up
@@ -483,7 +483,7 @@ final class GraphRenderer {
      * many small sub-segments read as one continuous dashed line rather than restarting the
      * pattern at every sample point.
      */
-    private void drawDashedPolyline(GuiGraphics g, float[] xs, float[] ys, int color, float h,
+    private void drawDashedPolyline(GuiGraphicsExtractor g, float[] xs, float[] ys, int color, float h,
                                     float dash, float gap) {
         float cycle = dash + gap;
         float carried = 0f;
@@ -495,8 +495,8 @@ final class GraphRenderer {
             if (len < 0.5f) continue;
             float angle = (float) Math.atan2(dy, dx);
 
-            g.pose().pushPose();
-            g.pose().translate(x1, y1, 0);
+            g.pose().pushMatrix();
+            g.pose().translate(x1, y1);
             g.pose().mulPose(Axis.ZP.rotation(angle));
 
             // Stepped by dash index, not by an accumulating cursor. The previous version advanced
@@ -517,23 +517,23 @@ final class GraphRenderer {
                 if (to > from) blitLine(g, from, to, h, color);
             }
 
-            g.pose().popPose();
+            g.pose().popMatrix();
             carried += len;
         }
     }
 
     /** Draws one straight segment as a rotated quad; returns its length. */
-    private float drawSegment(GuiGraphics g, float x1, float y1, float x2, float y2,
+    private float drawSegment(GuiGraphicsExtractor g, float x1, float y1, float x2, float y2,
                               float h, int color) {
         float dx = x2 - x1, dy = y2 - y1;
         float len = (float) Math.hypot(dx, dy);
         if (len < 0.5f) return 0f;
         float angle = (float) Math.atan2(dy, dx);
-        g.pose().pushPose();
-        g.pose().translate(x1, y1, 0);
+        g.pose().pushMatrix();
+        g.pose().translate(x1, y1);
         g.pose().mulPose(Axis.ZP.rotation(angle));
         blitLine(g, 0f, len, h, color);
-        g.pose().popPose();
+        g.pose().popMatrix();
         return len;
     }
 
@@ -547,29 +547,29 @@ final class GraphRenderer {
      * snaps to two pixels or falls apart. The line texture carries the soft border rows that make
      * the edge fade instead of stair-stepping, and it is filtered linearly for the same reason.
      */
-    private void blitLine(GuiGraphics g, float s, float e, float h, int color) {
+    private void blitLine(GuiGraphicsExtractor g, float s, float e, float h, int color) {
         if (e <= s || h <= 0f) return;
         NodeTextures.quad(g, NodeTextures.line(), s, -h / 2f, e, h / 2f, color);
     }
 
-    private void blitDot(GuiGraphics g, float x, float y, int r, int color) {
+    private void blitDot(GuiGraphicsExtractor g, float x, float y, int r, int color) {
         NodeTextures.blit(g, NodeTextures.circle(), Math.round(x) - r, Math.round(y) - r, r * 2, r * 2,
                 NodeTextures.SIZE, NodeTextures.SIZE, color);
     }
 
     /** Draws the arrowhead at (tx,ty), pointing from (fromX,fromY) toward it. */
-    private void drawArrowHead(GuiGraphics g, float tx, float ty, float fromX, float fromY,
+    private void drawArrowHead(GuiGraphicsExtractor g, float tx, float ty, float fromX, float fromY,
                                float thickness, int color) {
         float angle = (float) Math.atan2(ty - fromY, tx - fromX);
         // Tied to the line it terminates. The old floor of four pixels left an eight-pixel head on
         // a one-pixel line at low zoom, next to nodes barely ten pixels across.
         int ah = Math.max(2, Math.round(2.2f * thickness));
-        g.pose().pushPose();
-        g.pose().translate(tx, ty, 0);
+        g.pose().pushMatrix();
+        g.pose().translate(tx, ty);
         g.pose().mulPose(Axis.ZP.rotation(angle));
         NodeTextures.blit(g, NodeTextures.arrow(), -2 * ah, -ah, 2 * ah, 2 * ah,
                 NodeTextures.SIZE, NodeTextures.SIZE, color);
-        g.pose().popPose();
+        g.pose().popMatrix();
     }
 
     /**

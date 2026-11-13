@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.api.editor.widget;
 
+import net.minecraft.client.input.CharacterEvent;
 import net.bananemdnsa.historystages.client.editor.widget.dialog.FormatTextArea;
 
 import net.bananemdnsa.historystages.api.editor.widget.InputValues;
@@ -13,7 +14,7 @@ import net.bananemdnsa.historystages.client.editor.anim.Ease;
 import net.bananemdnsa.historystages.client.editor.anim.Fade;
 import net.bananemdnsa.historystages.client.editor.anim.Timing;
 import net.minecraft.ChatFormatting;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.bananemdnsa.historystages.client.editor.widget.EditorTooltip;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -228,7 +229,7 @@ public class FormattedTextScreen extends AbstractInputScreen {
     // --- rendering ---
 
     @Override
-    protected void renderExtraContent(GuiGraphics g, int x, int y, int w, int mouseX, int mouseY) {
+    protected void renderExtraContent(GuiGraphicsExtractor g, int x, int y, int w, int mouseX, int mouseY) {
         hitRects.clear();
         hoveredPlaceholder = null;
 
@@ -290,7 +291,7 @@ public class FormattedTextScreen extends AbstractInputScreen {
     }
 
     /** Slim bar beside the content, showing how much of it is on screen. */
-    private void drawScrollHint(GuiGraphics g, int x, int top, int bottom) {
+    private void drawScrollHint(GuiGraphicsExtractor g, int x, int top, int bottom) {
         int track = bottom - top;
         int thumb = Math.max(12, track * track / Math.max(1, fullContentHeight()));
         int offset = maxContentScroll() == 0 ? 0
@@ -299,8 +300,8 @@ public class FormattedTextScreen extends AbstractInputScreen {
         g.fill(x, top + offset, x + 2, top + offset + thumb, 0x80FFFFFF);
     }
 
-    private int drawLabel(GuiGraphics g, String key, int x, int y) {
-        g.drawString(this.font, Component.translatable(key).getString(), x, y, LABEL_GREY, false);
+    private int drawLabel(GuiGraphicsExtractor g, String key, int x, int y) {
+        g.text(this.font, Component.translatable(key).getString(), x, y, LABEL_GREY, false);
         return y + BLOCK_LABEL_H;
     }
 
@@ -308,10 +309,10 @@ public class FormattedTextScreen extends AbstractInputScreen {
      * The value as the game would show it: {@code &} becomes {@code §}, which is the same
      * conversion the mod does when it sends one of these strings.
      */
-    private void renderPreview(GuiGraphics g, int x, int y, int w) {
+    private void renderPreview(GuiGraphicsExtractor g, int x, int y, int w) {
         String rendered = area.getValue().replace('&', '§');
         if (rendered.isEmpty()) {
-            g.drawString(this.font, Component.translatable("editor.historystages.rich.preview_empty")
+            g.text(this.font, Component.translatable("editor.historystages.rich.preview_empty")
                     .getString(), x, y, 0xFF555555, false);
             return;
         }
@@ -319,12 +320,12 @@ public class FormattedTextScreen extends AbstractInputScreen {
                 this.font.split(Component.literal(rendered), w);
         int ly = y;
         for (int i = 0; i < Math.min(PREVIEW_LINES, wrapped.size()); i++) {
-            g.drawString(this.font, wrapped.get(i), x, ly, 0xFFFFFFFF, false);
+            g.text(this.font, wrapped.get(i), x, ly, 0xFFFFFFFF, false);
             ly += this.font.lineHeight + 1;
         }
     }
 
-    private int renderChips(GuiGraphics g, List<String> labels, String prefix,
+    private int renderChips(GuiGraphicsExtractor g, List<String> labels, String prefix,
                            int x, int y, int w, int mouseX, int mouseY) {
         int perRow = chipsPerRow();
         int chipW = (w - CHIP_GAP * (perRow - 1)) / perRow;
@@ -355,7 +356,7 @@ public class FormattedTextScreen extends AbstractInputScreen {
                 + token.replace("%", "").replace("{", "").replace("}", "").trim();
     }
 
-    private int renderFormatButtons(GuiGraphics g, int x, int y, int mouseX, int mouseY) {
+    private int renderFormatButtons(GuiGraphicsExtractor g, int x, int y, int mouseX, int mouseY) {
         int cx = x;
         for (FormatCode format : FORMATS) {
             String label = Component.translatable(format.labelKey()).getString();
@@ -366,7 +367,7 @@ public class FormattedTextScreen extends AbstractInputScreen {
         return y + CHIP_H + CHIP_GAP;
     }
 
-    private void renderColours(GuiGraphics g, int x, int y, int w, int mouseX, int mouseY) {
+    private void renderColours(GuiGraphicsExtractor g, int x, int y, int w, int mouseX, int mouseY) {
         int cx = x;
         for (ChatFormatting colour : COLOURS) {
             if (cx + SWATCH > x + w) break;
@@ -382,7 +383,7 @@ public class FormattedTextScreen extends AbstractInputScreen {
         }
     }
 
-    private void drawChip(GuiGraphics g, String id, String label, int x, int y, int w,
+    private void drawChip(GuiGraphicsExtractor g, String id, String label, int x, int y, int w,
                          int mouseX, int mouseY) {
         boolean hovered = mouseX >= x && mouseX < x + w && mouseY >= y && mouseY < y + CHIP_H;
         hitRects.put(id, new int[]{x, y, w, CHIP_H});
@@ -390,7 +391,7 @@ public class FormattedTextScreen extends AbstractInputScreen {
         float hp = Ease.outCubic(chipHover.computeIfAbsent(id, k -> new Anim())
                 .ramp(hovered, Timing.HOVER_IN_MS, Timing.HOVER_OUT_MS));
         g.fill(x, y, x + w, y + CHIP_H, Fade.mix(0x18FFFFFF, 0x35FFFFFF, hp));
-        g.drawCenteredString(this.font, label, x + w / 2, y + 3,
+        g.centeredText(this.font, label, x + w / 2, y + 3,
                 Fade.mix(0xFFAAAAAA, 0xFFFFFFFF, hp));
     }
 
@@ -456,8 +457,12 @@ public class FormattedTextScreen extends AbstractInputScreen {
     }
 
     @Override
+    public boolean charTyped(CharacterEvent event) {
+        return charTyped((char) event.codepoint(), 0);
+    }
+
     public boolean charTyped(char codePoint, int modifiers) {
         if (area.charTyped(codePoint)) return true;
-        return super.charTyped(codePoint, modifiers);
+        return super.charTyped(new CharacterEvent(codePoint));
     }
 }

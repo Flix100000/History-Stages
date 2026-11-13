@@ -6,7 +6,7 @@ import net.bananemdnsa.historystages.data.lock.GenerationPhase;
 import net.bananemdnsa.historystages.data.lock.StructureGenerationRule;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
@@ -104,7 +104,7 @@ public class GenerationLimitPopup {
         this.visible = true;
     }
 
-    public void render(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    public void render(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         if (!visible) return;
 
         int hintMaxW = WIDTH - 2 * PAD;
@@ -127,7 +127,7 @@ public class GenerationLimitPopup {
         g.fill(panelX - 1, panelY - 1, panelX + panelW + 1, panelY + panelH + 1, 0xFF333333);
         g.fill(panelX, panelY, panelX + panelW, panelY + panelH, 0xFF1A1A1A);
 
-        g.drawCenteredString(font, Component.translatable("editor.historystages.generation.title"),
+        g.centeredText(font, Component.translatable("editor.historystages.generation.title"),
                 panelX + panelW / 2, panelY + 6, 0xFFFFFFFF);
         int accentW = 40;
         int accentX = panelX + (panelW - accentW) / 2;
@@ -143,7 +143,7 @@ public class GenerationLimitPopup {
         int hintY = rowY(ROWS) + 4;
         List<FormattedCharSequence> hintText = font.split(Component.translatable(hintKey()), hintMaxW);
         for (FormattedCharSequence line : hintText) {
-            g.drawString(font, line, panelX + (panelW - font.width(line)) / 2, hintY, 0x888888, false);
+            g.text(font, line, panelX + (panelW - font.width(line)) / 2, hintY, 0x888888, false);
             hintY += font.lineHeight + 1;
         }
 
@@ -154,14 +154,14 @@ public class GenerationLimitPopup {
         boolean doneHov = mouseX >= doneX && mouseX < doneX + doneW && mouseY >= btnY && mouseY < btnY + btnH;
         g.fill(doneX, btnY, doneX + doneW, btnY + btnH, doneHov ? 0x50FFCC00 : 0x25FFCC00);
         g.fill(doneX, btnY + btnH - 1, doneX + doneW, btnY + btnH, doneHov ? 0xFFFFCC00 : 0x80FFCC00);
-        g.drawCenteredString(font, Component.translatable("editor.historystages.lock_actions.btn_done"),
+        g.centeredText(font, Component.translatable("editor.historystages.lock_actions.btn_done"),
                 doneX + doneW / 2, btnY + 4, doneHov ? 0xFFFFFF : 0xEEEEEE);
 
         // Last, so the open list covers the rows below it instead of being covered by them.
         if (enabled) modeDropdown.renderPopup(g, font, mouseX, mouseY);
     }
 
-    private void renderCheckboxRow(GuiGraphics g, Font font, int mouseX, int mouseY, int row,
+    private void renderCheckboxRow(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY, int row,
                                    String labelKey, boolean checked, boolean active) {
         int ry = rowY(row);
         boolean hovered = active && isInRow(mouseX, mouseY, row);
@@ -174,13 +174,13 @@ public class GenerationLimitPopup {
         g.fill(boxX + 1, boxY + 1, boxX + BOX_S - 1, boxY + BOX_S - 1, 0xFF1A1A1A);
         if (checked) g.fill(boxX + 3, boxY + 3, boxX + BOX_S - 3, boxY + BOX_S - 3, fg);
 
-        g.drawString(font, Component.translatable(labelKey), boxX + BOX_S + 6,
+        g.text(font, Component.translatable(labelKey), boxX + BOX_S + 6,
                 ry + (ROW_H - font.lineHeight) / 2 + 1, labelColor(active, hovered), false);
     }
 
-    private void renderModeRow(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    private void renderModeRow(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         int ry = rowY(ROW_MODE);
-        g.drawString(font, Component.translatable("editor.historystages.generation.mode"),
+        g.text(font, Component.translatable("editor.historystages.generation.mode"),
                 panelX + PAD, ry + (ROW_H - font.lineHeight) / 2 + 1, labelColor(enabled, false), false);
 
         modeDropdown.setPosition(panelX + panelW - PAD - modeDropdown.getWidth(),
@@ -195,15 +195,15 @@ public class GenerationLimitPopup {
             g.fill(bx, by, bx + modeDropdown.getWidth(), by + EnumDropdown.BUTTON_HEIGHT, 0x08FFFFFF);
             g.fill(bx, by + EnumDropdown.BUTTON_HEIGHT - 1, bx + modeDropdown.getWidth(),
                     by + EnumDropdown.BUTTON_HEIGHT, 0x20FFFFFF);
-            g.drawCenteredString(font, Component.translatable(
+            g.centeredText(font, Component.translatable(
                             "editor.historystages.generation.mode." + phase.serialize()),
                     bx + modeDropdown.getWidth() / 2, by + 5, 0xFF555555);
         }
     }
 
-    private void renderLimitRow(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    private void renderLimitRow(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         int ry = rowY(ROW_LIMIT);
-        g.drawString(font, Component.translatable("editor.historystages.generation.limit"),
+        g.text(font, Component.translatable("editor.historystages.generation.limit"),
                 panelX + PAD, ry + (ROW_H - font.lineHeight) / 2 + 1, labelColor(enabled, false), false);
 
         limitStepper.setPosition(panelX + panelW - PAD - NumberStepper.width(),

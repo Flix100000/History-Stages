@@ -1,5 +1,9 @@
 package net.bananemdnsa.historystages.client.editor;
 
+import net.minecraft.client.input.CharacterEvent;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonInfo;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.bananemdnsa.historystages.client.editor.anim.Anim;
 import net.bananemdnsa.historystages.client.editor.anim.Ease;
 import net.bananemdnsa.historystages.client.editor.anim.Fade;
@@ -22,7 +26,7 @@ import net.bananemdnsa.historystages.data.tooltip.ScrollTooltipLine;
 import net.bananemdnsa.historystages.research.TierMode;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.tooltip.TooltipRenderUtil;
@@ -413,7 +417,7 @@ public class ScrollTooltipScreen extends Screen {
      * these values carry format codes and placeholders, and a 100px box that scrolls sideways is
      * how they used to be edited blind.
      */
-    private void renderTextValue(GuiGraphics g, PositionedRow row, int mouseX, int mouseY) {
+    private void renderTextValue(GuiGraphicsExtractor g, PositionedRow row, int mouseX, int mouseY) {
         int fx = textFieldX();
         int fw = textFieldWidth(row.spec());
         int fy = row.y() + (ROW_H - 16) / 2;
@@ -432,7 +436,7 @@ public class ScrollTooltipScreen extends Screen {
 
         String clipped = this.font.plainSubstrByWidth(shown, fw - 8);
         if (!clipped.equals(shown)) clipped = clipped + "…";
-        g.drawString(this.font, clipped, fx + 4, fy + 4, colour, false);
+        g.text(this.font, clipped, fx + 4, fy + 4, colour, false);
     }
 
     private void openTextEditorFor(String id) {
@@ -617,12 +621,20 @@ public class ScrollTooltipScreen extends Screen {
     // --- rendering ---
 
     @Override
-    public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+    public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        renderBackground(graphics, mouseX, mouseY, partialTick);
+    }
+
+    public void renderBackground(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
         // Own background, drawn in render() — avoids 1.21's menu blur shader, as the config screen does.
     }
 
     @Override
-    public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        render(graphics, mouseX, mouseY, partialTick);
+    }
+
+    public void render(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
         smoothScroll.approach((float) scrollOffset, Timing.SCROLL_HALF_LIFE_MS);
         smoothScroll.settle((float) scrollOffset, 0.5f);
 
@@ -632,7 +644,7 @@ public class ScrollTooltipScreen extends Screen {
         advanceRowAnims();
 
         g.fill(0, 0, this.width, this.height, 0xE0101010);
-        g.drawCenteredString(this.font, this.title, this.width / 2, 10, 0xFFFFFF);
+        g.centeredText(this.font, this.title, this.width / 2, 10, 0xFFFFFF);
 
         List<PositionedRow> rows = layoutRows();
 
@@ -716,7 +728,7 @@ public class ScrollTooltipScreen extends Screen {
                     Component.translatable("editor.historystages.unsaved").getString(), dotX + 9, this.height - 24, 0xFFCC00);
         }
 
-        super.render(g, mouseX, mouseY, partialTick);
+        super.extractRenderState(g, mouseX, mouseY, partialTick);
 
         // A toggle column wins over the row's placeholder list: the cursor is on the toggle, and
         // that is what the player is asking about. Keyed separately so moving between the two
@@ -739,14 +751,14 @@ public class ScrollTooltipScreen extends Screen {
      * without a dirty flag to maintain.
      *
      * <p>Drawn into its own framed panel rather than through
-     * {@link GuiGraphics#renderComponentTooltip}: that method treats its coordinates as a cursor
+     * {@link GuiGraphicsExtractor#renderComponentTooltip}: that method treats its coordinates as a cursor
      * position and flips the box to the other side of the screen when it would overflow, which
      * is what previously sent a long dependency line — and the whole preview with it — jumping
      * left on top of the row list. A fixed panel, scissored to its own bounds, cannot do that;
      * a line too wide for it is clipped instead of relocating the panel.
      */
-    private void renderPreview(GuiGraphics g, int x, int y, int h) {
-        g.drawString(this.font,
+    private void renderPreview(GuiGraphicsExtractor g, int x, int y, int h) {
+        g.text(this.font,
                 Component.translatable("editor.historystages.scrolltip.preview").getString(),
                 x, y, 0xFF888888, false);
 
@@ -776,9 +788,9 @@ public class ScrollTooltipScreen extends Screen {
         previewPanY = Math.max(-scaledH + 20, Math.min(panelH - PREVIEW_PAD - 20, previewPanY));
 
         g.enableScissor(x, panelY, x + w, panelY + panelH);
-        g.pose().pushPose();
-        g.pose().translate(x + PREVIEW_PAD + previewPanX, panelY + PREVIEW_PAD + previewPanY, 0);
-        g.pose().scale(previewZoom, previewZoom, 1.0f);
+        g.pose().pushMatrix();
+        g.pose().translate(x + PREVIEW_PAD + previewPanX, panelY + PREVIEW_PAD + previewPanY);
+        g.pose().scale(previewZoom, previewZoom);
 
         // The real thing is a vanilla tooltip, so the preview draws vanilla's own background
         // rather than an editor-styled panel — a preview in a different skin than the item it
@@ -786,11 +798,11 @@ public class ScrollTooltipScreen extends Screen {
         TooltipRenderUtil.renderTooltipBackground(g, 0, 0, boxW, boxH, 0);
         int ly = 0;
         for (Component component : components) {
-            g.drawString(this.font, component, 0, ly, 0xFFFFFF, true);
+            g.text(this.font, component, 0, ly, 0xFFFFFF, true);
             ly += this.font.lineHeight + 1;
         }
 
-        g.pose().popPose();
+        g.pose().popMatrix();
         g.disableScissor();
 
         ConfigEditorScreen.drawSmallText(g,
@@ -823,10 +835,10 @@ public class ScrollTooltipScreen extends Screen {
         return y;
     }
 
-    private void drawSectionHeader(GuiGraphics g, String key, int y) {
+    private void drawSectionHeader(GuiGraphicsExtractor g, String key, int y) {
         if (y + SECTION_HEADER_H < ROWS_TOP || y > rowsBottom) return;
         g.fill(contentLeft(), y + 13, contentRight(), y + 14, 0xFF444444);
-        g.drawString(this.font, Component.translatable(key).getString(), contentLeft(), y + 2, 0xFF888888, false);
+        g.text(this.font, Component.translatable(key).getString(), contentLeft(), y + 2, 0xFF888888, false);
     }
 
     /** True when the row's current line differs from its built-in default in any of its four fields. */
@@ -836,7 +848,7 @@ public class ScrollTooltipScreen extends Screen {
         return def != null && cur != null && !cur.equals(def);
     }
 
-    private void renderRow(GuiGraphics g, PositionedRow row, int mouseX, int mouseY) {
+    private void renderRow(GuiGraphicsExtractor g, PositionedRow row, int mouseX, int mouseY) {
         String id = row.id();
         RowSpec spec = row.spec();
         int y = row.y();
@@ -858,7 +870,7 @@ public class ScrollTooltipScreen extends Screen {
         if (isOverridden(id)) {
             boolean resetHovered = mouseX >= left + 2 && mouseX < left + 2 + RESET_W
                     && mouseY >= y && mouseY < y + ROW_H;
-            g.drawString(this.font, "✕", left + 2, y + (ROW_H - 8) / 2,
+            g.text(this.font, "✕", left + 2, y + (ROW_H - 8) / 2,
                     resetHovered ? 0xFFFF6666 : 0xFF888888, false);
         }
 
@@ -883,7 +895,7 @@ public class ScrollTooltipScreen extends Screen {
 
         String label = Component.translatable("editor.historystages.scrolltip.line." + id).getString();
         String shown = this.font.plainSubstrByWidth(label, Math.max(0, LABEL_W - 6));
-        g.drawString(this.font, shown, cx, y + (ROW_H - 8) / 2, hp > 0.001f ? 0xFFFFFF : 0xDDDDDD, false);
+        g.text(this.font, shown, cx, y + (ROW_H - 8) / 2, hp > 0.001f ? 0xFFFFFF : 0xDDDDDD, false);
 
         if (spec.colorSwatch()) {
             StyleState state = readStyleState(styleSource(line, id));
@@ -896,7 +908,7 @@ public class ScrollTooltipScreen extends Screen {
         }
     }
 
-    private void drawHandle(GuiGraphics g, int x, int y, boolean active) {
+    private void drawHandle(GuiGraphicsExtractor g, int x, int y, boolean active) {
         int color = active ? 0xFFEEEEEE : 0xFF888888;
         for (int col = 0; col < 2; col++) {
             for (int row = 0; row < 3; row++) {
@@ -907,7 +919,7 @@ public class ScrollTooltipScreen extends Screen {
         }
     }
 
-    private void drawCheckbox(GuiGraphics g, int x, int y, boolean checked) {
+    private void drawCheckbox(GuiGraphicsExtractor g, int x, int y, boolean checked) {
         int border = checked ? 0xFFFFCC00 : 0xFF777777;
         g.fill(x, y, x + 10, y + 10, 0x40000000);
         g.fill(x, y, x + 10, y + 1, border);
@@ -918,21 +930,21 @@ public class ScrollTooltipScreen extends Screen {
     }
 
     /** Two short bars, standing for "blank line, then this one" — toggled on/off like a switch. */
-    private void drawSpacerToggle(GuiGraphics g, int x, int y, boolean on) {
+    private void drawSpacerToggle(GuiGraphicsExtractor g, int x, int y, boolean on) {
         int color = on ? 0xFFFFCC00 : 0xFF666666;
         g.fill(x, y, x + 10, y + 2, color);
         g.fill(x, y + 6, x + 10, y + 8, color);
     }
 
     /** Small colour chip; a checkerboard-free flat fill is enough since {@code null} already reads as "unset". */
-    private void drawColorSwatch(GuiGraphics g, int x, int y, @Nullable Integer rgb, boolean hovered) {
+    private void drawColorSwatch(GuiGraphicsExtractor g, int x, int y, @Nullable Integer rgb, boolean hovered) {
         int border = hovered ? 0xFFFFCC00 : 0xFF555555;
         g.fill(x, y, x + SWATCH_SIZE, y + SWATCH_SIZE, border);
         int fill = rgb != null ? (0xFF000000 | rgb) : 0xFF2A2A2A;
         g.fill(x + 1, y + 1, x + SWATCH_SIZE - 1, y + SWATCH_SIZE - 1, fill);
     }
 
-    private void drawPulseOutline(GuiGraphics g, int y, float strength) {
+    private void drawPulseOutline(GuiGraphicsExtractor g, int y, float strength) {
         int alpha = (int) (0xFF * Math.max(0.0f, Math.min(1.0f, strength)));
         if (alpha < 4) return;
         int x1 = contentLeft() - 2, x2 = contentRight() + 2, y1 = y - 1, y2 = y + ROW_H - 1;
@@ -943,18 +955,18 @@ public class ScrollTooltipScreen extends Screen {
         g.fill(x2 - 1, y1, x2, y2, (alpha << 24) | rgb);
     }
 
-    private void drawGhost(GuiGraphics g, int mouseX, int mouseY) {
+    private void drawGhost(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         String id = lines.get(MOVABLE_START + dragFromSlot).id();
         String label = Component.translatable("editor.historystages.scrolltip.line." + id).getString();
         int gw = this.font.width(label) + 10;
         int gx = Math.min(mouseX + 8, this.width - gw - 4);
         int gy = Math.min(mouseY - 8, this.height - 18);
-        g.pose().pushPose();
-        g.pose().translate(0, 0, 410);
+        g.pose().pushMatrix();
+        g.pose().translate(0, 0);
         g.fill(gx, gy, gx + gw, gy + 16, 0xE0101010);
         g.fill(gx, gy + 15, gx + gw, gy + 16, 0xFFFFCC00);
-        g.drawString(this.font, label, gx + 5, gy + 4, 0xFFFFFF, false);
-        g.pose().popPose();
+        g.text(this.font, label, gx + 5, gy + 4, 0xFFFFFF, false);
+        g.pose().popMatrix();
     }
 
     // --- input ---
@@ -1003,6 +1015,10 @@ public class ScrollTooltipScreen extends Screen {
     }
 
     @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        return mouseClicked(event.x(), event.y(), event.button());
+    }
+
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         // Panning the preview is checked before the settle guard below: the preview sits well
         // clear of the row column, so nothing there is sliding under the cursor.
@@ -1018,7 +1034,7 @@ public class ScrollTooltipScreen extends Screen {
         // than the one the player is actually looking at — already paid for once in this editor.
         if (isSettling()) return false;
 
-        if (super.mouseClicked(mouseX, mouseY, button)) return true;
+        if (super.mouseClicked(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)), false)) return true;
 
         if (maxScroll > 0 && mouseX >= scrollbarX() - 1 && mouseX <= scrollbarX() + 4
                 && mouseY >= ROWS_TOP && mouseY <= rowsBottom) {
@@ -1091,6 +1107,10 @@ public class ScrollTooltipScreen extends Screen {
     }
 
     @Override
+    public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+        return mouseDragged(event.x(), event.y(), event.button(), dragX, dragY);
+    }
+
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
         if (draggingPreview) {
             previewPanX += (float) (mouseX - previewDragLastX);
@@ -1113,10 +1133,14 @@ public class ScrollTooltipScreen extends Screen {
             }
             return true;
         }
-        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+        return super.mouseDragged(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)), dragX, dragY);
     }
 
     @Override
+    public boolean mouseReleased(MouseButtonEvent event) {
+        return mouseReleased(event.x(), event.y(), event.button());
+    }
+
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
         if (draggingPreview) {
             draggingPreview = false;
@@ -1143,7 +1167,7 @@ public class ScrollTooltipScreen extends Screen {
             dragTargetSlot = -1;
             return true;
         }
-        return super.mouseReleased(mouseX, mouseY, button);
+        return super.mouseReleased(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)));
     }
 
     @Override
@@ -1161,13 +1185,21 @@ public class ScrollTooltipScreen extends Screen {
     }
 
     @Override
+    public boolean keyPressed(KeyEvent event) {
+        return keyPressed(event.key(), event.scancode(), event.modifiers());
+    }
+
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        return super.keyPressed(keyCode, scanCode, modifiers);
+        return super.keyPressed(new KeyEvent(keyCode, scanCode, modifiers));
     }
 
     @Override
+    public boolean charTyped(CharacterEvent event) {
+        return charTyped((char) event.codepoint(), 0);
+    }
+
     public boolean charTyped(char codePoint, int modifiers) {
-        return super.charTyped(codePoint, modifiers);
+        return super.charTyped(new CharacterEvent(codePoint));
     }
 
     @Override

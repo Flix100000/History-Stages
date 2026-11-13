@@ -1,4 +1,8 @@
 package net.bananemdnsa.historystages.client.editor;
+import net.minecraft.client.input.CharacterEvent;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonInfo;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.bananemdnsa.historystages.client.editor.toast.EditorToastHandler;
 
 import net.bananemdnsa.historystages.client.editor.widget.ConfirmDialog;
@@ -89,7 +93,7 @@ import net.bananemdnsa.historystages.client.editor.anim.Ease;
 import net.bananemdnsa.historystages.client.editor.anim.Timing;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.bananemdnsa.historystages.api.editor.widget.SegmentBar;
 import org.jetbrains.annotations.Nullable;
 import net.bananemdnsa.historystages.client.editor.widget.StyledButton;
@@ -1446,7 +1450,7 @@ public class StageDetailScreen extends Screen {
      * different content rectangles and different scroll animations, and a common base class for
      * two screens is a bigger commitment than two short methods.
      */
-    private TabRenderContext renderContext(GuiGraphics g, int mouseX, int mouseY,
+    private TabRenderContext renderContext(GuiGraphicsExtractor g, int mouseX, int mouseY,
             boolean inputBlocked) {
         return new TabRenderContext(g, this.font, contentLeft(),
                 listTop() - Math.round(smoothScrollOffset.value()) + CARD_GAP,
@@ -1749,7 +1753,7 @@ public class StageDetailScreen extends Screen {
      * putting it in the content would also make every row hit test depend on getting the same
      * offset right in three separate places.
      */
-    private void renderSectionBar(GuiGraphics g, int mouseX, int mouseY) {
+    private void renderSectionBar(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         CompositeCategoryTab composite = sectionBar();
         if (composite == null) return;
         List<String> labels = composite.sectionLabels();
@@ -1799,12 +1803,12 @@ public class StageDetailScreen extends Screen {
         return true;
     }
 
-    private void renderStackIcon(GuiGraphics g, ItemStack stack, int x, int y) {
-        g.pose().pushPose();
-        g.pose().translate(x, y, 0);
-        g.pose().scale(0.85f, 0.85f, 1.0f);
-        g.renderItem(stack, 0, 0);
-        g.pose().popPose();
+    private void renderStackIcon(GuiGraphicsExtractor g, ItemStack stack, int x, int y) {
+        g.pose().pushMatrix();
+        g.pose().translate(x, y);
+        g.pose().scale(0.85f, 0.85f);
+        g.item(stack, 0, 0);
+        g.pose().popMatrix();
     }
 
     void updateMaxScroll() {
@@ -1823,18 +1827,26 @@ public class StageDetailScreen extends Screen {
     }
 
     @Override
-    public void renderBackground(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+    public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        renderBackground(graphics, mouseX, mouseY, partialTick);
+    }
+
+    public void renderBackground(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
         // No-op — we draw our own background in render() and want to avoid 1.21's menu blur shader
     }
 
     @Override
-    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        render(graphics, mouseX, mouseY, partialTick);
+    }
+
+    public void render(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
         guiGraphics.fill(0, 0, this.width, this.height, 0xE0101010);
 
         String titleText = isNewStage
                 ? Component.translatable("editor.historystages.new_stage").getString()
                 : editDisplayName + " (" + originalStageId + ")";
-        guiGraphics.drawCenteredString(this.font, titleText, this.width / 2, 6, 0xFFFFFF);
+        guiGraphics.centeredText(this.font, titleText, this.width / 2, 6, 0xFFFFFF);
 
         // Thin separator between title and button row
         guiGraphics.fill(10, 19, this.width - 10, 20, 0x40FFFFFF);
@@ -1992,7 +2004,7 @@ public class StageDetailScreen extends Screen {
             String emptyText = Component.translatable("editor.historystages.empty").getString();
             int centerX = (contentLeft + contentRight) / 2;
             int centerY = (listTop + listBottom) / 2;
-            guiGraphics.drawCenteredString(this.font, emptyText, centerX, centerY - 4, 0x888888);
+            guiGraphics.centeredText(this.font, emptyText, centerX, centerY - 4, 0x888888);
         }
 
         guiGraphics.disableScissor();
@@ -2025,7 +2037,7 @@ public class StageDetailScreen extends Screen {
         }
 
         if (!saveError.isEmpty()) {
-            guiGraphics.drawCenteredString(this.font, saveError, this.width / 2, this.height - 38, 0xFF5555);
+            guiGraphics.centeredText(this.font, saveError, this.width / 2, this.height - 38, 0xFF5555);
         }
 
         // SearchBar lifts its text to z=300, while the pickers draw at z=0 — it would show
@@ -2034,10 +2046,10 @@ public class StageDetailScreen extends Screen {
             categorySearchBox.render(guiGraphics, this.font, mouseX, mouseY);
         }
 
-        super.render(guiGraphics, mouseX, mouseY, partialTick);
+        super.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
 
-        guiGraphics.pose().pushPose();
-        guiGraphics.pose().translate(0, 0, 200);
+        guiGraphics.pose().pushMatrix();
+        guiGraphics.pose().translate(0, 0);
 
         // Category search dropdown (close if a modal overlay is open)
         if (categoryDropdownVisible && isAnyOverlayVisible()) {
@@ -2096,10 +2108,10 @@ public class StageDetailScreen extends Screen {
         if (actionOverlay() != null) actionOverlay().render(guiGraphics, this.font, mouseX, mouseY);
         iconSearch.render(guiGraphics, this.font, mouseX, mouseY);
         // Lifted above the popups it can be opened from, so it never gets drawn under their content.
-        guiGraphics.pose().pushPose();
-        guiGraphics.pose().translate(0, 0, 400);
+        guiGraphics.pose().pushMatrix();
+        guiGraphics.pose().translate(0, 0);
         contextMenu.render(guiGraphics, this.font, mouseX, mouseY);
-        guiGraphics.pose().popPose();
+        guiGraphics.pose().popMatrix();
         modEntityPopup.render(guiGraphics, this.font, mouseX, mouseY);
         modStructurePopup.render(guiGraphics, this.font, mouseX, mouseY);
         modBiomePopup.render(guiGraphics, this.font, mouseX, mouseY);
@@ -2118,7 +2130,7 @@ public class StageDetailScreen extends Screen {
         spawnControlPopup.render(guiGraphics, this.font, mouseX, mouseY);
         generationLimitPopup.render(guiGraphics, this.font, mouseX, mouseY);
         if (overridePopupVisible) renderOverridePopup(guiGraphics, mouseX, mouseY);
-        guiGraphics.pose().popPose();
+        guiGraphics.pose().popMatrix();
 
         // Tooltip rendering
         if (currentTooltipKey != null && currentTooltipText != null && !currentTooltipText.isEmpty()) {
@@ -2140,7 +2152,7 @@ public class StageDetailScreen extends Screen {
      * {@code EditorTooltip}, down to the same three colours; the delay above is what this screen
      * still owns.
      */
-    private void renderTooltip(GuiGraphics guiGraphics, String text, int mouseX, int mouseY) {
+    private void renderTooltip(GuiGraphicsExtractor guiGraphics, String text, int mouseX, int mouseY) {
         EditorTooltip.draw(guiGraphics, this.font, text, mouseX, mouseY, this.width, this.height);
     }
 
@@ -2188,7 +2200,7 @@ public class StageDetailScreen extends Screen {
         popupMarqueeLastId = null;
     }
 
-    private void renderRecipePopup(GuiGraphics guiGraphics, int mouseX, int mouseY) {
+    private void renderRecipePopup(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY) {
         if (recipePopupId == null) return;
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null) return;
@@ -2253,18 +2265,18 @@ public class StageDetailScreen extends Screen {
         int hdrY = popupY + 8;
         int hdrX = popupX + pad;
         if (!workstation.isEmpty()) {
-            guiGraphics.pose().pushPose();
-            guiGraphics.pose().translate(hdrX, hdrY - 1, 0);
-            guiGraphics.pose().scale(0.75f, 0.75f, 1.0f);
-            guiGraphics.renderItem(workstation, 0, 0);
-            guiGraphics.pose().popPose();
+            guiGraphics.pose().pushMatrix();
+            guiGraphics.pose().translate(hdrX, hdrY - 1);
+            guiGraphics.pose().scale(0.75f, 0.75f);
+            guiGraphics.item(workstation, 0, 0);
+            guiGraphics.pose().popMatrix();
             hdrX += 14;
         }
-        guiGraphics.drawString(this.font, typeName, hdrX, hdrY + 1, 0xFFFFFF, false);
+        guiGraphics.text(this.font, typeName, hdrX, hdrY + 1, 0xFFFFFF, false);
 
         // ESC hint
         String escText = "[ESC]";
-        guiGraphics.drawString(this.font, escText, popupX + popupW - pad - this.font.width(escText), hdrY + 1, 0x444444, false);
+        guiGraphics.text(this.font, escText, popupX + popupW - pad - this.font.width(escText), hdrY + 1, 0x444444, false);
 
         // Recipe ID (with marquee scroll on hover if too wide)
         int idMaxW = popupW - pad * 2;
@@ -2296,11 +2308,11 @@ public class StageDetailScreen extends Screen {
                 }
             }
             guiGraphics.enableScissor(idX, idY, idX + idMaxW, idY + idH + 2);
-            guiGraphics.pose().pushPose();
-            guiGraphics.pose().translate(idX - scrollOff, idY, 0);
-            guiGraphics.pose().scale(SMALL_SCALE, SMALL_SCALE, 1.0f);
-            guiGraphics.drawString(this.font, recipePopupId, 0, 0, 0x666666, false);
-            guiGraphics.pose().popPose();
+            guiGraphics.pose().pushMatrix();
+            guiGraphics.pose().translate(idX - scrollOff, idY);
+            guiGraphics.pose().scale(SMALL_SCALE, SMALL_SCALE);
+            guiGraphics.text(this.font, recipePopupId, 0, 0, 0x666666, false);
+            guiGraphics.pose().popMatrix();
             guiGraphics.disableScissor();
         }
 
@@ -2497,15 +2509,19 @@ public class StageDetailScreen extends Screen {
 
     // =============================================
 
-    private void drawSmallText(GuiGraphics guiGraphics, String text, int x, int y, int color) {
-        guiGraphics.pose().pushPose();
-        guiGraphics.pose().translate(x, y, 0);
-        guiGraphics.pose().scale(SMALL_SCALE, SMALL_SCALE, 1.0f);
-        guiGraphics.drawString(this.font, text, 0, 0, color, false);
-        guiGraphics.pose().popPose();
+    private void drawSmallText(GuiGraphicsExtractor guiGraphics, String text, int x, int y, int color) {
+        guiGraphics.pose().pushMatrix();
+        guiGraphics.pose().translate(x, y);
+        guiGraphics.pose().scale(SMALL_SCALE, SMALL_SCALE);
+        guiGraphics.text(this.font, text, 0, 0, color, false);
+        guiGraphics.pose().popMatrix();
     }
 
     @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        return mouseClicked(event.x(), event.y(), event.button());
+    }
+
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (ingredientUsagePopup.isVisible()) { return ingredientUsagePopup.mouseClicked(mouseX, mouseY); }
         if (modEntityPopup.isVisible()) { return modEntityPopup.mouseClicked(mouseX, mouseY); }
@@ -2623,7 +2639,7 @@ public class StageDetailScreen extends Screen {
             }
         }
 
-        if (super.mouseClicked(mouseX, mouseY, button)) return true;
+        if (super.mouseClicked(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)), false)) return true;
 
         int listTop = listTop();
         int listBottom = listBottom();
@@ -3015,6 +3031,10 @@ public class StageDetailScreen extends Screen {
     }
 
     @Override
+    public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+        return mouseDragged(event.x(), event.y(), event.button(), dragX, dragY);
+    }
+
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
         if (ingredientUsagePopup.isVisible() && ingredientUsagePopup.mouseDragged(mouseX, mouseY))
             return true;
@@ -3043,10 +3063,14 @@ public class StageDetailScreen extends Screen {
             updateScrollFromMouse(mouseY, listTop(), listBottom());
             return true;
         }
-        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+        return super.mouseDragged(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)), dragX, dragY);
     }
 
     @Override
+    public boolean mouseReleased(MouseButtonEvent event) {
+        return mouseReleased(event.x(), event.y(), event.button());
+    }
+
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
         if (ingredientUsagePopup.isVisible() && ingredientUsagePopup.mouseReleased())
             return true;
@@ -3075,7 +3099,7 @@ public class StageDetailScreen extends Screen {
             scrollBarDragging = false;
             return true;
         }
-        return super.mouseReleased(mouseX, mouseY, button);
+        return super.mouseReleased(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)));
     }
 
     private void updateScrollFromMouse(double mouseY, int listTop, int listBottom) {
@@ -3143,6 +3167,10 @@ public class StageDetailScreen extends Screen {
     }
 
     @Override
+    public boolean keyPressed(KeyEvent event) {
+        return keyPressed(event.key(), event.scancode(), event.modifiers());
+    }
+
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (overridePopupVisible) {
             if (keyCode == 256) { applyOverrideAndClose(); return true; }
@@ -3194,11 +3222,15 @@ public class StageDetailScreen extends Screen {
             tryClose();
             return true;
         }
-        return super.keyPressed(keyCode, scanCode, modifiers);
+        return super.keyPressed(new KeyEvent(keyCode, scanCode, modifiers));
     }
 
 
     @Override
+    public boolean charTyped(CharacterEvent event) {
+        return charTyped((char) event.codepoint(), 0);
+    }
+
     public boolean charTyped(char c, int modifiers) {
         if (overridePopupVisible) {
             if (overrideNameField.isFocused() && overrideNameField.charTyped(c, modifiers)) return true;
@@ -3216,7 +3248,7 @@ public class StageDetailScreen extends Screen {
         if (filterTagSearch.isVisible() && filterTagSearch.charTyped(c)) return true;
         if (iconSearch.isVisible() && iconSearch.charTyped(c)) return true;
         if (categorySearchBox != null && categorySearchBox.charTyped(c)) return true;
-        return super.charTyped(c, modifiers);
+        return super.charTyped(new CharacterEvent(c));
     }
 
     @Override public boolean shouldCloseOnEsc() { return false; }
@@ -3408,7 +3440,7 @@ public class StageDetailScreen extends Screen {
         return true; // consume any click inside the popup
     }
 
-    private void renderOverridePopup(GuiGraphics g, int mouseX, int mouseY) {
+    private void renderOverridePopup(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         g.fill(0, 0, this.width, this.height, 0x80000000);
         int x = cachedOverrideX, y = cachedOverrideY, w = cachedOverrideW, h = cachedOverrideH;
         // Card chrome (matches renderCard style)
@@ -3416,18 +3448,18 @@ public class StageDetailScreen extends Screen {
         g.fill(x + 1, y + 1, x + w - 1, y + h - 1, 0xFF1A1A1A);
         g.fill(x + 1, y + 1, x + w - 1, y + 20, 0xFF2D2D2D);
         g.fill(x + 1, y + 20, x + w - 1, y + 21, 0xFF555555);
-        g.drawString(this.font, Component.translatable("editor.historystages.text_override.title").getString(),
+        g.text(this.font, Component.translatable("editor.historystages.text_override.title").getString(),
                 x + 8, y + 7, 0xFFCC00, false);
 
         int cy = y + 30;
         if (overrideShowName) {
-            g.drawString(this.font, Component.translatable("editor.historystages.text_override.name").getString(),
+            g.text(this.font, Component.translatable("editor.historystages.text_override.name").getString(),
                     x + 12, cy, 0xAAAAAA, false);
             overrideNameField.render(g, mouseX, mouseY, 0f);
             cy += 44;
         }
         if (overrideShowTooltip) {
-            g.drawString(this.font, Component.translatable("editor.historystages.text_override.tooltip").getString(),
+            g.text(this.font, Component.translatable("editor.historystages.text_override.tooltip").getString(),
                     x + 12, cy, 0xAAAAAA, false);
             overrideTooltipField.render(g, mouseX, mouseY, 0f);
         }
@@ -3547,7 +3579,11 @@ public class StageDetailScreen extends Screen {
         }
 
         @Override
-        public void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+        protected void extractWidgetRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+            renderWidget(graphics, mouseX, mouseY, partialTick);
+        }
+
+        public void renderWidget(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
             boolean hov = isHoveredOrFocused();
             int bg = hov ? 0x40FFCC00 : 0x20FFFFFF;
             guiGraphics.fill(getX(), getY(), getX() + getWidth(), getY() + getHeight(), bg);
@@ -3555,7 +3591,7 @@ public class StageDetailScreen extends Screen {
                     hov ? 0xFFFFCC00 : 0xFF555555);
             ItemStack icon = resolveIconPreview();
             if (!icon.isEmpty()) {
-                guiGraphics.renderItem(icon, getX() + 1, getY() + 1);
+                guiGraphics.item(icon, getX() + 1, getY() + 1);
             }
         }
 

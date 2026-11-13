@@ -1,5 +1,7 @@
 package net.bananemdnsa.historystages.client.editor;
 
+import net.minecraft.client.input.MouseButtonInfo;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.client.ClientToastHandler;
@@ -21,7 +23,7 @@ import net.bananemdnsa.historystages.data.scroll.OpenScrollOverviewBlocks;
 import net.bananemdnsa.historystages.data.scroll.OpenScrollTabStyle;
 import net.bananemdnsa.historystages.screen.OpenScrollGeometry;
 import net.bananemdnsa.historystages.screen.OpenScrollTabs;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -238,18 +240,26 @@ public class OpenScrollDocumentScreen extends Screen {
     // --- rendering ---
 
     @Override
-    public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+    public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        renderBackground(graphics, mouseX, mouseY, partialTick);
+    }
+
+    public void renderBackground(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
         // Own background, drawn in render() — avoids 1.21's menu blur shader, as the editor does.
     }
 
     @Override
-    public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        render(graphics, mouseX, mouseY, partialTick);
+    }
+
+    public void render(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
         smoothScroll.approach((float) scrollOffset, Timing.SCROLL_HALF_LIFE_MS);
         smoothScroll.settle((float) scrollOffset, 0.5f);
         if (dragStarted) dragTarget = computeDragTarget(mouseY);
 
         g.fill(0, 0, this.width, this.height, 0xE0101010);
-        g.drawCenteredString(this.font, this.title, this.width / 2, 10, 0xFFFFFF);
+        g.centeredText(this.font, this.title, this.width / 2, 10, 0xFFFFFF);
 
         int left = contentLeft();
         int right = contentRight();
@@ -320,23 +330,23 @@ public class OpenScrollDocumentScreen extends Screen {
                     dotX + 9, this.height - 24, 0xFFCC00);
         }
 
-        super.render(g, mouseX, mouseY, partialTick);
+        super.extractRenderState(g, mouseX, mouseY, partialTick);
 
         tooltip.render(g, this.font, hoveredControlKey,
                 hoveredControlKey == null ? null : Component.translatable(hoveredControlKey).getString(),
                 mouseX, mouseY, this.width, this.height);
     }
 
-    private void drawSectionHeader(GuiGraphics g, String key, int y) {
+    private void drawSectionHeader(GuiGraphicsExtractor g, String key, int y) {
         if (y + SECTION_HEADER_H < ROWS_TOP || y > rowsBottom) return;
         g.fill(contentLeft(), y + 13, contentRight(), y + 14, 0xFF444444);
-        g.drawString(this.font, Component.translatable(key).getString(),
+        g.text(this.font, Component.translatable(key).getString(),
                 contentLeft(), y + 2, 0xFF888888, false);
     }
 
     private int modeX() { return contentRight() - MODE_W - 4; }
 
-    private void renderRow(GuiGraphics g, PositionedRow row, int mouseX, int mouseY) {
+    private void renderRow(GuiGraphicsExtractor g, PositionedRow row, int mouseX, int mouseY) {
         int y = row.y();
         int left = contentLeft();
         int right = contentRight();
@@ -364,7 +374,7 @@ public class OpenScrollDocumentScreen extends Screen {
         String label = Component.translatable(row.section() == SEC_CHAPTERS
                 ? "gui.historystages.open_scroll." + row.id()
                 : "editor.historystages.open_scroll." + row.id()).getString();
-        g.drawString(this.font, label, cx, y + (ROW_H - 8) / 2,
+        g.text(this.font, label, cx, y + (ROW_H - 8) / 2,
                 enabled ? (hp > 0.001f ? 0xFFFFFF : 0xDDDDDD) : 0xFF777777, false);
 
         if (row.section() == SEC_CHAPTERS) {
@@ -384,12 +394,12 @@ public class OpenScrollDocumentScreen extends Screen {
             g.fill(mx + MODE_W - 1, my, mx + MODE_W, my + 14, border);
             String mode = Component.translatable("editor.historystages.open_scroll.mode."
                     + entry.mode().serialize()).getString();
-            g.drawString(this.font, this.font.plainSubstrByWidth(mode, MODE_W - 8),
+            g.text(this.font, this.font.plainSubstrByWidth(mode, MODE_W - 8),
                     mx + 4, my + 3, fixed ? 0xFF777777 : 0xFFDDDDDD, false);
         }
     }
 
-    private void drawHandle(GuiGraphics g, int x, int y, boolean active) {
+    private void drawHandle(GuiGraphicsExtractor g, int x, int y, boolean active) {
         int color = active ? 0xFFEEEEEE : 0xFF888888;
         for (int col = 0; col < 2; col++) {
             for (int row = 0; row < 3; row++) {
@@ -400,7 +410,7 @@ public class OpenScrollDocumentScreen extends Screen {
         }
     }
 
-    private void drawCheckbox(GuiGraphics g, int x, int y, boolean checked) {
+    private void drawCheckbox(GuiGraphicsExtractor g, int x, int y, boolean checked) {
         int border = checked ? 0xFFFFCC00 : 0xFF777777;
         g.fill(x, y, x + 10, y + 10, 0x40000000);
         g.fill(x, y, x + 10, y + 1, border);
@@ -410,7 +420,7 @@ public class OpenScrollDocumentScreen extends Screen {
         if (checked) g.fill(x + 2, y + 2, x + 8, y + 8, 0xFFFFCC00);
     }
 
-    private void drawPulseOutline(GuiGraphics g, int y, float strength) {
+    private void drawPulseOutline(GuiGraphicsExtractor g, int y, float strength) {
         int alpha = (int) (0xFF * Math.max(0.0f, Math.min(1.0f, strength)));
         if (alpha < 4) return;
         int x1 = contentLeft() - 2, x2 = contentRight() + 2, y1 = y - 1, y2 = y + ROW_H - 1;
@@ -421,7 +431,7 @@ public class OpenScrollDocumentScreen extends Screen {
         g.fill(x2 - 1, y1, x2, y2, (alpha << 24) | rgb);
     }
 
-    private void drawGhost(GuiGraphics g, int mouseX, int mouseY) {
+    private void drawGhost(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         String id = rowId(dragSection, dragFrom);
         String label = Component.translatable(dragSection == SEC_CHAPTERS
                 ? "gui.historystages.open_scroll." + id
@@ -429,12 +439,12 @@ public class OpenScrollDocumentScreen extends Screen {
         int gw = this.font.width(label) + 10;
         int gx = Math.min(mouseX + 8, this.width - gw - 4);
         int gy = Math.min(mouseY - 8, this.height - 18);
-        g.pose().pushPose();
-        g.pose().translate(0, 0, 410);
+        g.pose().pushMatrix();
+        g.pose().translate(0, 0);
         g.fill(gx, gy, gx + gw, gy + 16, 0xE0101010);
         g.fill(gx, gy + 15, gx + gw, gy + 16, 0xFFFFCC00);
-        g.drawString(this.font, label, gx + 5, gy + 4, 0xFFFFFF, false);
-        g.pose().popPose();
+        g.text(this.font, label, gx + 5, gy + 4, 0xFFFFFF, false);
+        g.pose().popMatrix();
     }
 
     /**
@@ -443,7 +453,7 @@ public class OpenScrollDocumentScreen extends Screen {
      * and half of them would never show. Framed and scissored to its own panel so a long line is
      * clipped instead of escaping over the row list.
      */
-    private void renderPreview(GuiGraphics g, int px, int py, int panelH) {
+    private void renderPreview(GuiGraphicsExtractor g, int px, int py, int panelH) {
         int panelW = Math.max(0, this.width - px - 24);
         if (panelW < 60 || panelH < 60) return;
 
@@ -460,9 +470,9 @@ public class OpenScrollDocumentScreen extends Screen {
         // earlier "too small, draw nothing", which is why the preview was simply absent.
         float scale = Math.min(1.0f, Math.min((panelW - 12.0f) / OpenScrollGeometry.WIDTH,
                 (panelH - 12.0f) / OpenScrollGeometry.HEIGHT));
-        g.pose().pushPose();
-        g.pose().translate(px + (panelW - OpenScrollGeometry.WIDTH * scale) / 2.0f, py + 6.0f, 0.0f);
-        g.pose().scale(scale, scale, 1.0f);
+        g.pose().pushMatrix();
+        g.pose().translate(px + (panelW - OpenScrollGeometry.WIDTH * scale) / 2.0f, py + 6.0f);
+        g.pose().scale(scale, scale);
 
         int sx = 0;
         int sy = 0;
@@ -502,7 +512,7 @@ public class OpenScrollDocumentScreen extends Screen {
                 if (i == 0) OpenScrollScreen.drawIconUnderline(g, ix, sy, inkHeading);
                 continue;
             }
-            g.drawString(this.font, tab.label(), x + tab.x(), ty, 0xFF000000 | ink, false);
+            g.text(this.font, tab.label(), x + tab.x(), ty, 0xFF000000 | ink, false);
             if (i == 0) {
                 g.fill(x + tab.x(), ty + OpenScrollGeometry.TABS_HEIGHT,
                         x + tab.x() + tab.width(), ty + OpenScrollGeometry.TABS_HEIGHT + 1,
@@ -518,7 +528,7 @@ public class OpenScrollDocumentScreen extends Screen {
                 parent.findEntry("open_scroll.showSearch").value);
         if (searchShown) {
             int qy = sy + OpenScrollGeometry.SEARCH_Y;
-            g.drawString(this.font, "»", x, qy, 0xFF000000 | inkFaint, false);
+            g.text(this.font, "»", x, qy, 0xFF000000 | inkFaint, false);
             g.fill(x + 9, qy + 9, x + width, qy + 10, (0x73 << 24) | inkFaint);
         }
 
@@ -529,16 +539,16 @@ public class OpenScrollDocumentScreen extends Screen {
                 case ICON -> {
                     // A real item, drawn at the real 32px, rather than a coloured rectangle.
                     ItemStack icon = ClientToastHandler.resolveIcon(Config.VISUAL.defaultStageIcon.get());
-                    g.pose().pushPose();
+                    g.pose().pushMatrix();
                     g.pose().translate((float) (x + (width - 32) / 2), (float) y, 0.0f);
-                    g.pose().scale(2.0f, 2.0f, 1.0f);
-                    g.renderItem(icon, 0, 0);
-                    g.pose().popPose();
+                    g.pose().scale(2.0f, 2.0f);
+                    g.item(icon, 0, 0);
+                    g.pose().popMatrix();
                     yield y + 34;
                 }
                 case TITLE -> {
                     Component t = Component.translatable("editor.historystages.open_scroll.sample_stage");
-                    g.drawString(this.font, t, x + (width - this.font.width(t)) / 2, y,
+                    g.text(this.font, t, x + (width - this.font.width(t)) / 2, y,
                             0xFF000000 | inkHeading, false);
                     yield y + 11;
                 }
@@ -547,7 +557,7 @@ public class OpenScrollDocumentScreen extends Screen {
                     // draw showed the block's position but nothing about how it actually reads.
                     Component text = Component.translatable("editor.historystages.open_scroll.sample_description");
                     for (FormattedCharSequence line : this.font.split(text, width)) {
-                        g.drawString(this.font, line, x, y, 0xFF000000 | inkBody, false);
+                        g.text(this.font, line, x, y, 0xFF000000 | inkBody, false);
                         y += 10;
                     }
                     yield y + 1;
@@ -559,7 +569,7 @@ public class OpenScrollDocumentScreen extends Screen {
                     for (int i = 0; i < keys.length; i++) {
                         Component line = Component.translatable(
                                 "gui.historystages.open_scroll.counts." + keys[i], values[i]);
-                        g.drawString(this.font, line, x + (width - this.font.width(line)) / 2, y,
+                        g.text(this.font, line, x + (width - this.font.width(line)) / 2, y,
                                 0xFF000000 | inkFaint, false);
                         y += 10;
                     }
@@ -567,7 +577,7 @@ public class OpenScrollDocumentScreen extends Screen {
                 }
             };
         }
-        g.pose().popPose();
+        g.pose().popMatrix();
         g.disableScissor();
     }
 
@@ -579,6 +589,10 @@ public class OpenScrollDocumentScreen extends Screen {
     // --- input ---
 
     @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        return mouseClicked(event.x(), event.y(), event.button());
+    }
+
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (maxScroll > 0 && mouseX >= scrollbarX() && mouseX < scrollbarX() + 3
                 && mouseY >= ROWS_TOP && mouseY < rowsBottom) {
@@ -614,7 +628,7 @@ public class OpenScrollDocumentScreen extends Screen {
                 return true;
             }
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)), false);
     }
 
     private void toggleEnabled(int section, int index) {
@@ -653,6 +667,10 @@ public class OpenScrollDocumentScreen extends Screen {
     }
 
     @Override
+    public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+        return mouseDragged(event.x(), event.y(), event.button(), dragX, dragY);
+    }
+
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
         if (draggingScrollbar) {
             updateScrollFromMouse(mouseY);
@@ -666,10 +684,14 @@ public class OpenScrollDocumentScreen extends Screen {
             dragTarget = computeDragTarget(mouseY);
             return true;
         }
-        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+        return super.mouseDragged(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)), dragX, dragY);
     }
 
     @Override
+    public boolean mouseReleased(MouseButtonEvent event) {
+        return mouseReleased(event.x(), event.y(), event.button());
+    }
+
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
         draggingScrollbar = false;
         if (dragStarted && dragFrom != dragTarget) {
@@ -684,7 +706,7 @@ public class OpenScrollDocumentScreen extends Screen {
         dragSection = -1;
         dragFrom = -1;
         dragTarget = -1;
-        return super.mouseReleased(mouseX, mouseY, button);
+        return super.mouseReleased(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)));
     }
 
     @Override

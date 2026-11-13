@@ -7,7 +7,7 @@ import net.bananemdnsa.historystages.client.editor.anim.Timing;
 import net.bananemdnsa.historystages.data.graph.NodeState;
 import net.bananemdnsa.historystages.data.graph.ResolvedStyle;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 
 /**
@@ -79,7 +79,7 @@ public final class GraphLegend {
 
     // --- Rendering --------------------------------------------------------------------------
 
-    public void render(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    public void render(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         if (boundsWidth <= 0 || boundsHeight <= 0) return;
 
         boolean animate = GraphConfig.GRAPH.animations.get();
@@ -95,8 +95,8 @@ public final class GraphLegend {
 
         // Drawn above canvas/sidebar/panel content, outside the canvas's own scissor, so it
         // stays fixed on screen regardless of pan or zoom.
-        g.pose().pushPose();
-        g.pose().translate(0, 0, 400);
+        g.pose().pushMatrix();
+        g.pose().translate(0, 0);
 
         int animH = Math.round(bodyH * revealT);
         if (animH > 1) {
@@ -114,9 +114,9 @@ public final class GraphLegend {
         boolean hoverHeader = mouseX >= lx && mouseX <= lx + curW && mouseY >= hy && mouseY <= hy + HEADER_H;
         g.fill(lx, hy, lx + curW, hy + HEADER_H, hoverHeader ? HEADER_BG_HOVER : HEADER_BG);
         g.fill(lx, hy + HEADER_H - 1, lx + curW, hy + HEADER_H, ACCENT_COLOR);
-        g.drawString(font, (expanded ? "▼ " : "▶ ") + tr("title"), lx + 5, hy + 4, ACCENT_COLOR, false);
+        g.text(font, (expanded ? "▼ " : "▶ ") + tr("title"), lx + 5, hy + 4, ACCENT_COLOR, false);
 
-        g.pose().popPose();
+        g.pose().popMatrix();
 
         lastLx = lx;
         lastHy = hy;
@@ -124,13 +124,13 @@ public final class GraphLegend {
         lastBodyH = bodyH;
     }
 
-    private void renderBody(GuiGraphics g, Font font, int lx, int by, int curW) {
+    private void renderBody(GuiGraphicsExtractor g, Font font, int lx, int by, int curW) {
         int sx1 = lx + COL1_DX;
         int sx2 = lx + COL2_DX;
         int tx = lx + LABEL_DX;
         int y = by + PAD;
 
-        g.drawString(font, tr("nodes"), lx + 6, y, SECTION_TEXT_COLOR, false);
+        g.text(font, tr("nodes"), lx + 6, y, SECTION_TEXT_COLOR, false);
         y += SUB_H;
         y = stateRow(g, font, sx1, sx2, tx, y, NodeState.UNLOCKED);
         y = stateRow(g, font, sx1, sx2, tx, y, NodeState.REACHABLE);
@@ -139,7 +139,7 @@ public final class GraphLegend {
 
         g.fill(lx + 6, y + 1, lx + curW - 6, y + 2, SEPARATOR_COLOR);
         y += 4;
-        g.drawString(font, tr("connections"), lx + 6, y, SECTION_TEXT_COLOR, false);
+        g.text(font, tr("connections"), lx + 6, y, SECTION_TEXT_COLOR, false);
         y += SUB_H;
         int esx = lx + EDGE_SAMPLE_DX;
         int etx = lx + EDGE_LABEL_DX;
@@ -152,17 +152,17 @@ public final class GraphLegend {
      * side, both drawn from the same configured colours but different shapes — the visual proof
      * that individual stages are told apart by shape, not colour.
      */
-    private int stateRow(GuiGraphics g, Font font, int sx1, int sx2, int tx, int y, NodeState state) {
+    private int stateRow(GuiGraphicsExtractor g, Font font, int sx1, int sx2, int tx, int y, NodeState state) {
         int cy = y + 5;
         ResolvedStyle global = StageGraphConfig.styleFor(PLACEHOLDER_STAGE_ID, false, state);
         ResolvedStyle individual = StageGraphConfig.styleFor(PLACEHOLDER_STAGE_ID, true, state);
         drawSwatch(g, sx1, cy, global);
         drawSwatch(g, sx2, cy, individual);
-        g.drawString(font, stateLabel(state), tx, y + 1, ROW_TEXT_COLOR, false);
+        g.text(font, stateLabel(state), tx, y + 1, ROW_TEXT_COLOR, false);
         return y + ROW_H;
     }
 
-    private void drawSwatch(GuiGraphics g, int cx, int cy, ResolvedStyle style) {
+    private void drawSwatch(GuiGraphicsExtractor g, int cx, int cy, ResolvedStyle style) {
         drawShape(g, style.shape(), cx, cy, SWATCH_R, fillColor(style), style.border(),
                 Math.max(1, style.borderWidth()));
     }
@@ -171,7 +171,7 @@ public final class GraphLegend {
      * Same shape switch as {@code GraphCanvas.drawShape} — duplicated rather than shared because
      * that method is private and this task must not modify {@code GraphCanvas}.
      */
-    private static void drawShape(GuiGraphics g, String shape, int cx, int cy, int r,
+    private static void drawShape(GuiGraphicsExtractor g, String shape, int cx, int cy, int r,
                                    int fill, int border, int bw) {
         switch (shape) {
             case "CIRCLE" -> NodeShapes.circle(g, cx, cy, r, fill, border, bw);
@@ -195,7 +195,7 @@ public final class GraphLegend {
      * whether it belongs to an OR group changes which style value applies (see
      * {@code GraphCanvas.drawEdge}).
      */
-    private int edgeRow(GuiGraphics g, Font font, int sx, int tx, int y, boolean orGroup) {
+    private int edgeRow(GuiGraphicsExtractor g, Font font, int sx, int tx, int y, boolean orGroup) {
         GraphConfig.Graph cfg = GraphConfig.GRAPH;
         GraphConfig.EdgeStyle styleEnum = orGroup ? cfg.orGroupStyle.get() : cfg.edgeStyleMet.get();
         int color = 0xFF000000 | ResolvedStyle.parseColor(cfg.edgeColorMet.get(), EDGE_FALLBACK_COLOR);
@@ -207,7 +207,7 @@ public final class GraphLegend {
         } else {
             g.fill(sx - 6, y + 5, sx + 7, y + 7, color);
         }
-        g.drawString(font, tr(orGroup ? "or" : "and"), tx, y + 1, ROW_TEXT_COLOR, false);
+        g.text(font, tr(orGroup ? "or" : "and"), tx, y + 1, ROW_TEXT_COLOR, false);
         return y + ROW_H;
     }
 

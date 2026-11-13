@@ -5,7 +5,7 @@ import net.bananemdnsa.historystages.api.editor.widget.AbstractSearchableList;
 import net.bananemdnsa.historystages.client.ClientStructureRegistry;
 import net.bananemdnsa.historystages.client.editor.anim.Timing;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 
 import java.util.ArrayList;
@@ -89,13 +89,13 @@ public class SearchableStructureList extends AbstractSearchableList<String> {
     }
 
     @Override
-    protected void renderRow(GuiGraphics g, Font font, String entry,
+    protected void renderRow(GuiGraphicsExtractor g, Font font, String entry,
                              int x, int y, int w, int h, boolean hovered, int rowIndex) {
         drawEntry(g, font, activeTab == 1 ? "#" + entry : entry, x, y, w, h, hovered, rowIndex);
     }
 
     @Override
-    protected void renderSelectedRow(GuiGraphics g, Font font, String value, String entry,
+    protected void renderSelectedRow(GuiGraphicsExtractor g, Font font, String value, String entry,
                                      int x, int y, int w, int h, boolean hovered, int rowIndex) {
         // The frozen value already carries the "#" if it was picked on the Tags tab —
         // activeTab has since moved on and can't be trusted to re-derive it.
@@ -106,7 +106,7 @@ public class SearchableStructureList extends AbstractSearchableList<String> {
      * Custom marquee variant — pre-delay we scissor and draw full text (no "..."),
      * matching the original SearchableStructureList behaviour exactly.
      */
-    private void drawEntry(GuiGraphics g, Font font, String text,
+    private void drawEntry(GuiGraphicsExtractor g, Font font, String text,
                            int x, int y, int w, int h, boolean hovered, int rowIndex) {
         int textColor = hovered ? 0xFFFFFF : 0xBBBBBB;
         int textX = x + 3;
@@ -115,7 +115,7 @@ public class SearchableStructureList extends AbstractSearchableList<String> {
         int textW = font.width(text);
 
         if (textW <= textAvailW) {
-            g.drawString(font, text, textX, textY, textColor, false);
+            g.text(font, text, textX, textY, textColor, false);
             return;
         }
 
@@ -132,20 +132,20 @@ public class SearchableStructureList extends AbstractSearchableList<String> {
                 float pos = scrollProg % cycle;
                 int scrollOff = pos <= maxMarquee ? (int) pos : (int) (cycle - pos);
                 g.enableScissor(textX, y, textX + textAvailW, y + h);
-                g.drawString(font, text, textX - scrollOff, textY, textColor, false);
+                g.text(font, text, textX - scrollOff, textY, textColor, false);
                 g.disableScissor();
             } else {
                 g.enableScissor(textX, y, textX + textAvailW, y + h);
-                g.drawString(font, text, textX, textY, textColor, false);
+                g.text(font, text, textX, textY, textColor, false);
                 g.disableScissor();
             }
         } else {
-            g.drawString(font, font.plainSubstrByWidth(text, textAvailW - 6) + "...", textX, textY, textColor, false);
+            g.text(font, font.plainSubstrByWidth(text, textAvailW - 6) + "...", textX, textY, textColor, false);
         }
     }
 
     @Override
-    protected void afterRender(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    protected void afterRender(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         // Reset marquee hover when no row was hovered this frame.
         // (Detected via the mouseY range, since we don't have a hook into the base loop.)
         int listY = listTopY();

@@ -1,5 +1,9 @@
 package net.bananemdnsa.historystages.client.editor;
 
+import net.minecraft.client.input.CharacterEvent;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonInfo;
+import net.minecraft.client.input.MouseButtonEvent;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import net.bananemdnsa.historystages.api.editor.widget.AbstractInputScreen;
@@ -31,7 +35,7 @@ import net.bananemdnsa.historystages.client.editor.widget.list.SearchableItemLis
 import net.bananemdnsa.historystages.client.editor.widget.list.SearchableItemPropertyList;
 import net.bananemdnsa.historystages.client.editor.widget.list.SearchableNbtCriterionList;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
@@ -287,12 +291,20 @@ public class NbtItemEditScreen extends Screen {
     // ==========================================
 
     @Override
-    public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+    public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        renderBackground(graphics, mouseX, mouseY, partialTick);
+    }
+
+    public void renderBackground(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
         // No-op — we draw our own background in render() and want to avoid 1.21's menu blur shader
     }
 
     @Override
-    public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        render(graphics, mouseX, mouseY, partialTick);
+    }
+
+    public void render(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
         g.fill(0, 0, this.width, this.height, 0xE0101010);
 
         smoothScroll.approach((float) scrollOffset, Timing.SCROLL_HALF_LIFE_MS);
@@ -324,7 +336,7 @@ public class NbtItemEditScreen extends Screen {
 
         if (dirty) renderUnsavedMarker(g);
 
-        super.render(g, mouseX, mouseY, partialTick);
+        super.extractRenderState(g, mouseX, mouseY, partialTick);
 
         // Lifted onto its own Z layer and dimmed underneath: text is batched and flushed after the
         // picker's panel fills, so the cards and button labels below would otherwise bleed through
@@ -334,26 +346,26 @@ public class NbtItemEditScreen extends Screen {
         // dim from outliving the panel it belongs to.
         syncPickerState();
         if (pickerOverlay != null) {
-            g.pose().pushPose();
-            g.pose().translate(0, 0, 200);
+            g.pose().pushMatrix();
+            g.pose().translate(0, 0);
             g.fill(0, 0, this.width, this.height, 0x80000000);
             pickerOverlay.render(g, this.font, mouseX, mouseY);
-            g.pose().popPose();
+            g.pose().popMatrix();
         } else if (showJson) {
             renderJsonOverlay(g);
         }
     }
 
-    private void renderHeader(GuiGraphics g) {
+    private void renderHeader(GuiGraphicsExtractor g) {
         if (tagMode) {
-            g.drawString(this.font, "#" + itemId, PADDING, 16, 0xFFFFFF);
+            g.text(this.font, "#" + itemId, PADDING, 16, 0xFFFFFF);
         } else {
             Item item = BuiltInRegistries.ITEM.getValue(Identifier.parse(itemId));
             if (item != null) {
-                g.renderItem(new ItemStack(item), PADDING, 12);
-                g.drawString(this.font, item.getDescription(), PADDING + 22, 14, 0xFFFFFF);
+                g.item(new ItemStack(item), PADDING, 12);
+                g.text(this.font, item.getDescription(), PADDING + 22, 14, 0xFFFFFF);
             }
-            g.drawString(this.font, itemId, PADDING + 22, 28, 0x888888);
+            g.text(this.font, itemId, PADDING + 22, 28, 0x888888);
         }
 
         String count = criteria.isEmpty()
@@ -361,7 +373,7 @@ public class NbtItemEditScreen extends Screen {
                 : criteria.size() == 1
                         ? Component.translatable("editor.historystages.nbt.count.one").getString()
                         : Component.translatable("editor.historystages.nbt.count", criteria.size()).getString();
-        g.drawString(this.font, count, this.width - PADDING - this.font.width(count),
+        g.text(this.font, count, this.width - PADDING - this.font.width(count),
                 TOOLBAR_Y + (TOOLBAR_H - 8) / 2, 0x888888);
 
         g.fill(PADDING, HEADER_HEIGHT - 6, this.width - PADDING, HEADER_HEIGHT - 5, 0x40FFCC00);
@@ -372,21 +384,21 @@ public class NbtItemEditScreen extends Screen {
      * it in pushed the cards down and shrank the list every time it opened; a panel leaves the
      * screen underneath exactly where it was.
      */
-    private void renderJsonOverlay(GuiGraphics g) {
+    private void renderJsonOverlay(GuiGraphicsExtractor g) {
         int panelW = jsonPanelWidth();
         int panelH = jsonPanelHeight();
         int panelX = (this.width - panelW) / 2;
         int panelY = (this.height - panelH) / 2;
 
-        g.pose().pushPose();
-        g.pose().translate(0, 0, 200);
+        g.pose().pushMatrix();
+        g.pose().translate(0, 0);
         g.fill(0, 0, this.width, this.height, 0x80000000);
 
         g.fill(panelX, panelY, panelX + panelW, panelY + panelH, 0xFF2F2F2F);
         g.fill(panelX + 1, panelY + 1, panelX + panelW - 1, panelY + panelH - 1, 0xFF0D0D0D);
 
         String title = Component.translatable("editor.historystages.nbt.show_json").getString();
-        g.drawString(this.font, title, panelX + 8, panelY + 6, 0xFFCC00);
+        g.text(this.font, title, panelX + 8, panelY + 6, 0xFFCC00);
         g.fill(panelX + 8, panelY + 17, panelX + panelW - 8, panelY + 18, 0x40FFCC00);
 
         int textTop = panelY + 22;
@@ -394,12 +406,12 @@ public class NbtItemEditScreen extends Screen {
         g.enableScissor(panelX + 1, textTop, panelX + panelW - 1, textBottom);
         int y = textTop - jsonScroll;
         for (FormattedCharSequence line : jsonLines) {
-            g.drawString(this.font, line, panelX + 8, y, 0xCCCCCC);
+            g.text(this.font, line, panelX + 8, y, 0xCCCCCC);
             y += 10;
         }
         g.disableScissor();
 
-        g.pose().popPose();
+        g.pose().popMatrix();
     }
 
     private int maxJsonScroll() {
@@ -412,7 +424,7 @@ public class NbtItemEditScreen extends Screen {
         rebuild();
     }
 
-    private void renderEmptyState(GuiGraphics g, int listTop, int listBottom) {
+    private void renderEmptyState(GuiGraphicsExtractor g, int listTop, int listBottom) {
         String subject = tagMode
                 ? "#" + itemId
                 : itemDisplayName();
@@ -420,15 +432,15 @@ public class NbtItemEditScreen extends Screen {
         String hint = Component.translatable("editor.historystages.nbt.empty.hint").getString();
 
         int centerY = (listTop + listBottom) / 2;
-        g.drawString(this.font, title, (this.width - this.font.width(title)) / 2, centerY - 10, 0x7A7A7A);
-        g.drawString(this.font, hint, (this.width - this.font.width(hint)) / 2, centerY + 4, 0x5F5F5F);
+        g.text(this.font, title, (this.width - this.font.width(title)) / 2, centerY - 10, 0x7A7A7A);
+        g.text(this.font, hint, (this.width - this.font.width(hint)) / 2, centerY + 4, 0x5F5F5F);
     }
 
     /**
      * Breathing gold dot and label left of the save button — the marker the rest of the editor
      * uses, on the same {@link Timing#BREATHE_PERIOD_MS} cycle so the two never pulse out of step.
      */
-    private void renderUnsavedMarker(GuiGraphics g) {
+    private void renderUnsavedMarker(GuiGraphicsExtractor g) {
         float phase = (System.currentTimeMillis() % (long) Timing.BREATHE_PERIOD_MS)
                 / Timing.BREATHE_PERIOD_MS;
         int alpha = (int) ((0.35f + 0.45f * Ease.breathe(phase)) * 255);
@@ -438,7 +450,7 @@ public class NbtItemEditScreen extends Screen {
         int y = this.height - 24;
 
         g.fill(labelX - 10, y + 1, labelX - 4, y + 7, (alpha << 24) | 0xFFCC00);
-        g.drawString(this.font, label, labelX, y, 0xFFCC00);
+        g.text(this.font, label, labelX, y, 0xFFCC00);
     }
 
     private String itemDisplayName() {
@@ -451,6 +463,10 @@ public class NbtItemEditScreen extends Screen {
     // ==========================================
 
     @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        return mouseClicked(event.x(), event.y(), event.button());
+    }
+
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         syncPickerState();
         if (pickerOverlay != null) {
@@ -490,7 +506,7 @@ public class NbtItemEditScreen extends Screen {
             }
         }
 
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)), false);
     }
 
     private void handleHit(int index, CriterionCard.Hit hit) {
@@ -809,6 +825,10 @@ public class NbtItemEditScreen extends Screen {
     }
 
     @Override
+    public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+        return mouseDragged(event.x(), event.y(), event.button(), dragX, dragY);
+    }
+
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
         syncPickerState();
         if (pickerOverlay != null && pickerOverlay.mouseDragged(mouseX, mouseY)) return true;
@@ -816,10 +836,14 @@ public class NbtItemEditScreen extends Screen {
             scrollOffset = scrollbar.scrollFor(mouseY);
             return true;
         }
-        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+        return super.mouseDragged(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)), dragX, dragY);
     }
 
     @Override
+    public boolean mouseReleased(MouseButtonEvent event) {
+        return mouseReleased(event.x(), event.y(), event.button());
+    }
+
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
         syncPickerState();
         if (pickerOverlay != null && pickerOverlay.mouseReleased()) return true;
@@ -827,10 +851,14 @@ public class NbtItemEditScreen extends Screen {
             scrollbar.mouseReleased();
             return true;
         }
-        return super.mouseReleased(mouseX, mouseY, button);
+        return super.mouseReleased(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)));
     }
 
     @Override
+    public boolean keyPressed(KeyEvent event) {
+        return keyPressed(event.key(), event.scancode(), event.modifiers());
+    }
+
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         syncPickerState();
         if (pickerOverlay != null && pickerOverlay.keyPressed(keyCode)) {
@@ -841,7 +869,7 @@ public class NbtItemEditScreen extends Screen {
             closeJson();
             return true;
         }
-        return super.keyPressed(keyCode, scanCode, modifiers);
+        return super.keyPressed(new KeyEvent(keyCode, scanCode, modifiers));
     }
 
     /**
@@ -855,10 +883,14 @@ public class NbtItemEditScreen extends Screen {
     }
 
     @Override
+    public boolean charTyped(CharacterEvent event) {
+        return charTyped((char) event.codepoint(), 0);
+    }
+
     public boolean charTyped(char c, int modifiers) {
         syncPickerState();
         if (pickerOverlay != null && pickerOverlay.charTyped(c)) return true;
-        return super.charTyped(c, modifiers);
+        return super.charTyped(new CharacterEvent(c));
     }
 
     // ==========================================
@@ -1006,7 +1038,7 @@ public class NbtItemEditScreen extends Screen {
         }
 
         @Override
-        protected void renderExtraContent(GuiGraphics g, int x, int y, int w, int mouseX, int mouseY) {
+        protected void renderExtraContent(GuiGraphicsExtractor g, int x, int y, int w, int mouseX, int mouseY) {
             // The base class owns the EditBox responder (it drives validation), so the filter is
             // refreshed from the live value each frame instead of on a change callback.
             updateSuggestions(box(0).getValue());
@@ -1046,13 +1078,13 @@ public class NbtItemEditScreen extends Screen {
                     String match = suggestion.substring(matchIdx, matchIdx + input.length());
                     String after = suggestion.substring(matchIdx + input.length());
                     int tx = listX + 4;
-                    g.drawString(this.font, before, tx, itemY + 3, 0x999999);
+                    g.text(this.font, before, tx, itemY + 3, 0x999999);
                     tx += this.font.width(before);
-                    g.drawString(this.font, match, tx, itemY + 3, 0xFFCC00);
+                    g.text(this.font, match, tx, itemY + 3, 0xFFCC00);
                     tx += this.font.width(match);
-                    g.drawString(this.font, after, tx, itemY + 3, 0x999999);
+                    g.text(this.font, after, tx, itemY + 3, 0x999999);
                 } else {
-                    g.drawString(this.font, suggestion, listX + 4, itemY + 3, 0x999999);
+                    g.text(this.font, suggestion, listX + 4, itemY + 3, 0x999999);
                 }
             }
 
@@ -1229,16 +1261,16 @@ public class NbtItemEditScreen extends Screen {
          * form to fill in completely, which would match far fewer items than intended.
          */
         @Override
-        protected void renderExtraContent(GuiGraphics g, int x, int y, int w, int mouseX, int mouseY) {
+        protected void renderExtraContent(GuiGraphicsExtractor g, int x, int y, int w, int mouseX, int mouseY) {
             if (example == null && skeleton != null) {
-                g.drawString(this.font,
+                g.text(this.font,
                         Component.translatable("editor.historystages.nbt.shape.skeleton"), x, y, 0xFF8A8A8A);
                 int skelY = y + 12;
                 for (FormattedCharSequence line : skeletonLines()) {
-                    g.drawString(this.font, line, x, skelY, 0xFFCCCCCC);
+                    g.text(this.font, line, x, skelY, 0xFFCCCCCC);
                     skelY += 10;
                 }
-                g.drawString(this.font, Component.translatable(presenceWorks
+                g.text(this.font, Component.translatable(presenceWorks
                                 ? "editor.historystages.nbt.shape.presence_ok"
                                 : "editor.historystages.nbt.shape.subset"),
                         x, skelY + 3, 0xFF8A8A8A);
@@ -1247,24 +1279,24 @@ public class NbtItemEditScreen extends Screen {
 
             if (example == null) {
                 if (requirement == null) return;
-                g.drawString(this.font,
+                g.text(this.font,
                         Component.translatable("editor.historystages.nbt.shape.requires"), x, y, 0xFF8A8A8A);
                 int reqY = y + 12;
                 for (FormattedCharSequence line : requirementLines()) {
-                    g.drawString(this.font, line, x, reqY, 0xFFCCCCCC);
+                    g.text(this.font, line, x, reqY, 0xFFCCCCCC);
                     reqY += 10;
                 }
                 return;
             }
 
-            g.drawString(this.font,
+            g.text(this.font,
                     Component.translatable("editor.historystages.nbt.shape.example"), x, y, 0xFF8A8A8A);
             int lineY = y + 12;
             for (FormattedCharSequence line : exampleLines()) {
-                g.drawString(this.font, line, x, lineY, 0xFFCCCCCC);
+                g.text(this.font, line, x, lineY, 0xFFCCCCCC);
                 lineY += 10;
             }
-            g.drawString(this.font,
+            g.text(this.font,
                     Component.translatable("editor.historystages.nbt.shape.subset"), x, lineY + 3, 0xFF8A8A8A);
         }
 

@@ -1,11 +1,14 @@
 package net.bananemdnsa.historystages.api.editor.widget;
 
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonInfo;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.bananemdnsa.historystages.client.editor.anim.Anim;
 import net.bananemdnsa.historystages.client.editor.anim.Ease;
 import net.bananemdnsa.historystages.client.editor.anim.Fade;
 import net.bananemdnsa.historystages.client.editor.anim.Timing;
 import net.bananemdnsa.historystages.client.editor.widget.StyledButton;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
@@ -30,7 +33,7 @@ public abstract class AbstractModalScreen extends Screen {
     protected static final int SUBTITLE_GREY = 0x888888;
 
     /**
-     * Depth the whole dialog is drawn at. Must clear the ~232 that {@code GuiGraphics.renderItem}
+     * Depth the whole dialog is drawn at. Must clear the ~232 that {@code GuiGraphicsExtractor.renderItem}
      * uses, or item stacks on the parent screen punch through the backdrop.
      */
     private static final int DIALOG_Z = 400;
@@ -69,7 +72,7 @@ public abstract class AbstractModalScreen extends Screen {
     protected abstract int contentHeight();
 
     /** Draws the content. {@code x}/{@code y}/{@code w} bound the area reserved by {@link #contentHeight()}. */
-    protected abstract void renderContent(GuiGraphics g, int x, int y, int w, int mouseX, int mouseY);
+    protected abstract void renderContent(GuiGraphicsExtractor g, int x, int y, int w, int mouseX, int mouseY);
 
     /** Invoked by the confirm button and by ENTER. Implementations close the screen themselves. */
     protected abstract void onConfirm();
@@ -196,12 +199,20 @@ public abstract class AbstractModalScreen extends Screen {
     // ============ Rendering ============
 
     @Override
-    public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+    public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        renderBackground(graphics, mouseX, mouseY, partialTick);
+    }
+
+    public void renderBackground(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
         // No-op — render() draws the backdrop; this avoids 1.21's menu blur shader.
     }
 
     @Override
-    public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        render(graphics, mouseX, mouseY, partialTick);
+    }
+
+    public void render(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
         if (renderParentBehind() && parent != null) {
             parent.render(g, -1, -1, partialTick);
             // The parent batches its text and items and would otherwise flush them after our
@@ -213,8 +224,8 @@ public abstract class AbstractModalScreen extends Screen {
 
         // Everything from here up is lifted above the depth the parent's items render at, so
         // the backdrop actually covers them instead of losing the depth test to them.
-        g.pose().pushPose();
-        g.pose().translate(0, 0, DIALOG_Z);
+        g.pose().pushMatrix();
+        g.pose().translate(0, 0);
 
         // Backdrop fades in unscaled — it covers the screen, so scaling it would show seams.
         g.fill(0, 0, this.width, this.height, Fade.alpha(backdropColor(), t));
@@ -224,32 +235,32 @@ public abstract class AbstractModalScreen extends Screen {
         float scale = Ease.lerp(OPEN_SCALE_FROM, 1.0f, t);
         float cx = boxX + boxW / 2.0f;
         float cy = boxY + boxH / 2.0f;
-        g.pose().pushPose();
-        g.pose().translate(cx, cy, 0.0f);
-        g.pose().scale(scale, scale, 1.0f);
-        g.pose().translate(-cx, -cy, 0.0f);
+        g.pose().pushMatrix();
+        g.pose().translate(cx, cy);
+        g.pose().scale(scale, scale);
+        g.pose().translate(-cx, -cy);
 
         g.fill(boxX - 1, boxY - 1, boxX + boxW + 1, boxY + boxH + 1, Fade.alpha(FRAME_OUTER, t));
         g.fill(boxX, boxY, boxX + boxW, boxY + boxH, Fade.alpha(FRAME_INNER, t));
         g.fill(boxX, boxY, boxX + boxW, boxY + 2, Fade.alpha(ACCENT_GOLD, t));
 
         if (titleCentered()) {
-            g.drawCenteredString(this.font, titleText(), boxX + boxW / 2, boxY + 8, TITLE_GOLD);
+            g.centeredText(this.font, titleText(), boxX + boxW / 2, boxY + 8, TITLE_GOLD);
         } else {
-            g.drawString(this.font, titleText(), boxX + PAD, boxY + 8, TITLE_GOLD, false);
+            g.text(this.font, titleText(), boxX + PAD, boxY + 8, TITLE_GOLD, false);
         }
 
         if (hasSubtitle()) {
-            g.drawCenteredString(this.font, subtitle(), boxX + boxW / 2, boxY + TITLE_H, SUBTITLE_GREY);
+            g.centeredText(this.font, subtitle(), boxX + boxW / 2, boxY + TITLE_H, SUBTITLE_GREY);
         }
 
         renderContent(g, boxX + PAD, contentY, boxW - PAD * 2, mouseX, mouseY);
 
-        super.render(g, mouseX, mouseY, partialTick);
+        super.extractRenderState(g, mouseX, mouseY, partialTick);
 
         g.flush();
-        g.pose().popPose();
-        g.pose().popPose();
+        g.pose().popMatrix();
+        g.pose().popMatrix();
     }
 
     /**
@@ -264,12 +275,20 @@ public abstract class AbstractModalScreen extends Screen {
     // ============ Input ============
 
     @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        return mouseClicked(event.x(), event.y(), event.button());
+    }
+
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (!isOpenSettled()) return true;
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)), false);
     }
 
     @Override
+    public boolean keyPressed(KeyEvent event) {
+        return keyPressed(event.key(), event.scancode(), event.modifiers());
+    }
+
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (keyCode == 257 || keyCode == 335) { // ENTER / NUMPAD ENTER
             if (!confirmOnEnter()) return true;
@@ -280,7 +299,7 @@ public abstract class AbstractModalScreen extends Screen {
             onCancel();
             return true;
         }
-        return super.keyPressed(keyCode, scanCode, modifiers);
+        return super.keyPressed(new KeyEvent(keyCode, scanCode, modifiers));
     }
 
     @Override

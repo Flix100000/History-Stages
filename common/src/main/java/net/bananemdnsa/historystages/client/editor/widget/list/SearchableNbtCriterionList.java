@@ -6,7 +6,7 @@ import net.bananemdnsa.historystages.client.editor.widget.EditorTooltip;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -174,7 +174,7 @@ public class SearchableNbtCriterionList extends AbstractSearchableList<Searchabl
     }
 
     @Override
-    protected void renderRow(GuiGraphics g, Font font, Option entry,
+    protected void renderRow(GuiGraphicsExtractor g, Font font, Option entry,
                              int x, int y, int w, int h, boolean hovered, int rowIndex) {
         // Two fixed columns rather than one left- and one right-aligned run. Right-aligning pushed
         // the ids against the panel edge, where the longest of them lost their tail; from a column
@@ -183,11 +183,11 @@ public class SearchableNbtCriterionList extends AbstractSearchableList<Searchabl
         int detailX = x + 3 + Math.round((w - 9) * DETAIL_COLUMN);
 
         String label = fit(font, entry.label(), detailX - 6 - labelX);
-        g.drawString(font, label, labelX, y + 4, hovered ? 0xFFFFFF : 0xBBBBBB, false);
+        g.text(font, label, labelX, y + 4, hovered ? 0xFFFFFF : 0xBBBBBB, false);
 
         if (!entry.detail().isEmpty()) {
             String detail = fit(font, entry.detail(), x + w - 6 - detailX);
-            g.drawString(font, detail, detailX, y + 4, 0x777777, false);
+            g.text(font, detail, detailX, y + 4, 0x777777, false);
         }
 
         if (hovered) hoveredEntry = entry;
@@ -198,7 +198,7 @@ public class SearchableNbtCriterionList extends AbstractSearchableList<Searchabl
      * where the whole thing is readable, on every tab.
      */
     @Override
-    protected void afterRender(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    protected void afterRender(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         Option entry = hoveredEntry;
         hoveredEntry = null;
 

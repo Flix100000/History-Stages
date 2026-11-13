@@ -1,4 +1,8 @@
 package net.bananemdnsa.historystages.client.editor;
+import net.minecraft.client.input.CharacterEvent;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonInfo;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.bananemdnsa.historystages.api.editor.widget.CountInputScreen;
 import net.bananemdnsa.historystages.client.editor.dialog.ScoreboardDepScreen;
 import net.bananemdnsa.historystages.client.editor.toast.EditorToastHandler;
@@ -45,7 +49,7 @@ import net.bananemdnsa.historystages.data.dependency.RequirementTypes;
 import net.bananemdnsa.historystages.api.stage.StageScope;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
@@ -364,7 +368,7 @@ public class DependencyEditorScreen extends Screen {
      * <p>Not folded into the overlay rendering above: that one draws whatever currently holds
      * input, and this popup deliberately outlives that by the length of its own animation.
      */
-    private void renderLogicPicker(GuiGraphics g, int mouseX, int mouseY) {
+    private void renderLogicPicker(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         if (logicPicker != null) logicPicker.render(g, this.font, mouseX, mouseY);
     }
 
@@ -420,23 +424,31 @@ public class DependencyEditorScreen extends Screen {
                 : Component.translatable("editor.historystages.dep.add_group"));
     }
 
-    private void drawSmallText(GuiGraphics g, String text, int x, int y, int color) {
-        g.pose().pushPose();
-        g.pose().translate(x, y, 0);
-        g.pose().scale(SMALL_SCALE, SMALL_SCALE, 1.0f);
-        g.drawString(this.font, text, 0, 0, color, false);
-        g.pose().popPose();
+    private void drawSmallText(GuiGraphicsExtractor g, String text, int x, int y, int color) {
+        g.pose().pushMatrix();
+        g.pose().translate(x, y);
+        g.pose().scale(SMALL_SCALE, SMALL_SCALE);
+        g.text(this.font, text, 0, 0, color, false);
+        g.pose().popMatrix();
     }
 
     // --- Rendering ---
 
     @Override
-    public void renderBackground(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+    public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        renderBackground(graphics, mouseX, mouseY, partialTick);
+    }
+
+    public void renderBackground(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
         // No-op — we draw our own background in render() and want to avoid 1.21's menu blur shader
     }
 
     @Override
-    public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        render(graphics, mouseX, mouseY, partialTick);
+    }
+
+    public void render(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
         g.fill(0, 0, this.width, this.height, 0xE0101010);
 
         smoothScroll.approach((float) scrollOffset, Timing.SCROLL_HALF_LIFE_MS);
@@ -448,7 +460,7 @@ public class DependencyEditorScreen extends Screen {
         String currentTooltipKey = null;
         String currentTooltipText = null;
 
-        g.drawCenteredString(this.font, t("editor.historystages.dep.title"), this.width / 2, 8, 0xFFCC00);
+        g.centeredText(this.font, t("editor.historystages.dep.title"), this.width / 2, 8, 0xFFCC00);
         g.fill(10, HEADER_HEIGHT - 4, this.width - 10, HEADER_HEIGHT - 3, 0xFF555555);
 
         // Left panel
@@ -471,7 +483,7 @@ public class DependencyEditorScreen extends Screen {
             g.fill(LEFT_PANEL_W + 10, contentTop, this.width - 5, contentTop + 1, 0xFF555555);
             renderTabContent(g, mouseX, mouseY);
         } else {
-            g.drawCenteredString(this.font, t("editor.historystages.dep.no_groups"), this.width / 2, this.height / 2,
+            g.centeredText(this.font, t("editor.historystages.dep.no_groups"), this.width / 2, this.height / 2,
                     0x888888);
         }
 
@@ -488,11 +500,11 @@ public class DependencyEditorScreen extends Screen {
             drawSmallText(g, unsavedLabel, dotX - unsavedW + 5, this.height - 18, 0xFFCC00);
         }
 
-        super.render(g, mouseX, mouseY, partialTick);
+        super.extractRenderState(g, mouseX, mouseY, partialTick);
 
         // Overlays (z-ordered on top)
-        g.pose().pushPose();
-        g.pose().translate(0, 0, 200);
+        g.pose().pushMatrix();
+        g.pose().translate(0, 0);
 
         if (addonPicker() != null)
             addonPicker().render(g, this.font, mouseX, mouseY);
@@ -503,7 +515,7 @@ public class DependencyEditorScreen extends Screen {
         // Context menu on top of everything
         contextMenu.render(g, this.font, mouseX, mouseY);
 
-        g.pose().popPose();
+        g.pose().popMatrix();
 
         // Content tooltips (from tab content area)
         if (contentTooltip != null && currentTooltipKey == null) {
@@ -525,7 +537,7 @@ public class DependencyEditorScreen extends Screen {
         }
     }
 
-    private String[] renderGroupList(GuiGraphics g, int mouseX, int mouseY) {
+    private String[] renderGroupList(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         String[] tooltip = null;
         int y = HEADER_HEIGHT + 4;
         for (int i = 0; i < groups.size(); i++) {
@@ -552,7 +564,7 @@ public class DependencyEditorScreen extends Screen {
                 g.fill(8, y, 10, y + 28, (accentAlpha << 24) | 0xFFCC00);
             }
 
-            g.drawString(this.font, t("editor.historystages.dep.group", i + 1), 14, y + 3,
+            g.text(this.font, t("editor.historystages.dep.group", i + 1), 14, y + 3,
                     selected ? 0xFFFFFF : 0xCCCCCC, false);
 
             // AND/OR picker
@@ -567,7 +579,7 @@ public class DependencyEditorScreen extends Screen {
             int badgeColor = group.isOr() ? (badgeHovered ? 0xFF77CCFF : 0xFF55AAFF)
                     : (badgeHovered ? 0xFF77FF77 : 0xFF55FF55);
             g.fill(badgeX, y + 2, badgeX + badgeW, y + LOGIC_BADGE_H + 2, badgeBg);
-            g.drawString(this.font, logic, badgeX + 3, y + 3, badgeColor, false);
+            g.text(this.font, logic, badgeX + 3, y + 3, badgeColor, false);
             DropdownChrome.drawCaret(g, badgeX + badgeW - 7, y + LOGIC_BADGE_H / 2 + 1,
                     badgeHovered ? 0xFFDDDDDD : 0xFF999999,
                     logicPickerGroup == i && logicPicker != null && logicPicker.isVisible()
@@ -585,7 +597,7 @@ public class DependencyEditorScreen extends Screen {
         return tooltip;
     }
 
-    private String[] renderTabs(GuiGraphics g, int mouseX, int mouseY) {
+    private String[] renderTabs(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         String[] tabKeys = getTabKeys();
         String[] tooltipKeys = getTabTooltipKeys();
         String[] result = null;
@@ -686,7 +698,7 @@ public class DependencyEditorScreen extends Screen {
      * <p>Built once and handed to render and to every input hook, so a hit test and the drawing it
      * refers to cannot drift apart.
      */
-    private TabRenderContext renderContext(GuiGraphics g, int mouseX, int mouseY) {
+    private TabRenderContext renderContext(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         return new TabRenderContext(g, this.font, contentX(),
                 CONTENT_TOP - Math.round(smoothScroll.value()), contentWidth(),
                 CONTENT_TOP, contentBottom(), mouseX, mouseY,
@@ -699,7 +711,7 @@ public class DependencyEditorScreen extends Screen {
                 contentWidth(), CONTENT_TOP, contentBottom(), mouseX, mouseY);
     }
 
-    private void renderTabContent(GuiGraphics g, int mouseX, int mouseY) {
+    private void renderTabContent(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         DependencyGroup group = currentGroup();
         int rightX = contentX();
         int rightW = contentWidth();
@@ -751,7 +763,7 @@ public class DependencyEditorScreen extends Screen {
 
             int addG = (int) (0x88 + addProgress * 0x77);
             int addRB = (int) (0x33 + addProgress * 0x22);
-            g.drawString(this.font, addText, rightX + 6, addY + 7, (0xFF << 24) | (addRB << 16) | (addG << 8) | addRB,
+            g.text(this.font, addText, rightX + 6, addY + 7, (0xFF << 24) | (addRB << 16) | (addG << 8) | addRB,
                     false);
         }
 
@@ -802,7 +814,7 @@ public class DependencyEditorScreen extends Screen {
      * a requirement without an editor: it gates but cannot be edited in game, and saying so beats
      * an empty panel.
      */
-    private int[] renderBuiltInEntries(GuiGraphics g, int mouseX, int mouseY, int rightX, int rightW,
+    private int[] renderBuiltInEntries(GuiGraphicsExtractor g, int mouseX, int mouseY, int rightX, int rightW,
             int y, int contentY, int contentBottom, DependencyGroup group) {
         return renderAddonEntries(g, mouseX, mouseY, rightX, rightW, y, contentY, contentBottom);
     }
@@ -862,9 +874,9 @@ public class DependencyEditorScreen extends Screen {
 
     // --- Tooltip ---
 
-    private void renderTooltip(GuiGraphics g, String text, int mouseX, int mouseY) {
-        g.pose().pushPose();
-        g.pose().translate(0, 0, 400);
+    private void renderTooltip(GuiGraphicsExtractor g, String text, int mouseX, int mouseY) {
+        g.pose().pushMatrix();
+        g.pose().translate(0, 0);
 
         List<String> lines = new ArrayList<>();
         for (String segment : text.split("\n")) {
@@ -906,15 +918,19 @@ public class DependencyEditorScreen extends Screen {
 
         int tyy = ty2 + 3;
         for (String l : lines) {
-            g.drawString(this.font, l, tx + 4, tyy, 0xCCCCCC, false);
+            g.text(this.font, l, tx + 4, tyy, 0xCCCCCC, false);
             tyy += 10;
         }
-        g.pose().popPose();
+        g.pose().popMatrix();
     }
 
     // --- Click handling ---
 
     @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        return mouseClicked(event.x(), event.y(), event.button());
+    }
+
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         // Context menu first
         if (contextMenu.isVisible()) {
@@ -1056,7 +1072,7 @@ public class DependencyEditorScreen extends Screen {
             handleContentClick(mx, my, button);
         }
 
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)), false);
     }
 
     private void handleContentClick(int mx, int my, int button) {
@@ -1282,9 +1298,9 @@ public class DependencyEditorScreen extends Screen {
      * path is considered. A requirement can be registered without an editor, which means it gates
      * but cannot be edited in game — and saying so is better than an empty panel.
      */
-    private int[] renderAddonEntries(GuiGraphics g, int mouseX, int mouseY, int rightX, int rightW, int y,
+    private int[] renderAddonEntries(GuiGraphicsExtractor g, int mouseX, int mouseY, int rightX, int rightW, int y,
             int contentY, int contentBottom) {
-        g.drawString(this.font, t("editor.historystages.dep.no_editor"), rightX, y + 4,
+        g.text(this.font, t("editor.historystages.dep.no_editor"), rightX, y + 4,
                 0xFF888888, false);
         return new int[] { y, -1 };
     }
@@ -1313,11 +1329,11 @@ public class DependencyEditorScreen extends Screen {
                 }
                 if (!stack.isEmpty()) {
                     row.leading(16, (g, x, y, w, h) -> {
-                        g.pose().pushPose();
-                        g.pose().translate(x, y, 0);
-                        g.pose().scale(SMALL_SCALE, SMALL_SCALE, 1);
-                        g.renderItem(stack, 0, 0);
-                        g.pose().popPose();
+                        g.pose().pushMatrix();
+                        g.pose().translate(x, y);
+                        g.pose().scale(SMALL_SCALE, SMALL_SCALE);
+                        g.item(stack, 0, 0);
+                        g.pose().popMatrix();
                     });
                 }
             }
@@ -1625,6 +1641,10 @@ public class DependencyEditorScreen extends Screen {
     }
 
     @Override
+    public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+        return mouseDragged(event.x(), event.y(), event.button(), dragX, dragY);
+    }
+
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
         if (screenOverlay() != null)
             return screenOverlay().mouseDragged(mouseX, mouseY);
@@ -1639,10 +1659,14 @@ public class DependencyEditorScreen extends Screen {
             updateContentScrollFromMouse(mouseY, contentY, contentBottom);
             return true;
         }
-        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+        return super.mouseDragged(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)), dragX, dragY);
     }
 
     @Override
+    public boolean mouseReleased(MouseButtonEvent event) {
+        return mouseReleased(event.x(), event.y(), event.button());
+    }
+
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
         if (draggingContentScrollbar) {
             draggingContentScrollbar = false;
@@ -1655,10 +1679,14 @@ public class DependencyEditorScreen extends Screen {
         DependencyTab releasedTab = activeAddonTab();
         if (releasedTab != null && releasedTab.mouseReleased(inputContext(mouseX, mouseY), button))
             return true;
-        return super.mouseReleased(mouseX, mouseY, button);
+        return super.mouseReleased(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)));
     }
 
     @Override
+    public boolean keyPressed(KeyEvent event) {
+        return keyPressed(event.key(), event.scancode(), event.modifiers());
+    }
+
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (screenOverlay() != null)
             return screenOverlay().keyPressed(keyCode);
@@ -1667,10 +1695,14 @@ public class DependencyEditorScreen extends Screen {
         DependencyTab keyTab = activeAddonTab();
         if (keyTab != null && keyTab.keyPressed(keyCode, scanCode, modifiers))
             return true;
-        return super.keyPressed(keyCode, scanCode, modifiers);
+        return super.keyPressed(new KeyEvent(keyCode, scanCode, modifiers));
     }
 
     @Override
+    public boolean charTyped(CharacterEvent event) {
+        return charTyped((char) event.codepoint(), 0);
+    }
+
     public boolean charTyped(char codePoint, int modifiers) {
         if (screenOverlay() != null)
             return screenOverlay().charTyped(codePoint);
@@ -1679,7 +1711,7 @@ public class DependencyEditorScreen extends Screen {
         DependencyTab charTab = activeAddonTab();
         if (charTab != null && charTab.charTyped(codePoint, modifiers))
             return true;
-        return super.charTyped(codePoint, modifiers);
+        return super.charTyped(new CharacterEvent(codePoint));
     }
 
     @Override

@@ -2,7 +2,7 @@ package net.bananemdnsa.historystages.client.editor.widget;
 
 import net.bananemdnsa.historystages.client.editor.anim.Timing;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,7 +15,7 @@ import java.util.List;
  * to restart when the cursor moves from one element to the next, and that is only visible to
  * whoever is tracking both.
  *
- * <p>Deliberately not {@code GuiGraphics.renderTooltip}: the vanilla tooltip has its own border,
+ * <p>Deliberately not {@code GuiGraphicsExtractor.renderTooltip}: the vanilla tooltip has its own border,
  * gradient and instant appearance, and next to the editor's panels it reads as a different
  * application.
  */
@@ -45,7 +45,7 @@ public final class EditorTooltip {
      * @param key  identity of the hovered element, or null when nothing is hovered
      * @param text the text to show; ignored when {@code key} is null
      */
-    public void render(GuiGraphics g, Font font, String key, String text,
+    public void render(GuiGraphicsExtractor g, Font font, String key, String text,
                        int mouseX, int mouseY, int screenW, int screenH) {
         if (key == null || text == null || text.isEmpty()) {
             hoveredKey = null;
@@ -69,10 +69,10 @@ public final class EditorTooltip {
      * <p>{@code text} may contain {@code \n} to force a line break, and the usual section-sign
      * colour codes.
      */
-    public static void draw(GuiGraphics g, Font font, String text,
+    public static void draw(GuiGraphicsExtractor g, Font font, String text,
                             int mouseX, int mouseY, int screenW, int screenH) {
-        g.pose().pushPose();
-        g.pose().translate(0, 0, TOOLTIP_Z);
+        g.pose().pushMatrix();
+        g.pose().translate(0, 0);
 
         List<String> lines = wrap(font, text);
         int w = 0;
@@ -93,11 +93,11 @@ public final class EditorTooltip {
 
         int ty = y + PAD_Y;
         for (String line : lines) {
-            g.drawString(font, line, x + PAD_X, ty, TEXT, false);
+            g.text(font, line, x + PAD_X, ty, TEXT, false);
             ty += LINE_H;
         }
 
-        g.pose().popPose();
+        g.pose().popMatrix();
     }
 
     /**

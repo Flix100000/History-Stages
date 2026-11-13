@@ -3,7 +3,7 @@ package net.bananemdnsa.historystages.client.editor.widget.list;
 import net.bananemdnsa.historystages.api.editor.widget.AbstractSearchableList;
 
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -80,7 +80,7 @@ public class SearchableFluidList extends AbstractSearchableList<String> {
     }
 
     @Override
-    protected void renderRow(GuiGraphics g, Font font, String entry,
+    protected void renderRow(GuiGraphicsExtractor g, Font font, String entry,
                              int x, int y, int w, int h, boolean hovered, int rowIndex) {
         drawRowText(g, font, entry, x, y, w, hovered);
     }

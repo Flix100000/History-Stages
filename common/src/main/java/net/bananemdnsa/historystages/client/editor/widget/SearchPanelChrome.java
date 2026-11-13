@@ -2,7 +2,7 @@ package net.bananemdnsa.historystages.client.editor.widget;
 
 import net.bananemdnsa.historystages.api.editor.widget.SearchBar;
 
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.Font;
 import net.minecraft.network.chat.Component;
 
@@ -61,7 +61,7 @@ public final class SearchPanelChrome {
     }
 
     /** Draws the standard outer-border / inner-fill panel frame. */
-    public static void renderFrame(GuiGraphics g, int x, int y, int w, int h) {
+    public static void renderFrame(GuiGraphicsExtractor g, int x, int y, int w, int h) {
         g.fill(x - 2, y - 2, x + w + 2, y + h + 2, 0xFF3D3D3D);
         g.fill(x, y, x + w, y + h, 0xFF1A1A1A);
     }
@@ -70,7 +70,7 @@ public final class SearchPanelChrome {
      * Draws the standard confirm button — subtle fill that warms towards the accent
      * colour as {@code hoverProgress} goes 0 → 1, with a solid accent underline.
      */
-    public static void renderStyledButton(GuiGraphics g, Font font, int x, int y, int w, int h,
+    public static void renderStyledButton(GuiGraphicsExtractor g, Font font, int x, int y, int w, int h,
                                           String text, float hoverProgress) {
         int bgAlpha = (int) (0x30 + hoverProgress * 0x20);
         int bgR = 0xFF;
@@ -87,7 +87,7 @@ public final class SearchPanelChrome {
 
         int textGray = (int) (0xCC + hoverProgress * 0x33);
         int textColor = (0xFF << 24) | (textGray << 16) | (textGray << 8) | textGray;
-        g.drawString(font, text, x + (w - font.width(text)) / 2, y + (h - 8) / 2, textColor, false);
+        g.text(font, text, x + (w - font.width(text)) / 2, y + (h - 8) / 2, textColor, false);
     }
 
     /**

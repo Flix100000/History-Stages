@@ -8,7 +8,7 @@ import net.bananemdnsa.historystages.client.editor.anim.Ease;
 import net.bananemdnsa.historystages.client.editor.anim.Fade;
 import net.bananemdnsa.historystages.client.editor.anim.Timing;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 /**
  * A row of segments of which exactly one is chosen — the editor's on/off switch with more than
@@ -116,7 +116,7 @@ public final class SegmentBar {
      *                 Hover is the caller's business — it passes {@code -1} for a segment nobody
      *                 can open, which is also what keeps the hover ramp from warming it up.
      */
-    public static void draw(GuiGraphics g, Font font, int x, int y, List<String> labels,
+    public static void draw(GuiGraphicsExtractor g, Font font, int x, int y, List<String> labels,
                             int selected, State state, boolean[] disabled) {
         int[] widths = measure(font, labels);
         int segW = SegmentBarGeometry.segmentWidth(widths);
@@ -158,7 +158,7 @@ public final class SegmentBar {
                     ? TEXT_DISABLED
                     : Fade.mix(TEXT_IDLE, TEXT_HOVER, state.hoverAt(i));
             int colour = Fade.mix(idle, TEXT_ON_FILL, covered);
-            g.drawString(font, labels.get(i), segX + (segW - widths[i]) / 2, textY, colour, false);
+            g.text(font, labels.get(i), segX + (segW - widths[i]) / 2, textY, colour, false);
         }
     }
 

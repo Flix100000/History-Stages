@@ -7,7 +7,7 @@ import net.bananemdnsa.historystages.client.editor.anim.Timing;
 import net.bananemdnsa.historystages.client.editor.widget.dropdown.DropdownChrome;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.sounds.SoundEvents;
 
@@ -128,7 +128,7 @@ public final class ChoiceOverlay implements PickerOverlay {
     }
 
     @Override
-    public void render(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    public void render(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         if (!visible) return;
         float t = Ease.outCubic(reveal.ramp(1.0f, Timing.MODAL_MS));
 
@@ -147,7 +147,7 @@ public final class ChoiceOverlay implements PickerOverlay {
         g.fill(x - 1, y - 1, x + w + 1, y + h + 1, Fade.alpha(PANEL_BORDER, t));
         g.fill(x, y, x + w, y + h, Fade.alpha(PANEL_BG, t));
         g.fill(x, y, x + w, y + 1, Fade.rgba(ACCENT_GOLD, t));
-        g.drawString(font, title, x + (w - font.width(title)) / 2, y + 8, Fade.rgba(TITLE, t), false);
+        g.text(font, title, x + (w - font.width(title)) / 2, y + 8, Fade.rgba(TITLE, t), false);
         g.fill(x + PAD, y + HEADER_H - 5, x + w - PAD, y + HEADER_H - 4, Fade.alpha(SEPARATOR, t));
 
         for (int i = 0; i < options.size(); i++) {
@@ -158,7 +158,7 @@ public final class ChoiceOverlay implements PickerOverlay {
             DropdownChrome.drawRowHighlight(g, x + 1, rowY, w - 2, ROW_H, hp);
 
             Option option = options.get(i);
-            g.drawString(font, option.label(), x + PAD + Math.round(hp * 2.0f),
+            g.text(font, option.label(), x + PAD + Math.round(hp * 2.0f),
                     rowY + (ROW_H - 8) / 2, Fade.rgba(LABEL, t), false);
             if (option.opensMore()) {
                 drawChevron(g, x + w - PAD, rowY + ROW_H / 2 - 2,
@@ -172,7 +172,7 @@ public final class ChoiceOverlay implements PickerOverlay {
     }
 
     /** The 3x5 right-pointing arrow that marks a row leading to another step. */
-    private static void drawChevron(GuiGraphics g, int x, int y, int color) {
+    private static void drawChevron(GuiGraphicsExtractor g, int x, int y, int color) {
         g.fill(x, y, x + 1, y + 5, color);
         g.fill(x + 1, y + 1, x + 2, y + 4, color);
         g.fill(x + 2, y + 2, x + 3, y + 3, color);

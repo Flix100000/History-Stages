@@ -5,7 +5,7 @@ import net.bananemdnsa.historystages.client.editor.anim.Ease;
 import net.bananemdnsa.historystages.client.editor.anim.Fade;
 import net.bananemdnsa.historystages.client.editor.anim.Timing;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.sounds.SoundEvents;
@@ -75,7 +75,7 @@ public class ContextMenu {
         return visible;
     }
 
-    public void render(GuiGraphics guiGraphics, Font font, int mouseX, int mouseY) {
+    public void render(GuiGraphicsExtractor guiGraphics, Font font, int mouseX, int mouseY) {
         if (!visible) return;
 
         float fade = Ease.outCubic(open.ramp(1.0f, Timing.POPUP_MS));
@@ -84,8 +84,8 @@ public class ContextMenu {
         // Drop the last few pixels into place while fading, so the menu reads as arriving
         // from the click rather than blinking into existence.
         int slide = Math.round((1.0f - fade) * SLIDE_PX);
-        guiGraphics.pose().pushPose();
-        guiGraphics.pose().translate(0.0f, slide, 0.0f);
+        guiGraphics.pose().pushMatrix();
+        guiGraphics.pose().translate(0.0f, slide);
 
         guiGraphics.fill(x, y, x + menuWidth, y + menuHeight, Fade.rgba(0x1A1A1A, fade));
 
@@ -117,11 +117,11 @@ public class ContextMenu {
             // Hovered entries nudge right, following the highlight bar.
             int textX = x + PADDING + 2 + Math.round(hp * 2.0f);
             int textGrey = Math.round(0xCC + hp * 0x33);
-            guiGraphics.drawString(font, entries.get(i).label, textX, entryY + 4,
+            guiGraphics.text(font, entries.get(i).label, textX, entryY + 4,
                     Fade.alpha(Fade.grey(textGrey), fade), false);
         }
 
-        guiGraphics.pose().popPose();
+        guiGraphics.pose().popMatrix();
     }
 
     /**

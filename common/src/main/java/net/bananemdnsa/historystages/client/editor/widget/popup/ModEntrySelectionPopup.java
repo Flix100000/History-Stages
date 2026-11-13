@@ -5,7 +5,7 @@ import net.bananemdnsa.historystages.client.editor.anim.Ease;
 import net.bananemdnsa.historystages.client.editor.anim.Timing;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
@@ -121,7 +121,7 @@ public class ModEntrySelectionPopup {
         return panelX + panelW - PADDING - CHECKBOX_SIZE - 30;
     }
 
-    public void render(GuiGraphics guiGraphics, Font font, int mouseX, int mouseY) {
+    public void render(GuiGraphicsExtractor guiGraphics, Font font, int mouseX, int mouseY) {
         if (!visible) return;
 
         int visibleRows = Math.min(VISIBLE_ROWS, entries.size());
@@ -138,12 +138,12 @@ public class ModEntrySelectionPopup {
         if (font.width(title) > panelW - PADDING * 2 - 60) {
             title = font.plainSubstrByWidth(title, panelW - PADDING * 2 - 66) + "...";
         }
-        guiGraphics.drawString(font, title, panelX + PADDING, panelY + 7, 0xFFFFFF, false);
+        guiGraphics.text(font, title, panelX + PADDING, panelY + 7, 0xFFFFFF, false);
 
         int cbX = getCbX();
         String addLabel = Component.translatable("editor.historystages.popup.add").getString();
         int addLabelX = cbX + (CHECKBOX_SIZE - font.width(addLabel)) / 2;
-        guiGraphics.drawString(font, addLabel, addLabelX, panelY + 7, 0x999999, false);
+        guiGraphics.text(font, addLabel, addLabelX, panelY + 7, 0x999999, false);
 
         // Select-all checkbox below the label (same row as entity popup's select-all)
         int selectAllY = panelY + 20;
@@ -185,18 +185,18 @@ public class ModEntrySelectionPopup {
                     float pos = scrollProg % cycle;
                     int scrollOff = pos <= maxMarquee ? (int) pos : (int) (cycle - pos);
                     guiGraphics.enableScissor(textStartX, rowY, textStartX + textAvailW, rowY + ROW_HEIGHT);
-                    guiGraphics.drawString(font, text, textStartX - scrollOff, textY, textColor, false);
+                    guiGraphics.text(font, text, textStartX - scrollOff, textY, textColor, false);
                     guiGraphics.disableScissor();
                 } else {
                     guiGraphics.enableScissor(textStartX, rowY, textStartX + textAvailW, rowY + ROW_HEIGHT);
-                    guiGraphics.drawString(font, text, textStartX, textY, textColor, false);
+                    guiGraphics.text(font, text, textStartX, textY, textColor, false);
                     guiGraphics.disableScissor();
                 }
             } else if (textW > textAvailW) {
                 String truncated = font.plainSubstrByWidth(text, textAvailW - 8) + "...";
-                guiGraphics.drawString(font, truncated, textStartX, textY, textColor, false);
+                guiGraphics.text(font, truncated, textStartX, textY, textColor, false);
             } else {
-                guiGraphics.drawString(font, text, textStartX, textY, textColor, false);
+                guiGraphics.text(font, text, textStartX, textY, textColor, false);
             }
 
             // Checkbox
@@ -244,7 +244,7 @@ public class ModEntrySelectionPopup {
                 skipX, footerY + 5, btnW, btnH, skipHoverProgressValue);
     }
 
-    private void renderCheckbox(GuiGraphics g, int x, int y, boolean checked, int mx, int my, String hoverKey) {
+    private void renderCheckbox(GuiGraphicsExtractor g, int x, int y, boolean checked, int mx, int my, String hoverKey) {
         boolean hovered = mx >= x && mx < x + CHECKBOX_SIZE && my >= y && my < y + CHECKBOX_SIZE;
         float hp = Ease.outCubic(checkboxHoverProgress.computeIfAbsent(hoverKey, k -> new Anim())
                 .ramp(hovered, Timing.HOVER_IN_MS, Timing.HOVER_OUT_MS));
@@ -272,7 +272,7 @@ public class ModEntrySelectionPopup {
         }
     }
 
-    private void renderStyledButton(GuiGraphics g, Font font, String text, int x, int y, int w, int h, float hp) {
+    private void renderStyledButton(GuiGraphicsExtractor g, Font font, String text, int x, int y, int w, int h, float hp) {
         int bgAlpha = (int) (0x30 + hp * 0x20);
         int bgG = (int) (0xFF - hp * 0x33);
         int bgB = (int) (0xFF - hp * 0xFF);
@@ -283,7 +283,7 @@ public class ModEntrySelectionPopup {
         g.fill(x, y, x + 1, y + h, 0x15FFFFFF);
         g.fill(x + w - 1, y, x + w, y + h, 0x15FFFFFF);
         int textGray = (int) (0xCC + hp * 0x33);
-        g.drawString(font, text, x + (w - font.width(text)) / 2, y + (h - 8) / 2,
+        g.text(font, text, x + (w - font.width(text)) / 2, y + (h - 8) / 2,
                 (0xFF << 24) | (textGray << 16) | (textGray << 8) | textGray, false);
     }
 

@@ -11,7 +11,7 @@ import net.bananemdnsa.historystages.api.editor.widget.ToggleControl;
 import net.bananemdnsa.historystages.data.lock.ZoneCoordinateParser;
 import net.bananemdnsa.historystages.data.lock.ZoneShape;
 import net.bananemdnsa.historystages.data.lock.ZoneShapeType;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
@@ -94,11 +94,11 @@ public class ZoneShapeEditScreen extends AbstractInputScreen {
     }
 
     @Override
-    protected void renderExtraContent(GuiGraphics g, int x, int y, int w, int mouseX, int mouseY) {
+    protected void renderExtraContent(GuiGraphicsExtractor g, int x, int y, int w, int mouseX, int mouseY) {
         if (!offersFullHeight()) return;
 
         Component label = Component.translatable("editor.historystages.zone.field.full_height");
-        g.drawString(this.font, label, x, y + 3, LABEL_GREY, false);
+        g.text(this.font, label, x, y + 3, LABEL_GREY, false);
 
         toggleX = x + w - ToggleControl.width(this.font);
         toggleY = y;

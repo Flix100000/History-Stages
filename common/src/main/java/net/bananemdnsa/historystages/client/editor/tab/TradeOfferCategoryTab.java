@@ -12,7 +12,7 @@ import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.TradeOfferEntry;
 import net.bananemdnsa.historystages.client.scroll.OpenScrollNames;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -109,7 +109,7 @@ public final class TradeOfferCategoryTab extends AbstractCategoryTab {
         return new EditorTab.LeadingArt(TradeRowGeometry.WIDTH, (g, x, y, w, h) -> {
             drawStackAt(g, offer.takesAId(), x + TradeRowGeometry.priceIconX(0), y);
             drawStackAt(g, offer.takesBId(), x + TradeRowGeometry.priceIconX(1), y);
-            g.drawString(Minecraft.getInstance().font, "→",
+            g.text(Minecraft.getInstance().font, "→",
                     x + TradeRowGeometry.arrowX(), y + 2, 0xFF6A6A6A, false);
             drawStackAt(g, offer.givesId(), x + TradeRowGeometry.wareIconX(), y);
         });
@@ -140,15 +140,15 @@ public final class TradeOfferCategoryTab extends AbstractCategoryTab {
         return offer.hasNbt() ? "§6[NBT] " + tag : tag;
     }
 
-    private static void drawStackAt(GuiGraphics g, @Nullable String itemId, int x, int y) {
+    private static void drawStackAt(GuiGraphicsExtractor g, @Nullable String itemId, int x, int y) {
         if (itemId == null) return;
         ItemStack stack = stackOf(itemId);
         if (stack.isEmpty()) return;
-        g.pose().pushPose();
-        g.pose().translate(x, y, 0);
-        g.pose().scale(0.75f, 0.75f, 1.0f);
-        g.renderItem(stack, 0, 0);
-        g.pose().popPose();
+        g.pose().pushMatrix();
+        g.pose().translate(x, y);
+        g.pose().scale(0.75f, 0.75f);
+        g.item(stack, 0, 0);
+        g.pose().popMatrix();
     }
 
     private static ItemStack stackOf(String itemId) {

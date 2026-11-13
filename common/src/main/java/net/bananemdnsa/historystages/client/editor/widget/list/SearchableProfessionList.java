@@ -12,7 +12,7 @@ import net.bananemdnsa.historystages.client.ClientTradeGoods;
 import net.bananemdnsa.historystages.client.scroll.OpenScrollNames;
 import net.bananemdnsa.historystages.data.lock.TradePreview;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -75,7 +75,7 @@ public class SearchableProfessionList extends AbstractSearchableList<String> {
     }
 
     @Override
-    protected void renderRow(GuiGraphics g, Font font, String entry,
+    protected void renderRow(GuiGraphicsExtractor g, Font font, String entry,
                              int x, int y, int w, int h, boolean hovered, int rowIndex) {
         String name = displayName(entry);
         drawRowText(g, font, name.isEmpty() ? entry : name + " §8(" + entry + ")", x, y, w, hovered);

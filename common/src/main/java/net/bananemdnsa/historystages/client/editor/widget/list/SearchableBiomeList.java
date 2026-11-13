@@ -4,7 +4,7 @@ import net.bananemdnsa.historystages.api.editor.widget.AbstractSearchableList;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
@@ -102,13 +102,13 @@ public class SearchableBiomeList extends AbstractSearchableList<String> {
     }
 
     @Override
-    protected void renderRow(GuiGraphics g, Font font, String entry,
+    protected void renderRow(GuiGraphicsExtractor g, Font font, String entry,
                              int x, int y, int w, int h, boolean hovered, int rowIndex) {
         drawRowText(g, font, activeTab == 1 ? "#" + entry : entry, x, y, w, hovered);
     }
 
     @Override
-    protected void renderSelectedRow(GuiGraphics g, Font font, String value, String entry,
+    protected void renderSelectedRow(GuiGraphicsExtractor g, Font font, String value, String entry,
                                      int x, int y, int w, int h, boolean hovered, int rowIndex) {
         // The frozen value already carries the "#" if it was picked on the Tags tab —
         // activeTab has since moved on and can't be trusted to re-derive it.

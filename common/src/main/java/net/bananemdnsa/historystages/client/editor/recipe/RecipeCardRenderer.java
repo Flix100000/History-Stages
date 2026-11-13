@@ -6,7 +6,7 @@ import net.bananemdnsa.historystages.api.editor.RecipeTypeMeta;
 import net.bananemdnsa.historystages.client.editor.widget.FluidIcon;
 
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -64,7 +64,7 @@ public final class RecipeCardRenderer {
      * @param typeId   registry id of the recipe's type, for the accent and the name
      * @param recipeId full recipe id; only its namespace is drawn, the rest belongs in a tooltip
      */
-    public static void render(GuiGraphics g, Font font, RecipeShape shape, ItemStack result,
+    public static void render(GuiGraphicsExtractor g, Font font, RecipeShape shape, ItemStack result,
                               String fluidResult, List<RecipeFluids.Ref> fluids,
                               String typeId, String recipeId,
                               int x, int y, int width, boolean hovered, boolean selected) {
@@ -79,7 +79,7 @@ public final class RecipeCardRenderer {
      *                  {@link #MARK_ONLY_LOCKED} draws a solid gold edge, {@link #MARK_ALTERNATIVE}
      *                  a dashed amber one
      */
-    public static void render(GuiGraphics g, Font font, RecipeShape shape, ItemStack result,
+    public static void render(GuiGraphicsExtractor g, Font font, RecipeShape shape, ItemStack result,
                               String fluidResult, List<RecipeFluids.Ref> fluids,
                               String typeId, String recipeId,
                               int x, int y, int width, boolean hovered, boolean selected,
@@ -90,7 +90,7 @@ public final class RecipeCardRenderer {
 
         g.fill(x, y, x + width, y + height, hovered ? CARD_BG_HOVER : CARD_BG);
         if (selected) {
-            g.renderOutline(x, y, width, height, SELECTED_OUTLINE);
+            g.outline(x, y, width, height, SELECTED_OUTLINE);
         }
         g.fill(x, y, x + ACCENT_WIDTH, y + height, meta.accentColor());
 
@@ -98,7 +98,7 @@ public final class RecipeCardRenderer {
 
         ItemStack workstation = resolveWorkstation(meta);
         if (!workstation.isEmpty()) {
-            g.renderItem(workstation, workstationLeft(x), midY - WORKSTATION_SIZE / 2);
+            g.item(workstation, workstationLeft(x), midY - WORKSTATION_SIZE / 2);
         }
 
         int inputLeft = inputLeft(x);
@@ -108,7 +108,7 @@ public final class RecipeCardRenderer {
             int sy = inputTop + layout.slotY(i);
             g.fill(sx, sy, sx + RecipeCardLayout.SLOT_SIZE, sy + RecipeCardLayout.SLOT_SIZE, SLOT_BG);
             ItemStack stack = shape.slots().get(i);
-            if (!stack.isEmpty()) g.renderItem(stack, sx + 1, sy + 1);
+            if (!stack.isEmpty()) g.item(stack, sx + 1, sy + 1);
             if (slotMarks != null && i < slotMarks.length) drawMark(g, sx, sy, slotMarks[i]);
         }
 
@@ -129,14 +129,14 @@ public final class RecipeCardRenderer {
             }
         }
 
-        g.drawString(font, "→", inputLeft + layout.contentWidth() + GAP, midY - 4, TEXT_DIM, false);
+        g.text(font, "→", inputLeft + layout.contentWidth() + GAP, midY - 4, TEXT_DIM, false);
 
         int resultLeft = resultLeft(x, layout);
         g.fill(resultLeft, midY - RecipeCardLayout.RESULT_SIZE / 2,
                 resultLeft + RecipeCardLayout.RESULT_SIZE, midY + RecipeCardLayout.RESULT_SIZE / 2, SLOT_BG);
         // 22px slot, 16px icon: (22 - 16) / 2 = 3px margin on every side for a true center.
         if (!result.isEmpty()) {
-            g.renderItem(result, resultLeft + 3, midY - 8);
+            g.item(result, resultLeft + 3, midY - 8);
         } else if (fluidResult != null && !fluidResult.isEmpty()) {
             // A recipe whose only output is a fluid. Without this its result slot sits empty and
             // the card looks like it makes nothing.
@@ -144,21 +144,21 @@ public final class RecipeCardRenderer {
         } else {
             // Nothing here is known to be the output. An empty slot would read as a fault in the
             // recipe; this says the honest thing, which is that we could not tell.
-            g.drawString(font, "?", resultLeft + RecipeCardLayout.RESULT_SIZE / 2 - 2, midY - 4,
+            g.text(font, "?", resultLeft + RecipeCardLayout.RESULT_SIZE / 2 - 2, midY - 4,
                     UNKNOWN_SIDE, false);
         }
 
         String typeName = meta.nameLangKey().isEmpty()
                 ? meta.displayFallback()
                 : Component.translatable(meta.nameLangKey()).getString();
-        g.drawString(font, typeName, x + width - font.width(typeName) - SIDE_PADDING,
+        g.text(font, typeName, x + width - font.width(typeName) - SIDE_PADDING,
                 y + 2, TEXT_DIM, false);
 
         String namespace = recipeId != null && recipeId.contains(":")
                 ? recipeId.substring(0, recipeId.indexOf(':'))
                 : "";
         if (!namespace.isEmpty()) {
-            g.drawString(font, namespace, x + width - font.width(namespace) - SIDE_PADDING,
+            g.text(font, namespace, x + width - font.width(namespace) - SIDE_PADDING,
                     y + height - 10, TEXT_DIMMER, false);
         }
     }
@@ -236,10 +236,10 @@ public final class RecipeCardRenderer {
         return "";
     }
 
-    private static void drawMark(GuiGraphics g, int sx, int sy, int mark) {
+    private static void drawMark(GuiGraphicsExtractor g, int sx, int sy, int mark) {
         int size = RecipeCardLayout.SLOT_SIZE;
         if (mark == MARK_ONLY_LOCKED) {
-            g.renderOutline(sx, sy, size, size, MARK_LOCKED_COLOR);
+            g.outline(sx, sy, size, size, MARK_LOCKED_COLOR);
         } else if (mark == MARK_ALTERNATIVE) {
             // Dashed so it reads as "partly" even for someone who can't tell gold from amber.
             for (int d = 0; d < size; d += 4) {

@@ -4,7 +4,7 @@ import net.bananemdnsa.historystages.client.editor.anim.Anim;
 import net.bananemdnsa.historystages.client.editor.anim.Ease;
 import net.bananemdnsa.historystages.client.editor.anim.Fade;
 import net.bananemdnsa.historystages.client.editor.anim.Timing;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 /**
  * The editor's tick box: grey frame when off, gold frame and a gold tick written on when on, a
@@ -44,7 +44,7 @@ public final class Checkbox {
      * @param dimmed for a box whose answer comes from somewhere above it – drawn at a little under
      *               half strength, so it reads as "covered" rather than "ticked here"
      */
-    public static void draw(GuiGraphics g, int x, int y, Mark mark, State state, boolean dimmed) {
+    public static void draw(GuiGraphicsExtractor g, int x, int y, Mark mark, State state, boolean dimmed) {
         if (mark == Mark.OFF) mark = state.shown;
         float check = Ease.outCubic(state.check.value());
         float strength = dimmed ? 0.45f : 1.0f;

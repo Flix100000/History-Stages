@@ -14,7 +14,7 @@ import net.bananemdnsa.historystages.client.editor.widget.dropdown.EnumDropdown;
 import net.bananemdnsa.historystages.data.DependencyGroup;
 import net.bananemdnsa.historystages.api.dependency.Requirement;
 import net.bananemdnsa.historystages.data.dependency.XpLevelDep;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
 
@@ -118,7 +118,7 @@ public final class XpLevelTab extends AbstractDependencyTab {
     @Override
     public boolean renderContent(TabRenderContext ctx) {
         int y = ctx.y();
-        ctx.graphics().drawString(ctx.font(), t("editor.historystages.dep.required_xp"),
+        ctx.graphics().text(ctx.font(), t("editor.historystages.dep.required_xp"),
                 ctx.x() + 6, y + 4, 0xAAAAAA, false);
         y += CAPTION_HEIGHT;
 
@@ -162,7 +162,7 @@ public final class XpLevelTab extends AbstractDependencyTab {
     }
 
     private void renderValue(TabRenderContext ctx, int y) {
-        GuiGraphics g = ctx.graphics();
+        GuiGraphicsExtractor g = ctx.graphics();
         int right = ctx.x() + ctx.width();
         int bottom = y + EditorRowList.CARD_HEIGHT;
         boolean hovered = !ctx.inputBlocked() && ctx.mouseX() >= ctx.x() && ctx.mouseX() < right
@@ -174,7 +174,7 @@ public final class XpLevelTab extends AbstractDependencyTab {
 
         String consumed = t(xp.isConsume()
                 ? "editor.historystages.dep.consumed" : "editor.historystages.dep.checked_only");
-        g.drawString(ctx.font(), Component.translatable("editor.historystages.dep.level",
+        g.text(ctx.font(), Component.translatable("editor.historystages.dep.level",
                 xp.getLevel(), consumed).getString(), ctx.x() + 6, y + 7, 0xDDDDDD, false);
 
         String label = modeLabel(currentMode()).getString();
@@ -185,7 +185,7 @@ public final class XpLevelTab extends AbstractDependencyTab {
                 && ctx.mouseY() >= y + 3 && ctx.mouseY() < bottom - 3;
         g.fill(toggleX, y + 3, toggleX + toggleW, bottom - 3,
                 toggleHovered ? 0xFF3D3520 : 0xFF2A2A2A);
-        g.drawString(ctx.font(), label, toggleX + 4, y + 7,
+        g.text(ctx.font(), label, toggleX + 4, y + 7,
                 toggleHovered ? 0xFFCC00 : 0xCCCCCC, false);
         DropdownChrome.drawCaret(g, toggleX + toggleW - 8, y + EditorRowList.CARD_HEIGHT / 2 - 2,
                 toggleHovered ? 0xFFDDDDDD : 0xFF999999,
@@ -198,13 +198,13 @@ public final class XpLevelTab extends AbstractDependencyTab {
     }
 
     private void renderPrompt(TabRenderContext ctx, int y) {
-        GuiGraphics g = ctx.graphics();
+        GuiGraphicsExtractor g = ctx.graphics();
         int right = ctx.x() + ctx.width();
         int bottom = y + EditorRowList.CARD_HEIGHT;
         boolean hovered = !ctx.inputBlocked() && ctx.mouseX() >= ctx.x() && ctx.mouseX() < right
                 && ctx.mouseY() >= y && ctx.mouseY() < bottom;
         g.fill(ctx.x(), y, right, bottom, hovered ? 0x40FFCC00 : 0x20FFFFFF);
-        g.drawCenteredString(ctx.font(), t("editor.historystages.dep.set_xp_level"),
+        g.centeredText(ctx.font(), t("editor.historystages.dep.set_xp_level"),
                 ctx.x() + ctx.width() / 2, y + 7, hovered ? 0xFFCC00 : 0x888888);
     }
 

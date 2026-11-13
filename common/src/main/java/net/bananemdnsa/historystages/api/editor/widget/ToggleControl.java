@@ -5,7 +5,7 @@ import net.bananemdnsa.historystages.client.editor.anim.Ease;
 import net.bananemdnsa.historystages.client.editor.anim.Fade;
 import net.bananemdnsa.historystages.client.editor.anim.Timing;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 
 /**
@@ -110,7 +110,7 @@ public final class ToggleControl {
      * @param dimmed true for a value that is not this row's own — inherited from a layer below.
      *               The whole control goes grey, so the difference is visible without reading.
      */
-    public static void draw(GuiGraphics g, Font font, int x, int y, boolean value,
+    public static void draw(GuiGraphicsExtractor g, Font font, int x, int y, boolean value,
                             State state, boolean dimmed) {
         String on = onLabel();
         String off = offLabel();
@@ -147,9 +147,9 @@ public final class ToggleControl {
         g.fill(x + 1 + segW, y + 1, x + 2 + segW, bottom - 1, dimmed ? FRAME_DIM : FRAME);
 
         int textY = y + (ToggleGeometry.HEIGHT - 8) / 2;
-        g.drawString(font, on, onX + (segW - onW) / 2, textY,
+        g.text(font, on, onX + (segW - onW) / 2, textY,
                 labelColor(dimmed, value, slide, onHover, TEXT_ON_FILL_ON), false);
-        g.drawString(font, off, offX + (segW - offW) / 2, textY,
+        g.text(font, off, offX + (segW - offW) / 2, textY,
                 labelColor(dimmed, !value, 1.0f - slide, offHover, TEXT_ON_FILL_OFF), false);
     }
 

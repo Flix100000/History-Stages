@@ -3,7 +3,7 @@ package net.bananemdnsa.historystages.client.editor.widget.popup;
 import net.bananemdnsa.historystages.data.lock.EntityInteractionLockEntry;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
@@ -121,7 +121,7 @@ public class InteractionActionsPopup {
         return !fixing && fixed.contains(action);
     }
 
-    public void render(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    public void render(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         if (!visible) return;
 
         int rows = (ACTION_KEYS.length + COLS - 1) / COLS;
@@ -149,7 +149,7 @@ public class InteractionActionsPopup {
         g.fill(popupX - 1, popupY - 1, popupX + popupW + 1, popupY + popupH + 1, 0xFF333333);
         g.fill(popupX, popupY, popupX + popupW, popupY + popupH, 0xFF1A1A1A);
 
-        g.drawCenteredString(font,
+        g.centeredText(font,
                 Component.translatable("editor.historystages.interaction_actions.title"),
                 popupX + popupW / 2, popupY + 5, 0xFFFFFFFF);
         int accentW = 40;
@@ -158,12 +158,12 @@ public class InteractionActionsPopup {
 
         if (fixing) {
             // Right click is invisible until someone tries it, so both lines say it.
-            g.drawCenteredString(font, Component.translatable("editor.historystages.lock_actions.hint_fixing"),
+            g.centeredText(font, Component.translatable("editor.historystages.lock_actions.hint_fixing"),
                     popupX + popupW / 2, popupY + HEADER_H, 0x888888);
-            g.drawCenteredString(font, Component.translatable("editor.historystages.lock_actions.hint_fixing_effect"),
+            g.centeredText(font, Component.translatable("editor.historystages.lock_actions.hint_fixing_effect"),
                     popupX + popupW / 2, popupY + HEADER_H + HINT_H, 0x888888);
         } else {
-            g.drawCenteredString(font,
+            g.centeredText(font,
                     Component.translatable("editor.historystages.interaction_actions.hint"),
                     popupX + popupW / 2, popupY + HEADER_H, 0x888888);
         }
@@ -201,7 +201,7 @@ public class InteractionActionsPopup {
                 g.fill(tx + 4, ty + 6, tx + 7, ty + 9, blocked ? 0xFFFFCC00 : 0xFF555555);
             }
             int textColor = isLocked ? (blocked ? 0xBBBBBB : 0x777777) : (blocked ? 0xFFFFFF : 0x999999);
-            g.drawString(font,
+            g.text(font,
                     Component.translatable("editor.historystages.interaction_actions.action." + action),
                     tx + 10, ty + 3, textColor, false);
         }
@@ -226,7 +226,7 @@ public class InteractionActionsPopup {
         int lineY = descY + 2;
         for (FormattedCharSequence line : descLines) {
             int lineW = font.width(line);
-            g.drawString(font, line, popupX + (popupW - lineW) / 2, lineY, descColor, false);
+            g.text(font, line, popupX + (popupW - lineW) / 2, lineY, descColor, false);
             lineY += font.lineHeight + 1;
         }
 
@@ -238,7 +238,7 @@ public class InteractionActionsPopup {
         boolean allHov = mouseX >= allX && mouseX < allX + qBtnW && mouseY >= btnY && mouseY < btnY + btnH;
         g.fill(allX, btnY, allX + qBtnW, btnY + btnH, allHov ? 0x25FFFFFF : 0x10FFFFFF);
         g.fill(allX, btnY + btnH - 1, allX + qBtnW, btnY + btnH, allHov ? 0x80FFFFFF : 0x40FFFFFF);
-        g.drawCenteredString(font,
+        g.centeredText(font,
                 Component.translatable("editor.historystages.lock_actions.btn_all"),
                 allX + qBtnW / 2, btnY + 3, allHov ? 0xFFFFFF : 0xCCCCCC);
 
@@ -246,7 +246,7 @@ public class InteractionActionsPopup {
         boolean noneHov = mouseX >= noneX && mouseX < noneX + qBtnW && mouseY >= btnY && mouseY < btnY + btnH;
         g.fill(noneX, btnY, noneX + qBtnW, btnY + btnH, noneHov ? 0x25FFFFFF : 0x10FFFFFF);
         g.fill(noneX, btnY + btnH - 1, noneX + qBtnW, btnY + btnH, noneHov ? 0x80FFFFFF : 0x40FFFFFF);
-        g.drawCenteredString(font,
+        g.centeredText(font,
                 Component.translatable("editor.historystages.lock_actions.btn_none"),
                 noneX + qBtnW / 2, btnY + 3, noneHov ? 0xFFFFFF : 0xCCCCCC);
 
@@ -255,7 +255,7 @@ public class InteractionActionsPopup {
         boolean doneHov = mouseX >= doneX && mouseX < doneX + doneW && mouseY >= btnY && mouseY < btnY + btnH;
         g.fill(doneX, btnY, doneX + doneW, btnY + btnH, doneHov ? 0x50FFCC00 : 0x25FFCC00);
         g.fill(doneX, btnY + btnH - 1, doneX + doneW, btnY + btnH, doneHov ? 0xFFFFCC00 : 0x80FFCC00);
-        g.drawCenteredString(font,
+        g.centeredText(font,
                 Component.translatable("editor.historystages.lock_actions.btn_done"),
                 doneX + doneW / 2, btnY + 3, doneHov ? 0xFFFFFF : 0xEEEEEE);
     }

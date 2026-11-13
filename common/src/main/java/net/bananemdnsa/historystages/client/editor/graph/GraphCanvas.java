@@ -3,7 +3,7 @@ package net.bananemdnsa.historystages.client.editor.graph;
 import net.bananemdnsa.historystages.data.graph.GraphPos;
 import net.bananemdnsa.historystages.data.graph.ResolvedCanvasBackground;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 import java.util.Collection;
 import java.util.Map;
@@ -140,7 +140,7 @@ public final class GraphCanvas {
         return camera.gridY(screenY);
     }
 
-    public void render(GuiGraphics g, Font font, int mouseX, int mouseY, float partialTick) {
+    public void render(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY, float partialTick) {
         if (camera.viewW() <= 0 || camera.viewH() <= 0) return;
         ResolvedCanvasBackground bg = background != null ? background : CanvasBackgrounds.fromConfig();
         renderer.renderMap(g, font, bg, mouseX, mouseY, focusedKey, interaction.selection(),

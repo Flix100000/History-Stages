@@ -9,7 +9,7 @@ import net.bananemdnsa.historystages.data.lock.ZoneMapView;
 import net.bananemdnsa.historystages.data.lock.ZoneShape;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
 
@@ -36,7 +36,7 @@ public final class ZoneShapePreview {
      *                    marker off rather than putting it somewhere it does not belong
      * @param terrain     may be null — a zone in another dimension gets grid and shapes only
      */
-    public static void render(GuiGraphics g, Font font, int x, int y, int w, int h,
+    public static void render(GuiGraphicsExtractor g, Font font, int x, int y, int w, int h,
                               List<ZoneShape> shapes, int highlighted, boolean playerHere,
                               @Nullable ZoneTerrainTexture terrain,
                               @Nullable ZoneTerrainSampler.Surface surface) {
@@ -50,7 +50,7 @@ public final class ZoneShapePreview {
 
         if (shapes.isEmpty()) {
             g.disableScissor();
-            g.drawCenteredString(font, Component.translatable("editor.historystages.zone.preview.empty"),
+            g.centeredText(font, Component.translatable("editor.historystages.zone.preview.empty"),
                     x + w / 2, y + h / 2 - 4, HINT);
             return;
         }

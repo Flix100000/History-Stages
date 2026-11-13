@@ -1,7 +1,7 @@
 package net.bananemdnsa.historystages.client.editor.widget.dialog;
 
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.Mth;
 import org.lwjgl.glfw.GLFW;
@@ -145,7 +145,7 @@ public final class FormatTextArea {
 
     // --- rendering ---
 
-    public void render(GuiGraphics g, int mouseX, int mouseY) {
+    public void render(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         rewrapIfNeeded();
         clampScroll();
 
@@ -153,7 +153,7 @@ public final class FormatTextArea {
         g.enableScissor(x, y, x + width, y + height);
 
         if (value.isEmpty() && !hint.isEmpty()) {
-            g.drawString(font, hint, x + 3, y + 3, HINT_COLOUR, false);
+            g.text(font, hint, x + 3, y + 3, HINT_COLOUR, false);
         }
 
         for (int line = scrollLine; line < lineStarts.size(); line++) {
@@ -163,7 +163,7 @@ public final class FormatTextArea {
             if (ly + lineH > y + height) break;
 
             drawSelection(g, line, start, end, ly, lineH);
-            g.drawString(font, value.substring(start, end), x + 3, ly, TEXT_COLOUR, false);
+            g.text(font, value.substring(start, end), x + 3, ly, TEXT_COLOUR, false);
         }
 
         if (focused && ((System.currentTimeMillis() - focusedAt) / CURSOR_BLINK_MS) % 2 == 0) {
@@ -209,7 +209,7 @@ public final class FormatTextArea {
         return true;
     }
 
-    private void drawSelection(GuiGraphics g, int line, int start, int end, int ly, int lineH) {
+    private void drawSelection(GuiGraphicsExtractor g, int line, int start, int end, int ly, int lineH) {
         int from = Math.min(cursor, anchor);
         int to = Math.max(cursor, anchor);
         if (from == to) return;

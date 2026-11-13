@@ -7,7 +7,7 @@ import net.bananemdnsa.historystages.client.editor.anim.Timing;
 import net.bananemdnsa.historystages.data.display.DisplayMode;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
@@ -81,7 +81,7 @@ public class DisplayModeDropdown {
                 .getString();
     }
 
-    public void renderButton(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    public void renderButton(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         boolean hovered = mouseX >= buttonX && mouseX < buttonX + buttonW
                 && mouseY >= buttonY && mouseY < buttonY + BUTTON_HEIGHT;
         float hp = Ease.outCubic(buttonHover.ramp(hovered, Timing.HOVER_IN_MS, Timing.HOVER_OUT_MS));
@@ -92,13 +92,13 @@ public class DisplayModeDropdown {
         g.fill(buttonX, buttonY, buttonX + buttonW, buttonY + BUTTON_HEIGHT, border);
         g.fill(buttonX + 1, buttonY + 1, buttonX + buttonW - 1, buttonY + BUTTON_HEIGHT - 1, bg);
 
-        g.drawString(font, label(current), buttonX + 5, buttonY + 5, 0xFFEEEEEE, false);
+        g.text(font, label(current), buttonX + 5, buttonY + 5, 0xFFEEEEEE, false);
 
         DropdownChrome.drawCaret(g, buttonX + buttonW - 7, buttonY + BUTTON_HEIGHT / 2 - 1,
                 Fade.mix(0xFF999999, 0xFFDDDDDD, hp), t);
     }
 
-    public void renderPopup(GuiGraphics g, Font font, int mouseX, int mouseY) {
+    public void renderPopup(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         // Kept rendering past the click that closed it, so the popup rolls back up instead of
         // vanishing. open drives both the reveal here and the caret in renderButton.
         float t = open.ramp(expanded ? 1.0f : 0.0f, Timing.POPUP_MS);
@@ -117,7 +117,7 @@ public class DisplayModeDropdown {
                     .ramp(rowHovered, Timing.HOVER_IN_MS, Timing.HOVER_OUT_MS));
             DropdownChrome.drawRowHighlight(g, px + 1, rowY, pw - 2, ROW_HEIGHT, rh);
             int textColor = options[i] == current ? 0xFFFFCC00 : 0xFFEEEEEE;
-            g.drawString(font, label(options[i]), px + 5 + Math.round(rh * 2.0f), rowY + 5,
+            g.text(font, label(options[i]), px + 5 + Math.round(rh * 2.0f), rowY + 5,
                     textColor, false);
         }
         DropdownChrome.end(g);

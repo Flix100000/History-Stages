@@ -2,7 +2,7 @@ package net.bananemdnsa.historystages.client.editor.graph;
 
 import net.bananemdnsa.historystages.data.graph.NodeState;
 import net.bananemdnsa.historystages.data.graph.ResolvedStyle;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 /**
  * A style preset drawn as a small node, for the preset lists. Goes through {@link NodeShapes}
@@ -13,7 +13,7 @@ public final class PresetSwatch {
     private PresetSwatch() {}
 
     /** The preset's unlocked look, scaled by its size within {@code r} as an upper bound. */
-    public static void draw(GuiGraphics g, String presetId, int cx, int cy, int r) {
+    public static void draw(GuiGraphicsExtractor g, String presetId, int cx, int cy, int r) {
         ResolvedStyle style = StageGraphConfig.styleForPreset(presetId, NodeState.UNLOCKED);
         int radius = Math.max(3, Math.min(r, Math.round(r * 0.8f * (float) style.size())));
         NodeShapes.draw(g, style.shape(), cx, cy, radius,

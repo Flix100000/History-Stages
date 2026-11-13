@@ -1,5 +1,7 @@
 package net.bananemdnsa.historystages.client.editor;
 
+import net.minecraft.client.input.MouseButtonInfo;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.bananemdnsa.historystages.client.editor.anim.Anim;
 import net.bananemdnsa.historystages.client.editor.anim.Ease;
 import net.bananemdnsa.historystages.client.editor.anim.Fade;
@@ -13,7 +15,7 @@ import net.bananemdnsa.historystages.client.editor.widget.list.ConfigRowList;
 import net.bananemdnsa.historystages.data.graph.GraphColors;
 import net.bananemdnsa.historystages.data.graph.ResolvedStyle;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
@@ -151,17 +153,25 @@ public class GraphStyleScreen extends Screen {
     }
 
     @Override
-    public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+    public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        renderBackground(graphics, mouseX, mouseY, partialTick);
+    }
+
+    public void renderBackground(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
         // Own background, drawn in render() — avoids 1.21's menu blur shader, as the config screen does.
     }
 
     @Override
-    public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        render(graphics, mouseX, mouseY, partialTick);
+    }
+
+    public void render(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
         smoothScroll.approach((float) scrollOffset, Timing.SCROLL_HALF_LIFE_MS);
         smoothScroll.settle((float) scrollOffset, 0.5f);
 
         g.fill(0, 0, this.width, this.height, 0xE0101010);
-        g.drawCenteredString(this.font, this.title, this.width / 2, 10, 0xFFFFFF);
+        g.centeredText(this.font, this.title, this.width / 2, 10, 0xFFFFFF);
 
         renderSwitches(g, COLLECTIONS, "c:", mouseX, mouseY);
         renderSwitches(g, STATES, "s:", mouseX, mouseY);
@@ -211,7 +221,7 @@ public class GraphStyleScreen extends Screen {
                     dotX + 9, this.height - 24, 0xFFCC00);
         }
 
-        super.render(g, mouseX, mouseY, partialTick);
+        super.extractRenderState(g, mouseX, mouseY, partialTick);
 
         if (openDropdown != null) {
             // On top of the collapsed button the row drew, so the open state is visible.
@@ -258,7 +268,7 @@ public class GraphStyleScreen extends Screen {
         return this.width / 2 + 40;
     }
 
-    private void renderSwitches(GuiGraphics g, List<String> options, String prefix,
+    private void renderSwitches(GuiGraphicsExtractor g, List<String> options, String prefix,
                                int mouseX, int mouseY) {
         for (String option : options) {
             int[] r = switchRects.get(prefix + option);
@@ -277,7 +287,7 @@ public class GraphStyleScreen extends Screen {
             String label = Component.translatable(
                     "editor.historystages.config.graph.style."
                             + ("c:".equals(prefix) ? "collection." : "state.") + option).getString();
-            g.drawCenteredString(this.font, label, r[0] + r[2] / 2, r[1] + 4,
+            g.centeredText(this.font, label, r[0] + r[2] / 2, r[1] + 4,
                     active ? 0xFFFFFF : Fade.mix(0xFF999999, 0xFFDDDDDD, hp));
         }
     }
@@ -292,7 +302,7 @@ public class GraphStyleScreen extends Screen {
      * a short window — is the node scaled down to fit, so the correspondence holds wherever it
      * can and the node never spills out of its frame where it cannot.
      */
-    private void renderPreview(GuiGraphics g, int x, int y, int h) {
+    private void renderPreview(GuiGraphicsExtractor g, int x, int y, int h) {
         int w = this.width - x - 24;
         if (w < 60 || h < 40) return;
 
@@ -332,11 +342,15 @@ public class GraphStyleScreen extends Screen {
             String sample = Component.translatable("ID".equals(style.label())
                     ? "editor.historystages.config.graph.style.sample_id"
                     : "editor.historystages.config.graph.style.sample_name").getString();
-            g.drawCenteredString(this.font, sample, cx, cy + r + 4, style.labelColor());
+            g.centeredText(this.font, sample, cx, cy + r + 4, style.labelColor());
         }
     }
 
     @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        return mouseClicked(event.x(), event.y(), event.button());
+    }
+
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (openDropdown != null) {
             boolean wasExpanded = openDropdown.isExpanded();
@@ -363,7 +377,7 @@ public class GraphStyleScreen extends Screen {
             return true;
         }
 
-        if (super.mouseClicked(mouseX, mouseY, button)) return true;
+        if (super.mouseClicked(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)), false)) return true;
 
         if (maxScroll > 0 && mouseX >= scrollbarX() - 1 && mouseX <= scrollbarX() + 4
                 && mouseY >= ROWS_TOP && mouseY <= rowsBottom) {
@@ -419,21 +433,29 @@ public class GraphStyleScreen extends Screen {
     }
 
     @Override
+    public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+        return mouseDragged(event.x(), event.y(), event.button(), dragX, dragY);
+    }
+
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
         if (draggingScrollbar) {
             updateScrollFromMouse(mouseY);
             return true;
         }
-        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+        return super.mouseDragged(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)), dragX, dragY);
     }
 
     @Override
+    public boolean mouseReleased(MouseButtonEvent event) {
+        return mouseReleased(event.x(), event.y(), event.button());
+    }
+
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
         if (draggingScrollbar) {
             draggingScrollbar = false;
             return true;
         }
-        return super.mouseReleased(mouseX, mouseY, button);
+        return super.mouseReleased(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)));
     }
 
     @Override

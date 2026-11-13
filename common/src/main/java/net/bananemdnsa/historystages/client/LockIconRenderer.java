@@ -2,7 +2,7 @@ package net.bananemdnsa.historystages.client;
 
 import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.util.lock.StageLockHelper;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 
@@ -93,22 +93,22 @@ public final class LockIconRenderer {
      * and every caller of it wants exactly that; a notice in the middle of an empty window has no
      * slot setting its size.
      */
-    public static void drawSized(GuiGraphics guiGraphics, Identifier icon,
+    public static void drawSized(GuiGraphicsExtractor guiGraphics, Identifier icon,
                                  int x, int y, int size) {
-        guiGraphics.pose().pushPose();
-        guiGraphics.pose().translate(x, y, 250);
+        guiGraphics.pose().pushMatrix();
+        guiGraphics.pose().translate(x, y);
         float scale = size / 32.0f;
-        guiGraphics.pose().scale(scale, scale, 1.0f);
+        guiGraphics.pose().scale(scale, scale);
         guiGraphics.blit(icon, 0, 0, 0, 0, 32, 32, 32, 32);
-        guiGraphics.pose().popPose();
+        guiGraphics.pose().popMatrix();
     }
 
     /** Draws the given lock icon as an 8x8 overlay at the slot's top-left corner. */
-    public static void draw(GuiGraphics guiGraphics, Identifier icon, int x, int y) {
-        guiGraphics.pose().pushPose();
-        guiGraphics.pose().translate(x, y, 250);
-        guiGraphics.pose().scale(0.25f, 0.25f, 1.0f);
+    public static void draw(GuiGraphicsExtractor guiGraphics, Identifier icon, int x, int y) {
+        guiGraphics.pose().pushMatrix();
+        guiGraphics.pose().translate(x, y);
+        guiGraphics.pose().scale(0.25f, 0.25f);
         guiGraphics.blit(icon, 0, 0, 0, 0, 32, 32, 32, 32);
-        guiGraphics.pose().popPose();
+        guiGraphics.pose().popMatrix();
     }
 }

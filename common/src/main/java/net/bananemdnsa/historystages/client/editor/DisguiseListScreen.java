@@ -1,5 +1,9 @@
 package net.bananemdnsa.historystages.client.editor;
 
+import net.minecraft.client.input.CharacterEvent;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonInfo;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.bananemdnsa.historystages.api.editor.TabInputContext;
 import net.bananemdnsa.historystages.api.editor.TabRenderContext;
 import net.bananemdnsa.historystages.api.editor.widget.EditorRowList;
@@ -13,7 +17,7 @@ import net.bananemdnsa.historystages.data.disguise.Disguises;
 import net.bananemdnsa.historystages.data.disguise.DropsMode;
 import net.bananemdnsa.historystages.network.PacketHandler;
 import net.bananemdnsa.historystages.network.serverbound.SaveDisguisePacket;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
@@ -99,14 +103,22 @@ public class DisguiseListScreen extends Screen {
     // --- rendering ---
 
     @Override
-    public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+    public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        renderBackground(graphics, mouseX, mouseY, partialTick);
+    }
+
+    public void renderBackground(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
         // Drawn in render(); leaving this empty keeps 1.21's blur out of the editor.
     }
 
     @Override
-    public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        render(graphics, mouseX, mouseY, partialTick);
+    }
+
+    public void render(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
         g.fill(0, 0, this.width, this.height, 0xE0101010);
-        g.drawCenteredString(this.font, this.title, this.width / 2, 6, 0xFFFFFF);
+        g.centeredText(this.font, this.title, this.width / 2, 6, 0xFFFFFF);
         g.fill(MARGIN, 19, this.width - MARGIN, 20, 0x40FFFFFF);
 
         lines = buildLines();
@@ -115,7 +127,7 @@ public class DisguiseListScreen extends Screen {
         scroll = Math.max(0, Math.min(maxScroll, scroll));
 
         if (lines.isEmpty()) {
-            g.drawCenteredString(this.font, Component.translatable("editor.historystages.disguise.list.empty"),
+            g.centeredText(this.font, Component.translatable("editor.historystages.disguise.list.empty"),
                     this.width / 2, LIST_TOP + 20, GREY_TEXT);
         } else {
             boolean menuOpen = contextMenu.isVisible();
@@ -128,7 +140,7 @@ public class DisguiseListScreen extends Screen {
         }
         g.fill(MARGIN, listBottom + 1, this.width - MARGIN, listBottom + 2, 0xFF555555);
 
-        super.render(g, mouseX, mouseY, partialTick);
+        super.extractRenderState(g, mouseX, mouseY, partialTick);
         search.render(g, this.font, mouseX, mouseY);
         contextMenu.render(g, this.font, mouseX, mouseY);
     }
@@ -139,11 +151,11 @@ public class DisguiseListScreen extends Screen {
         if (item != null) {
             ItemStack stack = new ItemStack(item);
             row.leading(14, (g, x, y, w, h) -> {
-                g.pose().pushPose();
-                g.pose().translate(x, y, 0);
-                g.pose().scale(0.85f, 0.85f, 1.0f);
-                g.renderItem(stack, 0, 0);
-                g.pose().popPose();
+                g.pose().pushMatrix();
+                g.pose().translate(x, y);
+                g.pose().scale(0.85f, 0.85f);
+                g.item(stack, 0, 0);
+                g.pose().popMatrix();
             });
         }
 
@@ -185,6 +197,10 @@ public class DisguiseListScreen extends Screen {
     }
 
     @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        return mouseClicked(event.x(), event.y(), event.button());
+    }
+
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (contextMenu.isVisible()) {
             contextMenu.mouseClicked(mouseX, mouseY, button);
@@ -192,7 +208,7 @@ public class DisguiseListScreen extends Screen {
         }
         if (search.mouseClicked(mouseX, mouseY)) return true;
         search.setFocused(false);
-        if (super.mouseClicked(mouseX, mouseY, button)) return true;
+        if (super.mouseClicked(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)), false)) return true;
 
         int index = rows.rowAt(input(mouseX, mouseY), lines.size());
         if (index < 0) return false;
@@ -220,19 +236,27 @@ public class DisguiseListScreen extends Screen {
     }
 
     @Override
+    public boolean keyPressed(KeyEvent event) {
+        return keyPressed(event.key(), event.scancode(), event.modifiers());
+    }
+
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (keyCode == 256 && contextMenu.isVisible()) {
             contextMenu.hide();
             return true;
         }
         if (search.keyPressed(keyCode)) return true;
-        return super.keyPressed(keyCode, scanCode, modifiers);
+        return super.keyPressed(new KeyEvent(keyCode, scanCode, modifiers));
     }
 
     @Override
+    public boolean charTyped(CharacterEvent event) {
+        return charTyped((char) event.codepoint(), 0);
+    }
+
     public boolean charTyped(char c, int modifiers) {
         if (search.charTyped(c)) return true;
-        return super.charTyped(c, modifiers);
+        return super.charTyped(new CharacterEvent(c));
     }
 
     @Override
