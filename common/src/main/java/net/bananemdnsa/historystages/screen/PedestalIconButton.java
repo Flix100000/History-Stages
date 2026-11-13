@@ -5,7 +5,7 @@ import net.minecraft.client.gui.components.AbstractButton;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import java.util.function.BooleanSupplier;
 import java.util.function.IntSupplier;
@@ -24,13 +24,13 @@ import java.util.function.IntSupplier;
  */
 public class PedestalIconButton extends AbstractButton {
 
-    private final ResourceLocation sheet;
+    private final Identifier sheet;
     private final IntSupplier column;
     private final BooleanSupplier enabled;
     private final Runnable onPress;
 
     /** {@code tooltip} may be null for a button whose icon speaks for itself. */
-    public PedestalIconButton(int x, int y, ResourceLocation sheet, IntSupplier column,
+    public PedestalIconButton(int x, int y, Identifier sheet, IntSupplier column,
                               BooleanSupplier enabled, Component tooltip, Runnable onPress) {
         super(x, y, PedestalLayout.ICON_SIZE, PedestalLayout.ICON_SIZE,
                 tooltip != null ? tooltip : Component.empty());

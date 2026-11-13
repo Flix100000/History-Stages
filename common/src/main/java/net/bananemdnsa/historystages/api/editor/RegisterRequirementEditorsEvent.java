@@ -4,8 +4,8 @@ import net.bananemdnsa.historystages.client.editor.dep.RequirementEditors;
 
 import net.bananemdnsa.historystages.api.editor.RequirementEditor;
 
-import net.neoforged.bus.api.Event;
-import net.neoforged.fml.event.IModBusEvent;
+import net.bananemdnsa.historystages.platform.bus.Event;
+import net.bananemdnsa.historystages.platform.bus.IModBusEvent;
 
 /**
  * Fired once on the client so an addon can give its requirement type a tab in the dependency

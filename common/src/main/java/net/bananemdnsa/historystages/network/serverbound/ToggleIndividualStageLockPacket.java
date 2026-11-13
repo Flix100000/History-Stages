@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.network.serverbound;
 
+import net.minecraft.server.permissions.Permissions;
 import net.bananemdnsa.historystages.data.StageCauses;
 import net.bananemdnsa.historystages.api.stage.StageChangeCause;
 import net.bananemdnsa.historystages.HistoryStages;
@@ -11,9 +12,9 @@ import net.bananemdnsa.historystages.network.clientbound.EditorFeedbackPacket;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.bananemdnsa.historystages.platform.IPayloadContext;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,7 +34,7 @@ public record ToggleIndividualStageLockPacket(String stageId, Optional<UUID> tar
         implements CustomPacketPayload {
 
     public static final CustomPacketPayload.Type<ToggleIndividualStageLockPacket> TYPE =
-            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "toggle_individual_stage_lock"));
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "toggle_individual_stage_lock"));
 
     public static final StreamCodec<FriendlyByteBuf, ToggleIndividualStageLockPacket> STREAM_CODEC =
             StreamCodec.of(ToggleIndividualStageLockPacket::encode, ToggleIndividualStageLockPacket::decode);
@@ -54,7 +55,7 @@ public record ToggleIndividualStageLockPacket(String stageId, Optional<UUID> tar
     public static void handle(ToggleIndividualStageLockPacket msg, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer sender)) return;
-            if (!sender.hasPermissions(2)) return;
+            if (!sender.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)) return;
 
             StageEntry entry = StageManager.getIndividualStages().get(msg.stageId);
             if (entry == null) return;

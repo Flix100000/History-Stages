@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.network.serverbound;
 
+import net.minecraft.server.permissions.Permissions;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.data.StagePaths;
@@ -19,9 +20,9 @@ import net.bananemdnsa.historystages.network.clientbound.SyncStageDefinitionsPac
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.bananemdnsa.historystages.platform.IPayloadContext;
 
 import java.util.HashSet;
 import java.util.List;
@@ -39,7 +40,7 @@ import java.util.Set;
 public record SaveStageGraphStylePacket(String stageId, boolean individual, String json) implements CustomPacketPayload {
 
     public static final CustomPacketPayload.Type<SaveStageGraphStylePacket> TYPE =
-            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "save_stage_graph_style"));
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "save_stage_graph_style"));
 
     public static final StreamCodec<FriendlyByteBuf, SaveStageGraphStylePacket> STREAM_CODEC =
             StreamCodec.of(SaveStageGraphStylePacket::encode, SaveStageGraphStylePacket::decode);
@@ -60,7 +61,7 @@ public record SaveStageGraphStylePacket(String stageId, boolean individual, Stri
     public static void handle(SaveStageGraphStylePacket msg, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer player)) return;
-            if (!player.hasPermissions(2)) return;
+            if (!player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)) return;
             // Stage ids are file names; a value that fails this check must never reach
             // graph_stages.json.
             if (!StagePaths.isValidSegment(msg.stageId)) return;

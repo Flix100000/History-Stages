@@ -14,6 +14,6 @@ import net.minecraft.core.BlockPos;
 public class ClientLecternScrollHandler {
 
     public static void open(String stageId, BlockPos lecternPos) {
-        Minecraft.getInstance().setScreen(new OpenScrollScreen(stageId, lecternPos));
+        Minecraft.getInstance().gui.setScreen(new OpenScrollScreen(stageId, lecternPos));
     }
 }

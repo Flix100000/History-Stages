@@ -16,7 +16,7 @@ import net.bananemdnsa.historystages.data.lock.category.LockCategories;
 import net.bananemdnsa.historystages.api.lock.LockCategory;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -114,7 +114,7 @@ public class StringStageLockEngine implements StageLockEngine {
     private CategoryLockIndexes.ItemGating computeItemGating(String itemId, String modId,
                                                              @Nullable ItemStack stack, StageScope scope,
                                                              StackFacts facts) {
-        Item item = stack != null ? stack.getItem() : BuiltInRegistries.ITEM.get(ResourceLocation.parse(itemId));
+        Item item = stack != null ? stack.getItem() : BuiltInRegistries.ITEM.get(Identifier.parse(itemId));
         // Resolved once and threaded through both uses: the capability lookup is not free, and
         // the four-argument ItemSubject constructor would repeat it.
         String fluidId = facts.fluidId();
@@ -246,7 +246,7 @@ public class StringStageLockEngine implements StageLockEngine {
 
         if (item != null) {
             for (Map.Entry<String, Set<String>> tagEntry : CategoryLockIndexes.dualPhaseGlobal("historystages:tags").entrySet()) {
-                TagKey<Item> tagKey = TagKey.create(Registries.ITEM, ResourceLocation.parse(tagEntry.getKey()));
+                TagKey<Item> tagKey = TagKey.create(Registries.ITEM, Identifier.parse(tagEntry.getKey()));
                 if (item.builtInRegistryHolder().is(tagKey)) stages.addAll(tagEntry.getValue());
             }
         }
@@ -279,7 +279,7 @@ public class StringStageLockEngine implements StageLockEngine {
 
     @Override
     public boolean isItemActionLocked(ItemStack stack, String action, StageScope scope, StageStateView state) {
-        ResourceLocation res = BuiltInRegistries.ITEM.getKey(stack.getItem());
+        Identifier res = BuiltInRegistries.ITEM.getKey(stack.getItem());
         if (res == null) return false;
         String itemId = res.toString();
         String modId = res.getNamespace();

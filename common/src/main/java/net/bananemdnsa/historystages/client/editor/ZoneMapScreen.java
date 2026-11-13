@@ -164,7 +164,7 @@ public final class ZoneMapScreen extends Screen {
 
     private boolean playerHere() {
         return this.minecraft != null && this.minecraft.player != null
-                && this.minecraft.player.level().dimension().location().toString()
+                && this.minecraft.player.level().dimension().identifier().toString()
                         .equals(zone.getDimension());
     }
 
@@ -442,12 +442,12 @@ public final class ZoneMapScreen extends Screen {
 
     private int minY() {
         return this.minecraft != null && this.minecraft.level != null
-                ? this.minecraft.level.getMinBuildHeight() : -64;
+                ? this.minecraft.level.getMinY() : -64;
     }
 
     private int maxY() {
         return this.minecraft != null && this.minecraft.level != null
-                ? this.minecraft.level.getMaxBuildHeight() : 320;
+                ? this.minecraft.level.getMaxY() + 1 : 320;
     }
 
     @Override
@@ -478,7 +478,7 @@ public final class ZoneMapScreen extends Screen {
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
-            this.minecraft.setScreen(parent);
+            this.minecraft.gui.setScreen(parent);
             return true;
         }
         return super.keyPressed(keyCode, scanCode, modifiers);

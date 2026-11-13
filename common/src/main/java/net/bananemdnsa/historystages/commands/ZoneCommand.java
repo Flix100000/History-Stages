@@ -54,7 +54,7 @@ public final class ZoneCommand {
 
     private static int mark(CommandSourceStack source, ServerPlayer player, int point, BlockPos pos) {
         int corner = point == 0 ? ZoneSelection.nextPoint(player.getUUID()) : point;
-        String dimension = player.level().dimension().location().toString();
+        String dimension = player.level().dimension().identifier().toString();
         ZoneSelection.setPoint(player.getUUID(), corner, pos.getX(), pos.getY(), pos.getZ(), dimension);
         push(player);
 

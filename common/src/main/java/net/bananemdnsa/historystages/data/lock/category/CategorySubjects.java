@@ -7,7 +7,7 @@ import net.bananemdnsa.historystages.api.lock.Subjects;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Item;
@@ -75,10 +75,10 @@ public final class CategorySubjects {
     /** The text id behind a string or registry handle, or null for anything else. */
     private static String idOf(Object subject) {
         if (subject instanceof String s) return s;
-        if (subject instanceof ResourceLocation rl) return rl.toString();
-        if (subject instanceof ResourceKey<?> key) return key.location().toString();
+        if (subject instanceof Identifier rl) return rl.toString();
+        if (subject instanceof ResourceKey<?> key) return key.identifier().toString();
         if (subject instanceof Holder<?> holder) {
-            return holder.unwrapKey().map(key -> key.location().toString()).orElse(null);
+            return holder.unwrapKey().map(key -> key.identifier().toString()).orElse(null);
         }
         return null;
     }

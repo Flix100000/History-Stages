@@ -10,7 +10,7 @@ import net.bananemdnsa.historystages.api.dependency.Requirement;
 import net.bananemdnsa.historystages.api.dependency.RequirementContext;
 import net.bananemdnsa.historystages.api.stage.StageScope;
 import net.minecraft.advancements.AdvancementHolder;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 
 /** Advancements the player has to have earned — individual player only. */
@@ -57,7 +57,7 @@ public class AdvancementRequirement implements Requirement {
     }
 
     private static boolean checkAdvancement(ServerPlayer player, String advancementId) {
-        ResourceLocation rl = ResourceLocation.tryParse(advancementId);
+        Identifier rl = Identifier.tryParse(advancementId);
         if (rl == null || player.getServer() == null) return false;
         AdvancementHolder holder = player.getServer().getAdvancements().get(rl);
         if (holder == null) return false;

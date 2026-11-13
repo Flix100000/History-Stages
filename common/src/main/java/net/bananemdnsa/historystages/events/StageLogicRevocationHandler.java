@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.events;
 
+import net.bananemdnsa.historystages.platform.Services;
 import net.bananemdnsa.historystages.data.StageCauses;
 import net.bananemdnsa.historystages.api.stage.StageChangeCause;
 import net.bananemdnsa.historystages.Config;
@@ -23,10 +24,9 @@ import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.entity.player.PlayerEvent;
-import net.neoforged.neoforge.server.ServerLifecycleHooks;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
+import net.bananemdnsa.historystages.platform.event.entity.player.PlayerEvent;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -137,7 +137,7 @@ public final class StageLogicRevocationHandler {
 
     /** A global stage changed: global stages may react, and every player's individual stages. */
     static void globalChanged(String changed, boolean nowUnlocked) {
-        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        MinecraftServer server = Services.currentServer();
         if (server == null) return;
         ServerLevel level = server.overworld();
 
@@ -177,7 +177,7 @@ public final class StageLogicRevocationHandler {
 
     /** One player's individual stage changed: only that player's individual stages can react. */
     static void individualChanged(String changed, UUID uuid, boolean nowUnlocked) {
-        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        MinecraftServer server = Services.currentServer();
         if (server == null) return;
         IndividualStageData individual = IndividualStageData.get(server.overworld());
 
@@ -222,9 +222,9 @@ public final class StageLogicRevocationHandler {
     @SubscribeEvent
     public static void onLogin(PlayerEvent.PlayerLoggedInEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
-        Set<String> owed = LogicPendingRevocations.get(player.serverLevel()).take(player.getUUID());
+        Set<String> owed = LogicPendingRevocations.get(player.level()).take(player.getUUID());
         for (String target : owed) {
-            if (!IndividualStageData.get(player.serverLevel()).hasStage(player.getUUID(), target)) continue;
+            if (!IndividualStageData.get(player.level()).hasStage(player.getUUID(), target)) continue;
             if (StageCauses.with(StageChangeCause.LOGIC, () -> StageStates.relockIndividual(target, player))) toast(player, target, true, null, false, false);
         }
     }

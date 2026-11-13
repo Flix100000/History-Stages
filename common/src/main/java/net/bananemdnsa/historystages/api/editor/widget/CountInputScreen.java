@@ -48,6 +48,6 @@ public class CountInputScreen extends AbstractInputScreen {
     @Override
     protected void onConfirm(InputValues values) {
         onDone.accept(values.getInt("count"));
-        this.minecraft.setScreen(parent);
+        this.minecraft.gui.setScreen(parent);
     }
 }

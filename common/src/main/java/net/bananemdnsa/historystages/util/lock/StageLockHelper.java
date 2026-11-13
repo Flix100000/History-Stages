@@ -11,7 +11,7 @@ import net.bananemdnsa.historystages.data.lock.engine.CategoryLockIndexes;
 import net.bananemdnsa.historystages.data.lock.engine.StageLocks;
 import net.bananemdnsa.historystages.api.stage.StageScope;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
@@ -38,7 +38,7 @@ public class StageLockHelper {
     }
 
     public static boolean isItemLockedForPlayer(ItemStack stack, UUID playerUuid) {
-        ResourceLocation res = itemKey(stack);
+        Identifier res = itemKey(stack);
         if (res == null) return false;
         String itemId = res.toString();
         String modId = res.getNamespace();
@@ -53,7 +53,7 @@ public class StageLockHelper {
     }
 
     public static boolean isItemLockedByIndividualStage(ItemStack stack, UUID playerUuid) {
-        ResourceLocation res = itemKey(stack);
+        Identifier res = itemKey(stack);
         if (res == null) return false;
 
         return StageLocks.engine().isItemLocked(res.toString(), res.getNamespace(), stack,
@@ -63,7 +63,7 @@ public class StageLockHelper {
 
     /** Global-scope item check without a player, for paths that have no player context. */
     public static boolean isItemLockedForServer(ItemStack stack) {
-        ResourceLocation res = itemKey(stack);
+        Identifier res = itemKey(stack);
         if (res == null) return false;
 
         return StageLocks.engine().isItemLocked(res.toString(), res.getNamespace(), stack,
@@ -73,7 +73,7 @@ public class StageLockHelper {
 
     /** Null for an empty stack or an unregistered item — every item check starts here. */
     @Nullable
-    private static ResourceLocation itemKey(ItemStack stack) {
+    private static Identifier itemKey(ItemStack stack) {
         if (stack.isEmpty()) return null;
         return BuiltInRegistries.ITEM.getKey(stack.getItem());
     }
@@ -196,7 +196,7 @@ public class StageLockHelper {
     // =============================================
 
     public static boolean isItemLockedForClient(ItemStack stack) {
-        ResourceLocation res = itemKey(stack);
+        Identifier res = itemKey(stack);
         if (res == null) return false;
         String itemId = res.toString();
         String modId = res.getNamespace();
@@ -214,7 +214,7 @@ public class StageLockHelper {
      * {@code Config.VISUAL.lockedItemMultiStagePolicy == LENIENT}.
      */
     public static boolean isItemLockedForClientLenient(ItemStack stack) {
-        ResourceLocation res = itemKey(stack);
+        Identifier res = itemKey(stack);
         if (res == null) return false;
         String itemId = res.toString();
         String modId = res.getNamespace();
@@ -234,7 +234,7 @@ public class StageLockHelper {
      * {@code recipe}, which is what its editor description says it is.
      */
     public static boolean isItemActionLockedForClient(ItemStack stack, String action) {
-        ResourceLocation res = itemKey(stack);
+        Identifier res = itemKey(stack);
         if (res == null) return false;
         String itemId = res.toString();
         String modId = res.getNamespace();
@@ -250,7 +250,7 @@ public class StageLockHelper {
 
     /** {@link #isItemActionLockedForClient} under the lenient multi-stage policy. */
     public static boolean isItemActionLockedForClientLenient(ItemStack stack, String action) {
-        ResourceLocation res = itemKey(stack);
+        Identifier res = itemKey(stack);
         if (res == null) return false;
         String itemId = res.toString();
         String modId = res.getNamespace();
@@ -265,7 +265,7 @@ public class StageLockHelper {
     }
 
     public static boolean isItemLockedByIndividualStageClient(ItemStack stack) {
-        ResourceLocation res = itemKey(stack);
+        Identifier res = itemKey(stack);
         if (res == null) return false;
 
         return LockResolution.isLocked(StageScope.INDIVIDUAL,
@@ -280,7 +280,7 @@ public class StageLockHelper {
      * Returns true when at least one of the paired global stages is not yet unlocked client-side.
      */
     public static boolean isDualPhaseGloballyLockedClient(ItemStack stack) {
-        ResourceLocation res = itemKey(stack);
+        Identifier res = itemKey(stack);
         if (res == null) return false;
 
         return LockResolution.isLocked(StageScope.GLOBAL,
@@ -362,7 +362,7 @@ public class StageLockHelper {
             ItemStack stack = inv.getItem(i);
             if (stack.isEmpty()) continue;
 
-            ResourceLocation res = BuiltInRegistries.ITEM.getKey(stack.getItem());
+            Identifier res = BuiltInRegistries.ITEM.getKey(stack.getItem());
             if (res == null) continue;
 
             String itemId = res.toString();

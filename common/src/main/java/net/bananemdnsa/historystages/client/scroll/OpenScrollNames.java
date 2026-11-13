@@ -2,7 +2,7 @@ package net.bananemdnsa.historystages.client.scroll;
 
 import net.minecraft.client.resources.language.I18n;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.bananemdnsa.historystages.data.lock.TradePreview;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.ItemStack;
@@ -26,7 +26,7 @@ public final class OpenScrollNames {
 
     /** The entity's name, or a prettified id when the type is not registered. */
     public static String creature(String id) {
-        ResourceLocation key = ResourceLocation.tryParse(id);
+        Identifier key = Identifier.tryParse(id);
         EntityType<?> type = key == null ? null : BuiltInRegistries.ENTITY_TYPE.get(key);
         return type == null ? prettify(id) : type.getDescription().getString();
     }
@@ -44,15 +44,15 @@ public final class OpenScrollNames {
     }
 
     public static String fluid(String id) {
-        ResourceLocation key = ResourceLocation.tryParse(id);
+        Identifier key = Identifier.tryParse(id);
         if (key == null || !BuiltInRegistries.FLUID.containsKey(key)) return prettify(id);
         return BuiltInRegistries.FLUID.get(key).getFluidType().getDescription().getString();
     }
 
     public static String item(String id) {
-        ResourceLocation key = ResourceLocation.tryParse(id);
+        Identifier key = Identifier.tryParse(id);
         if (key == null || !BuiltInRegistries.ITEM.containsKey(key)) return prettify(id);
-        return new ItemStack(BuiltInRegistries.ITEM.get(key)).getHoverName().getString();
+        return new ItemStack(BuiltInRegistries.ITEM.getValue(key)).getHoverName().getString();
     }
 
     /**
@@ -67,7 +67,7 @@ public final class OpenScrollNames {
 
     /** {@link #merchant}, or null when nothing translates the id. */
     public static String translatedMerchant(String id) {
-        ResourceLocation key = ResourceLocation.tryParse(id);
+        Identifier key = Identifier.tryParse(id);
         if (key == null) return null;
         if (isProfessionlessMerchant(id)) {
             return BuiltInRegistries.ENTITY_TYPE.get(key).getDescription().getString();
@@ -82,7 +82,7 @@ public final class OpenScrollNames {
     /** Whether a merchant key names an entity type rather than a villager profession. */
     public static boolean isProfessionlessMerchant(String id) {
         if (TradePreview.WANDERING_TRADER.equals(id)) return true;
-        ResourceLocation key = ResourceLocation.tryParse(id);
+        Identifier key = Identifier.tryParse(id);
         return key != null
                 && !BuiltInRegistries.VILLAGER_PROFESSION.containsKey(key)
                 && BuiltInRegistries.ENTITY_TYPE.containsKey(key);
@@ -96,7 +96,7 @@ public final class OpenScrollNames {
 
     /** {@code <prefix>.<namespace>.<path>} when that key exists, a prettified path otherwise. */
     private static String translated(String prefix, String id) {
-        ResourceLocation key = ResourceLocation.tryParse(id);
+        Identifier key = Identifier.tryParse(id);
         if (key != null) {
             String candidate = prefix + "." + key.getNamespace() + "." + key.getPath();
             if (I18n.exists(candidate)) return I18n.get(candidate);

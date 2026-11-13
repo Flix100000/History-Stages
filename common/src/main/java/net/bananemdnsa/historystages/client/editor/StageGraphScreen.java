@@ -267,7 +267,7 @@ public class StageGraphScreen extends Screen {
             // editor-style navigation or authoring control.
             this.addRenderableWidget(StyledButton.of(
                     Component.translatable("editor.historystages.back"),
-                    btn -> this.minecraft.setScreen(parent),
+                    btn -> this.minecraft.gui.setScreen(parent),
                     BACK_BUTTON_X, BACK_BUTTON_Y, BACK_BUTTON_W, BACK_BUTTON_H));
             this.addRenderableWidget(StyledButton.of(
                     Component.translatable("editor.historystages.graph.rearrange"),
@@ -304,7 +304,7 @@ public class StageGraphScreen extends Screen {
                     : iconX - ICON_BUTTON_GAP - PRESETS_BUTTON_W;
             this.addRenderableWidget(StyledButton.of(
                     Component.translatable("editor.historystages.graph.preset.manage"),
-                    btn -> this.minecraft.setScreen(new StylePresetsScreen(this)),
+                    btn -> this.minecraft.gui.setScreen(new StylePresetsScreen(this)),
                     presetsX, BACK_BUTTON_Y, PRESETS_BUTTON_W, BACK_BUTTON_H));
         }
     }
@@ -502,9 +502,9 @@ public class StageGraphScreen extends Screen {
         contextMenu.addEntry(Component.translatable("editor.historystages.graph.context.edit_stage").getString(),
                 () -> openStageEditor(node));
         contextMenu.addEntry(Component.translatable("editor.historystages.graph.context.edit_info").getString(),
-                () -> this.minecraft.setScreen(new StageInfoTextScreen(this, node.stageId(), node.individual())));
+                () -> this.minecraft.gui.setScreen(new StageInfoTextScreen(this, node.stageId(), node.individual())));
         contextMenu.addEntry(Component.translatable("editor.historystages.graph.context.edit_style").getString(),
-                () -> this.minecraft.setScreen(new StageStyleScreen(this, node.stageId(), node.individual())));
+                () -> this.minecraft.gui.setScreen(new StageStyleScreen(this, node.stageId(), node.individual())));
         contextMenu.addEntry(Component.translatable("editor.historystages.graph.context.copy_style").getString(),
                 () -> copyStyle(node));
         if (!StageStyleClipboard.isEmpty()) {
@@ -520,9 +520,9 @@ public class StageGraphScreen extends Screen {
         contextMenu.addEntry(targets.size() == 1
                         ? Component.translatable("editor.historystages.graph.context.assign_preset").getString()
                         : Component.translatable("editor.historystages.graph.context.assign_preset.many", targets.size()).getString(),
-                () -> this.minecraft.setScreen(new StylePresetPickerScreen(this, targets.size(),
+                () -> this.minecraft.gui.setScreen(new StylePresetPickerScreen(this, targets.size(),
                         presetId -> assignPreset(targets, presetId),
-                        () -> this.minecraft.setScreen(new StylePresetsScreen(this)))));
+                        () -> this.minecraft.gui.setScreen(new StylePresetsScreen(this)))));
         contextMenu.addEntry(Component.translatable("editor.historystages.graph.context.remove").getString(),
                 () -> removeFromGraph(targets));
         Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
@@ -535,7 +535,7 @@ public class StageGraphScreen extends Screen {
                 ? StageManager.getIndividualStages() : StageManager.getStages();
         StageEntry entry = stages.get(node.stageId());
         if (entry == null) return; // stage vanished (e.g. deleted from another client) between hit and click
-        this.minecraft.setScreen(new StageDetailScreen(this, node.stageId(), entry, node.individual()));
+        this.minecraft.gui.setScreen(new StageDetailScreen(this, node.stageId(), entry, node.individual()));
     }
 
     /**
@@ -577,12 +577,12 @@ public class StageGraphScreen extends Screen {
             return;
         }
 
-        this.minecraft.setScreen(new ConfirmDialog(this,
+        this.minecraft.gui.setScreen(new ConfirmDialog(this,
                 Component.translatable("editor.historystages.graph.style.paste.title"),
                 Component.translatable("editor.historystages.graph.style.paste.confirm"),
                 () -> {
                     applyPaste(node, clipboard);
-                    this.minecraft.setScreen(this);
+                    this.minecraft.gui.setScreen(this);
                 }));
     }
 
@@ -626,7 +626,7 @@ public class StageGraphScreen extends Screen {
         // window on press means grabbing a node to move it throws a modal up over the very area
         // you were about to drag into.
         // Ctrl-clicks build the selection and never open anything.
-        if (button == 0 && !(mode == Mode.EDITOR && hasControlDown())) {
+        if (button == 0 && !(mode == Mode.EDITOR && Minecraft.getInstance().hasControlDown())) {
             pressX = mouseX;
             pressY = mouseY;
             pressedOnCanvas = true;
@@ -647,7 +647,7 @@ public class StageGraphScreen extends Screen {
         if (node == null) return; // vanished between hit test and release
 
         detailKey = graphKey;
-        this.minecraft.setScreen(new GraphDetailScreen(this, model, node));
+        this.minecraft.gui.setScreen(new GraphDetailScreen(this, model, node));
     }
 
     @Override
@@ -717,7 +717,7 @@ public class StageGraphScreen extends Screen {
         boolean menuOpen = contextMenu != null && contextMenu.isVisible();
         if (!typing && !menuOpen && !canvas.isBusy()) {
             GraphKeys.Action action = GraphKeys.resolve(keyCode, GLFW.glfwGetKeyName(keyCode, scanCode),
-                    hasControlDown(), hasShiftDown());
+                    Minecraft.getInstance().hasControlDown(), Minecraft.getInstance().hasShiftDown());
             if (action != null && runShortcut(action)) return true;
         }
         return super.keyPressed(keyCode, scanCode, modifiers);
@@ -777,7 +777,7 @@ public class StageGraphScreen extends Screen {
 
     @Override
     public void onClose() {
-        this.minecraft.setScreen(parent);
+        this.minecraft.gui.setScreen(parent);
     }
 
     @Override
@@ -836,12 +836,12 @@ public class StageGraphScreen extends Screen {
             apply.run();
             return;
         }
-        this.minecraft.setScreen(new ConfirmDialog(this,
+        this.minecraft.gui.setScreen(new ConfirmDialog(this,
                 Component.translatable("editor.historystages.graph.freeze.title"),
                 Component.translatable("editor.historystages.graph.freeze.confirm"),
                 () -> {
                     apply.run();
-                    this.minecraft.setScreen(this);
+                    this.minecraft.gui.setScreen(this);
                 }));
     }
 
@@ -871,7 +871,7 @@ public class StageGraphScreen extends Screen {
     }
 
     private void confirmRearrange() {
-        this.minecraft.setScreen(new ConfirmDialog(this,
+        this.minecraft.gui.setScreen(new ConfirmDialog(this,
                 Component.translatable("editor.historystages.graph.rearrange"),
                 Component.translatable("editor.historystages.graph.rearrange.confirm"),
                 this::performRearrange));
@@ -894,7 +894,7 @@ public class StageGraphScreen extends Screen {
         history.record(Step.rearrange(before, capture(bothTrees)));
 
         canvas.clearSelection();
-        this.minecraft.setScreen(this);
+        this.minecraft.gui.setScreen(this);
     }
 
     // --- Undo/redo ---------------------------------------------------------------------------

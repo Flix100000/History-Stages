@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.screen;
 
+import dev.architectury.networking.NetworkManager;
 import net.bananemdnsa.historystages.client.display.BlockedLines;
 import java.util.List;
 import net.bananemdnsa.historystages.api.dependency.Requirement;
@@ -30,24 +31,24 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
 
 public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPedestalMenu> {
-    private static final ResourceLocation[] TIER_TEXTURES = {
-            ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "textures/gui/pedestal/gui_t1.png"),
-            ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "textures/gui/pedestal/gui_t2.png"),
-            ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "textures/gui/pedestal/gui_t3.png"),
-            ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "textures/gui/pedestal/gui_t4.png"),
+    private static final Identifier[] TIER_TEXTURES = {
+            Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "textures/gui/pedestal/gui_t1.png"),
+            Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "textures/gui/pedestal/gui_t2.png"),
+            Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "textures/gui/pedestal/gui_t3.png"),
+            Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "textures/gui/pedestal/gui_t4.png"),
     };
-    private static final ResourceLocation TEXTURE_BAR =
-            ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "textures/gui/pedestal/bar.png");
-    private static final ResourceLocation TEXTURE_DEP =
-            ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "textures/gui/pedestal/dep_gui.png");
-    private static final ResourceLocation TEXTURE_BUTTONS =
-            ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "textures/gui/pedestal/buttons.png");
+    private static final Identifier TEXTURE_BAR =
+            Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "textures/gui/pedestal/bar.png");
+    private static final Identifier TEXTURE_DEP =
+            Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "textures/gui/pedestal/dep_gui.png");
+    private static final Identifier TEXTURE_BUTTONS =
+            Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "textures/gui/pedestal/buttons.png");
 
     // Two palettes, because the screen has two backgrounds. The main labels sit on the dark
     // slab and have to be light; the dependency scroll is cream parchment and keeps dark ink.
@@ -101,7 +102,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
 
     /** The sheet for the pedestal this screen belongs to. Reads the block state, which the
      *  client already has, so no extra sync is needed. */
-    private ResourceLocation tierTexture() {
+    private Identifier tierTexture() {
         int tier = 1;
         var be = this.menu.getBlockEntity();
         if (be != null && be.getBlockState().getBlock() instanceof TieredPedestal tiered) {
@@ -123,7 +124,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
         if (stack.isEmpty()) return false;
         CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
         if (!tag.contains("StageResearch")) return false;
-        String stageId = tag.getString("StageResearch");
+        String stageId = tag.getStringOr("StageResearch", "");
         if (ModItems.CREATIVE_STAGE_ID.equals(stageId)) return true;
 
         boolean individual = StageManager.isIndividualStage(stageId);
@@ -169,7 +170,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
                 this::canPressStart,
                 // No tooltip: a play/pause icon needs no caption.
                 null,
-                () -> net.neoforged.neoforge.network.PacketDistributor.sendToServer(
+                () -> NetworkManager.sendToServer(
                         new net.bananemdnsa.historystages.network.serverbound.PedestalControlPacket(
                                 this.menu.getBlockPos(), !this.menu.isRunning()))));
     }
@@ -180,7 +181,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
         if (!stack.isEmpty()) {
             CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
             if (tag.contains("StageResearch")) {
-                String stageId = tag.getString("StageResearch");
+                String stageId = tag.getStringOr("StageResearch", "");
                 if (!ModItems.CREATIVE_STAGE_ID.equals(stageId)) {
                     StageEntry entry = StageManager.isIndividualStage(stageId)
                             ? StageManager.getIndividualStages().get(stageId)
@@ -341,7 +342,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
                     System.currentTimeMillis());
         }
         if ("item".equals(entry.getType())) {
-            ResourceLocation rl = ResourceLocation.tryParse(entry.getId());
+            Identifier rl = Identifier.tryParse(entry.getId());
             if (rl != null) {
                 var item = BuiltInRegistries.ITEM.get(rl);
                 if (item != null) return new ItemStack(item);
@@ -391,7 +392,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
         if (!stack.isEmpty()) {
             CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
             if (tag.contains("StageResearch")) {
-                String stageId = tag.getString("StageResearch");
+                String stageId = tag.getStringOr("StageResearch", "");
                 boolean isCreative = ModItems.CREATIVE_STAGE_ID.equals(stageId);
                 boolean isIndividual = !isCreative && StageManager.isIndividualStage(stageId);
 
@@ -486,7 +487,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
                                 Component.translatable("screen.historystages.dependencies_not_met"),
                                 PedestalLayout.LINE_2_Y, SLAB_ERROR);
                     } else if (tag.contains("ResearchProgress")) {
-                        int currentProgress = tag.getInt("ResearchProgress");
+                        int currentProgress = tag.getIntOr("ResearchProgress", 0);
                         int maxProgress = tag.contains("MaxProgress") ? tag.getInt("MaxProgress") : 400;
 
                         int percent = (int) (((double) currentProgress / maxProgress) * 100);
@@ -544,7 +545,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
 
         // One blit for the whole sheet, candles included: imageHeight covers everything that
         // is painted, so the screen centres on what the player actually sees.
-        ResourceLocation sheet = tierTexture();
+        Identifier sheet = tierTexture();
         guiGraphics.blit(sheet, this.leftPos, this.topPos,
                 PedestalLayout.SHEET_X, PedestalLayout.SHEET_Y,
                 PedestalLayout.WIDTH, PedestalLayout.HEIGHT, 256, 256);
@@ -583,10 +584,10 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
         if (!stack.isEmpty()) {
             CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
             if (tag.contains("StageResearch")) {
-                String stageId = tag.getString("StageResearch");
+                String stageId = tag.getStringOr("StageResearch", "");
 
                 // Cache invalidation: if deposited NBT changed, clear and force re-request
-                CompoundTag currentDeposited = tag.getCompound("DepositedDependencies");
+                CompoundTag currentDeposited = tag.getCompoundOrEmpty("DepositedDependencies");
                 if (lastDepositedNBT == null || !lastDepositedNBT.equals(currentDeposited)) {
                     ClientDependencyCache.remove(stageId, StageManager.isIndividualStage(stageId));
                     lastDepositedNBT = currentDeposited.copy();
@@ -646,7 +647,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
             if (!scroll.isEmpty()) {
                 CompoundTag scrollTag = scroll.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
                 if (scrollTag.contains("StageResearch")) {
-                    String stageId = scrollTag.getString("StageResearch");
+                    String stageId = scrollTag.getStringOr("StageResearch", "");
                     RequirementResult result = ClientDependencyCache.get(stageId, StageManager.isIndividualStage(stageId));
 
                     if (result != null) {
@@ -810,7 +811,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
         if (stack.isEmpty()) return;
         CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
         if (!tag.contains("StageResearch")) return;
-        String stageId = tag.getString("StageResearch");
+        String stageId = tag.getStringOr("StageResearch", "");
         boolean individual = StageManager.isIndividualStage(stageId);
 
         RequirementResult result = ClientDependencyCache.get(stageId, individual);
@@ -870,7 +871,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
         if (dDelay > 0) {
             ItemStack depositStack = menu.getSlot(37).getItem();
             if (!depositStack.isEmpty()) {
-                ResourceLocation dRl = BuiltInRegistries.ITEM.getKey(depositStack.getItem());
+                Identifier dRl = BuiltInRegistries.ITEM.getKey(depositStack.getItem());
                 String dId = dRl != null ? dRl.toString() : "";
                 boolean isNeeded = result.getGroups().stream()
                         .flatMap(g -> g.getEntries().stream())

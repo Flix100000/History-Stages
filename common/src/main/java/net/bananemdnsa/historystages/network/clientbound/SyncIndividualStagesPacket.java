@@ -1,13 +1,14 @@
 package net.bananemdnsa.historystages.network.clientbound;
 
+import net.bananemdnsa.historystages.platform.Services;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.client.cache.ClientIndividualStageCache;
 import net.bananemdnsa.historystages.data.saveddata.IndividualStageData;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.minecraft.resources.Identifier;
+import net.bananemdnsa.historystages.platform.IPayloadContext;
 
 import java.util.HashSet;
 import java.util.Map;
@@ -21,7 +22,7 @@ public record SyncIndividualStagesPacket(Set<String> unlockedStages, Map<String,
     }
 
     public static final CustomPacketPayload.Type<SyncIndividualStagesPacket> TYPE =
-            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "sync_individual_stages"));
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "sync_individual_stages"));
 
     public static final StreamCodec<FriendlyByteBuf, SyncIndividualStagesPacket> STREAM_CODEC =
             StreamCodec.of(SyncIndividualStagesPacket::encode, SyncIndividualStagesPacket::decode);
@@ -59,12 +60,12 @@ public record SyncIndividualStagesPacket(Set<String> unlockedStages, Map<String,
             net.bananemdnsa.historystages.client.ClientFluidRecipeIndex.refresh();
 
             // JEI hiding (Issue #64): refresh visibility after individual-stage cache updated.
-            if (net.neoforged.fml.ModList.get().isLoaded("jei")) {
+            if (net.neoforged.fml.Services.isModLoaded("jei")) {
                 try {
                     net.bananemdnsa.historystages.compat.jei.JEIPlugin.tryApplyDiff();
                 } catch (Throwable ignored) {}
             }
-            if (net.neoforged.fml.ModList.get().isLoaded("emi")) {
+            if (net.neoforged.fml.Services.isModLoaded("emi")) {
                 try {
                     net.bananemdnsa.historystages.compat.emi.EmiReloadBridge.reloadIfHiding();
                 } catch (Throwable ignored) {}

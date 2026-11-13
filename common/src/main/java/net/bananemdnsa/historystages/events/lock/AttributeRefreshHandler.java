@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.events.lock;
 
+import net.bananemdnsa.historystages.platform.Services;
 import java.util.UUID;
 
 import net.bananemdnsa.historystages.HistoryStages;
@@ -7,9 +8,8 @@ import net.bananemdnsa.historystages.api.stage.StageEvent;
 import net.bananemdnsa.historystages.util.lock.HeldAttributeRefresher;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.server.ServerLifecycleHooks;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
 
 /**
  * Forces an attribute re-evaluation when a stage's lock state changes, so the
@@ -42,7 +42,7 @@ public final class AttributeRefreshHandler {
     }
 
     private static void refreshAllOnline() {
-        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        MinecraftServer server = Services.currentServer();
         if (server == null) return;
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             HeldAttributeRefresher.refresh(player);
@@ -50,7 +50,7 @@ public final class AttributeRefreshHandler {
     }
 
     private static void refreshPlayer(UUID uuid) {
-        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        MinecraftServer server = Services.currentServer();
         if (server == null) return;
         ServerPlayer player = server.getPlayerList().getPlayer(uuid);
         if (player != null) HeldAttributeRefresher.refresh(player);

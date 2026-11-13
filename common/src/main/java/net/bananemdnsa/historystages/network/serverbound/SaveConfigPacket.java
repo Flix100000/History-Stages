@@ -1,4 +1,5 @@
 package net.bananemdnsa.historystages.network.serverbound;
+import net.minecraft.server.permissions.Permissions;
 import net.bananemdnsa.historystages.network.PacketHandler;
 import net.bananemdnsa.historystages.network.clientbound.SyncConfigPacket;
 import net.bananemdnsa.historystages.network.clientbound.EditorFeedbackPacket;
@@ -12,9 +13,9 @@ import net.bananemdnsa.historystages.data.config.ConfigSpecCodec;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.bananemdnsa.historystages.platform.IPayloadContext;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -22,7 +23,7 @@ import java.util.Map;
 public record SaveConfigPacket(Map<String, String> configValues, boolean visual) implements CustomPacketPayload {
 
     public static final CustomPacketPayload.Type<SaveConfigPacket> TYPE =
-            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "save_config"));
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "save_config"));
 
     public static final StreamCodec<FriendlyByteBuf, SaveConfigPacket> STREAM_CODEC =
             StreamCodec.of(SaveConfigPacket::encode, SaveConfigPacket::decode);
@@ -49,7 +50,7 @@ public record SaveConfigPacket(Map<String, String> configValues, boolean visual)
     public static void handle(SaveConfigPacket msg, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer player)) return;
-            if (!player.hasPermissions(2)) return;
+            if (!player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)) return;
 
             if (msg.visual) {
                 // The visual settings are server-owned now, so this arrives instead of the editor

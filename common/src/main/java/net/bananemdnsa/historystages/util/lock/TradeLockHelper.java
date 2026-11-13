@@ -15,9 +15,9 @@ import net.bananemdnsa.historystages.data.lock.TradeOfferFilter;
 import net.bananemdnsa.historystages.data.lock.engine.LockResolution;
 import net.bananemdnsa.historystages.data.lock.engine.StageLocks;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.entity.npc.Villager;
-import net.minecraft.world.entity.npc.VillagerProfession;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.npc.villager.Villager;
+import net.minecraft.world.entity.npc.villager.VillagerProfession;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.trading.Merchant;
@@ -165,7 +165,7 @@ public final class TradeLockHelper {
     }
 
     private static TradeOfferFilter.OfferItem asFilterItem(ItemStack stack) {
-        ResourceLocation key = BuiltInRegistries.ITEM.getKey(stack.getItem());
+        Identifier key = BuiltInRegistries.ITEM.getKey(stack.getItem());
         return new TradeOfferFilter.OfferItem(key == null ? null : key.toString(), stack);
     }
 
@@ -185,7 +185,7 @@ public final class TradeLockHelper {
         String professionId = professionIdOf(merchant);
         if (professionId != null) return professionId;
         if (merchant instanceof net.minecraft.world.entity.Entity entity) {
-            ResourceLocation type = BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType());
+            Identifier type = BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType());
             if (type != null) return type.toString();
         }
         return "";
@@ -196,7 +196,7 @@ public final class TradeLockHelper {
     private static String professionIdOf(Merchant merchant) {
         if (!(merchant instanceof Villager villager)) return null;
         VillagerProfession profession = villager.getVillagerData().getProfession();
-        ResourceLocation key = BuiltInRegistries.VILLAGER_PROFESSION.getKey(profession);
+        Identifier key = BuiltInRegistries.VILLAGER_PROFESSION.getKey(profession);
         return key == null ? null : key.toString();
     }
 
@@ -211,7 +211,7 @@ public final class TradeLockHelper {
                                                                   StageStateView state) {
         return item -> {
             if (!(item.stack() instanceof ItemStack stack) || stack.isEmpty()) return List.of();
-            ResourceLocation key = BuiltInRegistries.ITEM.getKey(stack.getItem());
+            Identifier key = BuiltInRegistries.ITEM.getKey(stack.getItem());
             if (key == null) return List.of();
             return LockResolution.missingStages(scope,
                     StageLocks.engine().gatingStagesForItemAction(

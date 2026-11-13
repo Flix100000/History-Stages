@@ -1,14 +1,14 @@
 package net.bananemdnsa.historystages.events;
 
+import net.bananemdnsa.historystages.platform.bus.EventBus;
 import java.util.concurrent.atomic.AtomicLong;
 
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.api.stage.StageDefinitionsChangedEvent;
 import net.bananemdnsa.historystages.data.lock.engine.StageLocks;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
+import net.bananemdnsa.historystages.platform.event.tick.ServerTickEvent;
 
 /**
  * Posts {@link StageDefinitionsChangedEvent} at the end of a tick in which the definitions moved.
@@ -36,7 +36,7 @@ public final class StageDefinitionsEventBridge {
         long now = StageLocks.definitionsVersion();
         long seen = POSTED.get();
         if (seen != now && POSTED.compareAndSet(seen, now)) {
-            NeoForge.EVENT_BUS.post(new StageDefinitionsChangedEvent());
+            EventBus.post(new StageDefinitionsChangedEvent());
         }
     }
 }

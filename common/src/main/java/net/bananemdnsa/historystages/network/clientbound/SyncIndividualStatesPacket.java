@@ -5,8 +5,8 @@ import net.bananemdnsa.historystages.client.cache.ClientPlayerStageCache;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.minecraft.resources.Identifier;
+import net.bananemdnsa.historystages.platform.IPayloadContext;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -21,7 +21,7 @@ import java.util.UUID;
 public record SyncIndividualStatesPacket(Map<UUID, Set<String>> playerStages) implements CustomPacketPayload {
 
     public static final CustomPacketPayload.Type<SyncIndividualStatesPacket> TYPE =
-            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "sync_individual_states"));
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "sync_individual_states"));
 
     public static final StreamCodec<FriendlyByteBuf, SyncIndividualStatesPacket> STREAM_CODEC =
             StreamCodec.of(SyncIndividualStatesPacket::encode, SyncIndividualStatesPacket::decode);

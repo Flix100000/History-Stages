@@ -101,7 +101,7 @@ import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
@@ -565,7 +565,7 @@ public class StageDetailScreen extends Screen {
                         LockCategories.byId(CAT_ZONES);
         ZoneCategoryTab zoneTabLocal = new ZoneCategoryTab(zoneCategory,
                 () -> { hasChanges = true; updateMaxScroll(); },
-                factory -> this.minecraft.setScreen(factory.apply(this)));
+                factory -> this.minecraft.gui.setScreen(factory.apply(this)));
         zoneTabLocal.load(e);
         this.categoryTabs.put(12, zoneTabLocal);
         // Which of the two stage maps this screen is editing. Read by every tab that has sections,
@@ -1136,8 +1136,8 @@ public class StageDetailScreen extends Screen {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null) return List.of();
         List<String> ids = new ArrayList<>();
-        for (net.minecraft.resources.ResourceLocation key : mc.level.registryAccess()
-                .registryOrThrow(net.minecraft.core.registries.Registries.BIOME).keySet()) {
+        for (net.minecraft.resources.Identifier key : mc.level.registryAccess()
+                .lookupOrThrow(net.minecraft.core.registries.Registries.BIOME).keySet()) {
             ids.add(key.toString());
         }
         return ids;
@@ -1327,7 +1327,7 @@ public class StageDetailScreen extends Screen {
         for (EntryAction action : editor.entryActions()) {
             contextMenu.addEntry(Component.translatable(action.langKey()).getString(),
                     () -> action.run(new EntryActionContext(entryIdx, () -> hasChanges = true,
-                            screen -> this.minecraft.setScreen(screen),
+                            screen -> this.minecraft.gui.setScreen(screen),
                             overlay -> this.actionOverlay = overlay)));
         }
     }
@@ -2146,8 +2146,8 @@ public class StageDetailScreen extends Screen {
 
     private static ItemStack getItemStack(String itemId) {
         try {
-            ResourceLocation loc = ResourceLocation.parse(itemId);
-            Item item = BuiltInRegistries.ITEM.get(loc);
+            Identifier loc = Identifier.parse(itemId);
+            Item item = BuiltInRegistries.ITEM.getValue(loc);
             return item != null ? new ItemStack(item) : ItemStack.EMPTY;
         } catch (Exception e) {
             return ItemStack.EMPTY;
@@ -2699,7 +2699,7 @@ public class StageDetailScreen extends Screen {
                     if (isAnyTab(tabIdx, CAT_ITEMS, CAT_TAGS)) {
                         String disguiseKey = isTab(tabIdx, CAT_TAGS) ? "#" + entryValue : entryValue;
                         contextMenu.addEntry(Component.translatable("editor.historystages.context.disguise").getString(),
-                                () -> this.minecraft.setScreen(
+                                () -> this.minecraft.gui.setScreen(
                                         new net.bananemdnsa.historystages.client.editor.dialog.DisguiseDialog(
                                                 this, disguiseKey, false)));
                     }
@@ -2908,7 +2908,7 @@ public class StageDetailScreen extends Screen {
         if (list == null || index < 0 || index >= list.size()) return;
         net.bananemdnsa.historystages.data.ItemEntry entry = list.get(index);
         interactionItemsTarget = entityId;
-        this.minecraft.setScreen(new NbtItemEditScreen(this, entry.getId(), entry.getNbt(), nbt -> {
+        this.minecraft.gui.setScreen(new NbtItemEditScreen(this, entry.getId(), entry.getNbt(), nbt -> {
             List<net.bananemdnsa.historystages.data.ItemEntry> target = editInteractionlockItems.get(entityId);
             if (target == null || index >= target.size()) return;
             target.set(index, new net.bananemdnsa.historystages.data.ItemEntry(entry.getId(),
@@ -2932,9 +2932,9 @@ public class StageDetailScreen extends Screen {
         for (int i = 0; i < tags.size(); i++) {
             if (tagTab.nbtByIndex().containsKey(i)) continue;
             String raw = tags.get(i).startsWith("#") ? tags.get(i).substring(1) : tags.get(i);
-            ResourceLocation tagId = ResourceLocation.tryParse(raw);
+            Identifier tagId = Identifier.tryParse(raw);
             if (tagId == null) continue;
-            BuiltInRegistries.ITEM.getTag(TagKey.create(Registries.ITEM, tagId)).ifPresent(set ->
+            BuiltInRegistries.ITEM.get(TagKey.create(Registries.ITEM, tagId)).ifPresent(set ->
                     set.forEach(holder -> locked.add(BuiltInRegistries.ITEM.getKey(holder.value()).toString())));
         }
         ingredientUsagePopup.show(itemId, locked, isIndividual,
@@ -2943,7 +2943,7 @@ public class StageDetailScreen extends Screen {
 
     private void openNbtEditScreen(int entryIdx, String itemId) {
         com.google.gson.JsonObject currentNbt = itemTab.nbtByIndex().get(entryIdx);
-        this.minecraft.setScreen(new NbtItemEditScreen(this, itemId, currentNbt, nbt -> {
+        this.minecraft.gui.setScreen(new NbtItemEditScreen(this, itemId, currentNbt, nbt -> {
             if (nbt != null) {
                 itemTab.nbtByIndex().put(entryIdx, nbt);
             } else {
@@ -2965,7 +2965,7 @@ public class StageDetailScreen extends Screen {
     private void openTradeNbtEditScreen(int entryIdx) {
         String itemId = tradeOfferTab.iconItemId(entryIdx);
         if (itemId == null) return;
-        this.minecraft.setScreen(new NbtItemEditScreen(this, itemId,
+        this.minecraft.gui.setScreen(new NbtItemEditScreen(this, itemId,
                 tradeOfferTab.nbtAt(entryIdx), nbt -> {
                     tradeOfferTab.setNbtAt(entryIdx, nbt);
                     hasChanges = true;
@@ -2975,7 +2975,7 @@ public class StageDetailScreen extends Screen {
 
     private void openTagNbtEditScreen(int entryIdx, String tagId) {
         com.google.gson.JsonObject currentNbt = tagTab.nbtByIndex().get(entryIdx);
-        this.minecraft.setScreen(new NbtItemEditScreen(this, tagId, true, currentNbt, nbt -> {
+        this.minecraft.gui.setScreen(new NbtItemEditScreen(this, tagId, true, currentNbt, nbt -> {
             if (nbt != null) {
                 tagTab.nbtByIndex().put(entryIdx, nbt);
             } else {
@@ -2988,7 +2988,7 @@ public class StageDetailScreen extends Screen {
 
     private void openModExceptionNbtEditScreen(int entryIdx, String itemId) {
         com.google.gson.JsonObject currentNbt = modExceptionTab.nbtByIndex().get(entryIdx);
-        this.minecraft.setScreen(new NbtItemEditScreen(this, itemId, currentNbt, nbt -> {
+        this.minecraft.gui.setScreen(new NbtItemEditScreen(this, itemId, currentNbt, nbt -> {
             if (nbt != null) {
                 modExceptionTab.nbtByIndex().put(entryIdx, nbt);
             } else {
@@ -3224,13 +3224,13 @@ public class StageDetailScreen extends Screen {
     private void tryClose() {
         if (hasChanges) {
             Screen overview = parent;
-            this.minecraft.setScreen(new ConfirmDialog(this, Component.translatable("editor.historystages.unsaved_warning_title"),
-                    Component.translatable("editor.historystages.unsaved_warning"), () -> Minecraft.getInstance().setScreen(overview)));
-        } else { this.minecraft.setScreen(parent); }
+            this.minecraft.gui.setScreen(new ConfirmDialog(this, Component.translatable("editor.historystages.unsaved_warning_title"),
+                    Component.translatable("editor.historystages.unsaved_warning"), () -> Minecraft.getInstance().gui.setScreen(overview)));
+        } else { this.minecraft.gui.setScreen(parent); }
     }
 
     private void openStageSettings() {
-        this.minecraft.setScreen(new StageSettingsScreen(this,
+        this.minecraft.gui.setScreen(new StageSettingsScreen(this,
                 editStageId, editDisplayName, editResearchTime,
                 editMinPedestalTier, editPedestalTierMode, editMode, editAutoTrigger, editTemporary,
                 editHiddenDisplay.copy(), editLoseOnDeath, editShareWithTeam, editInterchangeable,
@@ -3508,7 +3508,7 @@ public class StageDetailScreen extends Screen {
     }
 
     private void openLogicEditor() {
-        this.minecraft.setScreen(new StageLogicScreen(this, editStageId, editDisplayName, isIndividual,
+        this.minecraft.gui.setScreen(new StageLogicScreen(this, editStageId, editDisplayName, isIndividual,
                 editLogic, logic -> {
                     this.editLogic = logic;
                     this.hasChanges = true;
@@ -3517,7 +3517,7 @@ public class StageDetailScreen extends Screen {
     }
 
     private void openDependencyEditor() {
-        this.minecraft.setScreen(new DependencyEditorScreen(this, editDependencies, isIndividual,
+        this.minecraft.gui.setScreen(new DependencyEditorScreen(this, editDependencies, isIndividual,
                 editStageId, deps -> {
                     this.editDependencies = deps;
                     this.hasChanges = true;
@@ -3570,7 +3570,7 @@ public class StageDetailScreen extends Screen {
         }
     }
 
-    @Override public void onClose() { this.minecraft.setScreen(parent); }
+    @Override public void onClose() { this.minecraft.gui.setScreen(parent); }
     @Override public boolean isPauseScreen() { return true; }
 
 }

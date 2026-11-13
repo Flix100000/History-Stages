@@ -23,18 +23,18 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
-import net.neoforged.neoforge.common.util.TriState;
+import net.bananemdnsa.historystages.platform.TriState;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.entity.ProjectileImpactEvent;
-import net.neoforged.neoforge.event.entity.player.AttackEntityEvent;
-import net.neoforged.neoforge.event.entity.player.PlayerEvent;
-import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
-import net.neoforged.neoforge.event.level.BlockEvent;
-import net.neoforged.neoforge.event.level.ExplosionEvent;
-import net.neoforged.neoforge.event.tick.PlayerTickEvent;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
+import net.bananemdnsa.historystages.platform.event.entity.ProjectileImpactEvent;
+import net.bananemdnsa.historystages.platform.event.entity.player.AttackEntityEvent;
+import net.bananemdnsa.historystages.platform.event.entity.player.PlayerEvent;
+import net.bananemdnsa.historystages.platform.event.entity.player.PlayerInteractEvent;
+import net.bananemdnsa.historystages.platform.event.level.BlockEvent;
+import net.bananemdnsa.historystages.platform.event.level.ExplosionEvent;
+import net.bananemdnsa.historystages.platform.event.tick.PlayerTickEvent;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -120,7 +120,7 @@ public class StructureLockHandler {
     }
 
     private static void recompute(ServerPlayer player, PlayerState state) {
-        ServerLevel level = player.serverLevel();
+        ServerLevel level = player.level();
         BlockPos pos = player.blockPosition();
 
         int padding = Config.GAMEPLAY.structureLockPadding.get();
@@ -182,7 +182,7 @@ public class StructureLockHandler {
     private static Set<String> missingStagesFor(StructureCluster c,
                                                 net.bananemdnsa.historystages.api.stage.StageStateView individual) {
         Set<String> idView = new HashSet<>();
-        c.structure().unwrapKey().ifPresent(k -> idView.add(k.location().toString()));
+        c.structure().unwrapKey().ifPresent(k -> idView.add(k.identifier().toString()));
         Set<String> tagView = new HashSet<>();
         c.structure().tags().forEach(t -> tagView.add(t.location().toString()));
 
@@ -248,7 +248,7 @@ public class StructureLockHandler {
         for (StructureCluster c : state.cachedLockedNearby) {
             if (!c.contains(pos)) continue;
             active.add(c);
-            c.structure().unwrapKey().ifPresent(k -> activeStructureIds.add(k.location().toString()));
+            c.structure().unwrapKey().ifPresent(k -> activeStructureIds.add(k.identifier().toString()));
             Set<String> stages = state.cachedClusterStages.get(c);
             if (stages != null) activeStageIds.addAll(stages);
         }
@@ -304,7 +304,7 @@ public class StructureLockHandler {
     }
 
     /**
-     * Returns ResourceLocation IDs of all structures whose start BB contains pos.
+     * Returns Identifier IDs of all structures whose start BB contains pos.
      * Kept for compatibility with {@code /history debug structure} which lists every
      * structure the player is currently inside, independent of the active lock mode.
      */
@@ -313,7 +313,7 @@ public class StructureLockHandler {
         if (holders.isEmpty()) return Collections.emptyList();
         List<String> out = new ArrayList<>(holders.size());
         for (Holder.Reference<Structure> h : holders) {
-            h.unwrapKey().ifPresent(k -> out.add(k.location().toString()));
+            h.unwrapKey().ifPresent(k -> out.add(k.identifier().toString()));
         }
         return out;
     }
@@ -324,7 +324,7 @@ public class StructureLockHandler {
      * so admins always see every structure that geometrically overlaps the position.
      */
     public static List<Holder.Reference<Structure>> collectStructureHoldersAt(ServerLevel level, BlockPos pos) {
-        var registry = level.registryAccess().registryOrThrow(net.minecraft.core.registries.Registries.STRUCTURE);
+        var registry = level.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.STRUCTURE);
         net.minecraft.world.level.ChunkPos center = new net.minecraft.world.level.ChunkPos(pos);
         Set<Structure> seen = new LinkedHashSet<>();
         for (int cx = center.x - CHUNK_SCAN_RADIUS; cx <= center.x + CHUNK_SCAN_RADIUS; cx++) {
@@ -367,7 +367,7 @@ public class StructureLockHandler {
         if (Config.GAMEPLAY.structureLockInChat.get()) {
             player.sendSystemMessage(msg);
         } else {
-            player.displayClientMessage(msg, true);
+            player.sendOverlayMessage(msg);
         }
 
         DebugLogger.runtime(HsRuntimeCategories.STRUCTURE_LOCK, player.getName().getString(),

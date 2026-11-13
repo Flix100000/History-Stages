@@ -17,7 +17,7 @@ import net.bananemdnsa.historystages.util.AllRecipesCache;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
@@ -78,7 +78,7 @@ public final class IngredientUsageScan {
         for (RecipeHolder<?> holder : recipes) {
             try {
                 Recipe<?> recipe = holder.value();
-                ResourceLocation typeKey = BuiltInRegistries.RECIPE_TYPE.getKey(recipe.getType());
+                Identifier typeKey = BuiltInRegistries.RECIPE_TYPE.getKey(recipe.getType());
                 String typeId = typeKey == null ? "" : typeKey.toString();
                 if (individualScope && !IndividualRecipeSupport.supports(typeId)) continue;
 

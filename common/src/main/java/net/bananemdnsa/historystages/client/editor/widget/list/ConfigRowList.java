@@ -18,7 +18,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
@@ -422,9 +422,9 @@ public class ConfigRowList {
 
     private static ItemStack resolveItemStack(String id) {
         if (id == null || id.isEmpty()) return ItemStack.EMPTY;
-        ResourceLocation rl = ResourceLocation.tryParse(id);
+        Identifier rl = Identifier.tryParse(id);
         if (rl == null) return ItemStack.EMPTY;
-        Item item = BuiltInRegistries.ITEM.get(rl);
+        Item item = BuiltInRegistries.ITEM.getValue(rl);
         if (item == null || item == net.minecraft.world.item.Items.AIR) return ItemStack.EMPTY;
         return new ItemStack(item);
     }

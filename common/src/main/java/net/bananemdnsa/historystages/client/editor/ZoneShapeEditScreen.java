@@ -166,6 +166,6 @@ public class ZoneShapeEditScreen extends AbstractInputScreen {
                     values.getInt("radius"), values.getInt("height"), fullHeight);
         };
         onDone.accept(shape);
-        this.minecraft.setScreen(parent);
+        this.minecraft.gui.setScreen(parent);
     }
 }

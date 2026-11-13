@@ -1,8 +1,13 @@
 package net.bananemdnsa.historystages;
 
+import dev.architectury.event.events.common.LifecycleEvent;
+import net.bananemdnsa.historystages.client.ClientHandlers;
+import net.bananemdnsa.historystages.data.config.ConfigFiles;
+import net.bananemdnsa.historystages.events.Handlers;
+import net.bananemdnsa.historystages.network.ModPayloads;
+import net.bananemdnsa.historystages.platform.Services;
+import net.bananemdnsa.historystages.platform.bus.EventBus;
 import com.mojang.logging.LogUtils;
-import net.bananemdnsa.historystages.Config;
-import net.bananemdnsa.historystages.client.LockDecorator;
 import net.bananemdnsa.historystages.commands.StageCommand;
 import net.bananemdnsa.historystages.compat.ScrollVariants;
 import net.bananemdnsa.historystages.data.StageManager;
@@ -14,7 +19,6 @@ import net.bananemdnsa.historystages.network.clientbound.SyncConfigPacket;
 import net.bananemdnsa.historystages.network.clientbound.SyncIndividualStagesPacket;
 import net.bananemdnsa.historystages.network.clientbound.SyncStageDefinitionsPacket;
 import net.bananemdnsa.historystages.network.clientbound.SyncStagesPacket;
-import net.bananemdnsa.historystages.screen.ResearchPedestalScreen;
 import net.bananemdnsa.historystages.util.DebugLogger;
 import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import net.bananemdnsa.historystages.data.saveddata.IndividualStageData;
@@ -22,46 +26,42 @@ import net.bananemdnsa.historystages.data.saveddata.StageData;
 import net.bananemdnsa.historystages.util.lock.StageLockHelper;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.CreativeModeTabs;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.bus.api.IEventBus;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.ModContainer;
-import net.neoforged.fml.ModList;
-import net.neoforged.fml.common.Mod;
-import net.neoforged.fml.config.ModConfig;
-import net.neoforged.neoforge.capabilities.Capabilities;
-import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
-import net.neoforged.neoforge.client.event.RegisterItemDecorationsEvent;
-import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
-import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.neoforge.common.util.TriState;
-import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
-import net.neoforged.neoforge.event.RegisterCommandsEvent;
-import net.neoforged.neoforge.event.entity.player.ItemEntityPickupEvent;
-import net.neoforged.neoforge.event.entity.player.PlayerEvent;
-import net.neoforged.neoforge.event.level.LevelEvent;
-import net.neoforged.neoforge.event.server.ServerStoppingEvent;
-import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.TriState;
+import net.bananemdnsa.historystages.platform.event.BuildCreativeModeTabContentsEvent;
+import net.bananemdnsa.historystages.platform.event.RegisterCommandsEvent;
+import net.bananemdnsa.historystages.platform.event.entity.player.ItemEntityPickupEvent;
+import net.bananemdnsa.historystages.platform.event.entity.player.PlayerEvent;
+import net.bananemdnsa.historystages.platform.event.level.LevelEvent;
+import net.bananemdnsa.historystages.platform.event.server.ServerStoppingEvent;
+import net.bananemdnsa.historystages.platform.event.tick.ServerTickEvent;
 import org.slf4j.Logger;
 
 import java.util.List;
 
-@Mod(HistoryStages.MOD_ID)
 public class HistoryStages {
     public static final String MOD_ID = "historystages";
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    public static net.minecraft.resources.ResourceLocation location(String path) {
-        return net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(MOD_ID, path);
+    public static Identifier location(String path) {
+        return Identifier.fromNamespaceAndPath(MOD_ID, path);
     }
 
-    public HistoryStages(IEventBus modEventBus, ModContainer modContainer) {
-        // Must run before either config spec is registered below — see the class comment on
+    private HistoryStages() {
+    }
+
+    /**
+     * What the NeoForge constructor did, for both loaders. Each loader's entry class calls this
+     * while the mod is being constructed (NeoForge needs the registers then). What only one loader
+     * has (capabilities, menu screens, item decorations) stays in that loader's entry class.
+     */
+    public static void init() {
+        // Must run before either config spec is loaded below — see the class comment on
         // GraphConfigMigration for why capture and apply are two separate steps.
         net.bananemdnsa.historystages.data.graph.GraphConfigMigration.capture();
         // Second, never first: this one renames the old files once it has written their contents
@@ -69,99 +69,77 @@ public class HistoryStages {
         // the rename would cost the pack its whole stage graph.
         net.bananemdnsa.historystages.data.config.LegacyConfigMigration.capture();
 
-        ModItems.register(modEventBus);
-        ModBlocks.register(modEventBus);
-        ModCreativeTabs.register(modEventBus);
-        ModBlockEntities.register(modEventBus);
-        ModMenuTypes.register(modEventBus);
-        net.bananemdnsa.historystages.init.ModRecipes.register(modEventBus);
+        // Blocks before items: the pedestal item wraps the block.
+        ModBlocks.register();
+        ModItems.register();
+        ModCreativeTabs.register();
+        ModBlockEntities.register();
+        ModMenuTypes.register();
+        ModRecipes.register();
 
-        modEventBus.addListener(this::addCreative);
-        // Hier fügen wir den Decorator hinzu:
-        modEventBus.addListener(this::onRegisterItemDecorators);
-        modEventBus.addListener(this::registerScreens);
-        modEventBus.addListener(this::registerCapabilities);
-        modEventBus.addListener(this::onConfigLoad);
-        modEventBus.addListener(this::onConfigReload);
-
-        // Type.COMMON, not CLIENT: a dedicated server never loads a CLIENT spec, so it could not
-        // own these values — and owning them is the whole point of sending them to every player.
-        // Not Type.SERVER either: that stores per world under saves/<world>/serverconfig/, which
-        // is exactly not the one shared place under config/historystages/settings/.
-        // Both specs must name their own file. NeoForge derives the default name from modid and
-        // type, so two COMMON registrations without explicit paths both claim
-        // historystages-common.toml and mod loading dies on the conflict.
-        modContainer.registerConfig(ModConfig.Type.COMMON, Config.VISUAL_SPEC,
-                "historystages/settings/visual.toml");
-        modContainer.registerConfig(ModConfig.Type.COMMON, Config.GAMEPLAY_SPEC,
-                "historystages/settings/gameplay.toml");
-        modContainer.registerConfig(ModConfig.Type.COMMON, GraphConfig.GRAPH_SPEC,
-                "historystages/settings/graph.toml");
+        // Same files and keys as the three COMMON registrations on main, see ConfigFiles.
+        ConfigFiles.loadAll();
 
         ConfigHandler.setupConfig();
         StageManager.load();
 
-        // Registration window for addon lock categories. StageManager.load() above already
-        // parsed every stage's `addons` block into raw JsonElement — that needs no registry at
-        // all — so nothing upstream of this point ever needed a category to exist. Firing here,
-        // once every mod has been constructed and FMLCommonSetupEvent's own parallel dispatch has
-        // fully returned (postEvent is called from the deferred work queue, not from inside that
-        // dispatch), lets every mod's RegisterLockCategoriesEvent listener run before the
-        // registry closes for good.
-        modEventBus.addListener((net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent event) ->
-                event.enqueueWork(() -> {
-                    // Wrapped, so ModLoadingContext names the mod whose listener is running —
-                    // that is how the debug report knows which addons registered what.
-                    net.neoforged.fml.ModLoader.postEventWrapContainerInModOrder(
-                            new net.bananemdnsa.historystages.api.lock.RegisterLockCategoriesEvent());
-                    net.bananemdnsa.historystages.data.lock.category.LockCategories.freeze();
-                    net.neoforged.fml.ModLoader.postEventWrapContainerInModOrder(
-                            new net.bananemdnsa.historystages.api.trigger.RegisterTriggerTypesEvent());
-                    net.bananemdnsa.historystages.data.auto.TriggerTypes.freeze();
-                    net.neoforged.fml.ModLoader.postEventWrapContainerInModOrder(
-                            new net.bananemdnsa.historystages.api.dependency.RegisterRequirementTypesEvent());
-                    net.bananemdnsa.historystages.data.dependency.RequirementTypes.freeze();
-                    net.neoforged.fml.ModLoader.postEventWrapContainerInModOrder(
-                            new net.bananemdnsa.historystages.api.settings.RegisterStageSettingsGroupsEvent());
-                    net.bananemdnsa.historystages.data.settings.StageSettingsGroups.freeze();
-                    net.neoforged.fml.ModLoader.postEventWrapContainerInModOrder(
-                            new net.bananemdnsa.historystages.api.config.RegisterConfigSectionsEvent());
-                    // The freeze is what makes the section list safe to read from the config
-                    // packets, which now go to AddonConfigSections directly rather than through a
-                    // registry the values had to be copied into first.
-                    net.bananemdnsa.historystages.data.config.AddonConfigSections.freeze();
-                    net.neoforged.fml.ModLoader.postEventWrapContainerInModOrder(
-                            new net.bananemdnsa.historystages.api.lock.RegisterIndividualRecipeSupportEvent());
-                    net.bananemdnsa.historystages.data.lock.IndividualRecipeSupport.freeze();
-                    net.neoforged.fml.ModLoader.postEventWrapContainerInModOrder(
-                            new net.bananemdnsa.historystages.api.team.RegisterTeamProvidersEvent());
-                    net.bananemdnsa.historystages.data.team.TeamProviders.freeze();
-                    net.neoforged.fml.ModLoader.postEventWrapContainerInModOrder(
-                            new net.bananemdnsa.historystages.api.diagnostics.RegisterStageChecksEvent());
-                    net.bananemdnsa.historystages.data.diagnostics.StageChecks.freeze();
-                    net.bananemdnsa.historystages.util.DebugLogger.registerBuiltInSections();
-                    net.neoforged.fml.ModLoader.postEventWrapContainerInModOrder(
-                            new net.bananemdnsa.historystages.api.diagnostics.RegisterReportSectionsEvent());
-                    net.bananemdnsa.historystages.data.diagnostics.ReportSections.freeze();
+        ModPayloads.register();
+        Handlers.registerCommon();
+        if (Services.isClient()) {
+            ClientHandlers.register();
+        }
 
-                    // Logged here rather than inside freeze(): LockCategories is unit-tested, and
-                    // the test runtime classpath has no Minecraft or NeoForge on it. This line is
-                    // also how an in-game check confirms the event actually fired.
-                    var addonCategories =
-                            net.bananemdnsa.historystages.data.lock.category.LockCategories.addonIds();
-                    LOGGER.info("[HistoryStages] Lock categories closed: {} total, {} from other mods {}",
-                            net.bananemdnsa.historystages.data.lock.category.LockCategories.all().size(),
-                            addonCategories.size(), addonCategories);
-                    LOGGER.info("[HistoryStages] Stage settings groups closed: {} total",
-                            net.bananemdnsa.historystages.data.settings.StageSettingsGroups.all().size());
-                    LOGGER.info("[HistoryStages] Config sections closed: {} total",
-                            net.bananemdnsa.historystages.data.config.AddonConfigSections.all().size());
-                    LOGGER.info("[HistoryStages] Team providers closed: {}",
-                            net.bananemdnsa.historystages.data.team.TeamProviders.ids());
-                }));
+        // Registration window for addon lock categories, at the point main used: once every mod
+        // has been constructed (FMLCommonSetupEvent, here Architectury's SETUP), before anything
+        // plays. Every registry it fills is closed on the way out.
+        LifecycleEvent.SETUP.register(() -> {
+            // PORT(Task 8): NeoForge wrapped each post in the listener's mod context so the
+            // debug report could name the addon (ApiOwners). The platform bus has no such context;
+            // owners read as null until the addon entrypoint window sets them.
+            EventBus.post(new net.bananemdnsa.historystages.api.lock.RegisterLockCategoriesEvent());
+            net.bananemdnsa.historystages.data.lock.category.LockCategories.freeze();
+            EventBus.post(new net.bananemdnsa.historystages.api.trigger.RegisterTriggerTypesEvent());
+            net.bananemdnsa.historystages.data.auto.TriggerTypes.freeze();
+            EventBus.post(new net.bananemdnsa.historystages.api.dependency.RegisterRequirementTypesEvent());
+            net.bananemdnsa.historystages.data.dependency.RequirementTypes.freeze();
+            EventBus.post(new net.bananemdnsa.historystages.api.settings.RegisterStageSettingsGroupsEvent());
+            net.bananemdnsa.historystages.data.settings.StageSettingsGroups.freeze();
+            EventBus.post(new net.bananemdnsa.historystages.api.config.RegisterConfigSectionsEvent());
+            // The freeze is what makes the section list safe to read from the config
+            // packets, which now go to AddonConfigSections directly rather than through a
+            // registry the values had to be copied into first.
+            net.bananemdnsa.historystages.data.config.AddonConfigSections.freeze();
+            EventBus.post(new net.bananemdnsa.historystages.api.lock.RegisterIndividualRecipeSupportEvent());
+            net.bananemdnsa.historystages.data.lock.IndividualRecipeSupport.freeze();
+            EventBus.post(new net.bananemdnsa.historystages.api.team.RegisterTeamProvidersEvent());
+            net.bananemdnsa.historystages.data.team.TeamProviders.freeze();
+            EventBus.post(new net.bananemdnsa.historystages.api.diagnostics.RegisterStageChecksEvent());
+            net.bananemdnsa.historystages.data.diagnostics.StageChecks.freeze();
+            net.bananemdnsa.historystages.util.DebugLogger.registerBuiltInSections();
+            EventBus.post(new net.bananemdnsa.historystages.api.diagnostics.RegisterReportSectionsEvent());
+            net.bananemdnsa.historystages.data.diagnostics.ReportSections.freeze();
 
+            // Logged here rather than inside freeze(): LockCategories is unit-tested, and
+            // the test runtime classpath has no Minecraft or NeoForge on it. This line is
+            // also how an in-game check confirms the event actually fired.
+            var addonCategories =
+                    net.bananemdnsa.historystages.data.lock.category.LockCategories.addonIds();
+            LOGGER.info("[HistoryStages] Lock categories closed: {} total, {} from other mods {}",
+                    net.bananemdnsa.historystages.data.lock.category.LockCategories.all().size(),
+                    addonCategories.size(), addonCategories);
+            LOGGER.info("[HistoryStages] Stage settings groups closed: {} total",
+                    net.bananemdnsa.historystages.data.settings.StageSettingsGroups.all().size());
+            LOGGER.info("[HistoryStages] Config sections closed: {} total",
+                    net.bananemdnsa.historystages.data.config.AddonConfigSections.all().size());
+            LOGGER.info("[HistoryStages] Team providers closed: {}",
+                    net.bananemdnsa.historystages.data.team.TeamProviders.ids());
+        });
+
+        // PORT(later): FTB Teams/Quests, Accessories, KubeJS and CraftTweaker have no 26.2 build yet,
+        // and Curios moves with Task 13 into the NeoForge module. Kept as on main, not compiled.
+        /*
         // FTB Teams on its own, without FTB Quests, is a common pack setup, so it gets its own check.
-        if (ModList.get().isLoaded("ftbteams")) {
+        if (Services.isModLoaded("ftbteams")) {
             try {
                 net.bananemdnsa.historystages.compat.ftbteams.FTBTeamsIntegration.init(modEventBus);
                 LOGGER.info("[HistoryStages] FTB Teams integration loaded.");
@@ -171,7 +149,7 @@ public class HistoryStages {
         }
 
         // Conditional FTB Quests integration
-        if (ModList.get().isLoaded("ftbquests")) {
+        if (Services.isModLoaded("ftbquests")) {
             try {
                 net.bananemdnsa.historystages.compat.ftbquests.FTBQuestsIntegration.init();
                 LOGGER.info("[HistoryStages] FTB Quests integration loaded.");
@@ -180,16 +158,16 @@ public class HistoryStages {
             }
         }
 
-        if (ModList.get().isLoaded("curios")) {
+        if (Services.isModLoaded("curios")) {
             try {
-                NeoForge.EVENT_BUS.register(net.bananemdnsa.historystages.events.lock.CuriosEquipLockHandler.class);
+                EventBus.register(net.bananemdnsa.historystages.events.lock.CuriosEquipLockHandler.class);
                 LOGGER.info("[HistoryStages] Curios integration loaded.");
             } catch (Exception e) {
                 LOGGER.error("[HistoryStages] Failed to load Curios integration.", e);
             }
         }
 
-        if (ModList.get().isLoaded("accessories")) {
+        if (Services.isModLoaded("accessories")) {
             try {
                 net.bananemdnsa.historystages.events.lock.AccessoriesEquipLockHandler.register();
                 LOGGER.info("[HistoryStages] Accessories integration loaded.");
@@ -201,7 +179,7 @@ public class HistoryStages {
         // Script bridges. Both mods find their own entry point — KubeJS through
         // kubejs.plugins.txt, CraftTweaker by scanning for @ZenRegister — so all that is needed
         // here is the NeoForge-side wiring that turns StageEvent into something scripts hear.
-        if (ModList.get().isLoaded("kubejs")) {
+        if (Services.isModLoaded("kubejs")) {
             try {
                 net.bananemdnsa.historystages.compat.kubejs.StageEventForwarder.register(NeoForge.EVENT_BUS);
                 LOGGER.info("[HistoryStages] KubeJS integration loaded.");
@@ -210,7 +188,7 @@ public class HistoryStages {
             }
         }
 
-        if (ModList.get().isLoaded("crafttweaker")) {
+        if (Services.isModLoaded("crafttweaker")) {
             try {
                 net.bananemdnsa.historystages.compat.crafttweaker.CTScriptReloadHook.register(NeoForge.EVENT_BUS);
                 LOGGER.info("[HistoryStages] CraftTweaker integration loaded.");
@@ -218,66 +196,16 @@ public class HistoryStages {
                 LOGGER.error("[HistoryStages] Failed to load CraftTweaker integration.", e);
             }
         }
+        */
 
         // Optional per-mod lock adapters (custom actions that bypass vanilla interaction events).
         net.bananemdnsa.historystages.compat.LockInterceptors.init();
 
-        NeoForge.EVENT_BUS.register(this);
-        NeoForge.EVENT_BUS.register(new net.bananemdnsa.historystages.events.AutoTriggerEventBridge());
+        EventBus.register(new HistoryStages());
+        EventBus.register(new net.bananemdnsa.historystages.events.AutoTriggerEventBridge());
     }
 
-    private void onConfigLoad(net.neoforged.fml.event.config.ModConfigEvent.Loading event) {
-        if (event.getConfig().getSpec() == Config.GAMEPLAY_SPEC) {
-            net.bananemdnsa.historystages.data.config.ConfigDerivedCaches.rebuildGameplay();
-        }
-        // Its own branch: the scroll tooltip layout is read out of the visual spec, so hanging the
-        // rebuild off the gameplay spec would read a file that may not be loaded yet and would miss
-        // every later change to visual.toml.
-        if (event.getConfig().getSpec() == Config.VISUAL_SPEC) {
-            net.bananemdnsa.historystages.data.config.ConfigDerivedCaches.rebuildVisual();
-        }
-        // Not in the constructor: registerConfig does not load a COMMON spec, and writing into one
-        // before it is loaded throws. Hung off both specs rather than just whichever loads second,
-        // so it does not depend on the registration order — apply() waits until both are ready and
-        // then runs exactly once.
-        if (event.getConfig().getSpec() == Config.VISUAL_SPEC
-                || event.getConfig().getSpec() == Config.GAMEPLAY_SPEC) {
-            net.bananemdnsa.historystages.data.config.LegacyConfigMigration.apply();
-        }
-        if (event.getConfig().getSpec() == GraphConfig.GRAPH_SPEC) {
-            net.bananemdnsa.historystages.data.graph.GraphConfigMigration.apply();
-        }
-    }
-
-    private void onConfigReload(net.neoforged.fml.event.config.ModConfigEvent.Reloading event) {
-        if (event.getConfig().getSpec() == Config.GAMEPLAY_SPEC) {
-            net.bananemdnsa.historystages.data.config.ConfigDerivedCaches.rebuildGameplay();
-        }
-        if (event.getConfig().getSpec() == Config.VISUAL_SPEC) {
-            net.bananemdnsa.historystages.data.config.ConfigDerivedCaches.rebuildVisual();
-        }
-    }
-
-    private void registerCapabilities(RegisterCapabilitiesEvent event) {
-        event.registerBlockEntity(
-                Capabilities.ItemHandler.BLOCK,
-                ModBlockEntities.RESEARCH_PEDESTAL_BE.get(),
-                (blockEntity, side) -> blockEntity.getItemHandler()
-        );
-    }
-
-    private void registerScreens(RegisterMenuScreensEvent event) {
-        event.register(ModMenuTypes.RESEARCH_MENU.get(), ResearchPedestalScreen::new);
-    }
-
-    private void onRegisterItemDecorators(RegisterItemDecorationsEvent event) {
-        // ForgeRegistries.ITEMS.forEach ist gut, aber manche Mods registrieren Items später.
-        // Wir registrieren den Decorator für absolut jedes Item.
-        for (Item item : BuiltInRegistries.ITEM) {
-            event.register(item, new LockDecorator());
-        }
-    }
-
+    @SubscribeEvent
     private void addCreative(BuildCreativeModeTabContentsEvent event) {
         // Wir fügen die Maschine bei den Funktions-Blöcken hinzu
         if (event.getTabKey() == CreativeModeTabs.FUNCTIONAL_BLOCKS) {
@@ -308,7 +236,7 @@ public class HistoryStages {
         if (event.getEntity() instanceof ServerPlayer player) {
             // Send stage definitions, unlocked stages, and server config to client
             PacketHandler.sendDefinitionsToPlayer(new SyncStageDefinitionsPacket(StageManager.getStages()), player);
-            StageData data = StageData.get(player.serverLevel());
+            StageData data = StageData.get(player.level());
             PacketHandler.sendToPlayer(new SyncStagesPacket(data.getUnlockedStages()), player);
             PacketHandler.sendConfigToPlayer(SyncConfigPacket.fromServerConfig(), player);
             PacketHandler.sendGraphConfigToPlayer(
@@ -319,7 +247,7 @@ public class HistoryStages {
                             .fromServerConfig(), player);
 
             // Sync individual stages for this player
-            IndividualStageData individualData = IndividualStageData.get(player.serverLevel());
+            IndividualStageData individualData = IndividualStageData.get(player.level());
             PacketHandler.sendIndividualStagesToPlayer(
                     SyncIndividualStagesPacket.of(individualData, player.getUUID()),
                     player
@@ -510,7 +438,7 @@ public class HistoryStages {
         if (Config.GAMEPLAY.individualLockItemPickup.get()
                 && StageLockHelper.isActionLockedByIndividualStage(stack, player.getUUID(), "pickup")) {
             event.setCanPickup(TriState.FALSE);
-            ResourceLocation itemRL = BuiltInRegistries.ITEM.getKey(stack.getItem());
+            Identifier itemRL = BuiltInRegistries.ITEM.getKey(stack.getItem());
             DebugLogger.runtimeThrottled(HsRuntimeCategories.INVENTORY, "pickup_blocked_" + player.getUUID() + "_" + itemRL,
                     "<" + player.getName().getString() + "> Pickup of '" + itemRL + "' blocked [action: pickup]");
             return;
@@ -518,7 +446,7 @@ public class HistoryStages {
 
         // Global stages: log only (existing behavior)
         if (StageLockHelper.isItemLockedForServer(stack)) {
-            ResourceLocation itemRL = BuiltInRegistries.ITEM.getKey(stack.getItem());
+            Identifier itemRL = BuiltInRegistries.ITEM.getKey(stack.getItem());
             DebugLogger.runtimeThrottled(HsRuntimeCategories.INVENTORY, "pickup_" + player.getUUID() + "_" + itemRL,
                     "<" + player.getName().getString() + "> Picked up locked '" + itemRL + "' x" + stack.getCount() + " [action: pickup]");
         }
@@ -530,7 +458,7 @@ public class HistoryStages {
             ItemStack stack = player.getInventory().getItem(i);
             if (stack.isEmpty()) continue;
             if (StageLockHelper.isItemLockedForServer(stack)) {
-                ResourceLocation itemRL = BuiltInRegistries.ITEM.getKey(stack.getItem());
+                Identifier itemRL = BuiltInRegistries.ITEM.getKey(stack.getItem());
                 lockedItems.add(itemRL + " x" + stack.getCount());
             }
         }

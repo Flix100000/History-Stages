@@ -18,7 +18,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.*;
 import net.minecraft.resources.RegistryOps;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.item.enchantment.Enchantment;
@@ -85,9 +85,9 @@ public class NbtMatcher {
     private static CompoundTag encodeReferencedComponents(ItemStack stack, JsonObject componentCriteria) {
         CompoundTag out = new CompoundTag();
         for (String componentId : componentCriteria.keySet()) {
-            ResourceLocation rl = ResourceLocation.tryParse(componentId);
+            Identifier rl = Identifier.tryParse(componentId);
             if (rl == null) continue;
-            DataComponentType<?> type = BuiltInRegistries.DATA_COMPONENT_TYPE.get(rl);
+            DataComponentType<?> type = BuiltInRegistries.DATA_COMPONENT_TYPE.getValue(rl);
             if (type == null) continue; // unknown component (mod not loaded or typo)
             Tag encoded = encodeComponent(stack, type);
             if (encoded != null) out.put(componentId, encoded);
@@ -126,7 +126,7 @@ public class NbtMatcher {
     private static ListTag toLegacyEnchantmentList(ItemEnchantments enchantments) {
         ListTag list = new ListTag();
         for (Object2IntMap.Entry<Holder<Enchantment>> entry : enchantments.entrySet()) {
-            ResourceLocation id = entry.getKey().unwrapKey().map(ResourceKey::location).orElse(null);
+            Identifier id = entry.getKey().unwrapKey().map(ResourceKey::location).orElse(null);
             if (id == null) continue;
             CompoundTag e = new CompoundTag();
             e.putString("id", id.toString());

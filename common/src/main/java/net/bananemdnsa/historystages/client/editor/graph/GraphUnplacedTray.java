@@ -6,7 +6,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -143,9 +143,9 @@ final class GraphUnplacedTray {
     private void drawIcon(GuiGraphics g, StageGraphModel.Node node, int left, int top) {
         if (node.icon() == null || node.icon().isEmpty()) return;
         ItemStack stack = icons.computeIfAbsent(node.icon(), key -> {
-            ResourceLocation rl = ResourceLocation.tryParse(key);
+            Identifier rl = Identifier.tryParse(key);
             if (rl == null) return ItemStack.EMPTY;
-            Item item = BuiltInRegistries.ITEM.get(rl);
+            Item item = BuiltInRegistries.ITEM.getValue(rl);
             return item == null || item == Items.AIR ? ItemStack.EMPTY : new ItemStack(item);
         });
         if (stack.isEmpty()) return;

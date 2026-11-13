@@ -5,7 +5,7 @@ import com.mojang.blaze3d.platform.NativeImage;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.DynamicTexture;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 /**
  * The sampled terrain as a picture.
@@ -26,18 +26,18 @@ public final class ZoneTerrainTexture implements AutoCloseable {
      */
     private static final int UNKNOWN = 0xFF191414;
 
-    private final ResourceLocation id;
+    private final Identifier id;
 
     private DynamicTexture texture;
     private int cols;
     private int rows;
 
     public ZoneTerrainTexture(String name) {
-        this.id = ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID,
+        this.id = Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID,
                 "zone_terrain/" + name + "_" + Integer.toHexString(System.identityHashCode(this)));
     }
 
-    public ResourceLocation id() {
+    public Identifier id() {
         return id;
     }
 

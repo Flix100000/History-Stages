@@ -49,7 +49,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.item.Item;
@@ -463,7 +463,7 @@ public class StageSettingsScreen extends Screen {
         // hunting through a second editor for its one line of prose.
         descriptionButton = StyledButton.of(
                 descriptionLabel(),
-                btn -> this.minecraft.setScreen(new FormattedTextScreen(
+                btn -> this.minecraft.gui.setScreen(new FormattedTextScreen(
                         this,
                         Component.translatable("editor.historystages.graph.info.title"),
                         editDescription,
@@ -560,7 +560,7 @@ public class StageSettingsScreen extends Screen {
                         editAutoTrigger = new AutoTrigger();
                         hasChanges = true;
                     }
-                    this.minecraft.setScreen(new AutoTriggerEditorScreen(this, editAutoTrigger,
+                    this.minecraft.gui.setScreen(new AutoTriggerEditorScreen(this, editAutoTrigger,
                             updated -> {
                                 editAutoTrigger = updated;
                                 hasChanges = true;
@@ -584,7 +584,7 @@ public class StageSettingsScreen extends Screen {
                     // Not a change yet: only the editor's own callback marks one, so backing out of
                     // an untouched editor leaves the screen clean.
                     if (editLockTrigger == null) editLockTrigger = new LockTrigger();
-                    this.minecraft.setScreen(new AutoTriggerEditorScreen(this, editLockTrigger,
+                    this.minecraft.gui.setScreen(new AutoTriggerEditorScreen(this, editLockTrigger,
                             updated -> {
                                 // The editor hands back the instance it was given.
                                 if (updated instanceof LockTrigger lock) editLockTrigger = lock;
@@ -791,7 +791,7 @@ public class StageSettingsScreen extends Screen {
                 // meant to carry format codes and/or the placeholders it declares.
                 StyledButton button = StyledButton.of(
                         addonLongTextLabel(values, longTextField, 100),
-                        btn -> this.minecraft.setScreen(new FormattedTextScreen(
+                        btn -> this.minecraft.gui.setScreen(new FormattedTextScreen(
                                 this,
                                 Component.translatable(field.langKey()),
                                 values.get(longTextField),
@@ -819,7 +819,7 @@ public class StageSettingsScreen extends Screen {
                         addonLongTextLabel(values, customField, 100),
                         btn -> {
                             if (factory == null) return;
-                            this.minecraft.setScreen(factory.create(this, values.get(customField),
+                            this.minecraft.gui.setScreen(factory.create(this, values.get(customField),
                                     text -> {
                                         values.set(customField, text == null ? "" : text);
                                         hasChanges = true;
@@ -870,9 +870,9 @@ public class StageSettingsScreen extends Screen {
         if (id == null || id.isEmpty()) {
             return Component.translatable("editor.historystages.field.item.empty");
         }
-        ResourceLocation rl = ResourceLocation.tryParse(id);
+        Identifier rl = Identifier.tryParse(id);
         if (rl != null) {
-            Item item = BuiltInRegistries.ITEM.get(rl);
+            Item item = BuiltInRegistries.ITEM.getValue(rl);
             if (item != null && item != Items.AIR) {
                 return new ItemStack(item).getHoverName();
             }
@@ -1604,12 +1604,12 @@ public class StageSettingsScreen extends Screen {
 
     private void confirmDiscard() {
         if (hasChanges) {
-            this.minecraft.setScreen(new ConfirmDialog(this,
+            this.minecraft.gui.setScreen(new ConfirmDialog(this,
                     Component.translatable("editor.historystages.unsaved_warning_title"),
                     Component.translatable("editor.historystages.unsaved_warning"),
-                    () -> this.minecraft.setScreen(parent)));
+                    () -> this.minecraft.gui.setScreen(parent)));
         } else {
-            this.minecraft.setScreen(parent);
+            this.minecraft.gui.setScreen(parent);
         }
     }
 
@@ -2100,9 +2100,9 @@ public class StageSettingsScreen extends Screen {
         Setting<String> field = (Setting<String>) row.field;
         String id = card.values.get(field);
         if (id == null || id.isEmpty()) return;
-        ResourceLocation rl = ResourceLocation.tryParse(id);
+        Identifier rl = Identifier.tryParse(id);
         if (rl == null) return;
-        Item item = BuiltInRegistries.ITEM.get(rl);
+        Item item = BuiltInRegistries.ITEM.getValue(rl);
         if (item == null || item == Items.AIR) return;
         g.renderItem(new ItemStack(item), row.button.getX() + 3, row.rowY + 1);
     }

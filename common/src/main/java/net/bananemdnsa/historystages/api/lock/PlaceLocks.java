@@ -48,7 +48,7 @@ public final class PlaceLocks {
     /** {@link #missingStages(ServerPlayer, ServerLevel, BlockPos)} by UUID. */
     public static List<String> missingStages(UUID playerUuid, ServerLevel level, BlockPos pos) {
         Set<String> out = new LinkedHashSet<>(CategoryLocks.missingStagesForPlayer(
-                "historystages:dimensions", level.dimension().location().toString(), playerUuid));
+                "historystages:dimensions", level.dimension().identifier().toString(), playerUuid));
         out.addAll(BiomeLockHandler.lockingStagesAt(level, pos, playerUuid));
         out.addAll(StructureLockHandler.lockingStagesAt(level, pos, playerUuid));
         out.addAll(ZoneLockHandler.lockingStagesAt(level, pos, playerUuid));
@@ -58,6 +58,6 @@ public final class PlaceLocks {
     /** Is the dimension itself locked for this player? Cheap; no position involved. */
     public static boolean isDimensionLocked(ServerPlayer player, ServerLevel level) {
         return CategoryLocks.isLockedForPlayer("historystages:dimensions",
-                level.dimension().location().toString(), player.getUUID());
+                level.dimension().identifier().toString(), player.getUUID());
     }
 }

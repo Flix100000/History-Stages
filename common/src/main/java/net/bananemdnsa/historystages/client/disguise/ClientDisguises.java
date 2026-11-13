@@ -11,11 +11,11 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
-import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.bananemdnsa.historystages.platform.Dist;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
+import net.bananemdnsa.historystages.platform.event.client.ClientPlayerNetworkEvent;
+import net.bananemdnsa.historystages.platform.event.client.ClientTickEvent;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Collections;
@@ -71,7 +71,7 @@ public final class ClientDisguises {
      * otherwise see "stone" in the very list where they locked emerald ore.
      */
     private static boolean inEditor() {
-        net.minecraft.client.gui.screens.Screen screen = Minecraft.getInstance().screen;
+        net.minecraft.client.gui.screens.Screen screen = Minecraft.getInstance().gui.screen();
         return screen != null && screen.getClass().getName().startsWith(EDITOR_PACKAGE);
     }
 

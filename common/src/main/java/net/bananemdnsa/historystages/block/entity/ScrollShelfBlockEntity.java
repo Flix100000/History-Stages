@@ -68,7 +68,7 @@ public class ScrollShelfBlockEntity extends BlockEntity implements Container {
         super.loadAdditional(tag, registries);
         items.clear();
         ContainerHelper.loadAllItems(tag, items, registries);
-        lastInteractedSlot = tag.getInt("last_interacted_slot");
+        lastInteractedSlot = tag.getIntOr("last_interacted_slot", 0);
     }
 
     @Override

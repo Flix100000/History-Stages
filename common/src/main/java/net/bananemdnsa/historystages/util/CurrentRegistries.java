@@ -1,12 +1,11 @@
 package net.bananemdnsa.historystages.util;
 
+import net.bananemdnsa.historystages.platform.Services;
 import net.bananemdnsa.historystages.client.ClientRegistryAccessHelper;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.server.MinecraftServer;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.fml.loading.FMLEnvironment;
-import net.neoforged.neoforge.server.ServerLifecycleHooks;
+import net.bananemdnsa.historystages.platform.Dist;
 
 /**
  * Whichever registry set belongs to the world that is actually running.
@@ -31,9 +30,9 @@ public final class CurrentRegistries {
      * server exists. Callers that hand the answer to foreign code want {@link #orEmpty()}.
      */
     public static HolderLookup.Provider get() {
-        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        MinecraftServer server = Services.currentServer();
         if (server != null) return server.registryAccess();
-        if (FMLEnvironment.dist == Dist.CLIENT) return ClientRegistryAccessHelper.get();
+        if (Services.dist() == Dist.CLIENT) return ClientRegistryAccessHelper.get();
         return null;
     }
 

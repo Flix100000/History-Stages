@@ -66,6 +66,6 @@ public class EffectValuesDialog extends AbstractInputScreen {
     @Override
     protected void onConfirm(InputValues values) {
         onConfirm.accept(values.getInt("seconds"), values.getInt("amplifier"));
-        this.minecraft.setScreen(parent);
+        this.minecraft.gui.setScreen(parent);
     }
 }

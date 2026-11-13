@@ -1,4 +1,5 @@
 package net.bananemdnsa.historystages.network.serverbound;
+import net.minecraft.server.permissions.Permissions;
 import net.bananemdnsa.historystages.network.PacketHandler;
 import net.bananemdnsa.historystages.network.clientbound.SyncStagesPacket;
 import net.bananemdnsa.historystages.network.clientbound.SyncStageDefinitionsPacket;
@@ -15,9 +16,9 @@ import net.bananemdnsa.historystages.data.saveddata.StageData;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.bananemdnsa.historystages.platform.IPayloadContext;
 
 import java.util.ArrayList;
 
@@ -26,7 +27,7 @@ public record SaveStagePacket(String stageId, String stageJson, boolean individu
     private static final Gson GSON = new Gson();
 
     public static final CustomPacketPayload.Type<SaveStagePacket> TYPE =
-            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "save_stage"));
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "save_stage"));
 
     public static final StreamCodec<FriendlyByteBuf, SaveStagePacket> STREAM_CODEC =
             StreamCodec.of(SaveStagePacket::encode, SaveStagePacket::decode);
@@ -68,7 +69,7 @@ public record SaveStagePacket(String stageId, String stageJson, boolean individu
     public static void handle(SaveStagePacket msg, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer player)) return;
-            if (!player.hasPermissions(2)) return;
+            if (!player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)) return;
 
             StageEntry entry = GSON.fromJson(msg.stageJson, StageEntry.class);
             if (entry == null) return;
@@ -109,7 +110,7 @@ public record SaveStagePacket(String stageId, String stageJson, boolean individu
             if (success) {
                 StageFileGuard.consume(player.getUUID(), msg.stageId, scope);
                 StageManager.reloadStages();
-                StageData data = StageData.get(player.serverLevel());
+                StageData data = StageData.get(player.level());
                 // Stage edits can add/remove structure entries — invalidate the
                 // structure-lock per-player cache so borders + screen overlay
                 // reflect the change on the next server tick.

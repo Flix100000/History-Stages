@@ -5,8 +5,8 @@ import net.bananemdnsa.historystages.data.diagnostics.ApiExtension;
 import net.bananemdnsa.historystages.data.diagnostics.ApiOwners;
 import net.bananemdnsa.historystages.data.team.TeamProviders;
 
-import net.neoforged.bus.api.Event;
-import net.neoforged.fml.event.IModBusEvent;
+import net.bananemdnsa.historystages.platform.bus.Event;
+import net.bananemdnsa.historystages.platform.bus.IModBusEvent;
 
 /**
  * Fired once during common setup so other mods can tell HistoryStages about their teams.

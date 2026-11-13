@@ -1,7 +1,7 @@
 package net.bananemdnsa.historystages.data.config;
 
 import net.bananemdnsa.historystages.Config;
-import net.neoforged.neoforge.common.ModConfigSpec;
+import net.bananemdnsa.historystages.platform.ModConfigSpec;
 
 import java.util.Map;
 

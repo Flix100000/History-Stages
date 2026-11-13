@@ -12,7 +12,7 @@ import net.bananemdnsa.historystages.api.dependency.RequirementContext;
 import net.bananemdnsa.historystages.api.dependency.RequirementDisplay;
 import net.bananemdnsa.historystages.research.BoosterUtil;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 
 /**
@@ -74,9 +74,9 @@ public class ItemRequirement implements Requirement {
     }
 
     private static String getItemDisplayName(String itemId) {
-        ResourceLocation rl = ResourceLocation.tryParse(itemId);
+        Identifier rl = Identifier.tryParse(itemId);
         if (rl == null) return itemId;
-        Item item = BuiltInRegistries.ITEM.get(rl);
+        Item item = BuiltInRegistries.ITEM.getValue(rl);
         if (item == null) return itemId;
         return item.getDescription().getString();
     }

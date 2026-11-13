@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.data.team;
 
+import net.bananemdnsa.historystages.platform.Services;
 import net.bananemdnsa.historystages.data.StageCauses;
 import net.bananemdnsa.historystages.api.stage.StageChangeCause;
 import net.bananemdnsa.historystages.Config;
@@ -15,11 +16,10 @@ import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.bus.api.EventPriority;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.entity.player.PlayerEvent;
-import net.neoforged.neoforge.server.ServerLifecycleHooks;
+import net.bananemdnsa.historystages.platform.bus.EventPriority;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
+import net.bananemdnsa.historystages.platform.event.entity.player.PlayerEvent;
 
 import java.util.Map;
 import java.util.Set;
@@ -87,7 +87,7 @@ public final class TeamStageSharing {
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void onIndividualUnlocked(StageEvent.IndividualUnlocked event) {
         if (suppressed() || !isShared(event.getStageId())) return;
-        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        MinecraftServer server = Services.currentServer();
         if (server == null) return;
         String stageId = event.getStageId();
         TeamSharePending pending = TeamSharePending.get(server.overworld());
@@ -111,7 +111,7 @@ public final class TeamStageSharing {
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void onIndividualLocked(StageEvent.IndividualLocked event) {
         if (suppressed() || !Config.GAMEPLAY.teamShareLoss.get() || !isShared(event.getStageId())) return;
-        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        MinecraftServer server = Services.currentServer();
         if (server == null) return;
         String stageId = event.getStageId();
         TeamSharePending pending = TeamSharePending.get(server.overworld());
@@ -135,7 +135,7 @@ public final class TeamStageSharing {
     @SubscribeEvent
     public static void onLogin(PlayerEvent.PlayerLoggedInEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
-        ServerLevel level = player.serverLevel();
+        ServerLevel level = player.level();
         TeamSharePending pending = TeamSharePending.get(level);
 
         Set<String> losses = pending.takeLosses(player.getUUID());
@@ -164,7 +164,7 @@ public final class TeamStageSharing {
         if (server == null) return;
         Set<UUID> mates = TeamProviders.teammates(server, player.getUUID());
         if (mates.isEmpty()) return;
-        IndividualStageData data = IndividualStageData.get(player.serverLevel());
+        IndividualStageData data = IndividualStageData.get(player.level());
 
         withoutSharing(() -> StageCauses.run(StageChangeCause.TEAM, () -> {
             for (Map.Entry<String, StageEntry> e : Map.copyOf(StageManager.getIndividualStages()).entrySet()) {

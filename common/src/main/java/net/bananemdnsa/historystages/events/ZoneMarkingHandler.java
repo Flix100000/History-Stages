@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.events;
 
+import net.minecraft.server.permissions.Permissions;
 import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.data.lock.ZoneSelection;
@@ -9,17 +10,17 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.bus.api.EventPriority;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.common.util.TriState;
-import net.neoforged.neoforge.event.entity.player.PlayerEvent;
-import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
+import net.bananemdnsa.historystages.platform.bus.EventPriority;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
+import net.bananemdnsa.historystages.platform.TriState;
+import net.bananemdnsa.historystages.platform.event.entity.player.PlayerEvent;
+import net.bananemdnsa.historystages.platform.event.entity.player.PlayerInteractEvent;
 import org.slf4j.Logger;
 
 /**
@@ -106,8 +107,7 @@ public final class ZoneMarkingHandler {
 
         ZoneSelection.clear(player.getUUID());
         PacketHandler.sendZoneSelection(SyncZoneSelectionPacket.empty(), player);
-        player.displayClientMessage(
-                Component.translatable("command.historystages.zone.cleared"), true);
+        player.sendOverlayMessage(Component.translatable("command.historystages.zone.cleared"));
 
         event.setCanceled(true);
         event.setCancellationResult(InteractionResult.FAIL);
@@ -136,20 +136,20 @@ public final class ZoneMarkingHandler {
         // store only the server keeps.
         if (player == null || player.level().isClientSide()) return false;
         if (!(player instanceof ServerPlayer serverPlayer)) return false;
-        if (!serverPlayer.hasPermissions(2)) return false;
+        if (!serverPlayer.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)) return false;
 
         Item marker = markerItem();
         return marker != null && held.is(marker);
     }
 
     private static void mark(ServerPlayer player, int corner, BlockPos pos) {
-        String dimension = player.level().dimension().location().toString();
+        String dimension = player.level().dimension().identifier().toString();
         ZoneSelection.setPoint(player.getUUID(), corner, pos.getX(), pos.getY(), pos.getZ(), dimension);
         PacketHandler.sendZoneSelection(
                 SyncZoneSelectionPacket.of(ZoneSelection.of(player.getUUID())), player);
 
-        player.displayClientMessage(Component.translatable("command.historystages.zone.marked",
-                corner, pos.getX(), pos.getY(), pos.getZ()), true);
+        player.sendOverlayMessage(Component.translatable("command.historystages.zone.marked",
+                corner, pos.getX(), pos.getY(), pos.getZ()));
     }
 
     /** The configured item, or null when the setting is empty or names something unknown. */
@@ -158,7 +158,7 @@ public final class ZoneMarkingHandler {
         if (id == null || id.isBlank()) return null;
         if (id.equals(cachedId)) return cachedItem;
 
-        ResourceLocation location = ResourceLocation.tryParse(id);
+        Identifier location = Identifier.tryParse(id);
         Item item = location == null ? null : BuiltInRegistries.ITEM.getOptional(location).orElse(null);
         if (item == null) {
             LOGGER.warn("[ZoneLock] Marker item '{}' is not a known item — marking by item is off", id);

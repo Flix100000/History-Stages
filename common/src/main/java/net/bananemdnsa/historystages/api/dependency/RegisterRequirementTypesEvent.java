@@ -7,8 +7,8 @@ import net.bananemdnsa.historystages.data.dependency.RequirementTypes;
 
 import net.bananemdnsa.historystages.api.dependency.Requirement;
 
-import net.neoforged.bus.api.Event;
-import net.neoforged.fml.event.IModBusEvent;
+import net.bananemdnsa.historystages.platform.bus.Event;
+import net.bananemdnsa.historystages.platform.bus.IModBusEvent;
 
 /**
  * Fired once so other mods can add their own kinds of dependency requirement.

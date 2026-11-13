@@ -5,8 +5,8 @@ import net.bananemdnsa.historystages.client.cache.ClientLostStages;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.minecraft.resources.Identifier;
+import net.bananemdnsa.historystages.platform.IPayloadContext;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -15,7 +15,7 @@ import java.util.Set;
 public record SyncLostStagesPacket(Set<String> global, Set<String> individual) implements CustomPacketPayload {
 
     public static final CustomPacketPayload.Type<SyncLostStagesPacket> TYPE =
-            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "sync_lost_stages"));
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "sync_lost_stages"));
 
     public static final StreamCodec<FriendlyByteBuf, SyncLostStagesPacket> STREAM_CODEC =
             StreamCodec.of(SyncLostStagesPacket::encode, SyncLostStagesPacket::decode);

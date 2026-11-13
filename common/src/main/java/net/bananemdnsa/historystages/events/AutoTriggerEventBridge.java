@@ -17,7 +17,7 @@ import net.bananemdnsa.historystages.data.auto.conditions.StatCategory;
 import net.bananemdnsa.historystages.data.auto.conditions.StatTrigger;
 import net.bananemdnsa.historystages.data.relock.RelockPolls;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -32,14 +32,14 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 
 import org.jetbrains.annotations.Nullable;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
-import net.neoforged.neoforge.event.entity.living.MobEffectEvent;
-import net.neoforged.neoforge.event.entity.player.AdvancementEvent;
-import net.neoforged.neoforge.event.entity.player.ItemEntityPickupEvent;
-import net.neoforged.neoforge.event.entity.player.PlayerEvent;
-import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
-import net.neoforged.neoforge.event.level.BlockEvent;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.event.entity.living.LivingDeathEvent;
+import net.bananemdnsa.historystages.platform.event.entity.living.MobEffectEvent;
+import net.bananemdnsa.historystages.platform.event.entity.player.AdvancementEvent;
+import net.bananemdnsa.historystages.platform.event.entity.player.ItemEntityPickupEvent;
+import net.bananemdnsa.historystages.platform.event.entity.player.PlayerEvent;
+import net.bananemdnsa.historystages.platform.event.entity.player.PlayerInteractEvent;
+import net.bananemdnsa.historystages.platform.event.level.BlockEvent;
 
 /**
  * Single Forge-bus listener that forwards relevant world events into
@@ -55,7 +55,7 @@ public final class AutoTriggerEventBridge {
     public void onChangedDimension(PlayerEvent.PlayerChangedDimensionEvent event) {
         if (!AutoTriggerManager.hasType("dimension")) return;
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
-        ResourceLocation toLoc = event.getTo().location();
+        Identifier toLoc = event.getTo().identifier();
         String dimId = toLoc.toString();
         AutoTriggerManager.process(
                 "dimension",
@@ -68,7 +68,7 @@ public final class AutoTriggerEventBridge {
         if (!AutoTriggerManager.hasType("advancement")) return;
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
         if (event.getAdvancement() == null) return;
-        ResourceLocation advLoc = event.getAdvancement().id();
+        Identifier advLoc = event.getAdvancement().id();
         if (advLoc == null) return;
         String advId = advLoc.toString();
         AutoTriggerManager.process(
@@ -83,7 +83,7 @@ public final class AutoTriggerEventBridge {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
         BlockState placed = event.getPlacedBlock();
         if (placed == null) return;
-        ResourceLocation key = BuiltInRegistries.BLOCK.getKey(placed.getBlock());
+        Identifier key = BuiltInRegistries.BLOCK.getKey(placed.getBlock());
         if (key == null) return;
         String blockId = key.toString();
         AutoTriggerManager.process(
@@ -102,7 +102,7 @@ public final class AutoTriggerEventBridge {
     }
 
     private static void fireItemTrigger(ServerPlayer player, ItemStack stack) {
-        ResourceLocation key = BuiltInRegistries.ITEM.getKey(stack.getItem());
+        Identifier key = BuiltInRegistries.ITEM.getKey(stack.getItem());
         if (key == null) return;
         fireItemTriggerForId(player, key.toString());
     }
@@ -120,7 +120,7 @@ public final class AutoTriggerEventBridge {
         if (!(event.getPlayer() instanceof ServerPlayer player)) return;
         BlockState state = event.getState();
         if (state == null) return;
-        ResourceLocation key = BuiltInRegistries.BLOCK.getKey(state.getBlock());
+        Identifier key = BuiltInRegistries.BLOCK.getKey(state.getBlock());
         if (key == null) return;
         String blockId = key.toString();
         AutoTriggerManager.process(
@@ -134,7 +134,7 @@ public final class AutoTriggerEventBridge {
         if (!AutoTriggerManager.hasType("entity")) return;
         if (!(event.getSource().getEntity() instanceof ServerPlayer player)) return;
         if (event.getEntity() == null) return;
-        ResourceLocation key = BuiltInRegistries.ENTITY_TYPE.getKey(event.getEntity().getType());
+        Identifier key = BuiltInRegistries.ENTITY_TYPE.getKey(event.getEntity().getType());
         if (key == null) return;
         String entityId = key.toString();
         AutoTriggerManager.process(
@@ -153,7 +153,7 @@ public final class AutoTriggerEventBridge {
         if (!AutoTriggerManager.hasType("entity")) return;
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
         if (event.getTarget() == null) return;
-        ResourceLocation key = BuiltInRegistries.ENTITY_TYPE.getKey(event.getTarget().getType());
+        Identifier key = BuiltInRegistries.ENTITY_TYPE.getKey(event.getTarget().getType());
         if (key == null) return;
         String entityId = key.toString();
         AutoTriggerManager.process(
@@ -173,7 +173,7 @@ public final class AutoTriggerEventBridge {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
         MobEffectInstance instance = event.getEffectInstance();
         if (instance == null) return;
-        ResourceLocation key = BuiltInRegistries.MOB_EFFECT.getKey(instance.getEffect().value());
+        Identifier key = BuiltInRegistries.MOB_EFFECT.getKey(instance.getEffect().value());
         if (key == null) return;
         String effectId = key.toString();
         AutoTriggerManager.process(
@@ -268,11 +268,11 @@ public final class AutoTriggerEventBridge {
     private static Stat<?> resolveStat(StatTrigger trigger) {
         StatCategory category = trigger.resolvedCategory();
         if (category == null) return null;
-        ResourceLocation id = ResourceLocation.tryParse(trigger.id());
+        Identifier id = Identifier.tryParse(trigger.id());
         if (id == null) return null;
         return switch (category) {
             case CUSTOM -> {
-                ResourceLocation custom = BuiltInRegistries.CUSTOM_STAT.get(id);
+                Identifier custom = BuiltInRegistries.CUSTOM_STAT.getValue(id);
                 yield custom == null ? null : Stats.CUSTOM.get(custom);
             }
             // BLOCK and ITEM are defaulted registries: an unknown id comes back as air rather than
@@ -289,25 +289,25 @@ public final class AutoTriggerEventBridge {
     }
 
     @Nullable
-    private static Stat<Block> blockStat(StatType<Block> type, ResourceLocation id) {
+    private static Stat<Block> blockStat(StatType<Block> type, Identifier id) {
         return BuiltInRegistries.BLOCK.containsKey(id)
-                ? type.get(BuiltInRegistries.BLOCK.get(id)) : null;
+                ? type.get(BuiltInRegistries.BLOCK.getValue(id)) : null;
     }
 
     @Nullable
-    private static Stat<Item> itemStat(StatType<Item> type, ResourceLocation id) {
+    private static Stat<Item> itemStat(StatType<Item> type, Identifier id) {
         return BuiltInRegistries.ITEM.containsKey(id)
-                ? type.get(BuiltInRegistries.ITEM.get(id)) : null;
+                ? type.get(BuiltInRegistries.ITEM.getValue(id)) : null;
     }
 
     @Nullable
-    private static Stat<EntityType<?>> entityStat(StatType<EntityType<?>> type, ResourceLocation id) {
-        EntityType<?> entity = BuiltInRegistries.ENTITY_TYPE.get(id);
+    private static Stat<EntityType<?>> entityStat(StatType<EntityType<?>> type, Identifier id) {
+        EntityType<?> entity = BuiltInRegistries.ENTITY_TYPE.getValue(id);
         return entity == null ? null : type.get(entity);
     }
 
     private static void pollDayCount(ServerPlayer p) {
-        ServerLevel sl = p.serverLevel();
+        ServerLevel sl = p.level();
         if (sl == null) return;
         long dayTime = sl.getDayTime();
         AutoTriggerManager.process(

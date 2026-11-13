@@ -50,7 +50,7 @@ public final class ConditionalStageManager {
     public static boolean hasAny() { return !GLOBAL.isEmpty() || !INDIVIDUAL.isEmpty(); }
 
     public static void pollPlayer(ServerPlayer player, StateView view) {
-        ServerLevel level = player.serverLevel();
+        ServerLevel level = player.level();
         IndividualStageData data = IndividualStageData.get(level);
         for (String id : INDIVIDUAL) {
             RelockPolls.guarded(id, true, () -> pollPlayerStage(id, player, level, data, view));

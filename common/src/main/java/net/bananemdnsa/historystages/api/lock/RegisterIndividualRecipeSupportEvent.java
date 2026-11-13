@@ -5,8 +5,8 @@ import net.bananemdnsa.historystages.data.diagnostics.ApiExtension;
 import net.bananemdnsa.historystages.data.diagnostics.ApiOwners;
 import net.bananemdnsa.historystages.data.lock.IndividualRecipeSupport;
 
-import net.neoforged.bus.api.Event;
-import net.neoforged.fml.event.IModBusEvent;
+import net.bananemdnsa.historystages.platform.bus.Event;
+import net.bananemdnsa.historystages.platform.bus.IModBusEvent;
 
 /**
  * Fired once so other mods can declare that one of their recipe types can be gated per player.

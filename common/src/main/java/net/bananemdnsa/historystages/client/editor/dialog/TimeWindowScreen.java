@@ -50,6 +50,6 @@ public class TimeWindowScreen extends AbstractInputScreen {
     @Override
     protected void onConfirm(InputValues values) {
         onDone.accept(values.getInt("from"), values.getInt("to"));
-        this.minecraft.setScreen(parent);
+        this.minecraft.gui.setScreen(parent);
     }
 }

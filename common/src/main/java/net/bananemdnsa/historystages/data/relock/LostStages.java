@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.data.relock;
 
+import net.bananemdnsa.historystages.platform.bus.EventBus;
 import net.bananemdnsa.historystages.data.saveddata.LostStagesData;
 import net.bananemdnsa.historystages.network.PacketHandler;
 import net.bananemdnsa.historystages.network.clientbound.SyncLostStagesPacket;
@@ -30,7 +31,7 @@ public final class LostStages {
     }
 
     public static void markIndividual(String stageId, ServerPlayer player) {
-        if (LostStagesData.get(player.serverLevel()).markIndividual(player.getUUID(), stageId)) syncTo(player);
+        if (LostStagesData.get(player.level()).markIndividual(player.getUUID(), stageId)) syncTo(player);
     }
 
     /**
@@ -39,7 +40,7 @@ public final class LostStages {
      * once the loss has really happened.
      */
     public static void announce(String stageId, @org.jetbrains.annotations.Nullable UUID player) {
-        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.post(new net.bananemdnsa.historystages.api.stage.StageEvent.LostForGood(
+        net.neoforged.neoforge.common.EventBus.post(new net.bananemdnsa.historystages.api.stage.StageEvent.LostForGood(
                 stageId, displayName(stageId, player != null), player));
     }
 
@@ -55,11 +56,11 @@ public final class LostStages {
     }
 
     public static void clearIndividual(String stageId, ServerPlayer player) {
-        if (LostStagesData.get(player.serverLevel()).clearIndividual(player.getUUID(), stageId)) syncTo(player);
+        if (LostStagesData.get(player.level()).clearIndividual(player.getUUID(), stageId)) syncTo(player);
     }
 
     public static void syncTo(ServerPlayer player) {
-        LostStagesData data = LostStagesData.get(player.serverLevel());
+        LostStagesData data = LostStagesData.get(player.level());
         PacketHandler.sendLostStagesToPlayer(
                 new SyncLostStagesPacket(data.globalSnapshot(), data.individualSnapshot(player.getUUID())), player);
     }

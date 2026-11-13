@@ -4,7 +4,7 @@ import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.init.ModItems;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -46,9 +46,9 @@ public class ClientToastHandler {
     }
 
     private static ItemStack tryParseItem(String id) {
-        ResourceLocation rl = ResourceLocation.tryParse(id);
+        Identifier rl = Identifier.tryParse(id);
         if (rl == null) return null;
-        Item item = BuiltInRegistries.ITEM.get(rl);
+        Item item = BuiltInRegistries.ITEM.getValue(rl);
         if (item == null || item == Items.AIR) return null;
         return new ItemStack(item);
     }

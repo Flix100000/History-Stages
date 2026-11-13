@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.network.serverbound;
 
+import net.minecraft.server.permissions.Permissions;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.data.StagePaths;
@@ -9,15 +10,15 @@ import net.bananemdnsa.historystages.network.clientbound.SyncStageDefinitionsPac
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.bananemdnsa.historystages.platform.IPayloadContext;
 
 /** Creates a folder inside a stage tree. {@code path} is relative to the tree root. */
 public record CreateFolderPacket(boolean individual, String path) implements CustomPacketPayload {
 
     public static final CustomPacketPayload.Type<CreateFolderPacket> TYPE =
-            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "create_folder"));
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "create_folder"));
 
     public static final StreamCodec<FriendlyByteBuf, CreateFolderPacket> STREAM_CODEC =
             StreamCodec.of(CreateFolderPacket::encode, CreateFolderPacket::decode);
@@ -36,7 +37,7 @@ public record CreateFolderPacket(boolean individual, String path) implements Cus
     public static void handle(CreateFolderPacket msg, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer player)) return;
-            if (!player.hasPermissions(2)) return;
+            if (!player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)) return;
             if (!StagePaths.isValid(msg.path) || msg.path.isEmpty()) return;
 
             if (StageManager.createFolder(msg.individual, msg.path)) {

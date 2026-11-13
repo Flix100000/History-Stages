@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.network.serverbound;
 
+import net.minecraft.server.permissions.Permissions;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.events.lock.StructureLockHandler;
 import net.minecraft.core.BlockPos;
@@ -7,9 +8,9 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.bananemdnsa.historystages.platform.IPayloadContext;
 
 /**
  * Client-issued request: server collects structure holders at the player's position
@@ -20,7 +21,7 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 public record RequestStructureDebugPacket() implements CustomPacketPayload {
 
     public static final CustomPacketPayload.Type<RequestStructureDebugPacket> TYPE =
-            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "request_structure_debug"));
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "request_structure_debug"));
 
     public static final StreamCodec<FriendlyByteBuf, RequestStructureDebugPacket> STREAM_CODEC =
             StreamCodec.of((buf, msg) -> {}, buf -> new RequestStructureDebugPacket());
@@ -28,10 +29,10 @@ public record RequestStructureDebugPacket() implements CustomPacketPayload {
     public static void handle(RequestStructureDebugPacket msg, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer player)) return;
-            if (!player.hasPermissions(2)) return;
+            if (!player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)) return;
 
             BlockPos pos = player.blockPosition();
-            var holders = StructureLockHandler.collectStructureHoldersAt(player.serverLevel(), pos);
+            var holders = StructureLockHandler.collectStructureHoldersAt(player.level(), pos);
 
             player.sendSystemMessage(Component.literal(
                     "§6--- Structures at §e" + pos.getX() + ", " + pos.getY() + ", " + pos.getZ() + " §6---"));
@@ -42,7 +43,7 @@ public record RequestStructureDebugPacket() implements CustomPacketPayload {
             }
 
             for (var h : holders) {
-                String id = h.unwrapKey().map(k -> k.location().toString()).orElse("<unknown>");
+                String id = h.unwrapKey().map(k -> k.identifier().toString()).orElse("<unknown>");
                 player.sendSystemMessage(Component.literal("  §8• §f" + id));
                 h.tags().forEach(tag -> player.sendSystemMessage(
                         Component.literal("      §8↳ §b#" + tag.location())));

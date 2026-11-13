@@ -4,13 +4,13 @@ import net.bananemdnsa.historystages.HistoryStages;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.minecraft.resources.Identifier;
+import net.bananemdnsa.historystages.platform.IPayloadContext;
 
 public record StageUnlockedToastPacket(String stageName, String iconId) implements CustomPacketPayload {
 
     public static final CustomPacketPayload.Type<StageUnlockedToastPacket> TYPE =
-            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "toast"));
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "toast"));
 
     public static final StreamCodec<FriendlyByteBuf, StageUnlockedToastPacket> STREAM_CODEC =
             StreamCodec.of(

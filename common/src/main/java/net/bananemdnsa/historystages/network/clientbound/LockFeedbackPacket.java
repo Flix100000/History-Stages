@@ -9,8 +9,8 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.minecraft.resources.Identifier;
+import net.bananemdnsa.historystages.platform.IPayloadContext;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,7 +21,7 @@ public record LockFeedbackPacket(byte kind, List<String> displayNames) implement
     public static final byte KIND_MOB = 1;
 
     public static final CustomPacketPayload.Type<LockFeedbackPacket> TYPE =
-            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "lock_feedback"));
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "lock_feedback"));
 
     public static final StreamCodec<FriendlyByteBuf, LockFeedbackPacket> STREAM_CODEC =
             StreamCodec.of(
@@ -77,10 +77,7 @@ public record LockFeedbackPacket(byte kind, List<String> displayNames) implement
                 MutableComponent actionbarMsg = isDimension
                         ? net.bananemdnsa.historystages.util.lock.LockMessages.dimensionUnknown()
                         : net.bananemdnsa.historystages.util.lock.LockMessages.mobUnknown();
-                mc.player.displayClientMessage(
-                        actionbarMsg.withStyle(ChatFormatting.DARK_RED, ChatFormatting.ITALIC),
-                        true
-                );
+                mc.player.sendOverlayMessage(actionbarMsg.withStyle(ChatFormatting.DARK_RED, ChatFormatting.ITALIC));
             }
         });
     }

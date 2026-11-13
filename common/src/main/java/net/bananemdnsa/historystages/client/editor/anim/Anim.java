@@ -1,6 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.anim;
 
-import net.minecraft.Util;
+import net.minecraft.util.Util;
 
 /**
  * A single animated float that advances in real time instead of per rendered frame.

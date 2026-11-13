@@ -11,7 +11,7 @@ import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.util.CurrentRegistries;
 import net.bananemdnsa.historystages.util.lock.RecipeCraftContext;
 import net.bananemdnsa.historystages.util.lock.StageLockHelper;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import org.jetbrains.annotations.Nullable;
@@ -166,7 +166,7 @@ public class RecipeHandler {
         return isFluidGated(id, false, false, null) || StageLockHelper.isRecipeLockedForServer(id);
     }
 
-    public static boolean isRecipeIdLocked(ResourceLocation recipeId, boolean isClientSide) {
+    public static boolean isRecipeIdLocked(Identifier recipeId, boolean isClientSide) {
         if (recipeId == null) return false;
 
         String id = recipeId.toString();
@@ -188,7 +188,7 @@ public class RecipeHandler {
                 : StageLockHelper.isRecipeLockedForServer(id);
     }
 
-    public static boolean isRecipeIdLocked(ResourceLocation recipeId) {
+    public static boolean isRecipeIdLocked(Identifier recipeId) {
         return isRecipeIdLocked(recipeId, false);
     }
 

@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.api.stage;
 
+import net.bananemdnsa.historystages.platform.bus.EventBus;
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.StageManager;
 
@@ -92,7 +93,7 @@ public final class StageStates {
      * has reached this player, which happens as part of the teammate's unlock.
      */
     public static boolean isUnlockedIndividual(String stageId, ServerPlayer player) {
-        return IndividualStageData.get(player.serverLevel()).hasStage(player.getUUID(), stageId);
+        return IndividualStageData.get(player.level()).hasStage(player.getUUID(), stageId);
     }
 
     /**
@@ -109,7 +110,7 @@ public final class StageStates {
      * so it may be kept across ticks.
      */
     public static StageStateView individualView(ServerPlayer player) {
-        IndividualStageData data = IndividualStageData.get(player.serverLevel());
+        IndividualStageData data = IndividualStageData.get(player.level());
         UUID uuid = player.getUUID();
         return stageId -> data.hasStage(uuid, stageId);
     }
@@ -145,7 +146,7 @@ public final class StageStates {
         StageScope scope = scopeOf(stageId);
         if (scope == null) return false;
         return scope == StageScope.GLOBAL
-                ? isUnlockedGlobal(stageId, player.serverLevel())
+                ? isUnlockedGlobal(stageId, player.level())
                 : isUnlockedIndividual(stageId, player);
     }
 
@@ -194,8 +195,8 @@ public final class StageStates {
         StageScope scope = scopeOf(stageId);
         if (scope == null) return false;
         return scope == StageScope.GLOBAL
-                ? LostStages.isLostGlobal(stageId, player.serverLevel())
-                : LostStages.isLostIndividual(stageId, player.getUUID(), player.serverLevel());
+                ? LostStages.isLostGlobal(stageId, player.level())
+                : LostStages.isLostIndividual(stageId, player.getUUID(), player.level());
     }
 
     /**
@@ -212,7 +213,7 @@ public final class StageStates {
         StageScope scope = scopeOf(stageId);
         if (scope == null) return null;
         return net.bananemdnsa.historystages.data.dependency.DependencyChecker.checkAll(
-                findStage(stageId), player, player.serverLevel(), scope, null);
+                findStage(stageId), player, player.level(), scope, null);
     }
 
     /** Every global stage the world has, as a copy. */
@@ -222,7 +223,7 @@ public final class StageStates {
 
     /** Every individual stage this player has, as a copy. */
     public static Set<String> unlockedIndividual(ServerPlayer player) {
-        return Set.copyOf(IndividualStageData.get(player.serverLevel()).getUnlockedStages(player.getUUID()));
+        return Set.copyOf(IndividualStageData.get(player.level()).getUnlockedStages(player.getUUID()));
     }
 
     /**
@@ -237,7 +238,7 @@ public final class StageStates {
 
     /** {@link #unlockedAtGlobal} for one player's individual stage. */
     public static OptionalLong unlockedAtIndividual(String stageId, ServerPlayer player) {
-        Long time = IndividualStageData.get(player.serverLevel()).getUnlockTimes(player.getUUID()).get(stageId);
+        Long time = IndividualStageData.get(player.level()).getUnlockTimes(player.getUUID()).get(stageId);
         return time == null ? OptionalLong.empty() : OptionalLong.of(time);
     }
 
@@ -252,7 +253,7 @@ public final class StageStates {
 
     /** {@link #remainingTicksGlobal} for one player's temporary individual stage. */
     public static OptionalLong remainingTicksIndividual(String stageId, ServerPlayer player) {
-        long ticks = TemporaryStageData.get(player.serverLevel()).individualActiveTicks(player.getUUID(), stageId);
+        long ticks = TemporaryStageData.get(player.level()).individualActiveTicks(player.getUUID(), stageId);
         return ticks < 0 ? OptionalLong.empty() : OptionalLong.of(ticks);
     }
 
@@ -305,7 +306,7 @@ public final class StageStates {
         DebugLogger.runtime(HsRuntimeCategories.STAGE,
                 "Global stage '" + stageId + "' (" + displayName + ") unlocked");
 
-        NeoForge.EVENT_BUS.post(new StageEvent.Unlocked(stageId, displayName));
+        EventBus.post(new StageEvent.Unlocked(stageId, displayName));
 
         // Sync the unlocked-stages list to all players
         PacketHandler.sendToAll(new SyncStagesPacket(new ArrayList<>(data.getUnlockedStages())));
@@ -351,8 +352,8 @@ public final class StageStates {
      */
     public static boolean unlockIndividual(String stageId, ServerPlayer player) {
         if (unknown(stageId, StageScope.INDIVIDUAL)) return false;
-        if (IndividualStageData.get(player.serverLevel()).hasStage(player.getUUID(), stageId)) return false;
-        if (LostStages.isLostIndividual(stageId, player.getUUID(), player.serverLevel())) {
+        if (IndividualStageData.get(player.level()).hasStage(player.getUUID(), stageId)) return false;
+        if (LostStages.isLostIndividual(stageId, player.getUUID(), player.level())) {
             DebugLogger.runtimeThrottled(HsRuntimeCategories.RELOCK, "refused-lost:" + stageId + ":" + player.getUUID(),
                     "<" + player.getName().getString() + "> Unlock of '" + stageId + "' refused: lost for good.");
             return false;
@@ -390,7 +391,7 @@ public final class StageStates {
         String displayName = entry != null ? entry.getDisplayName() : stageId;
         DebugLogger.runtime(HsRuntimeCategories.STAGE,
                 "Individual stage '" + stageId + "' (" + displayName + ") unlocked for offline player " + playerUuid);
-        NeoForge.EVENT_BUS.post(new StageEvent.IndividualUnlocked(stageId, displayName, playerUuid));
+        EventBus.post(new StageEvent.IndividualUnlocked(stageId, displayName, playerUuid));
         invalidateLockCaches();
         return true;
     }
@@ -408,7 +409,7 @@ public final class StageStates {
         String displayName = entry != null ? entry.getDisplayName() : stageId;
         DebugLogger.runtime(HsRuntimeCategories.STAGE,
                 "Individual stage '" + stageId + "' (" + displayName + ") locked again for offline player " + playerUuid);
-        NeoForge.EVENT_BUS.post(new StageEvent.IndividualLocked(stageId, displayName, playerUuid));
+        EventBus.post(new StageEvent.IndividualLocked(stageId, displayName, playerUuid));
         invalidateLockCaches();
         return true;
     }
@@ -523,13 +524,13 @@ public final class StageStates {
 
     /** Posts {@link StageAnnounceEvent}; true if the mod should go on and tell the players. */
     private static boolean announced(List<String> ids, List<String> names, @Nullable UUID player, boolean unlock) {
-        return !NeoForge.EVENT_BUS.post(new StageAnnounceEvent(ids, names, player, unlock)).isCanceled();
+        return !EventBus.post(new StageAnnounceEvent(ids, names, player, unlock)).isCanceled();
     }
 
     /** Posts {@link StageEvent.BeforeUnlock} and reports whether a listener refused. */
     private static boolean vetoed(String stageId, @Nullable StageEntry entry, @Nullable UUID player) {
         String displayName = entry != null ? entry.getDisplayName() : stageId;
-        StageEvent.BeforeUnlock event = NeoForge.EVENT_BUS.post(new StageEvent.BeforeUnlock(stageId, displayName, player));
+        StageEvent.BeforeUnlock event = EventBus.post(new StageEvent.BeforeUnlock(stageId, displayName, player));
         if (!event.isCanceled()) return false;
         DebugLogger.runtimeThrottled(HsRuntimeCategories.STAGE, "refused-veto:" + stageId + ":" + player,
                 "Unlock of '" + stageId + "'" + (player != null ? " for " + player : "") + " refused by an addon.");
@@ -551,7 +552,7 @@ public final class StageStates {
 
     private static boolean applyUnlockIndividual(String stageId, ServerPlayer player) {
         if (unknown(stageId, StageScope.INDIVIDUAL)) return false;
-        ServerLevel level = player.serverLevel();
+        ServerLevel level = player.level();
         IndividualStageData data = IndividualStageData.get(level);
         if (data.hasStage(player.getUUID(), stageId)) return false;
 
@@ -566,7 +567,7 @@ public final class StageStates {
         // Posted with the player at hand, so a "revoke when" reacting to it reaches this very
         // player object rather than having to look it up by UUID.
         net.bananemdnsa.historystages.events.StageLogicRevocationHandler.withActor(player, () ->
-                NeoForge.EVENT_BUS.post(new StageEvent.IndividualUnlocked(stageId, displayName, player.getUUID())));
+                EventBus.post(new StageEvent.IndividualUnlocked(stageId, displayName, player.getUUID())));
 
         // Sync the unlocked-stages set to the player
         PacketHandler.sendIndividualStagesToPlayer(
@@ -607,7 +608,7 @@ public final class StageStates {
         DebugLogger.runtime(HsRuntimeCategories.STAGE,
                 "Global stage '" + stageId + "' (" + displayName + ") locked again");
 
-        NeoForge.EVENT_BUS.post(new StageEvent.Locked(stageId, displayName));
+        EventBus.post(new StageEvent.Locked(stageId, displayName));
 
         PacketHandler.sendToAll(new SyncStagesPacket(new ArrayList<>(data.getUnlockedStages())));
 
@@ -638,7 +639,7 @@ public final class StageStates {
      * now-locked items from the player's inventory. Returns true if newly locked.
      */
     public static boolean relockIndividual(String stageId, ServerPlayer player) {
-        ServerLevel level = player.serverLevel();
+        ServerLevel level = player.level();
         IndividualStageData data = IndividualStageData.get(level);
         if (!data.hasStage(player.getUUID(), stageId)) return false;
 
@@ -651,7 +652,7 @@ public final class StageStates {
                 "Individual stage '" + stageId + "' (" + displayName + ") locked again");
 
         net.bananemdnsa.historystages.events.StageLogicRevocationHandler.withActor(player, () ->
-                NeoForge.EVENT_BUS.post(new StageEvent.IndividualLocked(stageId, displayName, player.getUUID())));
+                EventBus.post(new StageEvent.IndividualLocked(stageId, displayName, player.getUUID())));
 
         PacketHandler.sendIndividualStagesToPlayer(
                 SyncIndividualStagesPacket.of(data, player.getUUID()),
@@ -707,7 +708,7 @@ public final class StageStates {
                 player.sendSystemMessage(chatMsg);
             }
             if (Config.VISUAL.useActionbar.get()) {
-                player.displayClientMessage(actionMsg, true);
+                player.sendOverlayMessage(actionMsg);
             }
             if (Config.VISUAL.useSounds.get()) {
                 player.playNotifySound(SoundEvents.BEACON_DEACTIVATE, SoundSource.MASTER, 0.75F, 1.0F);
@@ -723,7 +724,7 @@ public final class StageStates {
                             .withStyle(ChatFormatting.WHITE)));
         }
         if (Config.VISUAL.individualUseActionbar.get()) {
-            player.displayClientMessage(Component.translatable("message.historystages.stage_locked_action", displayName), true);
+            player.sendOverlayMessage(Component.translatable("message.historystages.stage_locked_action", displayName));
         }
         if (Config.VISUAL.individualUseSounds.get()) {
             player.playNotifySound(SoundEvents.BEACON_DEACTIVATE, SoundSource.MASTER, 0.75F, 1.0F);
@@ -752,7 +753,7 @@ public final class StageStates {
                 player.sendSystemMessage(chatMsg);
             }
             if (Config.VISUAL.useActionbar.get()) {
-                player.displayClientMessage(actionMsg, true);
+                player.sendOverlayMessage(actionMsg);
             }
             if (Config.VISUAL.useSounds.get()) {
                 player.playNotifySound(SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundSource.MASTER, 0.75F, 1.0F);
@@ -782,7 +783,7 @@ public final class StageStates {
             String finalChat = configChat.replace("{stage}", displayName)
                     .replace("{player}", player.getName().getString())
                     .replace("&", "§");
-            player.displayClientMessage(Component.literal(finalChat), true);
+            player.sendOverlayMessage(Component.literal(finalChat));
         }
         if (Config.VISUAL.individualUseSounds.get()) {
             player.playNotifySound(SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundSource.MASTER, 0.75F, 1.0F);

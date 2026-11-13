@@ -7,7 +7,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.inventory.InventoryMenu;
 
 import java.util.ArrayList;
@@ -41,13 +41,13 @@ public class SearchableTextureList extends AbstractSearchableList<String> {
         // frames. Tiled as a still image the whole strip shows at once, which looks like a bug
         // rather than a choice, so they are left out of the list.
         Set<String> animated = new HashSet<>();
-        for (ResourceLocation rl : resources.listResources(BLOCK_TEXTURE_DIR,
+        for (Identifier rl : resources.listResources(BLOCK_TEXTURE_DIR,
                 p -> p.getPath().endsWith(".png.mcmeta")).keySet()) {
             animated.add(rl.toString().replace(".png.mcmeta", ".png"));
         }
 
         List<String> textures = new ArrayList<>();
-        for (ResourceLocation rl : resources.listResources(BLOCK_TEXTURE_DIR,
+        for (Identifier rl : resources.listResources(BLOCK_TEXTURE_DIR,
                 p -> p.getPath().endsWith(".png")).keySet()) {
             String id = rl.toString();
             if (!animated.contains(id)) textures.add(id);
@@ -79,7 +79,7 @@ public class SearchableTextureList extends AbstractSearchableList<String> {
      * while the user scrolls. The atlas is already in memory and costs nothing to sample.
      */
     public static TextureAtlasSprite spriteFor(String texturePath) {
-        ResourceLocation rl = ResourceLocation.tryParse(texturePath.trim());
+        Identifier rl = Identifier.tryParse(texturePath.trim());
         if (rl == null) return null;
         String path = rl.getPath();
         if (path.startsWith("textures/")) path = path.substring("textures/".length());
@@ -87,7 +87,7 @@ public class SearchableTextureList extends AbstractSearchableList<String> {
 
         return Minecraft.getInstance()
                 .getTextureAtlas(InventoryMenu.BLOCK_ATLAS)
-                .apply(ResourceLocation.fromNamespaceAndPath(rl.getNamespace(), path));
+                .apply(Identifier.fromNamespaceAndPath(rl.getNamespace(), path));
     }
 
     @Override

@@ -1,5 +1,7 @@
 package net.bananemdnsa.historystages.commands;
 
+import net.bananemdnsa.historystages.util.NbtTypes;
+import net.minecraft.server.permissions.Permissions;
 import com.google.gson.JsonElement;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.serialization.DataResult;
@@ -28,13 +30,13 @@ import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.ChatFormatting;
 import net.minecraft.resources.RegistryOps;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.RegisterClientCommandsEvent;
+import net.bananemdnsa.historystages.platform.Dist;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
+import net.bananemdnsa.historystages.platform.event.client.RegisterClientCommandsEvent;
 
 import java.util.Set;
 
@@ -61,7 +63,7 @@ public final class ClientDebugCommand {
     private static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("history")
                 .then(Commands.literal("debug")
-                        .requires(source -> source.hasPermission(2))
+                        .requires(source -> source.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER))
                         .then(Commands.literal("structure")
                                 .executes(ctx -> requestStructure(ctx.getSource())))
                         .then(Commands.literal("viz")
@@ -165,7 +167,7 @@ public final class ClientDebugCommand {
         }
 
         boolean any = false;
-        for (String key : tag.getAllKeys()) {
+        for (String key : tag.keySet()) {
             if (PRESET_KEYS.contains(key)) continue;
             any = true;
             Tag value = tag.get(key);
@@ -215,7 +217,7 @@ public final class ClientDebugCommand {
 
     private static <T> void printComponent(CommandSourceStack source, TypedDataComponent<T> typed) {
         DataComponentType<T> type = typed.type();
-        ResourceLocation id = BuiltInRegistries.DATA_COMPONENT_TYPE.getKey(type);
+        Identifier id = BuiltInRegistries.DATA_COMPONENT_TYPE.getKey(type);
         String idStr = id == null ? "<unknown>" : id.toString();
 
         if (type.codec() == null) {
@@ -274,26 +276,26 @@ public final class ClientDebugCommand {
 
     private static String formatString(CompoundTag tag, String key) {
         if (tag == null || !tag.contains(key)) return null;
-        return tag.getString(key);
+        return tag.getStringOr(key, "");
     }
 
     private static String formatBool(CompoundTag tag, String key) {
         if (tag == null || !tag.contains(key)) return null;
-        return tag.getBoolean(key) ? "true" : "false";
+        return tag.getBooleanOr(key, false) ? "true" : "false";
     }
 
     private static String formatDisplayChild(CompoundTag tag, String childKey) {
-        if (tag == null || !tag.contains("display", Tag.TAG_COMPOUND)) return null;
-        CompoundTag display = tag.getCompound("display");
+        if (tag == null || !NbtTypes.has(tag, "display", Tag.TAG_COMPOUND)) return null;
+        CompoundTag display = tag.getCompoundOrEmpty("display");
         if (!display.contains(childKey)) return null;
-        return display.getString(childKey);
+        return display.getStringOr(childKey, "");
     }
 
     private static String formatDisplayLore(CompoundTag tag) {
-        if (tag == null || !tag.contains("display", Tag.TAG_COMPOUND)) return null;
-        CompoundTag display = tag.getCompound("display");
-        if (!display.contains("Lore", Tag.TAG_LIST)) return null;
-        ListTag lore = display.getList("Lore", Tag.TAG_STRING);
+        if (tag == null || !NbtTypes.has(tag, "display", Tag.TAG_COMPOUND)) return null;
+        CompoundTag display = tag.getCompoundOrEmpty("display");
+        if (!NbtTypes.has(display, "Lore", Tag.TAG_LIST)) return null;
+        ListTag lore = display.getListOrEmpty("Lore");
         if (lore.isEmpty()) return null;
         StringBuilder sb = new StringBuilder("[");
         for (int i = 0; i < lore.size(); i++) {
@@ -305,14 +307,14 @@ public final class ClientDebugCommand {
     }
 
     private static String formatEnchantmentList(CompoundTag tag, String key) {
-        if (tag == null || !tag.contains(key, Tag.TAG_LIST)) return null;
-        ListTag list = tag.getList(key, Tag.TAG_COMPOUND);
+        if (tag == null || !NbtTypes.has(tag, key, Tag.TAG_LIST)) return null;
+        ListTag list = tag.getListOrEmpty(key);
         if (list.isEmpty()) return null;
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < list.size(); i++) {
-            CompoundTag ench = list.getCompound(i);
-            String id = ench.getString("id");
-            int lvl = ench.getInt("lvl");
+            CompoundTag ench = list.getCompoundOrEmpty(i);
+            String id = ench.getStringOr("id", "");
+            int lvl = ench.getIntOr("lvl", 0);
             if (i > 0) sb.append(", ");
             sb.append(normalizeEnchantmentId(id)).append(" ").append(lvl);
         }
@@ -321,7 +323,7 @@ public final class ClientDebugCommand {
 
     private static String normalizeEnchantmentId(String id) {
         if (id == null || id.isEmpty()) return id;
-        ResourceLocation rl = ResourceLocation.tryParse(id);
+        Identifier rl = Identifier.tryParse(id);
         return rl == null ? id : rl.toString();
     }
 }

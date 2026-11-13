@@ -4,7 +4,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.inventory.InventoryMenu;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
@@ -44,7 +44,7 @@ public final class FluidIcon {
         IClientFluidTypeExtensions extensions = IClientFluidTypeExtensions.of(fluid);
         // Contractually only the empty fluid answers null here, but it is a defaulted method and
         // a mod that never overrides it lands on exactly this.
-        ResourceLocation texture = extensions.getStillTexture();
+        Identifier texture = extensions.getStillTexture();
         if (texture == null) return;
 
         TextureAtlasSprite sprite = Minecraft.getInstance()
@@ -71,9 +71,9 @@ public final class FluidIcon {
 
     private static Fluid fluidOf(String fluidId) {
         if (fluidId == null || fluidId.isEmpty()) return null;
-        ResourceLocation id = ResourceLocation.tryParse(fluidId);
+        Identifier id = Identifier.tryParse(fluidId);
         if (id == null) return null;
-        Fluid fluid = BuiltInRegistries.FLUID.get(id);
+        Fluid fluid = BuiltInRegistries.FLUID.getValue(id);
         return fluid == null || fluid == Fluids.EMPTY ? null : fluid;
     }
 }

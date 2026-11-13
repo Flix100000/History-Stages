@@ -44,7 +44,7 @@ import net.bananemdnsa.historystages.api.editor.widget.SearchBar;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvents;
 
 import java.util.ArrayList;
@@ -68,8 +68,8 @@ public class StageOverviewScreen extends Screen {
     /** Width of the three bars marking a folder row, in pixels. */
     private static final int FOLDER_ICON_WIDTH = 7;
     /** Round mod logo in the top-left corner, ahead of the search bar. */
-    private static final ResourceLocation LOGO =
-            ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "textures/gui/logo_round.png");
+    private static final Identifier LOGO =
+            Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "textures/gui/logo_round.png");
     /** The texture is 72px; a third of that lands on whole pixels at GUI scale 3. */
     private static final int LOGO_TEX = 72;
     private static final int LOGO_SIZE = 24;
@@ -1272,7 +1272,7 @@ public class StageOverviewScreen extends Screen {
                     // there too, so it goes with Edit and only Delete remains.
                     if (!organizeMode) {
                         contextMenu.addEntry(Component.translatable("editor.historystages.edit").getString(), () -> {
-                            this.minecraft.setScreen(new StageDetailScreen(this, stageId, entry, false));
+                            this.minecraft.gui.setScreen(new StageDetailScreen(this, stageId, entry, false));
                         });
                         contextMenu.addEntry(Component.translatable("editor.historystages.duplicate").getString(), () -> {
                             openStageIdInputDialog(stageId, false);
@@ -1280,10 +1280,10 @@ public class StageOverviewScreen extends Screen {
                     }
                     contextMenu.addEntry(Component.translatable("editor.historystages.delete").getString(), () -> {
                         Screen self = this;
-                        this.minecraft.setScreen(new ConfirmDialog(this,
+                        this.minecraft.gui.setScreen(new ConfirmDialog(this,
                                 Component.translatable("editor.historystages.confirm_delete_title"),
                                 Component.translatable("editor.historystages.confirm_delete", stageId),
-                                () -> { PacketHandler.sendToServer(new DeleteStagePacket(stageId, false)); stageOrder.remove(stageId); applyFilter(); Minecraft.getInstance().setScreen(self); }));
+                                () -> { PacketHandler.sendToServer(new DeleteStagePacket(stageId, false)); stageOrder.remove(stageId); applyFilter(); Minecraft.getInstance().gui.setScreen(self); }));
                     });
                     Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
                     contextMenu.show((int) mouseX, (int) mouseY, this.font);
@@ -1292,7 +1292,7 @@ public class StageOverviewScreen extends Screen {
 
                 // Left-click on stage entry -> open detail editor
                 Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
-                this.minecraft.setScreen(new StageDetailScreen(this, stageId, entry, false));
+                this.minecraft.gui.setScreen(new StageDetailScreen(this, stageId, entry, false));
                 return true;
             }
         }
@@ -1341,7 +1341,7 @@ public class StageOverviewScreen extends Screen {
                         contextMenu = new ContextMenu();
                         if (!organizeMode) {
                             contextMenu.addEntry(Component.translatable("editor.historystages.edit").getString(), () -> {
-                                this.minecraft.setScreen(new StageDetailScreen(this, stageId, entry, true));
+                                this.minecraft.gui.setScreen(new StageDetailScreen(this, stageId, entry, true));
                             });
                             contextMenu.addEntry(Component.translatable("editor.historystages.duplicate").getString(), () -> {
                                 openStageIdInputDialog(stageId, true);
@@ -1349,10 +1349,10 @@ public class StageOverviewScreen extends Screen {
                         }
                         contextMenu.addEntry(Component.translatable("editor.historystages.delete").getString(), () -> {
                             Screen self = this;
-                            this.minecraft.setScreen(new ConfirmDialog(this,
+                            this.minecraft.gui.setScreen(new ConfirmDialog(this,
                                     Component.translatable("editor.historystages.confirm_delete_title"),
                                     Component.translatable("editor.historystages.confirm_delete", stageId),
-                                    () -> { PacketHandler.sendToServer(new DeleteStagePacket(stageId, true)); individualStageOrder.remove(stageId); applyFilter(); Minecraft.getInstance().setScreen(self); }));
+                                    () -> { PacketHandler.sendToServer(new DeleteStagePacket(stageId, true)); individualStageOrder.remove(stageId); applyFilter(); Minecraft.getInstance().gui.setScreen(self); }));
                         });
                         Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
                         contextMenu.show((int) mouseX, (int) mouseY, this.font);
@@ -1361,7 +1361,7 @@ public class StageOverviewScreen extends Screen {
 
                     // Left-click -> open detail editor (individual mode)
                     Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
-                    this.minecraft.setScreen(new StageDetailScreen(this, stageId, entry, true));
+                    this.minecraft.gui.setScreen(new StageDetailScreen(this, stageId, entry, true));
                     return true;
                 }
             }
@@ -1388,7 +1388,7 @@ public class StageOverviewScreen extends Screen {
         if (button == 1) {
             contextMenu = new ContextMenu();
             contextMenu.addEntry(Component.translatable("editor.historystages.folder.rename").getString(), () -> {
-                this.minecraft.setScreen(new FolderNameScreen(this,
+                this.minecraft.gui.setScreen(new FolderNameScreen(this,
                         Component.translatable("editor.historystages.folder.rename_title"),
                         individual, StagePaths.parent(folder.path()), folder.name(),
                         newName -> PacketHandler.sendToServer(
@@ -1396,12 +1396,12 @@ public class StageOverviewScreen extends Screen {
             });
             contextMenu.addEntry(Component.translatable("editor.historystages.delete").getString(), () -> {
                 Screen self = this;
-                this.minecraft.setScreen(new ConfirmDialog(this,
+                this.minecraft.gui.setScreen(new ConfirmDialog(this,
                         Component.translatable("editor.historystages.folder.confirm_delete_title"),
                         Component.translatable("editor.historystages.folder.confirm_delete", folder.name()),
                         () -> {
                             PacketHandler.sendToServer(new DeleteFolderPacket(individual, folder.path()));
-                            Minecraft.getInstance().setScreen(self);
+                            Minecraft.getInstance().gui.setScreen(self);
                         }));
             });
             Minecraft.getInstance().getSoundManager().play(
@@ -1463,15 +1463,15 @@ public class StageOverviewScreen extends Screen {
         headerMenuOpen = true;
         contextMenu = new ContextMenu();
         contextMenu.addEntry(Component.translatable("editor.historystages.config_title").getString(),
-                () -> this.minecraft.setScreen(new ConfigEditorScreen(this)));
+                () -> this.minecraft.gui.setScreen(new ConfigEditorScreen(this)));
         contextMenu.addEntry(Component.translatable("editor.historystages.graph.button").getString(),
-                () -> this.minecraft.setScreen(new StageGraphScreen(this)));
+                () -> this.minecraft.gui.setScreen(new StageGraphScreen(this)));
         contextMenu.addEntry(Component.translatable("editor.historystages.menu.disguises").getString(),
-                () -> this.minecraft.setScreen(new DisguiseListScreen(this)));
+                () -> this.minecraft.gui.setScreen(new DisguiseListScreen(this)));
         contextMenu.addEntry(Component.translatable("editor.historystages.menu.organize").getString(),
                 () -> setOrganizeMode(true));
         contextMenu.addEntry(Component.translatable("editor.historystages.menu.credits").getString(),
-                () -> this.minecraft.setScreen(new CreditsScreen(this)));
+                () -> this.minecraft.gui.setScreen(new CreditsScreen(this)));
         contextMenu.showRightAligned(menuButtonX() + MENU_BUTTON_W,
                 MENU_BUTTON_Y + MENU_BUTTON_H + 3, this.font);
     }
@@ -1788,14 +1788,14 @@ public class StageOverviewScreen extends Screen {
             // Marking the tree fixed hides that selector; the kind selector is already
             // hidden for duplicates, so the dialog shows none. The copy lands next to
             // its source.
-            this.minecraft.setScreen(new StageIdInputScreen(this, duplicateFromId, individual,
+            this.minecraft.gui.setScreen(new StageIdInputScreen(this, duplicateFromId, individual,
                     true, StageManager.getStageFolder(duplicateFromId, individual), false));
             return;
         }
         boolean treeFixed = browsingIndividual != null;
         // Organize mode is for structuring what exists, so the dialog only creates folders
         // there — the target to sort into — and the kind selector goes away with the choice.
-        this.minecraft.setScreen(new StageIdInputScreen(this, duplicateFromId,
+        this.minecraft.gui.setScreen(new StageIdInputScreen(this, duplicateFromId,
                 treeFixed ? browsingIndividual : individual, treeFixed, currentPath, organizeMode));
     }
 
@@ -1891,7 +1891,7 @@ public class StageOverviewScreen extends Screen {
     }
 
     @Override public boolean shouldCloseOnEsc() { return true; }
-    @Override public void onClose() { this.minecraft.setScreen(null); }
+    @Override public void onClose() { this.minecraft.gui.setScreen(null); }
     @Override public boolean isPauseScreen() { return true; }
 
     private static final String MODE_BADGE_WARN = "⚠";
@@ -2453,7 +2453,7 @@ public class StageOverviewScreen extends Screen {
 
             if (creatingFolder) {
                 PacketHandler.sendToServer(new CreateFolderPacket(individual, StagePaths.join(targetFolder, id)));
-                this.minecraft.setScreen(parent);
+                this.minecraft.gui.setScreen(parent);
                 return;
             }
 
@@ -2473,15 +2473,15 @@ public class StageOverviewScreen extends Screen {
                     // A stage edited on disk can be larger than the packet allows; in that case
                     // nothing was written, so do not open a detail screen for it.
                     if (StageSaver.send(id, copy, individual, true, targetFolder)) {
-                        this.minecraft.setScreen(new StageDetailScreen(parent, id, copy, individual, targetFolder));
+                        this.minecraft.gui.setScreen(new StageDetailScreen(parent, id, copy, individual, targetFolder));
                     } else {
-                        this.minecraft.setScreen(parent);
+                        this.minecraft.gui.setScreen(parent);
                     }
                 } else {
-                    this.minecraft.setScreen(parent);
+                    this.minecraft.gui.setScreen(parent);
                 }
             } else {
-                this.minecraft.setScreen(new StageDetailScreen(parent, id, null, individual, targetFolder,
+                this.minecraft.gui.setScreen(new StageDetailScreen(parent, id, null, individual, targetFolder,
                         displayName));
             }
         }

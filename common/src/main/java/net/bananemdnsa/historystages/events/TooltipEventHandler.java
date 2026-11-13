@@ -29,13 +29,13 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
+import net.bananemdnsa.historystages.platform.Dist;
+import net.bananemdnsa.historystages.platform.event.entity.player.ItemTooltipEvent;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -54,7 +54,7 @@ public class TooltipEventHandler {
         ItemStack stack = event.getItemStack();
         if (stack.isEmpty() || !(stack.getItem() instanceof BlockItem blockItem)) return;
 
-        ResourceLocation id = BuiltInRegistries.BLOCK.getKey(blockItem.getBlock());
+        Identifier id = BuiltInRegistries.BLOCK.getKey(blockItem.getBlock());
         ResearchBooster booster = ResearchBoosterRegistry.get(id).orElse(null);
         if (booster == null) return;
 
@@ -97,7 +97,7 @@ public class TooltipEventHandler {
             var nbt = customData.copyTag();
 
             if (nbt.contains("ResearchProgress")) {
-                int progress = nbt.getInt("ResearchProgress");
+                int progress = nbt.getIntOr("ResearchProgress", 0);
                 int maxProgress = nbt.contains("MaxProgress") ? nbt.getInt("MaxProgress") : 400;
 
                 int percent = (int) Math.min(100, ((double) progress / maxProgress * 100));
@@ -137,7 +137,7 @@ public class TooltipEventHandler {
         if (net.bananemdnsa.historystages.client.disguise.ClientDisguises.hidesHints(stack)) return;
 
         // --- AB HIER: NORMALER LOCKED ITEM CHECK ---
-        ResourceLocation itemLocation = BuiltInRegistries.ITEM.getKey(stack.getItem());
+        Identifier itemLocation = BuiltInRegistries.ITEM.getKey(stack.getItem());
         if (itemLocation == null) return;
 
         String itemID = itemLocation.toString();

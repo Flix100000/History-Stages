@@ -1,4 +1,5 @@
 package net.bananemdnsa.historystages.network.serverbound;
+import dev.architectury.networking.NetworkManager;
 import net.bananemdnsa.historystages.network.clientbound.SyncDependencyStatusPacket;
 
 import net.bananemdnsa.historystages.HistoryStages;
@@ -15,13 +16,12 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.neoforged.neoforge.network.PacketDistributor;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.bananemdnsa.historystages.platform.IPayloadContext;
 
 /**
  * Client -> Server: Request dependency status check for a specific stage.
@@ -32,7 +32,7 @@ public record CheckDependencyPacket(String stageId, boolean isIndividual, BlockP
         implements CustomPacketPayload {
 
     public static final CustomPacketPayload.Type<CheckDependencyPacket> TYPE =
-            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "check_dependency"));
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "check_dependency"));
 
     public static final StreamCodec<FriendlyByteBuf, CheckDependencyPacket> STREAM_CODEC =
             StreamCodec.of(CheckDependencyPacket::encode, CheckDependencyPacket::decode);
@@ -69,7 +69,7 @@ public record CheckDependencyPacket(String stageId, boolean isIndividual, BlockP
                 ItemStack scroll = pedestal.getScrollStack();
                 CompoundTag scrollTag = scroll.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
                 if (scrollTag.contains("DepositedDependencies")) {
-                    depositedTag = scrollTag.getCompound("DepositedDependencies");
+                    depositedTag = scrollTag.getCompoundOrEmpty("DepositedDependencies");
                 }
                 costReduction = pedestal.itemCostReduction(scrollTag);
                 xpFactor = pedestal.xpCostFactor(scrollTag);
@@ -78,7 +78,7 @@ public record CheckDependencyPacket(String stageId, boolean isIndividual, BlockP
             RequirementResult result = DependencyChecker.checkAll(entry, player, player.level(),
                     packet.isIndividual ? StageScope.INDIVIDUAL : StageScope.GLOBAL,
                     depositedTag, costReduction, xpFactor);
-            PacketDistributor.sendToPlayer(player,
+            NetworkManager.sendToPlayer(player,
                     new SyncDependencyStatusPacket(packet.stageId, packet.isIndividual, result));
         });
     }

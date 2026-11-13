@@ -8,7 +8,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.enchantment.Enchantment;
 
 import java.util.ArrayList;
@@ -37,7 +37,7 @@ public class SearchableEnchantmentList extends AbstractSearchableList<String> {
         List<String> ids = new ArrayList<>();
         Registry<Enchantment> registry = registry();
         if (registry != null) {
-            for (ResourceLocation key : registry.keySet()) {
+            for (Identifier key : registry.keySet()) {
                 ids.add(key.toString());
             }
             ids.sort(String::compareToIgnoreCase);
@@ -47,15 +47,15 @@ public class SearchableEnchantmentList extends AbstractSearchableList<String> {
 
     private static Registry<Enchantment> registry() {
         var level = Minecraft.getInstance().level;
-        return level == null ? null : level.registryAccess().registryOrThrow(Registries.ENCHANTMENT);
+        return level == null ? null : level.registryAccess().lookupOrThrow(Registries.ENCHANTMENT);
     }
 
     /** Localised enchantment name, falling back to the raw id when the world is gone. */
     public static String displayName(String enchantmentId) {
         Registry<Enchantment> registry = registry();
-        ResourceLocation key = ResourceLocation.tryParse(enchantmentId);
+        Identifier key = Identifier.tryParse(enchantmentId);
         if (registry == null || key == null) return enchantmentId;
-        Enchantment enchantment = registry.get(key);
+        Enchantment enchantment = registry.getValue(key);
         return enchantment == null ? enchantmentId : enchantment.description().getString();
     }
 

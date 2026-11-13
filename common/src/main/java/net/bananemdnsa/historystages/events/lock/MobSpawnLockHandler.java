@@ -7,17 +7,17 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.MobSpawnType;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
-import net.neoforged.neoforge.event.entity.living.BabyEntitySpawnEvent;
-import net.neoforged.neoforge.event.entity.living.FinalizeSpawnEvent;
-import net.neoforged.neoforge.event.entity.living.MobSpawnEvent;
-import net.neoforged.neoforge.event.level.LevelEvent;
+import net.minecraft.world.entity.EntitySpawnReason;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
+import net.bananemdnsa.historystages.platform.event.entity.EntityJoinLevelEvent;
+import net.bananemdnsa.historystages.platform.event.entity.living.BabyEntitySpawnEvent;
+import net.bananemdnsa.historystages.platform.event.entity.living.FinalizeSpawnEvent;
+import net.bananemdnsa.historystages.platform.event.entity.living.MobSpawnEvent;
+import net.bananemdnsa.historystages.platform.event.level.LevelEvent;
 
 /**
- * Spawn rules. Maps the vanilla {@link MobSpawnType} to one of our six source buckets and asks
+ * Spawn rules. Maps the vanilla {@link EntitySpawnReason} to one of our six source buckets and asks
  * {@link SpawnControlGate} whether the spawn may happen; the gate also adds extra-biome spawns and
  * lifts a mob's own placement rules where an entry asks for it.
  */
@@ -98,15 +98,15 @@ public class MobSpawnLockHandler {
         }
     }
 
-    private static boolean isNatural(MobSpawnType type) {
-        return type == MobSpawnType.NATURAL || type == MobSpawnType.CHUNK_GENERATION;
+    private static boolean isNatural(EntitySpawnReason type) {
+        return type == EntitySpawnReason.NATURAL || type == EntitySpawnReason.CHUNK_GENERATION;
     }
 
     private static String entityId(EntityType<?> type) {
         return BuiltInRegistries.ENTITY_TYPE.getKey(type).toString();
     }
 
-    private static String mapSpawnSource(MobSpawnType type) {
+    private static String mapSpawnSource(EntitySpawnReason type) {
         return switch (type) {
             case NATURAL, CHUNK_GENERATION -> "natural";
             case SPAWNER, TRIAL_SPAWNER, TRIGGERED, MOB_SUMMONED -> "spawner";

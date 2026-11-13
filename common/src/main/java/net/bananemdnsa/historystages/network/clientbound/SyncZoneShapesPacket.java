@@ -10,8 +10,8 @@ import net.bananemdnsa.historystages.data.lock.ZoneShapeType;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.minecraft.resources.Identifier;
+import net.bananemdnsa.historystages.platform.IPayloadContext;
 
 /**
  * The locked zones near one player that the client has to know about.
@@ -25,7 +25,7 @@ public record SyncZoneShapesPacket(List<ClientZoneShapes.Visible> zones)
 
     public static final CustomPacketPayload.Type<SyncZoneShapesPacket> TYPE =
             new CustomPacketPayload.Type<>(
-                    ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "sync_zone_shapes"));
+                    Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "sync_zone_shapes"));
 
     public static final StreamCodec<FriendlyByteBuf, SyncZoneShapesPacket> STREAM_CODEC =
             StreamCodec.of(SyncZoneShapesPacket::write, SyncZoneShapesPacket::read);

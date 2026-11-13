@@ -9,7 +9,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
@@ -278,13 +278,13 @@ public final class RecipeCardRenderer {
      */
     public static ItemStack resolveWorkstation(RecipeTypeMeta meta) {
         if (meta.workstationItemId().isEmpty()) return ItemStack.EMPTY;
-        ResourceLocation id = ResourceLocation.tryParse(meta.workstationItemId());
+        Identifier id = Identifier.tryParse(meta.workstationItemId());
         if (id == null) return ItemStack.EMPTY;
-        // BuiltInRegistries.ITEM is a DefaultedRegistry<Item>; get() is @Nonnull and falls back
+        // BuiltInRegistries.ITEM is a DefaultedRegistry<Item>; get() is @NotNull and falls back
         // to Items.AIR for an unresolved id rather than returning null. new ItemStack(Items.AIR)
         // reports isEmpty() == true (ItemStack.isEmpty() checks item == Items.AIR), so an unknown
         // id still ends up invisible to the caller without a separate null check.
-        Item item = BuiltInRegistries.ITEM.get(id);
+        Item item = BuiltInRegistries.ITEM.getValue(id);
         return new ItemStack(item);
     }
 }

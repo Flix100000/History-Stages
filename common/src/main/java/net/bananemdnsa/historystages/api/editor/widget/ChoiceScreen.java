@@ -55,8 +55,8 @@ public class ChoiceScreen extends Screen {
         // The overlay hides itself the moment a row is picked. If that row opened a screen, this
         // one is no longer being rendered and the check never runs; if it did not, the choice is
         // finished and there is nothing left here to show.
-        if (!overlay.isVisible() && this.minecraft != null && this.minecraft.screen == this) {
-            this.minecraft.setScreen(parent);
+        if (!overlay.isVisible() && this.minecraft != null && this.minecraft.gui.screen() == this) {
+            this.minecraft.gui.setScreen(parent);
         }
     }
 

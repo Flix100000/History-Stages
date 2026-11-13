@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.util.lock;
 
+import net.bananemdnsa.historystages.platform.Services;
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.data.lock.EntitySpawnLockEntry;
@@ -12,7 +13,7 @@ import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntityType;
@@ -21,8 +22,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.MobSpawnSettings;
-import net.neoforged.neoforge.event.level.LevelEvent;
-import net.neoforged.neoforge.server.ServerLifecycleHooks;
+import net.bananemdnsa.historystages.platform.event.level.LevelEvent;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -101,12 +101,12 @@ public final class SpawnControlGate {
 
     private static Map<MobCategory, List<ResolvedExtra>> resolve(SpawnRuleSet set) {
         if (set.extras().isEmpty()) return Map.of();
-        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
-        Registry<Biome> biomes = server != null ? server.registryAccess().registryOrThrow(Registries.BIOME) : null;
+        MinecraftServer server = Services.currentServer();
+        Registry<Biome> biomes = server != null ? server.registryAccess().lookupOrThrow(Registries.BIOME) : null;
 
         Map<MobCategory, List<ResolvedExtra>> out = new EnumMap<>(MobCategory.class);
         for (SpawnRuleSet.ActiveExtra extra : set.extras()) {
-            ResourceLocation key = ResourceLocation.tryParse(extra.entityId());
+            Identifier key = Identifier.tryParse(extra.entityId());
             if (key == null) continue;
             Optional<EntityType<?>> type = BuiltInRegistries.ENTITY_TYPE.getOptional(key);
             if (type.isEmpty()) continue;
@@ -146,7 +146,7 @@ public final class SpawnControlGate {
     private static SpawnContext context(ServerLevelAccessor accessor, BlockPos pos) {
         ServerLevel level = accessor.getLevel();
         Holder<Biome> biome = accessor.getBiome(pos);
-        String biomeId = biome.unwrapKey().map(k -> k.location().toString()).orElse("");
+        String biomeId = biome.unwrapKey().map(k -> k.identifier().toString()).orElse("");
         List<String> tags = biome.tags().map(t -> t.location().toString()).toList();
         return new SpawnContext(dimensionId(level), biomeId, tags, pos.getY(),
                 accessor.getMaxLocalRawBrightness(pos), accessor.canSeeSky(pos),
@@ -154,6 +154,6 @@ public final class SpawnControlGate {
     }
 
     public static String dimensionId(Level level) {
-        return DIMENSION_IDS.computeIfAbsent(level.dimension(), key -> key.location().toString());
+        return DIMENSION_IDS.computeIfAbsent(level.dimension(), key -> key.identifier().toString());
     }
 }

@@ -399,7 +399,7 @@ public class GraphStyleScreen extends Screen {
             case BOOLEAN -> {
                 if (pickedHalf != null) entry.value = String.valueOf(pickedHalf.booleanValue());
             }
-            case COLOR -> this.minecraft.setScreen(new ColorInputScreen(this, entry));
+            case COLOR -> this.minecraft.gui.setScreen(new ColorInputScreen(this, entry));
             case ENUM -> {
                 EnumDropdown dropdown = new EnumDropdown(
                         entry.enumConstants, entry.value, ConfigRowList.DROPDOWN_MIN_WIDTH,
@@ -411,7 +411,7 @@ public class GraphStyleScreen extends Screen {
                 openDropdown = dropdown;
             }
             case INTEGER, DOUBLE, STRING ->
-                    this.minecraft.setScreen(new ConfigEditorScreen.ValueInputScreen(this, entry));
+                    this.minecraft.gui.setScreen(new ConfigEditorScreen.ValueInputScreen(this, entry));
             default -> {
                 // No other type appears in a style block.
             }
@@ -448,7 +448,7 @@ public class GraphStyleScreen extends Screen {
     @Override
     public void onClose() {
         openDropdown = null;
-        this.minecraft.setScreen(parent);
+        this.minecraft.gui.setScreen(parent);
     }
 
     @Override

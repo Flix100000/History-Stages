@@ -27,7 +27,7 @@ import org.jetbrains.annotations.Nullable;
  * accept the obvious things: an id string for dimensions, recipes, structures, biomes, trade
  * levels and attack locks; an {@code ItemStack}, {@code Item} or item id for items, tags and mods;
  * a fluid id, {@code Fluid} or {@code FluidStack} for fluids. Registry handles
- * ({@code ResourceLocation}, {@code ResourceKey}, {@code Holder}) work wherever an id does. The
+ * ({@code Identifier}, {@code ResourceKey}, {@code Holder}) work wherever an id does. The
  * rest — spawns, interactions, merchants, single offers, levelled enchantments — come from
  * {@link Subjects}. For items there is also {@link ItemLocks}, which is faster and knows about
  * lock actions.

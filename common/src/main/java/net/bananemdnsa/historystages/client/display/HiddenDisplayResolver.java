@@ -14,7 +14,7 @@ import net.bananemdnsa.historystages.data.lock.engine.CategoryLockIndexes;
 import net.bananemdnsa.historystages.data.display.TextOverrideHolder;
 import net.bananemdnsa.historystages.data.lock.NamedLockEntry;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
@@ -63,7 +63,7 @@ public final class HiddenDisplayResolver {
 
     public static Resolved resolve(ItemStack stack) {
         if (stack == null || stack.isEmpty()) return Resolved.NONE;
-        ResourceLocation res = BuiltInRegistries.ITEM.getKey(stack.getItem());
+        Identifier res = BuiltInRegistries.ITEM.getKey(stack.getItem());
         if (res == null) return Resolved.NONE;
 
         String itemId = res.toString();

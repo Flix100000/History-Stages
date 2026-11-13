@@ -1,7 +1,7 @@
 package net.bananemdnsa.historystages.compat;
 
+import net.bananemdnsa.historystages.platform.Services;
 import com.mojang.logging.LogUtils;
-import net.neoforged.fml.ModList;
 import org.slf4j.Logger;
 
 /**
@@ -17,7 +17,9 @@ public final class LockInterceptors {
     private LockInterceptors() {}
 
     public static void init() {
-        if (ModList.get().isLoaded("spell_engine")) {
+        // PORT(Task 13): SpellEngineCompat waits in port-pending until it builds against Spell Engine 26.2.
+        /*
+        if (Services.isModLoaded("spell_engine")) {
             try {
                 net.bananemdnsa.historystages.compat.spellengine.SpellEngineCompat.register();
                 LOGGER.info("[HistoryStages] Spell Engine lock adapter loaded.");
@@ -25,5 +27,6 @@ public final class LockInterceptors {
                 LOGGER.error("[HistoryStages] Failed to load Spell Engine lock adapter.", t);
             }
         }
+        */
     }
 }

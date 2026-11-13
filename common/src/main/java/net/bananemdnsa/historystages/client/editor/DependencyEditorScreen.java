@@ -51,7 +51,7 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
@@ -319,12 +319,12 @@ public class DependencyEditorScreen extends Screen {
 
     private void confirmDiscard() {
         if (hasChanges) {
-            this.minecraft.setScreen(new ConfirmDialog(this,
+            this.minecraft.gui.setScreen(new ConfirmDialog(this,
                     Component.translatable("editor.historystages.unsaved_warning_title"),
                     Component.translatable("editor.historystages.unsaved_warning"),
-                    () -> this.minecraft.setScreen(parent)));
+                    () -> this.minecraft.gui.setScreen(parent)));
         } else {
-            this.minecraft.setScreen(parent);
+            this.minecraft.gui.setScreen(parent);
         }
     }
 
@@ -843,7 +843,7 @@ public class DependencyEditorScreen extends Screen {
         Component title = Component.translatable(editIndex >= 0
                 ? "editor.historystages.dep.dialog.scoreboard_edit"
                 : "editor.historystages.dep.dialog.scoreboard_add");
-        this.minecraft.setScreen(new ScoreboardDepScreen(this, title, objective, holder, opIndex,
+        this.minecraft.gui.setScreen(new ScoreboardDepScreen(this, title, objective, holder, opIndex,
                 value, ScoreboardDep.OPERATORS,
                 (obj, hold, op, val) -> applyScoreboardDialog(editIndex, obj, hold, op, val)));
     }
@@ -1307,7 +1307,7 @@ public class DependencyEditorScreen extends Screen {
                 if (ItemTagResolution.isTag(iconId)) {
                     stack = ItemTagResolution.displayStack(iconId, null, System.currentTimeMillis());
                 } else {
-                    ResourceLocation rl = ResourceLocation.tryParse(iconId);
+                    Identifier rl = Identifier.tryParse(iconId);
                     Item icon = rl == null ? null : BuiltInRegistries.ITEM.get(rl);
                     stack = icon == null ? ItemStack.EMPTY : new ItemStack(icon);
                 }
@@ -1504,7 +1504,7 @@ public class DependencyEditorScreen extends Screen {
     /** The level dialog for the XP requirement, reading its value out of the tab. */
     private void openXpLevelDialog(XpLevelTab tab) {
         int initial = tab.level() > 0 ? tab.level() : 30;
-        this.minecraft.setScreen(new CountInputScreen(this,
+        this.minecraft.gui.setScreen(new CountInputScreen(this,
                 Component.translatable("editor.historystages.dep.dialog.xp_level"), null,
                 initial, 0, 999999, tab::setLevel));
     }
@@ -1512,7 +1512,7 @@ public class DependencyEditorScreen extends Screen {
     /** The count dialog for an entity-kill entry, reading its value out of the tab. */
     private void openKillCountDialog(EntityKillTab tab, String entityId, int editIndex) {
         int initial = editIndex >= 0 ? tab.countAt(editIndex) : 1;
-        this.minecraft.setScreen(new CountInputScreen(this,
+        this.minecraft.gui.setScreen(new CountInputScreen(this,
                 Component.translatable("editor.historystages.dep.dialog.kill_count"), entityId,
                 initial, 1, 999999,
                 num -> {
@@ -1529,7 +1529,7 @@ public class DependencyEditorScreen extends Screen {
      */
     private void openStatValueDialog(StatTab tab, String statId, int editIndex) {
         int initial = editIndex >= 0 ? tab.minimumAt(editIndex) : 1;
-        this.minecraft.setScreen(new CountInputScreen(this,
+        this.minecraft.gui.setScreen(new CountInputScreen(this,
                 Component.translatable("editor.historystages.dep.dialog.min_value"), statId,
                 initial, 0, 999999,
                 num -> {
@@ -1561,7 +1561,7 @@ public class DependencyEditorScreen extends Screen {
      */
     private EntryActionContext entryActionContext(int idx) {
         return new EntryActionContext(idx, () -> hasChanges = true,
-                screen -> this.minecraft.setScreen(screen),
+                screen -> this.minecraft.gui.setScreen(screen),
                 overlay -> {
                     // Shown here rather than by the factory: only the screen knows its own centre,
                     // and a popup told to appear at (0, 0) lands in the top-left corner.
@@ -1585,7 +1585,7 @@ public class DependencyEditorScreen extends Screen {
      */
     private void openItemCountDialog(ItemRequirementTab tab, String itemId, int editIndex) {
         int initial = editIndex >= 0 ? tab.countAt(editIndex) : 1;
-        this.minecraft.setScreen(new CountInputScreen(this,
+        this.minecraft.gui.setScreen(new CountInputScreen(this,
                 Component.translatable("editor.historystages.dep.dialog.item_count"), itemId,
                 initial, 1, 999999,
                 num -> {
@@ -1596,7 +1596,7 @@ public class DependencyEditorScreen extends Screen {
 
     private void openAddonCountDialog(IdCountTab tab, String entryId, int editIndex) {
         int initial = editIndex >= 0 ? tab.amountAt(editIndex) : 1;
-        this.minecraft.setScreen(new CountInputScreen(this,
+        this.minecraft.gui.setScreen(new CountInputScreen(this,
                 Component.translatable(tab.amountLangKey()), entryId, initial, 1, 999999,
                 num -> {
                     if (editIndex >= 0) tab.setAmountAt(editIndex, num);
@@ -1617,7 +1617,7 @@ public class DependencyEditorScreen extends Screen {
         if (tab == null) return;
         boolean tagMode = entryId.startsWith("#");
         String subject = tagMode ? entryId.substring(1) : entryId;
-        this.minecraft.setScreen(new NbtItemEditScreen(this, subject, tagMode, tab.nbtAt(entryIdx), nbt -> {
+        this.minecraft.gui.setScreen(new NbtItemEditScreen(this, subject, tagMode, tab.nbtAt(entryIdx), nbt -> {
             tab.setNbtAt(entryIdx, nbt == null ? null : nbt.deepCopy());
             // Routes through this screen own save, so the whole stage is persisted.
             save();

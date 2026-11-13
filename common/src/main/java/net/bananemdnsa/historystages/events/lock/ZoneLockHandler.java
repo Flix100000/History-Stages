@@ -24,7 +24,7 @@ import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.effect.MobEffect;
@@ -33,16 +33,16 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.level.Level;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.common.util.TriState;
-import net.neoforged.neoforge.event.entity.ProjectileImpactEvent;
-import net.neoforged.neoforge.event.entity.player.AttackEntityEvent;
-import net.neoforged.neoforge.event.entity.player.PlayerEvent;
-import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
-import net.neoforged.neoforge.event.level.BlockEvent;
-import net.neoforged.neoforge.event.level.ExplosionEvent;
-import net.neoforged.neoforge.event.tick.PlayerTickEvent;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
+import net.bananemdnsa.historystages.platform.TriState;
+import net.bananemdnsa.historystages.platform.event.entity.ProjectileImpactEvent;
+import net.bananemdnsa.historystages.platform.event.entity.player.AttackEntityEvent;
+import net.bananemdnsa.historystages.platform.event.entity.player.PlayerEvent;
+import net.bananemdnsa.historystages.platform.event.entity.player.PlayerInteractEvent;
+import net.bananemdnsa.historystages.platform.event.level.BlockEvent;
+import net.bananemdnsa.historystages.platform.event.level.ExplosionEvent;
+import net.bananemdnsa.historystages.platform.event.tick.PlayerTickEvent;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
@@ -262,8 +262,8 @@ public class ZoneLockHandler {
     private static List<ZoneIndex.Entry> zonesAt(PlayerState state, Level level, BlockPos pos) {
         if (state.lockedZones.isEmpty()) return Collections.emptyList();
 
-        int minY = level.getMinBuildHeight();
-        int maxY = level.getMaxBuildHeight();
+        int minY = level.getMinY();
+        int maxY = level.getMaxY() + 1;
 
         List<ZoneIndex.Entry> here = new ArrayList<>(1);
         for (ZoneIndex.Entry entry : state.lockedZones) {
@@ -286,7 +286,7 @@ public class ZoneLockHandler {
     }
 
     private static String dimensionId(Level level) {
-        return DIMENSION_IDS.computeIfAbsent(level.dimension(), key -> key.location().toString());
+        return DIMENSION_IDS.computeIfAbsent(level.dimension(), key -> key.identifier().toString());
     }
 
     // --- What the client is allowed to see ---
@@ -379,8 +379,8 @@ public class ZoneLockHandler {
         PlayerState state = STATE.get(player.getUUID());
         if (state == null || state.zonesHere.isEmpty()) return null;
 
-        int minY = player.level().getMinBuildHeight();
-        int maxY = player.level().getMaxBuildHeight();
+        int minY = player.level().getMinY();
+        int maxY = player.level().getMaxY() + 1;
 
         double[] at = { player.getX(), player.getY(), player.getZ() };
         boolean moved = false;
@@ -408,8 +408,8 @@ public class ZoneLockHandler {
         PlayerState state = STATE.get(player.getUUID());
         if (state == null || state.lockedZones.isEmpty()) return false;
 
-        int minY = player.level().getMinBuildHeight();
-        int maxY = player.level().getMaxBuildHeight();
+        int minY = player.level().getMinY();
+        int maxY = player.level().getMaxY() + 1;
         int bx = (int) Math.floor(x);
         int by = (int) Math.floor(y);
         int bz = (int) Math.floor(z);
@@ -439,8 +439,8 @@ public class ZoneLockHandler {
         if (!state.hasLast || state.lockedZones.isEmpty()) return;
         if (player.isCreative() || player.isSpectator()) return;
 
-        int minY = player.level().getMinBuildHeight();
-        int maxY = player.level().getMaxBuildHeight();
+        int minY = player.level().getMinY();
+        int maxY = player.level().getMaxY() + 1;
 
         for (ZoneIndex.Entry entry : state.lockedZones) {
             if (!entry.zone().getRules().isBarrier()) continue;
@@ -565,9 +565,9 @@ public class ZoneLockHandler {
         if (cached != null) return cached;
         if (UNKNOWN_EFFECTS.contains(id)) return null;
 
-        ResourceLocation location = ResourceLocation.tryParse(id);
+        Identifier location = Identifier.tryParse(id);
         Holder<MobEffect> holder = location == null ? null
-                : BuiltInRegistries.MOB_EFFECT.getHolder(location)
+                : BuiltInRegistries.MOB_EFFECT.get(location)
                         .map(h -> (Holder<MobEffect>) h)
                         .orElse(null);
 
@@ -597,7 +597,7 @@ public class ZoneLockHandler {
         if (verdict.messageInChat()) {
             player.sendSystemMessage(message);
         } else {
-            player.displayClientMessage(message, true);
+            player.sendOverlayMessage(message);
         }
 
         DebugLogger.runtime(HsRuntimeCategories.ZONE_LOCK, player.getName().getString(),
@@ -810,8 +810,8 @@ public class ZoneLockHandler {
         }
         if (protecting.isEmpty()) return;
 
-        int minY = level.getMinBuildHeight();
-        int maxY = level.getMaxBuildHeight();
+        int minY = level.getMinY();
+        int maxY = level.getMaxY() + 1;
 
         affected.removeIf(pos -> {
             for (ZoneIndex.Entry entry : protecting) {

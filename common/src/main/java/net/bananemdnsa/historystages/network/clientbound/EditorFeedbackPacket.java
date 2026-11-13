@@ -7,8 +7,8 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.minecraft.resources.Identifier;
+import net.bananemdnsa.historystages.platform.IPayloadContext;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,7 +33,7 @@ public record EditorFeedbackPacket(byte level, String titleKey, String messageKe
     public static final byte LEVEL_INFO = 2;
 
     public static final CustomPacketPayload.Type<EditorFeedbackPacket> TYPE =
-            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "editor_feedback"));
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "editor_feedback"));
 
     public static final StreamCodec<FriendlyByteBuf, EditorFeedbackPacket> STREAM_CODEC =
             StreamCodec.of(

@@ -24,7 +24,7 @@ import net.bananemdnsa.historystages.screen.OpenScrollTabs;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.item.ItemStack;
 
@@ -50,8 +50,8 @@ import java.util.Map;
  */
 public class OpenScrollDocumentScreen extends Screen {
 
-    private static final ResourceLocation SHEET =
-            ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "textures/gui/scroll/open_gui.png");
+    private static final Identifier SHEET =
+            Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "textures/gui/scroll/open_gui.png");
 
     private static final int ROWS_TOP = 30;
     private static final int BUTTON_BAND = 40;
@@ -146,13 +146,13 @@ public class OpenScrollDocumentScreen extends Screen {
         // Behind a confirm because it throws away both lists at once, unlike a single toggle.
         this.addRenderableWidget(StyledButton.of(
                 Component.translatable("editor.historystages.reset"),
-                btn -> this.minecraft.setScreen(new ConfirmDialog(
+                btn -> this.minecraft.gui.setScreen(new ConfirmDialog(
                         this,
                         Component.translatable("editor.historystages.open_scroll.reset_all_title"),
                         Component.translatable("editor.historystages.open_scroll.reset_all"),
                         () -> {
                             resetAll();
-                            this.minecraft.setScreen(this);
+                            this.minecraft.gui.setScreen(this);
                         })),
                 this.width - 70, this.height - 30, 60, 20));
     }
@@ -697,6 +697,6 @@ public class OpenScrollDocumentScreen extends Screen {
     @Override
     public void onClose() {
         writeBack();
-        this.minecraft.setScreen(parent);
+        this.minecraft.gui.setScreen(parent);
     }
 }

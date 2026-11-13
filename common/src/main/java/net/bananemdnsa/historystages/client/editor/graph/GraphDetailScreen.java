@@ -26,7 +26,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.resources.language.I18n;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -217,7 +217,7 @@ public final class GraphDetailScreen extends AbstractModalScreen {
 
     @Override
     protected void onConfirm() {
-        this.minecraft.setScreen(parent);
+        this.minecraft.gui.setScreen(parent);
     }
 
     /** The pill band plus however much list fits under it. */
@@ -516,9 +516,9 @@ public final class GraphDetailScreen extends AbstractModalScreen {
                     System.currentTimeMillis());
         }
         if (!"item".equals(e.getType())) return ItemStack.EMPTY;
-        ResourceLocation id = ResourceLocation.tryParse(e.getId());
+        Identifier id = Identifier.tryParse(e.getId());
         if (id == null) return ItemStack.EMPTY;
-        Item item = BuiltInRegistries.ITEM.get(id);
+        Item item = BuiltInRegistries.ITEM.getValue(id);
         ItemStack stack = new ItemStack(item);
         return stack.isEmpty() ? ItemStack.EMPTY : stack;
     }

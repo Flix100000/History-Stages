@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.network.serverbound;
 
+import net.minecraft.server.permissions.Permissions;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.data.StagePaths;
@@ -10,9 +11,9 @@ import net.bananemdnsa.historystages.network.clientbound.SyncStageDefinitionsPac
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.bananemdnsa.historystages.platform.IPayloadContext;
 
 /**
  * Sets (or clears, when {@code description} is blank) one stage's hand-written graph description
@@ -22,7 +23,7 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 public record SaveStageGraphInfoPacket(String stageId, boolean individual, String description) implements CustomPacketPayload {
 
     public static final CustomPacketPayload.Type<SaveStageGraphInfoPacket> TYPE =
-            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "save_stage_graph_info"));
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "save_stage_graph_info"));
 
     public static final StreamCodec<FriendlyByteBuf, SaveStageGraphInfoPacket> STREAM_CODEC =
             StreamCodec.of(SaveStageGraphInfoPacket::encode, SaveStageGraphInfoPacket::decode);
@@ -45,7 +46,7 @@ public record SaveStageGraphInfoPacket(String stageId, boolean individual, Strin
     public static void handle(SaveStageGraphInfoPacket msg, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer player)) return;
-            if (!player.hasPermissions(2)) return;
+            if (!player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)) return;
             // Stage ids are file names; a value that fails this check must never reach
             // graph_stages.json.
             if (!StagePaths.isValidSegment(msg.stageId)) return;

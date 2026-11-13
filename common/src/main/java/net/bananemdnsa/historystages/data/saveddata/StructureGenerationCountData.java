@@ -34,9 +34,9 @@ public class StructureGenerationCountData extends SavedData {
 
     public static StructureGenerationCountData load(CompoundTag nbt, HolderLookup.Provider registries) {
         StructureGenerationCountData data = new StructureGenerationCountData();
-        CompoundTag counts = nbt.getCompound("counts");
+        CompoundTag counts = nbt.getCompoundOrEmpty("counts");
         Map<String, Integer> restored = new HashMap<>();
-        for (String key : counts.getAllKeys()) restored.put(key, counts.getInt(key));
+        for (String key : counts.keySet()) restored.put(key, counts.getIntOr(key, 0));
         StructureGenerationGate.restoreCounts(restored);
         INSTANCE = data;
         return data;

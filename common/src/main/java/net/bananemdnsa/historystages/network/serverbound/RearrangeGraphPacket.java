@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.network.serverbound;
 
+import net.minecraft.server.permissions.Permissions;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.data.graph.GraphLayoutData;
@@ -9,9 +10,9 @@ import net.bananemdnsa.historystages.network.clientbound.SyncStageDefinitionsPac
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.bananemdnsa.historystages.platform.IPayloadContext;
 
 /**
  * Discards one stage tree's manual layout so the auto-layout algorithm owns it again. This is a
@@ -21,7 +22,7 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 public record RearrangeGraphPacket(boolean individual) implements CustomPacketPayload {
 
     public static final CustomPacketPayload.Type<RearrangeGraphPacket> TYPE =
-            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "rearrange_graph"));
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "rearrange_graph"));
 
     public static final StreamCodec<FriendlyByteBuf, RearrangeGraphPacket> STREAM_CODEC =
             StreamCodec.of(RearrangeGraphPacket::encode, RearrangeGraphPacket::decode);
@@ -37,7 +38,7 @@ public record RearrangeGraphPacket(boolean individual) implements CustomPacketPa
     public static void handle(RearrangeGraphPacket msg, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer player)) return;
-            if (!player.hasPermissions(2)) return;
+            if (!player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)) return;
 
             GraphLayoutData.clear(msg.individual);
             StageManager.recomputeGraphLayout();

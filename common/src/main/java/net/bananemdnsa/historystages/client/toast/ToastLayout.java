@@ -1,6 +1,6 @@
 package net.bananemdnsa.historystages.client.toast;
 
-import net.minecraft.Util;
+import net.minecraft.util.Util;
 
 /**
  * Shared layout state that lets the two {@code ToastComponent} mixins stack notifications by

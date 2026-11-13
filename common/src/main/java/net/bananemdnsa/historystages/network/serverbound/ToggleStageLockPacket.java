@@ -1,4 +1,5 @@
 package net.bananemdnsa.historystages.network.serverbound;
+import net.minecraft.server.permissions.Permissions;
 import net.bananemdnsa.historystages.data.StageCauses;
 import net.bananemdnsa.historystages.api.stage.StageChangeCause;
 import net.bananemdnsa.historystages.network.PacketHandler;
@@ -10,15 +11,15 @@ import net.bananemdnsa.historystages.api.stage.StageStates;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.bananemdnsa.historystages.platform.IPayloadContext;
 
 
 public record ToggleStageLockPacket(String stageId, boolean unlock) implements CustomPacketPayload {
 
     public static final CustomPacketPayload.Type<ToggleStageLockPacket> TYPE =
-            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "toggle_stage_lock"));
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "toggle_stage_lock"));
 
     public static final StreamCodec<FriendlyByteBuf, ToggleStageLockPacket> STREAM_CODEC =
             StreamCodec.of(ToggleStageLockPacket::encode, ToggleStageLockPacket::decode);
@@ -35,7 +36,7 @@ public record ToggleStageLockPacket(String stageId, boolean unlock) implements C
     public static void handle(ToggleStageLockPacket msg, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer player)) return;
-            if (!player.hasPermissions(2)) return;
+            if (!player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)) return;
 
             if (!StageManager.getStages().containsKey(msg.stageId)) return;
 
@@ -51,7 +52,7 @@ public record ToggleStageLockPacket(String stageId, boolean unlock) implements C
                 if (msg.unlock) {
                     // The editor toggle is an admin override: a logic block is reported, not obeyed.
                     StageStates.UnlockOutcome outcome = StageCauses.with(StageChangeCause.EDITOR,
-                            () -> StageStates.forceUnlockGlobal(msg.stageId, player.serverLevel()));
+                            () -> StageStates.forceUnlockGlobal(msg.stageId, player.level()));
                     if (outcome.wasBlocked()
                             && net.bananemdnsa.historystages.Config.GAMEPLAY.warnOnForcedUnlock.get()) {
                         PacketHandler.sendEditorFeedback(EditorFeedbackPacket.info(
@@ -59,7 +60,7 @@ public record ToggleStageLockPacket(String stageId, boolean unlock) implements C
                                 "editor.historystages.toast.forced_unlock.message", displayName), player);
                     }
                 } else {
-                    StageCauses.run(StageChangeCause.EDITOR, () -> StageStates.relockGlobal(msg.stageId, player.serverLevel()));
+                    StageCauses.run(StageChangeCause.EDITOR, () -> StageStates.relockGlobal(msg.stageId, player.level()));
                 }
                 return null;
             });

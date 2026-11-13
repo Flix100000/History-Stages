@@ -26,6 +26,6 @@ final class EntryActionScreens {
 
     /** The mod's NBT editor, returned as a plain {@link Screen}. */
     static Screen nbtEditor(String itemId, JsonObject current, Consumer<JsonObject> onSave) {
-        return new NbtItemEditScreen(Minecraft.getInstance().screen, itemId, current, onSave);
+        return new NbtItemEditScreen(Minecraft.getInstance().gui.screen(), itemId, current, onSave);
     }
 }

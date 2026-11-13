@@ -380,16 +380,16 @@ public class PlayerPickerDropdown {
             }
             return true;
         }
-        if (Screen.hasControlDown() && keyCode == KEY_A) {
+        if (Minecraft.getInstance().hasControlDown() && keyCode == KEY_A) {
             // Select all — the text stays put until the next keystroke replaces it.
             if (!search.isEmpty()) allSelected = true;
             return true;
         }
-        if (Screen.hasControlDown() && keyCode == KEY_C) {
+        if (Minecraft.getInstance().hasControlDown() && keyCode == KEY_C) {
             if (!search.isEmpty()) Minecraft.getInstance().keyboardHandler.setClipboard(search);
             return true;
         }
-        if (Screen.hasControlDown() && keyCode == KEY_V) {
+        if (Minecraft.getInstance().hasControlDown() && keyCode == KEY_V) {
             String clip = Minecraft.getInstance().keyboardHandler.getClipboard();
             if (clip != null && !clip.isEmpty()) {
                 setSearch(allSelected ? clip : search + clip);

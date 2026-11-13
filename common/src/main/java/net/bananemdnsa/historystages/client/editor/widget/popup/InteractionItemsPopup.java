@@ -11,7 +11,7 @@ import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
@@ -139,10 +139,10 @@ public class InteractionItemsPopup {
         ItemStack stack = ItemStack.EMPTY;
         try {
             if (id.startsWith("#")) {
-                ResourceLocation rl = ResourceLocation.tryParse(id.substring(1));
+                Identifier rl = Identifier.tryParse(id.substring(1));
                 if (rl != null) {
                     TagKey<Item> tagKey = TagKey.create(Registries.ITEM, rl);
-                    var tag = BuiltInRegistries.ITEM.getTag(tagKey);
+                    var tag = BuiltInRegistries.ITEM.get(tagKey);
                     if (tag.isPresent()) {
                         for (Holder<Item> holder : tag.get()) {
                             stack = new ItemStack(holder.value());
@@ -151,9 +151,9 @@ public class InteractionItemsPopup {
                     }
                 }
             } else {
-                ResourceLocation rl = ResourceLocation.tryParse(id);
+                Identifier rl = Identifier.tryParse(id);
                 if (rl != null && BuiltInRegistries.ITEM.containsKey(rl)) {
-                    stack = new ItemStack(BuiltInRegistries.ITEM.get(rl));
+                    stack = new ItemStack(BuiltInRegistries.ITEM.getValue(rl));
                 }
             }
         } catch (Exception ignored) {}

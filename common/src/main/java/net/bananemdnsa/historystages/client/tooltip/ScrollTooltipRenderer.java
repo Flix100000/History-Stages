@@ -24,7 +24,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.network.chat.TextColor;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -468,7 +468,7 @@ public final class ScrollTooltipRenderer {
             name = ItemTagResolution.displayName(item.getId(),
                     er != null ? er.getSettledId() : null, System.currentTimeMillis());
         } else {
-            ResourceLocation rl = ResourceLocation.tryParse(item.getId());
+            Identifier rl = Identifier.tryParse(item.getId());
             Item mcItem = rl != null ? BuiltInRegistries.ITEM.get(rl) : null;
             name = mcItem != null ? mcItem.getDescription().getString() : item.getId();
         }

@@ -36,7 +36,7 @@ public class SearchableDimensionList extends AbstractSearchableList<String> {
         if (mc.getConnection() != null) {
             Set<ResourceKey<Level>> levels = mc.getConnection().levels();
             for (ResourceKey<Level> level : levels) {
-                dims.add(level.location().toString());
+                dims.add(level.identifier().toString());
             }
         }
         // Always ensure vanilla dimensions are present

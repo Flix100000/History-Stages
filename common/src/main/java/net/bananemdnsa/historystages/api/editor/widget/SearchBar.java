@@ -263,17 +263,17 @@ public class SearchBar {
             }
             return true;
         }
-        if (Screen.hasControlDown() && keyCode == 65) { // Ctrl+A
+        if (Minecraft.getInstance().hasControlDown() && keyCode == 65) { // Ctrl+A
             if (!text.isEmpty())
                 allSelected = true;
             return true;
         }
-        if (Screen.hasControlDown() && keyCode == 67) { // Ctrl+C
+        if (Minecraft.getInstance().hasControlDown() && keyCode == 67) { // Ctrl+C
             if (!text.isEmpty())
                 Minecraft.getInstance().keyboardHandler.setClipboard(text);
             return true;
         }
-        if (Screen.hasControlDown() && keyCode == 86) { // Ctrl+V
+        if (Minecraft.getInstance().hasControlDown() && keyCode == 86) { // Ctrl+V
             String clip = Minecraft.getInstance().keyboardHandler.getClipboard();
             if (clip != null && !clip.isEmpty()) {
                 setText(allSelected ? clip : text + clip);

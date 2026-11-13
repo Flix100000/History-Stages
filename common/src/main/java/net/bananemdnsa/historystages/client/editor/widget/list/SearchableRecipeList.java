@@ -26,7 +26,7 @@ import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FormattedText;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -188,7 +188,7 @@ public class SearchableRecipeList implements PickerOverlay {
                     continue;
 
                 ItemStack result = recipe.getResultItem(registryAccess);
-                ResourceLocation recipeId = holder.id();
+                Identifier recipeId = holder.id();
                 Map<String, Set<FluidRecipeScanner.Position>> sides =
                         FluidRecipeIndex.fluidsIn(recipeId.toString());
                 List<String> fluidOutputs = RecipeFluids.definiteOutputs(sides);
@@ -200,7 +200,7 @@ public class SearchableRecipeList implements PickerOverlay {
                 if (result.isEmpty() && possibleFluids.isEmpty())
                     continue;
 
-                ResourceLocation typeKey = BuiltInRegistries.RECIPE_TYPE.getKey(recipe.getType());
+                Identifier typeKey = BuiltInRegistries.RECIPE_TYPE.getKey(recipe.getType());
                 RecipeInfo info = new RecipeInfo(recipeId.toString(), result,
                         typeKey == null ? "" : typeKey.toString(),
                         RecipeShape.of(recipe, fluidInputs.size()),
@@ -208,7 +208,7 @@ public class SearchableRecipeList implements PickerOverlay {
                         fluidInputs);
 
                 if (!result.isEmpty()) {
-                    ResourceLocation itemKey = BuiltInRegistries.ITEM.getKey(result.getItem());
+                    Identifier itemKey = BuiltInRegistries.ITEM.getKey(result.getItem());
                     if (itemKey != null) {
                         recipesByOutput.computeIfAbsent(itemKey.toString(), k -> new ArrayList<>())
                                 .add(info);
@@ -228,7 +228,7 @@ public class SearchableRecipeList implements PickerOverlay {
         Map<String, Integer> registryOrder = new HashMap<>();
         int idx = 0;
         for (Item item : BuiltInRegistries.ITEM) {
-            ResourceLocation key = BuiltInRegistries.ITEM.getKey(item);
+            Identifier key = BuiltInRegistries.ITEM.getKey(item);
             if (key != null)
                 registryOrder.put(key.toString(), idx++);
         }
@@ -236,7 +236,7 @@ public class SearchableRecipeList implements PickerOverlay {
         Set<String> seen = new HashSet<>();
         for (Map.Entry<String, List<RecipeInfo>> entry : recipesByOutput.entrySet()) {
             if (!seen.add(entry.getKey())) continue;
-            ResourceLocation key = ResourceLocation.tryParse(entry.getKey());
+            Identifier key = Identifier.tryParse(entry.getKey());
             if (key != null && !BuiltInRegistries.ITEM.containsKey(key)) {
                 // Certain when some recipe was read as definitely producing it. An entry resting
                 // entirely on guesses says so on the row rather than in a log line.
@@ -275,7 +275,7 @@ public class SearchableRecipeList implements PickerOverlay {
      * {@link IndividualRecipeSupport}, which the load-time audit reads too — one list, two readers.
      */
     private static boolean isIndividuallyGateable(RecipeType<?> type) {
-        ResourceLocation typeKey = BuiltInRegistries.RECIPE_TYPE.getKey(type);
+        Identifier typeKey = BuiltInRegistries.RECIPE_TYPE.getKey(type);
         return typeKey != null && IndividualRecipeSupport.supports(typeKey.toString());
     }
 

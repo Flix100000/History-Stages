@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.network.serverbound;
 
+import net.minecraft.server.permissions.Permissions;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.data.StagePaths;
@@ -11,9 +12,9 @@ import net.bananemdnsa.historystages.network.clientbound.SyncStageDefinitionsPac
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.bananemdnsa.historystages.platform.IPayloadContext;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -31,7 +32,7 @@ import java.util.Map;
 public record SaveGraphPositionsPacket(boolean individual, Map<String, GraphPos> positions) implements CustomPacketPayload {
 
     public static final CustomPacketPayload.Type<SaveGraphPositionsPacket> TYPE =
-            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "save_graph_positions"));
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "save_graph_positions"));
 
     public static final StreamCodec<FriendlyByteBuf, SaveGraphPositionsPacket> STREAM_CODEC =
             StreamCodec.of(SaveGraphPositionsPacket::encode, SaveGraphPositionsPacket::decode);
@@ -54,7 +55,7 @@ public record SaveGraphPositionsPacket(boolean individual, Map<String, GraphPos>
     public static void handle(SaveGraphPositionsPacket msg, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer player)) return;
-            if (!player.hasPermissions(2)) return;
+            if (!player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)) return;
 
             // Stage ids are file names; drop anything a hand-edited client or stale save could
             // have smuggled in rather than writing it into graph_layout.json.

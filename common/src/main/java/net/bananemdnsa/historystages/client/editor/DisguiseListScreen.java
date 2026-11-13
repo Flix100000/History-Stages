@@ -70,7 +70,7 @@ public class DisguiseListScreen extends Screen {
         search.setPosition(MARGIN, 22, Math.min(SEARCH_W, this.width - MARGIN * 2 - 110));
 
         addRenderableWidget(StyledButton.of(Component.translatable("editor.historystages.disguise.list.add"),
-                b -> this.minecraft.setScreen(new DisguiseDialog(this, null, true)),
+                b -> this.minecraft.gui.setScreen(new DisguiseDialog(this, null, true)),
                 this.width - MARGIN - 100, 22, 100, 20));
         addRenderableWidget(StyledButton.of(Component.translatable("editor.historystages.back"),
                 b -> onClose(), MARGIN, this.height - 28, 60, 20));
@@ -198,13 +198,13 @@ public class DisguiseListScreen extends Screen {
         if (index < 0) return false;
         String key = lines.get(index).rule().key();
         if (button == 0) {
-            this.minecraft.setScreen(new DisguiseDialog(this, key, true));
+            this.minecraft.gui.setScreen(new DisguiseDialog(this, key, true));
             return true;
         }
         if (button == 1) {
             contextMenu = new ContextMenu();
             contextMenu.addEntry(Component.translatable("editor.historystages.edit").getString(),
-                    () -> this.minecraft.setScreen(new DisguiseDialog(this, key, true)));
+                    () -> this.minecraft.gui.setScreen(new DisguiseDialog(this, key, true)));
             contextMenu.addEntry(Component.translatable("editor.historystages.disguise.remove").getString(),
                     () -> PacketHandler.sendToServer(new SaveDisguisePacket(key, "", "")));
             contextMenu.show((int) mouseX, (int) mouseY, this.font);
@@ -237,6 +237,6 @@ public class DisguiseListScreen extends Screen {
 
     @Override
     public void onClose() {
-        this.minecraft.setScreen(parent);
+        this.minecraft.gui.setScreen(parent);
     }
 }

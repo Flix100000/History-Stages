@@ -6,7 +6,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.neoforged.fml.ModList;
 import net.neoforged.neoforgespi.language.IModInfo;
 
@@ -39,9 +39,9 @@ public class SearchableModList extends AbstractSearchableList<SearchableModList.
     @Override
     protected List<ModEntry> loadEntries() {
         Set<String> contentMods = new HashSet<>();
-        for (ResourceLocation key : BuiltInRegistries.ITEM.keySet()) contentMods.add(key.getNamespace());
-        for (ResourceLocation key : BuiltInRegistries.BLOCK.keySet()) contentMods.add(key.getNamespace());
-        for (ResourceLocation key : BuiltInRegistries.ENTITY_TYPE.keySet()) contentMods.add(key.getNamespace());
+        for (Identifier key : BuiltInRegistries.ITEM.keySet()) contentMods.add(key.getNamespace());
+        for (Identifier key : BuiltInRegistries.BLOCK.keySet()) contentMods.add(key.getNamespace());
+        for (Identifier key : BuiltInRegistries.ENTITY_TYPE.keySet()) contentMods.add(key.getNamespace());
 
         List<ModEntry> list = new ArrayList<>();
         for (IModInfo mod : ModList.get().getMods()) {

@@ -10,7 +10,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.RegistryOps;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
@@ -46,9 +46,9 @@ public final class ComponentShapes {
      * kind of thing that only turns up as "it was right before the restart".
      */
     public static String exampleFor(String componentId) {
-        ResourceLocation id = ResourceLocation.tryParse(componentId);
+        Identifier id = Identifier.tryParse(componentId);
         if (id == null) return null;
-        DataComponentType<?> type = BuiltInRegistries.DATA_COMPONENT_TYPE.get(id);
+        DataComponentType<?> type = BuiltInRegistries.DATA_COMPONENT_TYPE.getValue(id);
         if (type == null || type.codec() == null) return null;
 
         var player = Minecraft.getInstance().player;
@@ -127,9 +127,9 @@ public final class ComponentShapes {
     }
 
     private static Codec<?> codecOf(String componentId) {
-        ResourceLocation id = ResourceLocation.tryParse(componentId);
+        Identifier id = Identifier.tryParse(componentId);
         if (id == null) return null;
-        DataComponentType<?> type = BuiltInRegistries.DATA_COMPONENT_TYPE.get(id);
+        DataComponentType<?> type = BuiltInRegistries.DATA_COMPONENT_TYPE.getValue(id);
         return type == null ? null : type.codec();
     }
 
@@ -170,9 +170,9 @@ public final class ComponentShapes {
      * insists on, which is derived from the real thing rather than written down and left to rot.
      */
     public static String requirementHint(String componentId) {
-        ResourceLocation id = ResourceLocation.tryParse(componentId);
+        Identifier id = Identifier.tryParse(componentId);
         if (id == null) return null;
-        DataComponentType<?> type = BuiltInRegistries.DATA_COMPONENT_TYPE.get(id);
+        DataComponentType<?> type = BuiltInRegistries.DATA_COMPONENT_TYPE.getValue(id);
         if (type == null || type.codec() == null) return null;
 
         try {

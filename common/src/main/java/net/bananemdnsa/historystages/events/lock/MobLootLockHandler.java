@@ -8,14 +8,14 @@ import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import net.bananemdnsa.historystages.util.lock.LootLocks;
 import net.bananemdnsa.historystages.data.saveddata.StageData;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.neoforged.neoforge.event.entity.living.LivingDropsEvent;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
+import net.bananemdnsa.historystages.platform.event.entity.living.LivingDropsEvent;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
 
 import java.util.Collection;
 import java.util.UUID;
@@ -55,7 +55,7 @@ public class MobLootLockHandler {
         drops.removeIf(itemEntity -> itemEntity.getItem().isEmpty() || itemEntity.getItem().is(Items.AIR));
 
         if (replacedCount > 0) {
-            ResourceLocation entityType = BuiltInRegistries.ENTITY_TYPE.getKey(event.getEntity().getType());
+            Identifier entityType = BuiltInRegistries.ENTITY_TYPE.getKey(event.getEntity().getType());
             DebugLogger.runtimeThrottled(HsRuntimeCategories.MOB_LOOT_LOCK, "mobloot_" + entityType,
                     "Replaced " + replacedCount + " locked drop(s) from '" + entityType + "' [action: loot]");
         }

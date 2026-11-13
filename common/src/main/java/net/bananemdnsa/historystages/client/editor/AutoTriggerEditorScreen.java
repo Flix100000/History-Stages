@@ -62,7 +62,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.Item;
@@ -167,7 +167,7 @@ public class AutoTriggerEditorScreen extends Screen {
         // id picker below is only the default for the ones that do not.
         Screen authoring = editor.authoringScreen(this, this::placeTrigger);
         if (authoring != null) {
-            this.minecraft.setScreen(authoring);
+            this.minecraft.gui.setScreen(authoring);
             return;
         }
         showAbstract(new GenericIdPicker(editor.searchPlaceholderLangKey(), editor::candidates,
@@ -327,7 +327,7 @@ public class AutoTriggerEditorScreen extends Screen {
                 saveBtnX, this.height - 25, FOOTER_BTN_W, 20));
         this.addRenderableWidget(StyledButton.of(
                 Component.translatable("editor.historystages.cancel"),
-                btn -> this.minecraft.setScreen(parent),
+                btn -> this.minecraft.gui.setScreen(parent),
                 20, this.height - 25, FOOTER_BTN_W, 20));
     }
 
@@ -661,17 +661,17 @@ public class AutoTriggerEditorScreen extends Screen {
     }
 
     private static ItemStack resolveItem(String id) {
-        ResourceLocation rl = ResourceLocation.tryParse(id);
+        Identifier rl = Identifier.tryParse(id);
         if (rl == null) return ItemStack.EMPTY;
-        Item item = BuiltInRegistries.ITEM.get(rl);
+        Item item = BuiltInRegistries.ITEM.getValue(rl);
         if (item == Items.AIR) return ItemStack.EMPTY;
         return new ItemStack(item);
     }
 
     private static ItemStack resolveBlock(String id) {
-        ResourceLocation rl = ResourceLocation.tryParse(id);
+        Identifier rl = Identifier.tryParse(id);
         if (rl == null) return ItemStack.EMPTY;
-        Block block = BuiltInRegistries.BLOCK.get(rl);
+        Block block = BuiltInRegistries.BLOCK.getValue(rl);
         ItemStack stack = new ItemStack(block);
         return stack.isEmpty() ? ItemStack.EMPTY : stack;
     }
@@ -1028,7 +1028,7 @@ public class AutoTriggerEditorScreen extends Screen {
         if (listSearchBar != null && listSearchBar.keyPressed(keyCode)) return true;
         if (keyCode == 256) {
             if (addDropdownOpen) { addDropdownOpen = false; draggingAddScrollbar = false; return true; }
-            this.minecraft.setScreen(parent);
+            this.minecraft.gui.setScreen(parent);
             return true;
         }
         return super.keyPressed(keyCode, scanCode, modifiers);
@@ -1178,7 +1178,7 @@ public class AutoTriggerEditorScreen extends Screen {
      */
     private void openCountDialog(int idx, Component title, String subject, int initial,
                                  int min, int max, IntConsumer onDone) {
-        this.minecraft.setScreen(new CountInputScreen(this, title, subject, initial, min, max,
+        this.minecraft.gui.setScreen(new CountInputScreen(this, title, subject, initial, min, max,
                 value -> {
                     editIndex = idx;
                     onDone.accept(value);
@@ -1241,7 +1241,7 @@ public class AutoTriggerEditorScreen extends Screen {
     }
 
     private void openTimeWindowDialog(int idx, int initialFrom, int initialTo) {
-        this.minecraft.setScreen(new TimeWindowScreen(this,
+        this.minecraft.gui.setScreen(new TimeWindowScreen(this,
                 Component.translatable("editor.historystages.auto_trigger.world_time.window_title"),
                 initialFrom, initialTo,
                 (from, to) -> {

@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.scroll;
 
+import dev.architectury.networking.NetworkManager;
 import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.client.ClientToastHandler;
@@ -42,12 +43,11 @@ import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
 
@@ -70,11 +70,11 @@ import java.util.Locale;
  */
 public class OpenScrollScreen extends Screen {
 
-    private static final ResourceLocation SHEET =
-            ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "textures/gui/scroll/open_gui.png");
+    private static final Identifier SHEET =
+            Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "textures/gui/scroll/open_gui.png");
 
     /** Vanilla's Standard Galactic font — the one the enchanting table uses. No asset of ours. */
-    private static final ResourceLocation GLYPH_FONT = ResourceLocation.withDefaultNamespace("alt");
+    private static final Identifier GLYPH_FONT = Identifier.withDefaultNamespace("alt");
 
     /** Laid over a locked item so its shape survives but its identity does not. */
     private static final int SILHOUETTE = 0xB0241A0F;
@@ -347,7 +347,7 @@ public class OpenScrollScreen extends Screen {
      */
     private void takeScroll() {
         if (lecternPos != null) {
-            PacketDistributor.sendToServer(new TakeLecternScrollPacket(lecternPos));
+            NetworkManager.sendToServer(new TakeLecternScrollPacket(lecternPos));
         }
         onClose();
     }
@@ -765,8 +765,8 @@ public class OpenScrollScreen extends Screen {
         g.fill(iconX, y, iconX + OpenScrollGeometry.TAB_ICON_SIZE, y + 1, 0xFF000000 | rgb);
     }
 
-    private static ResourceLocation chapterIconTexture(OpenScrollChapter chapter) {
-        return ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID,
+    private static Identifier chapterIconTexture(OpenScrollChapter chapter) {
+        return Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID,
                 "textures/gui/scroll/chapter/" + chapter.serialize() + ".png");
     }
 

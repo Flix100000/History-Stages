@@ -5,8 +5,8 @@ import net.bananemdnsa.historystages.HistoryStages;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.minecraft.resources.Identifier;
+import net.bananemdnsa.historystages.platform.IPayloadContext;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -29,7 +29,7 @@ public record SyncTemporaryCountsPacket(Map<String, Integer> counts,
                                         Map<String, Long> individualActiveTicks) implements CustomPacketPayload {
 
     public static final CustomPacketPayload.Type<SyncTemporaryCountsPacket> TYPE =
-            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "sync_temporary_counts"));
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "sync_temporary_counts"));
 
     public static final StreamCodec<FriendlyByteBuf, SyncTemporaryCountsPacket> STREAM_CODEC =
             StreamCodec.of(SyncTemporaryCountsPacket::encode, SyncTemporaryCountsPacket::decode);

@@ -7,10 +7,10 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.levelgen.structure.Structure;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.bananemdnsa.historystages.platform.IPayloadContext;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,7 +25,7 @@ public record SyncStructureRegistryPacket(List<String> structureIds, List<String
 
     public static final CustomPacketPayload.Type<SyncStructureRegistryPacket> TYPE =
             new CustomPacketPayload.Type<>(
-                    ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "sync_structure_registry"));
+                    Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "sync_structure_registry"));
 
     public static final StreamCodec<FriendlyByteBuf, SyncStructureRegistryPacket> STREAM_CODEC =
             StreamCodec.of(SyncStructureRegistryPacket::encode, SyncStructureRegistryPacket::decode);
@@ -52,9 +52,9 @@ public record SyncStructureRegistryPacket(List<String> structureIds, List<String
     }
 
     public static SyncStructureRegistryPacket fromServer(ServerPlayer player) {
-        Registry<Structure> registry = player.serverLevel().registryAccess().registryOrThrow(Registries.STRUCTURE);
+        Registry<Structure> registry = player.level().registryAccess().lookupOrThrow(Registries.STRUCTURE);
         List<String> ids = new ArrayList<>();
-        for (ResourceLocation key : registry.keySet()) {
+        for (Identifier key : registry.keySet()) {
             ids.add(key.toString());
         }
         List<String> tagIds = new ArrayList<>();

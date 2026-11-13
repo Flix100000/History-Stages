@@ -1,9 +1,9 @@
 package net.bananemdnsa.historystages.data.graph;
 
+import net.bananemdnsa.historystages.platform.Services;
 import com.electronwill.nightconfig.core.file.CommentedFileConfig;
 import net.bananemdnsa.historystages.GraphConfig;
 import net.bananemdnsa.historystages.util.DebugLogger;
-import net.neoforged.fml.loading.FMLPaths;
 
 import java.io.File;
 import java.util.Locale;
@@ -52,7 +52,7 @@ public final class GraphConfigMigration {
      * a chance to strip it. Must be called before {@code registerConfig} for either spec.
      */
     public static void capture() {
-        File old = FMLPaths.CONFIGDIR.get().resolve("historystages-common.toml").toFile();
+        File old = Services.configDir().resolve("historystages-common.toml").toFile();
         if (!old.exists()) return;
 
         try (CommentedFileConfig cfg = CommentedFileConfig.builder(old).sync().build()) {

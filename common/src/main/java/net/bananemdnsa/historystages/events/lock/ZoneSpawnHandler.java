@@ -10,11 +10,11 @@ import net.bananemdnsa.historystages.data.lock.ZoneIndex;
 import net.bananemdnsa.historystages.data.lock.engine.StageLocks;
 import net.bananemdnsa.historystages.data.saveddata.StageData;
 import com.mojang.logging.LogUtils;
-import net.minecraft.world.entity.MobSpawnType;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.level.Level;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.entity.living.MobSpawnEvent;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
+import net.bananemdnsa.historystages.platform.event.entity.living.MobSpawnEvent;
 import org.slf4j.Logger;
 
 /**
@@ -47,13 +47,13 @@ public final class ZoneSpawnHandler {
         if (!isNatural(event.getSpawnType())) return;
 
         Level level = event.getLevel().getLevel();
-        String dimension = level.dimension().location().toString();
+        String dimension = level.dimension().identifier().toString();
 
         int x = (int) Math.floor(event.getX());
         int y = (int) Math.floor(event.getY());
         int z = (int) Math.floor(event.getZ());
-        int minY = level.getMinBuildHeight();
-        int maxY = level.getMaxBuildHeight();
+        int minY = level.getMinY();
+        int maxY = level.getMaxY() + 1;
 
         for (ZoneIndex.Entry entry : ZoneIndex.zonesIn(dimension)) {
             if (!entry.zone().getRules().isBlockSpawns()) continue;
@@ -82,8 +82,8 @@ public final class ZoneSpawnHandler {
      * that appear at night, and letting them through would leave a newly generated zone populated
      * while an old one stays empty.
      */
-    private static boolean isNatural(MobSpawnType type) {
-        return type == MobSpawnType.NATURAL || type == MobSpawnType.CHUNK_GENERATION;
+    private static boolean isNatural(EntitySpawnReason type) {
+        return type == EntitySpawnReason.NATURAL || type == EntitySpawnReason.CHUNK_GENERATION;
     }
 
     private static void warnOnce(String stageId) {

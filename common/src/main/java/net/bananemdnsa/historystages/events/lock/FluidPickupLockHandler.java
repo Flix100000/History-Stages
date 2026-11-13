@@ -9,7 +9,7 @@ import net.bananemdnsa.historystages.util.lock.LockMessages;
 import net.bananemdnsa.historystages.util.lock.StageLockHelper;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -20,10 +20,10 @@ import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.common.util.TriState;
-import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
+import net.bananemdnsa.historystages.platform.TriState;
+import net.bananemdnsa.historystages.platform.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.fluids.CauldronFluidContent;
 import org.jetbrains.annotations.Nullable;
 
@@ -140,13 +140,13 @@ public class FluidPickupLockHandler {
         CauldronFluidContent content = CauldronFluidContent.getForBlock(state.getBlock());
         if (content == null || content.currentLevel(state) <= 0) return null;
 
-        ResourceLocation id = BuiltInRegistries.FLUID.getKey(content.fluid);
+        Identifier id = BuiltInRegistries.FLUID.getKey(content.fluid);
         return id != null ? id.toString() : null;
     }
 
     @Nullable
     private static String idOf(FluidState fluidState) {
-        ResourceLocation id = BuiltInRegistries.FLUID.getKey(fluidState.getType());
+        Identifier id = BuiltInRegistries.FLUID.getKey(fluidState.getType());
         return id != null ? id.toString() : null;
     }
 }

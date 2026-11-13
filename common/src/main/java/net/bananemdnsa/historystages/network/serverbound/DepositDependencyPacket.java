@@ -19,12 +19,12 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.bananemdnsa.historystages.platform.IPayloadContext;
 
 /**
  * Client -> Server: Deposit an item or XP level into the research scroll
@@ -35,7 +35,7 @@ public record DepositDependencyPacket(BlockPos pos, int groupIndex, String depos
 
     public static final CustomPacketPayload.Type<DepositDependencyPacket> TYPE =
             new CustomPacketPayload.Type<>(
-                    ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "deposit_dependency"));
+                    Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "deposit_dependency"));
 
     public static final StreamCodec<FriendlyByteBuf, DepositDependencyPacket> STREAM_CODEC =
             StreamCodec.of(DepositDependencyPacket::encode, DepositDependencyPacket::decode);
@@ -64,7 +64,7 @@ public record DepositDependencyPacket(BlockPos pos, int groupIndex, String depos
             CompoundTag tag = scroll.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
             if (!tag.contains("StageResearch")) return;
 
-            String stageId = tag.getString("StageResearch");
+            String stageId = tag.getStringOr("StageResearch", "");
             StageEntry stageEntry = StageManager.isIndividualStage(stageId)
                     ? StageManager.getIndividualStages().get(stageId)
                     : StageManager.getStages().get(stageId);
@@ -85,7 +85,7 @@ public record DepositDependencyPacket(BlockPos pos, int groupIndex, String depos
             boolean changed = false;
 
             if ("ITEM".equals(packet.depositType)) {
-                ResourceLocation rl = ResourceLocation.tryParse(packet.data);
+                Identifier rl = Identifier.tryParse(packet.data);
                 if (rl == null) return;
 
                 DependencyItem matched = null;
@@ -102,7 +102,7 @@ public record DepositDependencyPacket(BlockPos pos, int groupIndex, String depos
 
                 String key = DependencyProgress.key(groupKey,
                         DependencyProgress.itemSuffix(packet.data));
-                int current = deposited.getInt(key);
+                int current = deposited.getIntOr(key, 0);
                 int needed = required - current;
                 if (needed <= 0) return;
 

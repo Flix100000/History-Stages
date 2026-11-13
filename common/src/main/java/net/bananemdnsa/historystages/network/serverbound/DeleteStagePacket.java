@@ -1,4 +1,5 @@
 package net.bananemdnsa.historystages.network.serverbound;
+import net.minecraft.server.permissions.Permissions;
 import net.bananemdnsa.historystages.network.PacketHandler;
 import net.bananemdnsa.historystages.network.clientbound.SyncStagesPacket;
 import net.bananemdnsa.historystages.network.clientbound.SyncStageDefinitionsPacket;
@@ -10,16 +11,16 @@ import net.bananemdnsa.historystages.data.saveddata.StageData;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.bananemdnsa.historystages.platform.IPayloadContext;
 
 import java.util.ArrayList;
 
 public record DeleteStagePacket(String stageId, boolean individual) implements CustomPacketPayload {
 
     public static final CustomPacketPayload.Type<DeleteStagePacket> TYPE =
-            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "delete_stage"));
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "delete_stage"));
 
     public static final StreamCodec<FriendlyByteBuf, DeleteStagePacket> STREAM_CODEC =
             StreamCodec.of(DeleteStagePacket::encode, DeleteStagePacket::decode);
@@ -42,7 +43,7 @@ public record DeleteStagePacket(String stageId, boolean individual) implements C
     public static void handle(DeleteStagePacket msg, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer player)) return;
-            if (!player.hasPermissions(2)) return;
+            if (!player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)) return;
 
             boolean success;
             if (msg.individual) {
@@ -53,7 +54,7 @@ public record DeleteStagePacket(String stageId, boolean individual) implements C
 
             if (success) {
                 StageManager.reloadStages();
-                StageData data = StageData.get(player.serverLevel());
+                StageData data = StageData.get(player.level());
                 // Deleting a stage removes its structure-lock entries — invalidate
                 // the per-player cache so borders disappear within one tick.
                 net.bananemdnsa.historystages.events.lock.StructureLockHandler.invalidateAll();

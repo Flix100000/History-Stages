@@ -503,6 +503,6 @@ public class ColorInputScreen extends AbstractInputScreen {
     protected void onConfirm(InputValues values) {
         // Normalised on the way out, so "44cc99" and "#44CC99" cannot both end up in graph.toml.
         onDone.accept(GraphColors.format(GraphColors.parse(values.getString("hex"), 0)));
-        this.minecraft.setScreen(parent);
+        this.minecraft.gui.setScreen(parent);
     }
 }

@@ -1,4 +1,6 @@
 package net.bananemdnsa.historystages.network.serverbound;
+import dev.architectury.networking.NetworkManager;
+import net.minecraft.server.permissions.Permissions;
 import net.bananemdnsa.historystages.network.clientbound.SyncTemporaryCountsPacket;
 
 import net.bananemdnsa.historystages.HistoryStages;
@@ -9,10 +11,9 @@ import net.bananemdnsa.historystages.data.saveddata.TemporaryStageData;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.network.PacketDistributor;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.bananemdnsa.historystages.platform.IPayloadContext;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -30,7 +31,7 @@ import java.util.UUID;
 public record RequestTemporaryCountsPacket(UUID individualTarget) implements CustomPacketPayload {
 
     public static final CustomPacketPayload.Type<RequestTemporaryCountsPacket> TYPE =
-            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "request_temporary_counts"));
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "request_temporary_counts"));
 
     public static final StreamCodec<FriendlyByteBuf, RequestTemporaryCountsPacket> STREAM_CODEC =
             StreamCodec.of(RequestTemporaryCountsPacket::encode, RequestTemporaryCountsPacket::decode);
@@ -48,9 +49,9 @@ public record RequestTemporaryCountsPacket(UUID individualTarget) implements Cus
     public static void handle(RequestTemporaryCountsPacket msg, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer player)) return;
-            if (!player.hasPermissions(2)) return;
+            if (!player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)) return;
 
-            TemporaryStageData temp = TemporaryStageData.get(player.serverLevel());
+            TemporaryStageData temp = TemporaryStageData.get(player.level());
 
             Map<String, Integer> counts = new HashMap<>();
             Map<String, Long> activeTicks = new HashMap<>();
@@ -75,7 +76,7 @@ public record RequestTemporaryCountsPacket(UUID individualTarget) implements Cus
                 }
             }
 
-            PacketDistributor.sendToPlayer(player, new SyncTemporaryCountsPacket(
+            NetworkManager.sendToPlayer(player, new SyncTemporaryCountsPacket(
                     counts, activeTicks, target, individualCounts, individualActiveTicks));
         });
     }

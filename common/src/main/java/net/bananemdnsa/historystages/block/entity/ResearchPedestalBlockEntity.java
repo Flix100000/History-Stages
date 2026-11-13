@@ -1,5 +1,9 @@
 package net.bananemdnsa.historystages.block.entity;
 
+import dev.architectury.networking.NetworkManager;
+import net.minecraft.core.UUIDUtil;
+import net.bananemdnsa.historystages.util.NbtTypes;
+import net.bananemdnsa.historystages.platform.bus.EventBus;
 import net.bananemdnsa.historystages.data.StageCauses;
 import net.bananemdnsa.historystages.api.stage.StageChangeCause;
 import net.bananemdnsa.historystages.Config;
@@ -44,7 +48,7 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.MenuProvider;
@@ -57,7 +61,6 @@ import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.items.ItemStackHandler;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -227,7 +230,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
         if (stack.isEmpty()) return false;
         CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
         if (!tag.contains("StageResearch")) return false;
-        String stageId = tag.getString("StageResearch");
+        String stageId = tag.getStringOr("StageResearch", "");
         StageEntry entry = StageManager.isIndividualStage(stageId)
                 ? StageManager.getIndividualStages().get(stageId)
                 : StageManager.getStages().get(stageId);
@@ -246,7 +249,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
     /** Read the locked cost reduction from an already-copied scroll tag. */
     public static double getLockedCostReduction(CompoundTag scrollTag) {
         if (scrollTag == null || !scrollTag.contains("LockedCostReduction")) return 0.0;
-        return scrollTag.getDouble("LockedCostReduction");
+        return scrollTag.getDoubleOr("LockedCostReduction", 0.0);
     }
 
     /**
@@ -255,13 +258,13 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
      * they stand now. One value, so every reader of {@code LockedCostReduction} stays right.
      */
     public double itemCostReduction(CompoundTag scrollTag) {
-        if (scrollTag.contains("LockedCostReduction")) return scrollTag.getDouble("LockedCostReduction");
+        if (scrollTag.contains("LockedCostReduction")) return scrollTag.getDoubleOr("LockedCostReduction", 0.0);
         return BoosterUtil.combineReduction(getActiveBooster().costReduction(), logicCost(scrollTag).items());
     }
 
     /** The XP factor for this scroll, frozen at the first deposit like the item reduction. */
     public double xpCostFactor(CompoundTag scrollTag) {
-        if (scrollTag.contains("LockedXpFactor")) return scrollTag.getDouble("LockedXpFactor");
+        if (scrollTag.contains("LockedXpFactor")) return scrollTag.getDoubleOr("LockedXpFactor", 0.0);
         return logicCost(scrollTag).xp();
     }
 
@@ -281,9 +284,9 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
     /** What the stage's cost blocks say for whoever this research is for. */
     private net.bananemdnsa.historystages.data.logic.StageLogic.CostFactors logicCost(CompoundTag scrollTag) {
         if (!scrollTag.contains("StageResearch")) return net.bananemdnsa.historystages.data.logic.StageLogic.CostFactors.NONE;
-        String stageId = scrollTag.getString("StageResearch");
+        String stageId = scrollTag.getStringOr("StageResearch", "");
         boolean individual = StageManager.isIndividualStage(stageId);
-        UUID who = scrollTag.hasUUID("OwnerUUID") ? scrollTag.getUUID("OwnerUUID")
+        UUID who = scrollTag.read("OwnerUUID", UUIDUtil.CODEC).isPresent() ? scrollTag.read("OwnerUUID", UUIDUtil.CODEC).orElseThrow()
                 : (this.ownerUUID != null ? this.ownerUUID : this.lastInteractingPlayer);
         return StageLogicGate.cost(stageId, individual, who);
     }
@@ -347,7 +350,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
     private void loadProgressFromItem(ItemStack stack) {
         CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
         if (tag.contains("ResearchProgress")) {
-            this.progress = tag.getInt("ResearchProgress");
+            this.progress = tag.getIntOr("ResearchProgress", 0);
         } else {
             this.progress = 0;
         }
@@ -408,14 +411,14 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
         CompoundTag scrollTag = scroll.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
         if (!scrollTag.contains("StageResearch")) return;
 
-        String stageId = scrollTag.getString("StageResearch");
+        String stageId = scrollTag.getStringOr("StageResearch", "");
         boolean isIndividual = StageManager.isIndividualStage(stageId);
         StageEntry entry = isIndividual
                 ? StageManager.getIndividualStages().get(stageId)
                 : StageManager.getStages().get(stageId);
         if (entry == null || entry.getDependencies() == null) return;
 
-        ResourceLocation depositRl = BuiltInRegistries.ITEM.getKey(depositStack.getItem());
+        Identifier depositRl = BuiltInRegistries.ITEM.getKey(depositStack.getItem());
         if (depositRl == null) return;
 
         CompoundTag deposited = scrollTag.contains("DepositedDependencies")
@@ -440,14 +443,14 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
                     String choiceToWrite = null;
 
                     if (pass == DepositPass.ITEMS) {
-                        ResourceLocation reqRl = ResourceLocation.tryParse(reqItem.getId());
+                        Identifier reqRl = Identifier.tryParse(reqItem.getId());
                         if (reqRl == null || !reqRl.equals(depositRl)) continue;
                         countKey = DependencyProgress.key(groupKey,
                                 DependencyProgress.itemSuffix(reqRl.toString()));
                     } else {
                         String choiceKey = DependencyProgress.key(groupKey,
                                 DependencyProgress.itemTagChoiceSuffix(reqItem.getId()));
-                        String settled = deposited.getString(choiceKey);
+                        String settled = deposited.getStringOr(choiceKey, "");
                         boolean isSettled = !settled.isEmpty();
                         // Each pass takes only its own half of the tag entries, so every settled
                         // one is offered the stack a whole round before any open one is.
@@ -463,7 +466,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
                                 DependencyProgress.itemTagSuffix(reqItem.getId()));
                     }
 
-                    int current = deposited.getInt(countKey);
+                    int current = deposited.getIntOr(countKey, 0);
                     int effectiveRequired = BoosterUtil.effectiveCount(reqItem.getCount(), costReduction);
                     int needed = effectiveRequired - current;
                     if (needed <= 0) continue;
@@ -492,7 +495,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
             setChanged();
 
             // Push updated dependency status to the researching player immediately
-            if (level != null && !level.isClientSide && level.getServer() != null) {
+            if (level != null && !level.isClientSide() && level.getServer() != null) {
                 // Same fallback as tick(): before a start there is no owner, and the player
                 // depositing still needs their checklist refreshed.
                 UUID checkUUID = isCurrentScrollIndividual() && this.ownerUUID != null
@@ -517,7 +520,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
     /** Send a packet to a specific player (extracted to avoid inline import). */
     private static void PacketDistributor_sendToPlayer(net.minecraft.server.level.ServerPlayer player,
             net.minecraft.network.protocol.common.custom.CustomPacketPayload packet) {
-        net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player, packet);
+        NetworkManager.sendToPlayer(player, packet);
     }
 
     private boolean isItemNeeded(ItemStack depositStack) {
@@ -527,13 +530,13 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
         CompoundTag scrollTag = scroll.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
         if (!scrollTag.contains("StageResearch")) return false;
 
-        String stageId = scrollTag.getString("StageResearch");
+        String stageId = scrollTag.getStringOr("StageResearch", "");
         StageEntry entry = StageManager.isIndividualStage(stageId)
                 ? StageManager.getIndividualStages().get(stageId)
                 : StageManager.getStages().get(stageId);
         if (entry == null || !entry.hasDependencies()) return false;
 
-        ResourceLocation depositRl = BuiltInRegistries.ITEM.getKey(depositStack.getItem());
+        Identifier depositRl = BuiltInRegistries.ITEM.getKey(depositStack.getItem());
         if (depositRl == null) return false;
 
         CompoundTag depositedData = scrollTag.contains("DepositedDependencies")
@@ -548,7 +551,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
                 if (item.getId().equals(depositRl.toString())) {
                     String key = DependencyProgress.key(groupKey,
                             DependencyProgress.itemSuffix(item.getId()));
-                    int count = depositedData.getInt(key);
+                    int count = depositedData.getIntOr(key, 0);
                     int effectiveRequired = BoosterUtil.effectiveCount(item.getCount(), costReduction);
                     if (count < effectiveRequired) return true;
                 }
@@ -588,7 +591,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
     private static final int DEPENDENCY_CHECK_INTERVAL = 10;
 
     public static void tick(Level level, BlockPos pos, BlockState state, ResearchPedestalBlockEntity entity) {
-        if (level.isClientSide) return;
+        if (level.isClientSide()) return;
 
         // Refresh active speed multiplier from the booster below (synced to client via data slot 6).
         ResearchBooster activeBooster = entity.getActiveBooster();
@@ -629,7 +632,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
         boolean isResearching = false;
 
         if (hasValidBook) {
-            String stageId = stackTag.getString("StageResearch");
+            String stageId = stackTag.getStringOr("StageResearch", "");
             boolean isCreative = ModItems.CREATIVE_STAGE_ID.equals(stageId);
             boolean isIndividual = !isCreative && StageManager.isIndividualStage(stageId);
             boolean alreadyUnlocked;
@@ -638,8 +641,8 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
                 alreadyUnlocked = false;
             } else if (isIndividual) {
                 UUID owner = entity.ownerUUID;
-                if (owner == null && stackTag.hasUUID("OwnerUUID")) {
-                    owner = stackTag.getUUID("OwnerUUID");
+                if (owner == null && stackTag.read("OwnerUUID", UUIDUtil.CODEC).isPresent()) {
+                    owner = stackTag.read("OwnerUUID", UUIDUtil.CODEC).orElseThrow();
                     entity.ownerUUID = owner;
                 }
                 alreadyUnlocked = owner != null && IndividualStageData.hasStageCached(owner, stageId);
@@ -872,7 +875,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
         CompoundTag stackTag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
         String stageId = stackTag.contains("StageResearch") ? stackTag.getString("StageResearch") : null;
 
-        if (!level.isClientSide && stageId != null) {
+        if (!level.isClientSide() && stageId != null) {
             // Consuming items and XP is now handled when depositing into the scroll.
 
             boolean unlocked;
@@ -1003,20 +1006,20 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
         net.bananemdnsa.historystages.data.team.TeamStageSharing.withoutSharing(() -> {
             for (String id : newGlobal) {
                 StageEntry entry = StageManager.getStages().get(id);
-                NeoForge.EVENT_BUS.post(new net.bananemdnsa.historystages.api.stage.StageEvent.Unlocked(
+                EventBus.post(new net.bananemdnsa.historystages.api.stage.StageEvent.Unlocked(
                         id, entry != null ? entry.getDisplayName() : id));
             }
             newIndividual.forEach((uuid, ids) -> {
                 for (String id : ids) {
                     StageEntry entry = StageManager.getIndividualStages().get(id);
-                    NeoForge.EVENT_BUS.post(new net.bananemdnsa.historystages.api.stage.StageEvent.IndividualUnlocked(
+                    EventBus.post(new net.bananemdnsa.historystages.api.stage.StageEvent.IndividualUnlocked(
                             id, entry != null ? entry.getDisplayName() : id, uuid));
                 }
             });
         });
 
         if (newGlobal.isEmpty() && newIndividual.isEmpty()) return;
-        if (NeoForge.EVENT_BUS.post(new net.bananemdnsa.historystages.api.stage.StageAnnounceEvent(newGlobal,
+        if (EventBus.post(new net.bananemdnsa.historystages.api.stage.StageAnnounceEvent(newGlobal,
                 newGlobal.stream().map(id -> {
                     StageEntry entry = StageManager.getStages().get(id);
                     return entry != null ? entry.getDisplayName() : id;
@@ -1045,7 +1048,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
         CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
         if (!tag.contains("StageResearch")) return null;
         return new net.bananemdnsa.historystages.api.stage.StageProgress.Research(
-                tag.getString("StageResearch"), progress, getMaxProgressForCurrentStage(), running, ownerUUID);
+                tag.getStringOr("StageResearch", ""), progress, getMaxProgressForCurrentStage(), running, ownerUUID);
     }
 
     private int getMaxProgressForCurrentStage() {
@@ -1053,7 +1056,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
         if (!stack.isEmpty()) {
             CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
             if (tag.contains("StageResearch")) {
-                String stageId = tag.getString("StageResearch");
+                String stageId = tag.getStringOr("StageResearch", "");
                 if (ModItems.CREATIVE_STAGE_ID.equals(stageId)) {
                     return Config.GAMEPLAY.researchTimeInSeconds.get() * 20;
                 }
@@ -1106,7 +1109,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
         if (!stack.isEmpty()) {
             CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
             if (tag.contains("StageResearch")) {
-                return StageManager.isIndividualStage(tag.getString("StageResearch"));
+                return StageManager.isIndividualStage(tag.getStringOr("StageResearch", ""));
             }
         }
         return false;
@@ -1118,14 +1121,14 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
      * owner; a research already running is left alone.
      */
     public boolean tryStart(net.minecraft.server.level.ServerPlayer player) {
-        if (level == null || level.isClientSide) return false;
+        if (level == null || level.isClientSide()) return false;
         if (this.running) return false;
 
         ItemStack scroll = getScrollStack();
         if (!isResearchable(scroll)) return false;
         CompoundTag tag = scroll.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
         if (!tag.contains("StageResearch")) return false;
-        String stageId = tag.getString("StageResearch");
+        String stageId = tag.getStringOr("StageResearch", "");
 
         if (!ModItems.CREATIVE_STAGE_ID.equals(stageId)) {
             boolean individual = StageManager.isIndividualStage(stageId);
@@ -1148,12 +1151,12 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
             // Asked fresh, like the requirements below. The owner is only decided further down, so
             // for an unclaimed individual scroll this asks about the player pressing start.
             UUID blockSubject = individual
-                    ? (tag.hasUUID("OwnerUUID") ? tag.getUUID("OwnerUUID") : player.getUUID())
+                    ? (tag.read("OwnerUUID", UUIDUtil.CODEC).isPresent() ? tag.read("OwnerUUID", UUIDUtil.CODEC).orElseThrow() : player.getUUID())
                     : null;
             this.logicBlocked = StageLogicGate.of(stageId, individual, blockSubject).isBlocked();
             if (this.logicBlocked) {
-                player.displayClientMessage(net.bananemdnsa.historystages.util.lock.LockMessages
-                        .stageBlocked(entry.getDisplayName()).withStyle(ChatFormatting.RED), true);
+                player.sendOverlayMessage(net.bananemdnsa.historystages.util.lock.LockMessages
+                        .stageBlocked(entry.getDisplayName()).withStyle(ChatFormatting.RED));
                 return false;
             }
             if (entry.hasDependencies()) {
@@ -1168,7 +1171,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
                 // first: resuming a paused scroll does not take it over.
                 // Only the scroll decides. A pedestal-level fallback would hand the next
                 // player's fresh scroll to whoever researched here last.
-                UUID owner = tag.hasUUID("OwnerUUID") ? tag.getUUID("OwnerUUID") : null;
+                UUID owner = tag.read("OwnerUUID", UUIDUtil.CODEC).isPresent() ? tag.read("OwnerUUID", UUIDUtil.CODEC).orElseThrow() : null;
                 boolean claiming = owner == null;
                 if (claiming) owner = player.getUUID();
                 // Refuse an unlock the owner already has, so a scroll is not burned for nothing.
@@ -1178,7 +1181,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
                     // The owner is written onto the scroll, not just onto the pedestal: it has
                     // to survive being carried away, and the deposit gate, the item tooltip and
                     // the screen all read it back from there.
-                    tag.putUUID("OwnerUUID", owner);
+                    tag.store("OwnerUUID", UUIDUtil.CODEC, owner);
                     tag.putString("OwnerName", player.getName().getString());
                     scroll.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
                 }
@@ -1196,7 +1199,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
 
     /** Stop advancing progress. Owner and progress are kept; the scroll becomes removable. */
     public void pause() {
-        if (level == null || level.isClientSide) return;
+        if (level == null || level.isClientSide()) return;
         this.running = false;
         // tick() only writes progress onto the scroll every 10 ticks, and pausing is exactly
         // when the scroll may be carried off — flush it so nothing is lost on the way out.
@@ -1229,12 +1232,12 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
         nbt.putInt("research.finishDelay", finishDelay);
         nbt.putBoolean("research.running", running);
         if (ownerUUID != null) {
-            nbt.putUUID("research.ownerUUID", ownerUUID);
+            nbt.store("research.ownerUUID", UUIDUtil.CODEC, ownerUUID);
         }
         // A global research resolves its dependency checks against this player, so losing it
         // over a restart would silently freeze a running research until someone reopens the GUI.
         if (lastInteractingPlayer != null) {
-            nbt.putUUID("research.lastPlayer", lastInteractingPlayer);
+            nbt.store("research.lastPlayer", UUIDUtil.CODEC, lastInteractingPlayer);
         }
         super.saveAdditional(nbt, registries);
     }
@@ -1244,9 +1247,9 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
         super.loadAdditional(nbt, registries);
 
         // Manual loading with size check for backward compatibility (old NBT had 1 slot)
-        CompoundTag invTag = nbt.getCompound("inventory");
-        if (invTag.contains("Size", 3)) {
-            int savedSize = invTag.getInt("Size");
+        CompoundTag invTag = nbt.getCompoundOrEmpty("inventory");
+        if (NbtTypes.has(invTag, "Size", 3)) {
+            int savedSize = invTag.getIntOr("Size", 0);
             if (savedSize != itemHandler.getSlots()) {
                 ItemStackHandler temp = new ItemStackHandler(savedSize);
                 temp.deserializeNBT(registries, invTag);
@@ -1260,14 +1263,14 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
             itemHandler.deserializeNBT(registries, invTag);
         }
 
-        progress = nbt.getInt("research.progress");
-        finishDelay = nbt.getInt("research.finishDelay");
-        running = nbt.getBoolean("research.running");
-        if (nbt.hasUUID("research.ownerUUID")) {
-            ownerUUID = nbt.getUUID("research.ownerUUID");
+        progress = nbt.getIntOr("research.progress", 0);
+        finishDelay = nbt.getIntOr("research.finishDelay", 0);
+        running = nbt.getBooleanOr("research.running", false);
+        if (nbt.read("research.ownerUUID", UUIDUtil.CODEC).isPresent()) {
+            ownerUUID = nbt.read("research.ownerUUID", UUIDUtil.CODEC).orElseThrow();
         }
-        if (nbt.hasUUID("research.lastPlayer")) {
-            lastInteractingPlayer = nbt.getUUID("research.lastPlayer");
+        if (nbt.read("research.lastPlayer", UUIDUtil.CODEC).isPresent()) {
+            lastInteractingPlayer = nbt.read("research.lastPlayer", UUIDUtil.CODEC).orElseThrow();
         }
     }
 }

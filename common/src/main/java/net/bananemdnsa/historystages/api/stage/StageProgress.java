@@ -83,8 +83,8 @@ public final class StageProgress {
         if (trigger == null || trigger.isEmpty()) return Optional.empty();
 
         Set<Long> fired = scope == StageScope.GLOBAL
-                ? AutoTriggerGlobalData.get(player.serverLevel()).peek(stageId)
-                : AutoTriggerProgressData.get(player.serverLevel()).peek(player.getUUID(), stageId);
+                ? AutoTriggerGlobalData.get(player.level()).peek(stageId)
+                : AutoTriggerProgressData.get(player.level()).peek(player.getUUID(), stageId);
         List<TriggerEntry> entries = new ArrayList<>();
         for (TriggerCondition condition : trigger.getTriggers()) {
             if (condition instanceof NegatedTrigger) continue;
@@ -110,10 +110,10 @@ public final class StageProgress {
         if (scroll == null || scroll.isEmpty()) return Optional.empty();
         CompoundTag tag = scroll.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
         if (!tag.contains("StageResearch")) return Optional.empty();
-        String stageId = tag.getString("StageResearch");
+        String stageId = tag.getStringOr("StageResearch", "");
         int total = StageManager.isIndividualStage(stageId)
                 ? StageManager.getIndividualResearchTimeInTicks(stageId)
                 : StageManager.getResearchTimeInTicks(stageId);
-        return Optional.of(new Research(stageId, tag.getInt("ResearchProgress"), total, false, null));
+        return Optional.of(new Research(stageId, tag.getIntOr("ResearchProgress", 0), total, false, null));
     }
 }

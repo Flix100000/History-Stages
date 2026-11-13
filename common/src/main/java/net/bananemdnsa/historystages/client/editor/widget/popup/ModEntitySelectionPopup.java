@@ -13,7 +13,7 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
@@ -104,7 +104,7 @@ public class ModEntitySelectionPopup {
         allInteract = false;
 
         for (EntityType<?> entityType : BuiltInRegistries.ENTITY_TYPE) {
-            ResourceLocation key = BuiltInRegistries.ENTITY_TYPE.getKey(entityType);
+            Identifier key = BuiltInRegistries.ENTITY_TYPE.getKey(entityType);
             if (key != null && key.getNamespace().equals(modId) && isLivingEntityType(entityType)) {
                 String displayName = entityType.getDescription().getString();
                 boolean sLock = initialSpawnlock != null && initialSpawnlock.contains(key.toString());
@@ -152,9 +152,9 @@ public class ModEntitySelectionPopup {
         if (Minecraft.getInstance().level == null) return null;
 
         try {
-            ResourceLocation rl = ResourceLocation.tryParse(entityId);
+            Identifier rl = Identifier.tryParse(entityId);
             if (rl == null) return null;
-            EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.get(rl);
+            EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.getValue(rl);
             if (type == null) return null;
             Entity entity = type.create(Minecraft.getInstance().level);
             if (entity instanceof LivingEntity living) {

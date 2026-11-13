@@ -7,10 +7,10 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.bananemdnsa.historystages.platform.IPayloadContext;
 
 /**
  * Client asks a pedestal to start or pause. Everything is re-checked server-side; the
@@ -20,7 +20,7 @@ public record PedestalControlPacket(BlockPos pos, boolean start) implements Cust
 
     public static final CustomPacketPayload.Type<PedestalControlPacket> TYPE =
             new CustomPacketPayload.Type<>(
-                    ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "pedestal_control"));
+                    Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "pedestal_control"));
 
     public static final StreamCodec<FriendlyByteBuf, PedestalControlPacket> STREAM_CODEC =
             StreamCodec.of(PedestalControlPacket::encode, PedestalControlPacket::decode);

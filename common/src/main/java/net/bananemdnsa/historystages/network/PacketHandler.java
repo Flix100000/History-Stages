@@ -52,195 +52,109 @@ import net.bananemdnsa.historystages.network.clientbound.OpenLecternScrollPacket
 
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.util.DebugLogger;
+import dev.architectury.networking.NetworkManager;
+import net.bananemdnsa.historystages.platform.Services;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.network.protocol.game.ClientboundUpdateRecipesPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.network.PacketDistributor;
-import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
-import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 
-@EventBusSubscriber(modid = HistoryStages.MOD_ID, bus = EventBusSubscriber.Bus.MOD)
 public class PacketHandler {
 
-    @SubscribeEvent
-    public static void register(RegisterPayloadHandlersEvent event) {
-        // Bumped to "2" when the stage definitions sync went gzipped. A 5.x client reading the
-        // new format gets a decoder exception and a dropped connection; a version mismatch gets
-        // it the "incompatible mod" screen instead, which is the same information a player can
-        // act on.
-        PayloadRegistrar registrar = event.registrar("2");
-
-        // Server → Client
-        registrar.playToClient(SyncStagesPacket.TYPE, SyncStagesPacket.STREAM_CODEC, SyncStagesPacket::handle);
-        registrar.playToClient(StageUnlockedToastPacket.TYPE, StageUnlockedToastPacket.STREAM_CODEC, StageUnlockedToastPacket::handle);
-        registrar.playToClient(EditorSyncPacket.TYPE, EditorSyncPacket.STREAM_CODEC, EditorSyncPacket::handle);
-        registrar.playToClient(SyncStageDefinitionsPacket.TYPE, SyncStageDefinitionsPacket.STREAM_CODEC, SyncStageDefinitionsPacket::handle);
-        registrar.playToClient(SyncConfigPacket.TYPE, SyncConfigPacket.STREAM_CODEC, SyncConfigPacket::handle);
-        registrar.playToClient(SyncGraphConfigPacket.TYPE, SyncGraphConfigPacket.STREAM_CODEC, SyncGraphConfigPacket::handle);
-        registrar.playToClient(SyncVisualConfigPacket.TYPE, SyncVisualConfigPacket.STREAM_CODEC, SyncVisualConfigPacket::handle);
-        registrar.playToClient(SyncIndividualStagesPacket.TYPE, SyncIndividualStagesPacket.STREAM_CODEC, SyncIndividualStagesPacket::handle);
-        registrar.playToClient(SyncTemporaryCountsPacket.TYPE, SyncTemporaryCountsPacket.STREAM_CODEC, SyncTemporaryCountsPacket::handle);
-        registrar.playToClient(SyncIndividualStatesPacket.TYPE, SyncIndividualStatesPacket.STREAM_CODEC, SyncIndividualStatesPacket::handle);
-        registrar.playToClient(SyncLostStagesPacket.TYPE, SyncLostStagesPacket.STREAM_CODEC, SyncLostStagesPacket::handle);
-        registrar.playToClient(OpenLecternScrollPacket.TYPE, OpenLecternScrollPacket.STREAM_CODEC, OpenLecternScrollPacket::handle);
-
-        // Client → Server
-        registrar.playToServer(RequestEditorDataPacket.TYPE, RequestEditorDataPacket.STREAM_CODEC, RequestEditorDataPacket::handle);
-        registrar.playToServer(RequestTradeGoodsPacket.TYPE, RequestTradeGoodsPacket.STREAM_CODEC, RequestTradeGoodsPacket::handle);
-        registrar.playToServer(RequestTemporaryCountsPacket.TYPE, RequestTemporaryCountsPacket.STREAM_CODEC, RequestTemporaryCountsPacket::handle);
-        registrar.playToServer(RequestIndividualStatesPacket.TYPE, RequestIndividualStatesPacket.STREAM_CODEC, RequestIndividualStatesPacket::handle);
-        registrar.playToServer(SaveStagePacket.TYPE, SaveStagePacket.STREAM_CODEC, SaveStagePacket::handle);
-        registrar.playToServer(DeleteStagePacket.TYPE, DeleteStagePacket.STREAM_CODEC, DeleteStagePacket::handle);
-        registrar.playToServer(CreateFolderPacket.TYPE, CreateFolderPacket.STREAM_CODEC, CreateFolderPacket::handle);
-        registrar.playToServer(RenameFolderPacket.TYPE, RenameFolderPacket.STREAM_CODEC, RenameFolderPacket::handle);
-        registrar.playToServer(DeleteFolderPacket.TYPE, DeleteFolderPacket.STREAM_CODEC, DeleteFolderPacket::handle);
-        registrar.playToServer(MoveStagesPacket.TYPE, MoveStagesPacket.STREAM_CODEC, MoveStagesPacket::handle);
-        registrar.playToServer(MoveFoldersPacket.TYPE, MoveFoldersPacket.STREAM_CODEC, MoveFoldersPacket::handle);
-        registrar.playToServer(ToggleStageLockPacket.TYPE, ToggleStageLockPacket.STREAM_CODEC, ToggleStageLockPacket::handle);
-        registrar.playToServer(ToggleIndividualStageLockPacket.TYPE, ToggleIndividualStageLockPacket.STREAM_CODEC, ToggleIndividualStageLockPacket::handle);
-        registrar.playToServer(SaveConfigPacket.TYPE, SaveConfigPacket.STREAM_CODEC, SaveConfigPacket::handle);
-        registrar.playToServer(SaveGraphConfigPacket.TYPE, SaveGraphConfigPacket.STREAM_CODEC, SaveGraphConfigPacket::handle);
-        registrar.playToServer(CheckDependencyPacket.TYPE, CheckDependencyPacket.STREAM_CODEC, CheckDependencyPacket::handle);
-        registrar.playToServer(RequestStageDependencyPacket.TYPE, RequestStageDependencyPacket.STREAM_CODEC, RequestStageDependencyPacket::handle);
-        registrar.playToServer(DepositDependencyPacket.TYPE, DepositDependencyPacket.STREAM_CODEC, DepositDependencyPacket::handle);
-        registrar.playToServer(RequestStructureDebugPacket.TYPE, RequestStructureDebugPacket.STREAM_CODEC, RequestStructureDebugPacket::handle);
-        registrar.playToServer(ToggleStructureVizPacket.TYPE, ToggleStructureVizPacket.STREAM_CODEC, ToggleStructureVizPacket::handle);
-        registrar.playToServer(RequestClusterShapesPacket.TYPE, RequestClusterShapesPacket.STREAM_CODEC, RequestClusterShapesPacket::handle);
-        registrar.playToServer(SaveGraphPositionsPacket.TYPE, SaveGraphPositionsPacket.STREAM_CODEC, SaveGraphPositionsPacket::handle);
-        registrar.playToServer(RearrangeGraphPacket.TYPE, RearrangeGraphPacket.STREAM_CODEC, RearrangeGraphPacket::handle);
-        registrar.playToServer(SaveStageGraphInfoPacket.TYPE, SaveStageGraphInfoPacket.STREAM_CODEC, SaveStageGraphInfoPacket::handle);
-        registrar.playToServer(SaveStageGraphStylePacket.TYPE, SaveStageGraphStylePacket.STREAM_CODEC, SaveStageGraphStylePacket::handle);
-        registrar.playToServer(SaveStylePresetPacket.TYPE, SaveStylePresetPacket.STREAM_CODEC, SaveStylePresetPacket::handle);
-        registrar.playToServer(DeleteStylePresetPacket.TYPE, DeleteStylePresetPacket.STREAM_CODEC, DeleteStylePresetPacket::handle);
-        registrar.playToServer(AssignStylePresetPacket.TYPE, AssignStylePresetPacket.STREAM_CODEC, AssignStylePresetPacket::handle);
-        registrar.playToServer(SaveDisguisePacket.TYPE, SaveDisguisePacket.STREAM_CODEC, SaveDisguisePacket::handle);
-        registrar.playToServer(PedestalControlPacket.TYPE, PedestalControlPacket.STREAM_CODEC, PedestalControlPacket::handle);
-        registrar.playToServer(TakeLecternScrollPacket.TYPE, TakeLecternScrollPacket.STREAM_CODEC, TakeLecternScrollPacket::handle);
-
-        // Dependency sync (Server → Client)
-        registrar.playToClient(SyncDependencyStatusPacket.TYPE, SyncDependencyStatusPacket.STREAM_CODEC, SyncDependencyStatusPacket::handle);
-
-        // Structure registry sync (Server → Client)
-        registrar.playToClient(SyncStructureRegistryPacket.TYPE, SyncStructureRegistryPacket.STREAM_CODEC, SyncStructureRegistryPacket::handle);
-
-        // Lock feedback (Server → Client) — client reads its own CLIENT config to decide display
-        registrar.playToClient(LockFeedbackPacket.TYPE, LockFeedbackPacket.STREAM_CODEC, LockFeedbackPacket::handle);
-        registrar.playToClient(TradeLockedPacket.TYPE, TradeLockedPacket.STREAM_CODEC, TradeLockedPacket::handle);
-        registrar.playToClient(SyncTradeGoodsPacket.TYPE, SyncTradeGoodsPacket.STREAM_CODEC, SyncTradeGoodsPacket::handle);
-
-        // Editor feedback (Server → Client) — toast notifications for editor actions
-        registrar.playToClient(EditorFeedbackPacket.TYPE, EditorFeedbackPacket.STREAM_CODEC, EditorFeedbackPacket::handle);
-
-        // Lock border sync (Server → Client) — drives the force-field overlay near locked structures
-        registrar.playToClient(SyncLockBordersPacket.TYPE, SyncLockBordersPacket.STREAM_CODEC, SyncLockBordersPacket::handle);
-        registrar.playToClient(net.bananemdnsa.historystages.network.clientbound.SyncZoneSelectionPacket.TYPE,
-                net.bananemdnsa.historystages.network.clientbound.SyncZoneSelectionPacket.STREAM_CODEC,
-                net.bananemdnsa.historystages.network.clientbound.SyncZoneSelectionPacket::handle);
-        registrar.playToServer(net.bananemdnsa.historystages.network.serverbound.RequestZoneSelectionPacket.TYPE,
-                net.bananemdnsa.historystages.network.serverbound.RequestZoneSelectionPacket.STREAM_CODEC,
-                net.bananemdnsa.historystages.network.serverbound.RequestZoneSelectionPacket::handle);
-        registrar.playToClient(net.bananemdnsa.historystages.network.clientbound.SyncZoneShapesPacket.TYPE,
-                net.bananemdnsa.historystages.network.clientbound.SyncZoneShapesPacket.STREAM_CODEC,
-                net.bananemdnsa.historystages.network.clientbound.SyncZoneShapesPacket::handle);
-    }
-
     public static void sendToAll(SyncStagesPacket packet) {
-        PacketDistributor.sendToAllPlayers(packet);
+        sendToAllPlayers(packet);
     }
 
     public static void sendToPlayer(SyncStagesPacket packet, ServerPlayer player) {
-        PacketDistributor.sendToPlayer(player, packet);
+        NetworkManager.sendToPlayer(player, packet);
     }
 
     public static void sendToastToAll(StageUnlockedToastPacket packet) {
-        PacketDistributor.sendToAllPlayers(packet);
+        sendToAllPlayers(packet);
     }
 
     public static void sendToastToPlayer(StageUnlockedToastPacket packet, ServerPlayer player) {
-        PacketDistributor.sendToPlayer(player, packet);
+        NetworkManager.sendToPlayer(player, packet);
     }
 
     /** Never broadcast: a zone selection is the marking player's own business. */
     public static void sendZoneSelection(
             net.bananemdnsa.historystages.network.clientbound.SyncZoneSelectionPacket packet,
             ServerPlayer player) {
-        PacketDistributor.sendToPlayer(player, packet);
+        NetworkManager.sendToPlayer(player, packet);
     }
 
     /** Also per player: which zones are locked differs between them, and so does what they see. */
     public static void sendZoneShapes(
             net.bananemdnsa.historystages.network.clientbound.SyncZoneShapesPacket packet,
             ServerPlayer player) {
-        PacketDistributor.sendToPlayer(player, packet);
+        NetworkManager.sendToPlayer(player, packet);
     }
 
     public static void sendDefinitionsToPlayer(SyncStageDefinitionsPacket packet, ServerPlayer player) {
-        PacketDistributor.sendToPlayer(player, packet);
+        NetworkManager.sendToPlayer(player, packet);
     }
 
     public static void sendDefinitionsToAll(SyncStageDefinitionsPacket packet) {
-        PacketDistributor.sendToAllPlayers(packet);
+        sendToAllPlayers(packet);
     }
 
     public static void sendConfigToPlayer(SyncConfigPacket packet, ServerPlayer player) {
-        PacketDistributor.sendToPlayer(player, packet);
+        NetworkManager.sendToPlayer(player, packet);
     }
 
     public static void sendConfigToAll(SyncConfigPacket packet) {
-        PacketDistributor.sendToAllPlayers(packet);
+        sendToAllPlayers(packet);
     }
 
     public static void sendGraphConfigToPlayer(SyncGraphConfigPacket packet, ServerPlayer player) {
-        PacketDistributor.sendToPlayer(player, packet);
+        NetworkManager.sendToPlayer(player, packet);
     }
 
     public static void sendGraphConfigToAll(SyncGraphConfigPacket packet) {
-        PacketDistributor.sendToAllPlayers(packet);
+        sendToAllPlayers(packet);
     }
 
     public static void sendVisualConfigToPlayer(SyncVisualConfigPacket packet, ServerPlayer player) {
-        PacketDistributor.sendToPlayer(player, packet);
+        NetworkManager.sendToPlayer(player, packet);
     }
 
     public static void sendVisualConfigToAll(SyncVisualConfigPacket packet) {
-        PacketDistributor.sendToAllPlayers(packet);
+        sendToAllPlayers(packet);
     }
 
     public static void sendIndividualStagesToPlayer(SyncIndividualStagesPacket packet, ServerPlayer player) {
-        PacketDistributor.sendToPlayer(player, packet);
+        NetworkManager.sendToPlayer(player, packet);
     }
 
     public static void sendLostStagesToPlayer(SyncLostStagesPacket packet, ServerPlayer player) {
-        PacketDistributor.sendToPlayer(player, packet);
+        NetworkManager.sendToPlayer(player, packet);
     }
 
     public static void sendStructureRegistryToPlayer(SyncStructureRegistryPacket packet, ServerPlayer player) {
-        PacketDistributor.sendToPlayer(player, packet);
+        NetworkManager.sendToPlayer(player, packet);
     }
 
     // Send lock feedback (dimension or mob) to a specific player — client decides display
     public static void sendLockFeedbackToPlayer(LockFeedbackPacket packet, ServerPlayer player) {
-        PacketDistributor.sendToPlayer(player, packet);
+        NetworkManager.sendToPlayer(player, packet);
     }
 
     /** Why the trade window that just opened is empty. Sent right after the window itself. */
     public static void sendTradeLockedToPlayer(TradeLockedPacket packet, ServerPlayer player) {
-        PacketDistributor.sendToPlayer(player, packet);
+        NetworkManager.sendToPlayer(player, packet);
     }
 
     public static void sendLockBordersToPlayer(SyncLockBordersPacket packet, ServerPlayer player) {
-        PacketDistributor.sendToPlayer(player, packet);
+        NetworkManager.sendToPlayer(player, packet);
     }
 
     public static void sendEditorFeedback(EditorFeedbackPacket packet, ServerPlayer player) {
-        PacketDistributor.sendToPlayer(player, packet);
+        NetworkManager.sendToPlayer(player, packet);
     }
 
     public static void sendToServer(Object packet) {
-        PacketDistributor.sendToServer((CustomPacketPayload) packet);
+        NetworkManager.sendToServer((CustomPacketPayload) packet);
     }
 
     /**
@@ -321,4 +235,10 @@ public class PacketHandler {
     }
 
     private static volatile boolean reloadRequested;
+
+    // NeoForge's PacketDistributor.sendToAllPlayers, which also no-ops without a server.
+    private static void sendToAllPlayers(CustomPacketPayload payload) {
+        MinecraftServer server = Services.currentServer();
+        if (server != null) NetworkManager.sendToPlayers(server.getPlayerList().getPlayers(), payload);
+    }
 }

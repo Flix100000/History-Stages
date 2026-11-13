@@ -6,8 +6,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.minecraft.resources.Identifier;
+import net.bananemdnsa.historystages.platform.IPayloadContext;
 
 /**
  * Server tells one reader which stage the scroll on a lectern carries.
@@ -21,7 +21,7 @@ public record OpenLecternScrollPacket(String stageId, BlockPos lecternPos)
 
     public static final CustomPacketPayload.Type<OpenLecternScrollPacket> TYPE =
             new CustomPacketPayload.Type<>(
-                    ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "open_lectern_scroll"));
+                    Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "open_lectern_scroll"));
 
     public static final StreamCodec<FriendlyByteBuf, OpenLecternScrollPacket> STREAM_CODEC =
             StreamCodec.of(

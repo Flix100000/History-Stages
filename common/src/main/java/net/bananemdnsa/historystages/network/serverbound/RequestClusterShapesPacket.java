@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.network.serverbound;
 
+import net.minecraft.server.permissions.Permissions;
 import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.structure.ClusterBuilder;
@@ -12,10 +13,10 @@ import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.bananemdnsa.historystages.platform.IPayloadContext;
 
 import java.util.List;
 
@@ -28,7 +29,7 @@ import java.util.List;
 public record RequestClusterShapesPacket() implements CustomPacketPayload {
 
     public static final CustomPacketPayload.Type<RequestClusterShapesPacket> TYPE =
-            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "request_cluster_shapes"));
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "request_cluster_shapes"));
 
     public static final StreamCodec<FriendlyByteBuf, RequestClusterShapesPacket> STREAM_CODEC =
             StreamCodec.of((buf, msg) -> {}, buf -> new RequestClusterShapesPacket());
@@ -36,13 +37,13 @@ public record RequestClusterShapesPacket() implements CustomPacketPayload {
     public static void handle(RequestClusterShapesPacket msg, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer player)) return;
-            if (!player.hasPermissions(2)) return;
+            if (!player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)) return;
 
             int padding = Config.GAMEPLAY.structureLockPadding.get();
             int clusterDistance = Config.GAMEPLAY.structureClusterDistance.get();
             var pos = player.blockPosition();
             List<StructureCluster> clusters = ClusterBuilder.collectClustersNear(
-                    player.serverLevel(), pos, 8, padding, clusterDistance);
+                    player.level(), pos, 8, padding, clusterDistance);
 
             StringBuilder plain = new StringBuilder();
             plain.append("Cluster shapes at ").append(pos.getX()).append(", ").append(pos.getY())
@@ -54,7 +55,7 @@ public record RequestClusterShapesPacket() implements CustomPacketPayload {
             } else {
                 for (int i = 0; i < clusters.size(); i++) {
                     StructureCluster c = clusters.get(i);
-                    String id = c.structure().unwrapKey().map(k -> k.location().toString()).orElse("<unknown>");
+                    String id = c.structure().unwrapKey().map(k -> k.identifier().toString()).orElse("<unknown>");
                     plain.append("\n[Cluster ").append(i + 1).append("] ").append(id)
                             .append(" — ").append(c.pieceBoxes().size()).append(" pieces, ")
                             .append(c.lockShapes().size()).append(" lock shapes\n");
@@ -91,7 +92,7 @@ public record RequestClusterShapesPacket() implements CustomPacketPayload {
 
             for (int i = 0; i < clusters.size(); i++) {
                 StructureCluster c = clusters.get(i);
-                String id = c.structure().unwrapKey().map(k -> k.location().toString()).orElse("<unknown>");
+                String id = c.structure().unwrapKey().map(k -> k.identifier().toString()).orElse("<unknown>");
                 player.sendSystemMessage(Component.literal(
                         "§e[" + (i + 1) + "] §f" + id
                                 + " §7— " + c.pieceBoxes().size() + " pieces, "

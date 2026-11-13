@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.api.editor.widget;
 
+import net.minecraft.client.Minecraft;
 import net.bananemdnsa.historystages.api.editor.widget.InputField;
 import net.bananemdnsa.historystages.api.editor.widget.InputValues;
 
@@ -392,7 +393,7 @@ public abstract class AbstractInputScreen extends AbstractModalScreen {
         if (extraContentKeyPressed(keyCode)) return true;
 
         if (keyCode == 258) { // TAB
-            cycleFocus(hasShiftDown() ? -1 : 1);
+            cycleFocus(Minecraft.getInstance().hasShiftDown() ? -1 : 1);
             return true;
         }
         return super.keyPressed(keyCode, scanCode, modifiers);

@@ -3,7 +3,7 @@ package net.bananemdnsa.historystages.data.lock.engine;
 import net.bananemdnsa.historystages.util.DebugLogger;
 import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.fluids.FluidStack;
@@ -40,7 +40,7 @@ public final class FluidContent {
         FluidStack contents = handler.getFluidInTank(0);
         if (contents.isEmpty()) return null;
 
-        ResourceLocation id = BuiltInRegistries.FLUID.getKey(contents.getFluid());
+        Identifier id = BuiltInRegistries.FLUID.getKey(contents.getFluid());
         return id != null ? id.toString() : null;
     }
 
@@ -68,7 +68,7 @@ public final class FluidContent {
         try {
             return stack.getCapability(Capabilities.FluidHandler.ITEM);
         } catch (Exception e) {
-            ResourceLocation item = BuiltInRegistries.ITEM.getKey(stack.getItem());
+            Identifier item = BuiltInRegistries.ITEM.getKey(stack.getItem());
             DebugLogger.runtimeThrottled(HsRuntimeCategories.FLUID_CONTENT, "fluid-cap-" + item,
                     "Asking " + item + " what fluid it holds failed: " + e
                             + ". Treated as holding none.");

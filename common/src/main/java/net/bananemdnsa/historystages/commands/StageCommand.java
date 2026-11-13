@@ -1,5 +1,7 @@
 package net.bananemdnsa.historystages.commands;
 
+import net.minecraft.server.permissions.Permissions;
+import net.bananemdnsa.historystages.platform.bus.EventBus;
 import net.bananemdnsa.historystages.api.stage.StageChangeCause;
 import net.bananemdnsa.historystages.data.StageCauses;
 import com.mojang.brigadier.CommandDispatcher;
@@ -26,7 +28,6 @@ import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
-import net.neoforged.neoforge.common.NeoForge;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,7 +36,7 @@ public class StageCommand {
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("history")
-                .requires(source -> source.hasPermission(2))
+                .requires(source -> source.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER))
 
                 // --- GLOBAL ---
                 .then(Commands.literal("global")
@@ -260,7 +261,7 @@ public class StageCommand {
             return 0;
         }
         var cfg = entry.getTemporary();
-        var temp = net.bananemdnsa.historystages.data.saveddata.TemporaryStageData.get(player.serverLevel());
+        var temp = net.bananemdnsa.historystages.data.saveddata.TemporaryStageData.get(player.level());
         var uuid = player.getUUID();
         int count = temp.getIndividualCount(uuid, stage);
         long active = temp.individualActiveTicks(uuid, stage);
@@ -284,7 +285,7 @@ public class StageCommand {
             source.sendFailure(Component.literal("Individual stage '" + stage + "' not found or not mode=temporary!"));
             return 0;
         }
-        var level = player.serverLevel();
+        var level = player.level();
         var temp = net.bananemdnsa.historystages.data.saveddata.TemporaryStageData.get(level);
         var uuid = player.getUUID();
         if (isReset) {
@@ -324,7 +325,7 @@ public class StageCommand {
                     d.addStage(id);
                     var entry = StageManager.getStages().get(id);
                     String displayName = entry != null ? entry.getDisplayName() : id;
-                    NeoForge.EVENT_BUS.post(new StageEvent.Unlocked(id, displayName));
+                    EventBus.post(new StageEvent.Unlocked(id, displayName));
                     changed = true;
                 }
             }
@@ -394,7 +395,7 @@ public class StageCommand {
                 net.bananemdnsa.historystages.data.saveddata.TemporaryStageData.get(source.getLevel()).clearGlobal(stageId);
                 var entry = StageManager.getStages().get(stageId);
                 String displayName = entry != null ? entry.getDisplayName() : stageId;
-                NeoForge.EVENT_BUS.post(new StageEvent.Locked(stageId, displayName));
+                EventBus.post(new StageEvent.Locked(stageId, displayName));
             }
 
             d.getUnlockedStages().clear();
@@ -411,7 +412,7 @@ public class StageCommand {
             net.bananemdnsa.historystages.data.saveddata.TemporaryStageData.get(source.getLevel()).clearGlobal(s);
             var lockEntry = StageManager.getStages().get(s);
             String lockDisplayName = lockEntry != null ? lockEntry.getDisplayName() : s;
-            NeoForge.EVENT_BUS.post(new StageEvent.Locked(s, lockDisplayName));
+            EventBus.post(new StageEvent.Locked(s, lockDisplayName));
             DebugLogger.runtime(HsRuntimeCategories.STAGE_LOCK, executor, "Locked stage '" + s + "' (" + lockDisplayName + ")");
             broadcastEffect(source, s, false);
             return syncAndReload(source, d, "Locked: " + s);
@@ -429,7 +430,7 @@ public class StageCommand {
             var e = StageManager.getStages().get(id);
             return e != null ? e.getDisplayName() : id;
         }).toList();
-        if (NeoForge.EVENT_BUS.post(new net.bananemdnsa.historystages.api.stage.StageAnnounceEvent(
+        if (EventBus.post(new net.bananemdnsa.historystages.api.stage.StageAnnounceEvent(
                 announcedIds, announcedNames, null, isUnlock)).isCanceled()) return;
         String iconId = (!stageID.equals("*") && stageEntry != null && !stageEntry.getIcon().isEmpty())
                 ? stageEntry.getIcon() : Config.VISUAL.defaultStageIcon.get();
@@ -462,7 +463,7 @@ public class StageCommand {
             }
 
             if (Config.VISUAL.useActionbar.get()) {
-                player.displayClientMessage(actionMsg, true);
+                player.sendOverlayMessage(actionMsg);
             }
 
             if (Config.VISUAL.useSounds.get()) {
@@ -518,7 +519,7 @@ public class StageCommand {
                 String displayName = entry != null ? entry.getDisplayName() : stageId;
                 // An admin command means this player only, so nothing goes on to the team.
                 net.bananemdnsa.historystages.data.team.TeamStageSharing.withoutSharing(() ->
-                        NeoForge.EVENT_BUS.post(new StageEvent.IndividualUnlocked(stageId, displayName, target.getUUID())));
+                        EventBus.post(new StageEvent.IndividualUnlocked(stageId, displayName, target.getUUID())));
                 changed = true;
             }
         }
@@ -562,13 +563,13 @@ public class StageCommand {
         List<String> toRemove = new ArrayList<>(playerStages);
         for (String stageId : toRemove) {
             data.removeStage(target.getUUID(), stageId);
-            AutoTriggerManager.clearProgress(stageId, true, target, target.serverLevel());
-            net.bananemdnsa.historystages.data.saveddata.TemporaryStageData.get(target.serverLevel())
+            AutoTriggerManager.clearProgress(stageId, true, target, target.level());
+            net.bananemdnsa.historystages.data.saveddata.TemporaryStageData.get(target.level())
                     .clearIndividual(target.getUUID(), stageId);
             var entry = StageManager.getIndividualStages().get(stageId);
             String displayName = entry != null ? entry.getDisplayName() : stageId;
             net.bananemdnsa.historystages.data.team.TeamStageSharing.withoutSharing(() ->
-                    NeoForge.EVENT_BUS.post(new StageEvent.IndividualLocked(stageId, displayName, target.getUUID())));
+                    EventBus.post(new StageEvent.IndividualLocked(stageId, displayName, target.getUUID())));
             StageLockHelper.dropLockedItemsForPlayer(target, stageId);
         }
 
@@ -630,15 +631,15 @@ public class StageCommand {
 
         data.removeStage(target.getUUID(), stageId);
         data.setDirty();
-        AutoTriggerManager.clearProgress(stageId, true, target, target.serverLevel());
-        net.bananemdnsa.historystages.data.saveddata.TemporaryStageData.get(target.serverLevel())
+        AutoTriggerManager.clearProgress(stageId, true, target, target.level());
+        net.bananemdnsa.historystages.data.saveddata.TemporaryStageData.get(target.level())
                 .clearIndividual(target.getUUID(), stageId);
 
         var entry = StageManager.getIndividualStages().get(stageId);
         String displayName = entry != null ? entry.getDisplayName() : stageId;
         // An admin lock means this player only, so the team keeps the stage.
         net.bananemdnsa.historystages.data.team.TeamStageSharing.withoutSharing(() ->
-                NeoForge.EVENT_BUS.post(new StageEvent.IndividualLocked(stageId, displayName, target.getUUID())));
+                EventBus.post(new StageEvent.IndividualLocked(stageId, displayName, target.getUUID())));
 
         // Drop locked items from the player's inventory
         StageLockHelper.dropLockedItemsForPlayer(target, stageId);
@@ -650,7 +651,7 @@ public class StageCommand {
         );
 
         // Notify the target player, unless an addon announces it itself
-        boolean announce = !NeoForge.EVENT_BUS.post(new net.bananemdnsa.historystages.api.stage.StageAnnounceEvent(
+        boolean announce = !EventBus.post(new net.bananemdnsa.historystages.api.stage.StageAnnounceEvent(
                 java.util.List.of(stageId), java.util.List.of(displayName), target.getUUID(), false)).isCanceled();
         if (announce && Config.VISUAL.individualBroadcastChat.get()) {
             target.sendSystemMessage(

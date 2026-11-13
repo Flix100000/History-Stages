@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.data.saveddata;
 
+import net.bananemdnsa.historystages.util.NbtTypes;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -72,17 +73,17 @@ public class StageData extends SavedData {
 
     public static StageData load(CompoundTag nbt, HolderLookup.Provider registries) {
         StageData data = new StageData();
-        ListTag list = nbt.getList("stages", Tag.TAG_STRING);
+        ListTag list = nbt.getListOrEmpty("stages");
         SERVER_CACHE.clear();
         for (int i = 0; i < list.size(); i++) {
-            String stage = list.getString(i);
+            String stage = list.getStringOr(i, "");
             data.unlockedStages.add(stage);
             SERVER_CACHE.add(stage);
         }
         // Older saves have no such tag; getCompound hands back an empty one.
-        CompoundTag times = nbt.getCompound("unlockTimes");
+        CompoundTag times = nbt.getCompoundOrEmpty("unlockTimes");
         for (String stage : data.unlockedStages) {
-            if (times.contains(stage, Tag.TAG_LONG)) data.unlockTimes.put(stage, times.getLong(stage));
+            if (NbtTypes.has(times, stage, Tag.TAG_LONG)) data.unlockTimes.put(stage, times.getLongOr(stage, 0L));
         }
         SERVER_UNLOCK_TIMES.putAll(data.unlockTimes);
         VERSION.incrementAndGet();

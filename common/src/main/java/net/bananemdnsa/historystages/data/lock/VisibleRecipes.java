@@ -12,7 +12,7 @@ import java.util.Set;
 import net.bananemdnsa.historystages.data.lock.engine.StageLocks;
 import net.bananemdnsa.historystages.data.saveddata.StageData;
 import net.bananemdnsa.historystages.events.RecipeHandler;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeType;
 
@@ -125,7 +125,7 @@ public final class VisibleRecipes {
      * <p>Must be given the unfiltered list, or it would be comparing the answer with itself.
      */
     public static synchronized boolean gatedSetChanged(Collection<RecipeHolder<?>> loaded) {
-        Set<ResourceLocation> now = new HashSet<>();
+        Set<Identifier> now = new HashSet<>();
         for (RecipeHolder<?> holder : loaded) {
             if (RecipeHandler.isLockedForEveryone(holder)) now.add(holder.id());
         }
@@ -164,7 +164,7 @@ public final class VisibleRecipes {
     }
 
     /** What {@link #gatedSetChanged} last reported. Not a cache — do not clear it on invalidate. */
-    private static Set<ResourceLocation> gatedIds = Set.of();
+    private static Set<Identifier> gatedIds = Set.of();
 
     private static boolean gatedSeeded;
 

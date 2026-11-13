@@ -7,8 +7,8 @@ import net.bananemdnsa.historystages.data.config.LocalConfigSnapshot;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.minecraft.resources.Identifier;
+import net.bananemdnsa.historystages.platform.IPayloadContext;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -33,7 +33,7 @@ public record SyncVisualConfigPacket(Map<String, String> values) implements Cust
 
     public static final CustomPacketPayload.Type<SyncVisualConfigPacket> TYPE =
             new CustomPacketPayload.Type<>(
-                    ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "sync_visual_config"));
+                    Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "sync_visual_config"));
 
     public static final StreamCodec<FriendlyByteBuf, SyncVisualConfigPacket> STREAM_CODEC =
             StreamCodec.of(SyncVisualConfigPacket::encode, SyncVisualConfigPacket::decode);

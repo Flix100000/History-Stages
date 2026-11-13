@@ -228,6 +228,6 @@ public class ScoreboardDepScreen extends AbstractInputScreen {
     protected void onConfirm(InputValues values) {
         onDone.accept(values.getString("objective"), values.getString("holder"),
                 opIndex, values.getInt("value"));
-        this.minecraft.setScreen(parent);
+        this.minecraft.gui.setScreen(parent);
     }
 }

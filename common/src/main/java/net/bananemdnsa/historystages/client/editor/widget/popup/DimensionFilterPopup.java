@@ -74,7 +74,7 @@ public class DimensionFilterPopup {
         Minecraft mc = Minecraft.getInstance();
         if (mc.getConnection() != null) {
             for (ResourceKey<Level> level : mc.getConnection().levels()) {
-                dims.add(level.location().toString());
+                dims.add(level.identifier().toString());
             }
         }
         if (!dims.contains("minecraft:overworld")) dims.add("minecraft:overworld");

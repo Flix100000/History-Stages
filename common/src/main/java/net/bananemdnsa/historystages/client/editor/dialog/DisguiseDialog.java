@@ -138,7 +138,7 @@ public class DisguiseDialog extends AbstractInputScreen {
     private void send(String ruleJson) {
         String previous = originalKey != null && !originalKey.equals(key) ? originalKey : "";
         PacketHandler.sendToServer(new SaveDisguisePacket(key, previous, ruleJson));
-        this.minecraft.setScreen(parent);
+        this.minecraft.gui.setScreen(parent);
     }
 
     // --- content ---

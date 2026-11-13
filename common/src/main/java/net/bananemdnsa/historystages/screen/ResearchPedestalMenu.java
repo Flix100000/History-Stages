@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.screen;
 
+import net.minecraft.core.UUIDUtil;
 import net.bananemdnsa.historystages.block.entity.ResearchPedestalBlockEntity;
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.StageManager;
@@ -73,7 +74,7 @@ public class ResearchPedestalMenu extends AbstractContainerMenu {
                 CompoundTag scrollTag = scroll.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
                 if (!scrollTag.contains("StageResearch"))
                     return false;
-                String stageId = scrollTag.getString("StageResearch");
+                String stageId = scrollTag.getStringOr("StageResearch", "");
 
                 // Only DEFAULT-mode stages accept deposits. AUTO/EXTERNAL scrolls
                 // never legitimately enter research, so block dependency deposits too.
@@ -86,7 +87,7 @@ public class ResearchPedestalMenu extends AbstractContainerMenu {
 
                 // Block placement if the stage is already unlocked
                 if (ResearchPedestalMenu.this.blockEntity.isCurrentScrollIndividual()) {
-                    UUID owner = scrollTag.hasUUID("OwnerUUID") ? scrollTag.getUUID("OwnerUUID") : null;
+                    UUID owner = scrollTag.read("OwnerUUID", UUIDUtil.CODEC).isPresent() ? scrollTag.read("OwnerUUID", UUIDUtil.CODEC).orElseThrow() : null;
                     if (owner != null
                             && net.bananemdnsa.historystages.data.saveddata.IndividualStageData.hasStageCached(owner, stageId)) {
                         return false;

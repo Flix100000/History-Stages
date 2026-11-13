@@ -112,9 +112,9 @@ public final class AutoTriggerManager {
         Set<LockTriggerManager.Relocked> relocked = LockTriggerManager.process(triggerType, matcher, player);
         List<IndexedTrigger> candidates = INDEX.get(triggerType);
         if (candidates == null || candidates.isEmpty()) return;
-        if (player == null || player.serverLevel() == null) return;
+        if (player == null || player.level() == null) return;
 
-        ServerLevel level = player.serverLevel();
+        ServerLevel level = player.level();
         for (IndexedTrigger it : candidates) {
             if (!relocked.isEmpty()
                     && relocked.contains(new LockTriggerManager.Relocked(it.stageId(), it.isIndividual()))) continue;

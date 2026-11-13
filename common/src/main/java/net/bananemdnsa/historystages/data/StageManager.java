@@ -1,4 +1,5 @@
 package net.bananemdnsa.historystages.data;
+import net.bananemdnsa.historystages.platform.Services;
 import net.bananemdnsa.historystages.data.lock.NamedLockEntry;
 import net.bananemdnsa.historystages.data.lock.EntitySpawnLockEntry;
 import net.bananemdnsa.historystages.data.lock.EntityInteractionLockEntry;
@@ -14,11 +15,8 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
-import net.neoforged.fml.ModList;
-import net.neoforged.fml.loading.FMLPaths;
-import net.neoforged.neoforge.server.ServerLifecycleHooks;
 import net.minecraft.server.MinecraftServer;
 
 import net.bananemdnsa.historystages.data.dependency.*;
@@ -83,9 +81,9 @@ public class StageManager {
         LOADING_MESSAGES.add(new LoadingMessage(level, message));
     }
 
-    /** In MC 1.21+, ResourceLocation.isValidResourceLocation() was removed. Use tryParse() instead. */
+    /** In MC 1.21+, Identifier.isValidResourceLocation() was removed. Use tryParse() instead. */
     private static boolean isValidResourceLocation(String value) {
-        return value != null && ResourceLocation.tryParse(value) != null;
+        return value != null && Identifier.tryParse(value) != null;
     }
 
     private static final Set<String> KNOWN_KEYS = Set.of(
@@ -647,7 +645,7 @@ public class StageManager {
             String itemId = item.getId();
             if (!isValidResourceLocation(itemId)) {
                 addMessage(MessageLevel.WARN, "Item '" + itemId + "' invalid format (Stage: " + stageId + "). Removed.");
-                DebugLogger.warn("Invalid Items", "Item '" + itemId + "' is not a valid ResourceLocation (Stage: " + stageId + "). Removed.");
+                DebugLogger.warn("Invalid Items", "Item '" + itemId + "' is not a valid Identifier (Stage: " + stageId + "). Removed.");
                 return true;
             }
             return false;
@@ -656,7 +654,7 @@ public class StageManager {
         entry.getTags().removeIf(tagId -> {
             if (!isValidResourceLocation(tagId)) {
                 addMessage(MessageLevel.WARN, "Tag '" + tagId + "' invalid format (Stage: " + stageId + "). Removed.");
-                DebugLogger.warn("Invalid Tags", "Tag '" + tagId + "' is not a valid ResourceLocation (Stage: " + stageId + "). Removed.");
+                DebugLogger.warn("Invalid Tags", "Tag '" + tagId + "' is not a valid Identifier (Stage: " + stageId + "). Removed.");
                 return true;
             }
             return false;
@@ -668,7 +666,7 @@ public class StageManager {
                 DebugLogger.warn("Invalid Mods", "Mod ID '" + modId + "' has invalid format (Stage: " + stageId + "). Removed.");
                 return true;
             }
-            if (!ModList.get().isLoaded(modId)) {
+            if (!Services.isModLoaded(modId)) {
                 addMessage(MessageLevel.INFO, "Mod '" + modId + "' not installed (Stage: " + stageId + "). Entry kept.");
                 DebugLogger.info("Missing Mods", "Mod '" + modId + "' is not installed (Stage: " + stageId + "). Entry kept — will apply if mod is added later.");
             }
@@ -680,10 +678,10 @@ public class StageManager {
             String exItemId = exceptionEntry.getId();
             if (!isValidResourceLocation(exItemId)) {
                 addMessage(MessageLevel.WARN, "Mod exception '" + exItemId + "' invalid format (Stage: " + stageId + "). Removed.");
-                DebugLogger.warn("Invalid Mod Exceptions", "Mod exception '" + exItemId + "' is not a valid ResourceLocation (Stage: " + stageId + "). Removed.");
+                DebugLogger.warn("Invalid Mod Exceptions", "Mod exception '" + exItemId + "' is not a valid Identifier (Stage: " + stageId + "). Removed.");
                 return true;
             }
-            ResourceLocation rl = ResourceLocation.parse(exItemId);
+            Identifier rl = Identifier.parse(exItemId);
             if (!lockedMods.contains(rl.getNamespace())) {
                 addMessage(MessageLevel.ERROR, "Mod exception '" + exItemId + "' does not belong to a locked mod (Stage: " + stageId + "). Removed.");
                 DebugLogger.error("Invalid Mod Exceptions", "Mod exception '" + exItemId + "' belongs to mod '" + rl.getNamespace() + "' which is not in the 'mods' list (Stage: " + stageId + "). Removed.");
@@ -695,7 +693,7 @@ public class StageManager {
         entry.getDimensions().removeIf(dimId -> {
             if (!isValidResourceLocation(dimId)) {
                 addMessage(MessageLevel.WARN, "Dimension '" + dimId + "' invalid format (Stage: " + stageId + "). Removed.");
-                DebugLogger.warn("Invalid Dimensions", "Dimension '" + dimId + "' is not a valid ResourceLocation (Stage: " + stageId + "). Removed.");
+                DebugLogger.warn("Invalid Dimensions", "Dimension '" + dimId + "' is not a valid Identifier (Stage: " + stageId + "). Removed.");
                 return true;
             }
             return false;
@@ -706,7 +704,7 @@ public class StageManager {
             String check = structId != null && structId.startsWith("#") ? structId.substring(1) : structId;
             if (!isValidResourceLocation(check)) {
                 addMessage(MessageLevel.WARN, "Structure '" + structId + "' invalid format (Stage: " + stageId + "). Removed.");
-                DebugLogger.warn("Invalid Structures", "Structure '" + structId + "' is not a valid ResourceLocation (Stage: " + stageId + "). Removed.");
+                DebugLogger.warn("Invalid Structures", "Structure '" + structId + "' is not a valid Identifier (Stage: " + stageId + "). Removed.");
                 return true;
             }
             return false;
@@ -715,7 +713,7 @@ public class StageManager {
         entry.getRecipes().removeIf(recipeId -> {
             if (!isValidResourceLocation(recipeId)) {
                 addMessage(MessageLevel.WARN, "Recipe '" + recipeId + "' invalid format (Stage: " + stageId + "). Removed.");
-                DebugLogger.warn("Invalid Recipes", "Recipe '" + recipeId + "' is not a valid ResourceLocation (Stage: " + stageId + "). Removed.");
+                DebugLogger.warn("Invalid Recipes", "Recipe '" + recipeId + "' is not a valid Identifier (Stage: " + stageId + "). Removed.");
                 return true;
             }
             return false;
@@ -724,7 +722,7 @@ public class StageManager {
         entry.getEntities().getAttacklock().removeIf(entityId -> {
             if (!isValidResourceLocation(entityId)) {
                 addMessage(MessageLevel.WARN, "Entity attacklock '" + entityId + "' invalid format (Stage: " + stageId + "). Removed.");
-                DebugLogger.warn("Invalid Entities", "Entity attacklock '" + entityId + "' is not a valid ResourceLocation (Stage: " + stageId + "). Removed.");
+                DebugLogger.warn("Invalid Entities", "Entity attacklock '" + entityId + "' is not a valid Identifier (Stage: " + stageId + "). Removed.");
                 return true;
             }
             return false;
@@ -733,7 +731,7 @@ public class StageManager {
         entry.getEntities().getInteractionlock().removeIf(inEntry -> {
             if (!isValidResourceLocation(inEntry.getId())) {
                 addMessage(MessageLevel.WARN, "Entity interactionlock '" + inEntry.getId() + "' invalid format (Stage: " + stageId + "). Removed.");
-                DebugLogger.warn("Invalid Entities", "Entity interactionlock '" + inEntry.getId() + "' is not a valid ResourceLocation (Stage: " + stageId + "). Removed.");
+                DebugLogger.warn("Invalid Entities", "Entity interactionlock '" + inEntry.getId() + "' is not a valid Identifier (Stage: " + stageId + "). Removed.");
                 return true;
             }
             return false;
@@ -749,7 +747,7 @@ public class StageManager {
             String entityId = spEntry.getId();
             if (!isValidResourceLocation(entityId)) {
                 addMessage(MessageLevel.WARN, "Entity spawnlock '" + entityId + "' invalid format (Stage: " + stageId + "). Removed.");
-                DebugLogger.warn("Invalid Entities", "Entity spawnlock '" + entityId + "' is not a valid ResourceLocation (Stage: " + stageId + "). Removed.");
+                DebugLogger.warn("Invalid Entities", "Entity spawnlock '" + entityId + "' is not a valid Identifier (Stage: " + stageId + "). Removed.");
                 return true;
             }
             return false;
@@ -787,7 +785,7 @@ public class StageManager {
         if (iconVal != null && !iconVal.isEmpty()) {
             if (!isValidResourceLocation(iconVal)) {
                 addMessage(MessageLevel.WARN, "Icon '" + iconVal + "' invalid format (Stage: " + stageId + "). Cleared.");
-                DebugLogger.warn("Invalid Icon", "Icon '" + iconVal + "' is not a valid ResourceLocation (Stage: " + stageId + "). Cleared.");
+                DebugLogger.warn("Invalid Icon", "Icon '" + iconVal + "' is not a valid Identifier (Stage: " + stageId + "). Cleared.");
                 entry.setIcon(null);
             }
         }
@@ -1190,7 +1188,7 @@ public class StageManager {
             if (!isValidResourceLocation(check)) {
                 addMessage(MessageLevel.WARN, "Interaction item filter '" + itemId + "' on '" + entryId + "' invalid format (Stage: " + stageId + "). Removed.");
                 DebugLogger.warn("Invalid Interaction Items",
-                        "Interaction item filter '" + itemId + "' on '" + entryId + "' is not a valid ResourceLocation (Stage: " + stageId + "). Removed.");
+                        "Interaction item filter '" + itemId + "' on '" + entryId + "' is not a valid Identifier (Stage: " + stageId + "). Removed.");
                 return true;
             }
             return false;
@@ -1261,7 +1259,7 @@ public class StageManager {
         // After re-indexing AUTO stages, drop progress entries that no longer
         // correspond to indexed AUTO stages (e.g. mode flipped AUTO → DEFAULT
         // via the editor, or auto_trigger was removed).
-        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        MinecraftServer server = Services.currentServer();
         if (server != null && server.overworld() != null) {
             AutoTriggerManager.pruneOrphans(server.overworld());
             // Drop temporary-timer state for stages that no longer exist or are no
@@ -1317,16 +1315,16 @@ public class StageManager {
 
             for (String itemId : entry.getAllItemIds()) {
                 if (!isValidResourceLocation(itemId)) continue;
-                ResourceLocation rl = ResourceLocation.parse(itemId);
+                Identifier rl = Identifier.parse(itemId);
                 if (!BuiltInRegistries.ITEM.containsKey(rl)) {
                     addMessage(MessageLevel.WARN, "Item '" + itemId + "' does not exist in registry (Stage: " + stageId + ").");
-                    DebugLogger.warn("Unknown Items", "Item '" + itemId + "' is a valid ResourceLocation but does not exist in the item registry (Stage: " + stageId + "). Typo or missing mod?");
+                    DebugLogger.warn("Unknown Items", "Item '" + itemId + "' is a valid Identifier but does not exist in the item registry (Stage: " + stageId + "). Typo or missing mod?");
                 }
             }
 
             for (String exItemId : entry.getAllModExceptionIds()) {
                 if (!isValidResourceLocation(exItemId)) continue;
-                ResourceLocation rl = ResourceLocation.parse(exItemId);
+                Identifier rl = Identifier.parse(exItemId);
                 if (!BuiltInRegistries.ITEM.containsKey(rl)) {
                     addMessage(MessageLevel.WARN, "Mod exception '" + exItemId + "' does not exist in registry (Stage: " + stageId + ").");
                     DebugLogger.warn("Unknown Mod Exceptions", "Mod exception '" + exItemId + "' does not exist in the item registry (Stage: " + stageId + "). Typo or missing mod?");
@@ -1335,7 +1333,7 @@ public class StageManager {
 
             for (String entityId : entry.getEntities().getAttacklock()) {
                 if (!isValidResourceLocation(entityId)) continue;
-                ResourceLocation rl = ResourceLocation.parse(entityId);
+                Identifier rl = Identifier.parse(entityId);
                 if (!BuiltInRegistries.ENTITY_TYPE.containsKey(rl)) {
                     addMessage(MessageLevel.WARN, "Entity '" + entityId + "' does not exist in registry (Stage: " + stageId + ", attacklock).");
                     DebugLogger.warn("Unknown Entities", "Entity '" + entityId + "' does not exist in the entity registry (Stage: " + stageId + ", attacklock). Typo or missing mod?");
@@ -1345,7 +1343,7 @@ public class StageManager {
             for (EntityInteractionLockEntry inEntry : entry.getEntities().getInteractionlock()) {
                 String entityId = inEntry.getId();
                 if (isValidResourceLocation(entityId)) {
-                    ResourceLocation rl = ResourceLocation.parse(entityId);
+                    Identifier rl = Identifier.parse(entityId);
                     if (!BuiltInRegistries.ENTITY_TYPE.containsKey(rl)) {
                         addMessage(MessageLevel.WARN, "Entity '" + entityId + "' does not exist in registry (Stage: " + stageId + ", interactionlock).");
                         DebugLogger.warn("Unknown Entities", "Entity '" + entityId + "' does not exist in the entity registry (Stage: " + stageId + ", interactionlock). Typo or missing mod?");
@@ -1356,7 +1354,7 @@ public class StageManager {
             for (EntitySpawnLockEntry spEntry : entry.getEntities().getSpawnlock()) {
                 String entityId = spEntry.getId();
                 if (!isValidResourceLocation(entityId)) continue;
-                ResourceLocation rl = ResourceLocation.parse(entityId);
+                Identifier rl = Identifier.parse(entityId);
                 if (!BuiltInRegistries.ENTITY_TYPE.containsKey(rl)) {
                     addMessage(MessageLevel.WARN, "Entity '" + entityId + "' does not exist in registry (Stage: " + stageId + ", spawnlock).");
                     DebugLogger.warn("Unknown Entities", "Entity '" + entityId + "' does not exist in the entity registry (Stage: " + stageId + ", spawnlock). Typo or missing mod?");
@@ -1373,7 +1371,7 @@ public class StageManager {
 
             for (String itemId : indData.getAllItemIds()) {
                 if (!isValidResourceLocation(itemId)) continue;
-                ResourceLocation rl = ResourceLocation.parse(itemId);
+                Identifier rl = Identifier.parse(itemId);
                 if (!BuiltInRegistries.ITEM.containsKey(rl)) {
                     addMessage(MessageLevel.WARN, "Item '" + itemId + "' does not exist in registry (Individual Stage: " + indId + ").");
                     DebugLogger.warn("Unknown Items", "Item '" + itemId + "' does not exist in the item registry (Individual Stage: " + indId + "). Typo or missing mod?");
@@ -1382,7 +1380,7 @@ public class StageManager {
 
             for (String exItemId : indData.getAllModExceptionIds()) {
                 if (!isValidResourceLocation(exItemId)) continue;
-                ResourceLocation rl = ResourceLocation.parse(exItemId);
+                Identifier rl = Identifier.parse(exItemId);
                 if (!BuiltInRegistries.ITEM.containsKey(rl)) {
                     addMessage(MessageLevel.WARN, "Mod exception '" + exItemId + "' does not exist in registry (Individual Stage: " + indId + ").");
                     DebugLogger.warn("Unknown Mod Exceptions", "Mod exception '" + exItemId + "' does not exist in the item registry (Individual Stage: " + indId + "). Typo or missing mod?");
@@ -1391,7 +1389,7 @@ public class StageManager {
 
             for (String entityId : indData.getEntities().getAttacklock()) {
                 if (!isValidResourceLocation(entityId)) continue;
-                ResourceLocation rl = ResourceLocation.parse(entityId);
+                Identifier rl = Identifier.parse(entityId);
                 if (!BuiltInRegistries.ENTITY_TYPE.containsKey(rl)) {
                     addMessage(MessageLevel.WARN, "Entity '" + entityId + "' does not exist in registry (Individual Stage: " + indId + ", attacklock).");
                     DebugLogger.warn("Unknown Entities", "Entity '" + entityId + "' does not exist in the entity registry (Individual Stage: " + indId + ", attacklock). Typo or missing mod?");
@@ -1401,7 +1399,7 @@ public class StageManager {
             for (EntityInteractionLockEntry inEntry : indData.getEntities().getInteractionlock()) {
                 String entityId = inEntry.getId();
                 if (isValidResourceLocation(entityId)) {
-                    ResourceLocation rl = ResourceLocation.parse(entityId);
+                    Identifier rl = Identifier.parse(entityId);
                     if (!BuiltInRegistries.ENTITY_TYPE.containsKey(rl)) {
                         addMessage(MessageLevel.WARN, "Entity '" + entityId + "' does not exist in registry (Individual Stage: " + indId + ", interactionlock).");
                         DebugLogger.warn("Unknown Entities", "Entity '" + entityId + "' does not exist in the entity registry (Individual Stage: " + indId + ", interactionlock). Typo or missing mod?");
@@ -1430,7 +1428,7 @@ public class StageManager {
             String itemId = item.getId();
             if (itemId == null || itemId.startsWith("#")) continue;
             if (!isValidResourceLocation(itemId)) continue;
-            if (!BuiltInRegistries.ITEM.containsKey(ResourceLocation.parse(itemId))) {
+            if (!BuiltInRegistries.ITEM.containsKey(Identifier.parse(itemId))) {
                 addMessage(MessageLevel.WARN, "Interaction item filter '" + itemId + "' on '" + inEntry.getId()
                         + "' does not exist in registry (" + label + ": " + stageId + ").");
                 DebugLogger.warn("Unknown Interaction Items", "Interaction item filter '" + itemId + "' on '" + inEntry.getId()
@@ -1464,7 +1462,7 @@ public class StageManager {
 
     /** Root directory of a tree; created if missing. */
     public static File treeRoot(boolean individual) {
-        File dir = FMLPaths.CONFIGDIR.get().resolve("historystages")
+        File dir = Services.configDir().resolve("historystages")
                 .resolve(individual ? "individual" : "global").toFile();
         if (!dir.exists()) dir.mkdirs();
         return dir;
@@ -1864,7 +1862,7 @@ public class StageManager {
                 addMessage(MessageLevel.WARN, "Mod exception '" + exItemId + "' invalid format (Individual Stage: " + stageId + "). Removed.");
                 return true;
             }
-            ResourceLocation rl = ResourceLocation.parse(exItemId);
+            Identifier rl = Identifier.parse(exItemId);
             if (!indLockedMods.contains(rl.getNamespace())) {
                 addMessage(MessageLevel.ERROR, "Mod exception '" + exItemId + "' does not belong to a locked mod (Individual Stage: " + stageId + "). Removed.");
                 return true;
@@ -1886,7 +1884,7 @@ public class StageManager {
             String check = structId != null && structId.startsWith("#") ? structId.substring(1) : structId;
             if (!isValidResourceLocation(check)) {
                 addMessage(MessageLevel.WARN, "Structure '" + structId + "' invalid format (Individual Stage: " + stageId + "). Removed.");
-                DebugLogger.warn("Invalid Structures", "Structure '" + structId + "' is not a valid ResourceLocation (Individual Stage: " + stageId + "). Removed.");
+                DebugLogger.warn("Invalid Structures", "Structure '" + structId + "' is not a valid Identifier (Individual Stage: " + stageId + "). Removed.");
                 return true;
             }
             return false;
@@ -2404,7 +2402,7 @@ public class StageManager {
     private static void checkTriggerRl(String stageId, String triggerType, String id) {
         if (!isValidResourceLocation(id)) {
             addMessage(MessageLevel.WARN, "Trigger '" + triggerType + "' in stage '" + stageId + "' has invalid id '" + id + "'. It will never match.");
-            DebugLogger.warn("Invalid AutoTrigger Id", "Trigger '" + triggerType + "' in stage '" + stageId + "' has id '" + id + "' which is not a valid ResourceLocation. The trigger will never match — fix the id.");
+            DebugLogger.warn("Invalid AutoTrigger Id", "Trigger '" + triggerType + "' in stage '" + stageId + "' has id '" + id + "' which is not a valid Identifier. The trigger will never match — fix the id.");
         }
     }
 }

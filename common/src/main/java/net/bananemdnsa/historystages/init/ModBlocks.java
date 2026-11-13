@@ -13,9 +13,8 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.properties.NoteBlockInstrument;
 import net.minecraft.world.level.block.state.BlockBehaviour;
-import net.neoforged.bus.api.IEventBus;
-import net.neoforged.neoforge.registries.DeferredRegister;
-import net.neoforged.neoforge.registries.DeferredHolder;
+import net.bananemdnsa.historystages.platform.DeferredRegister;
+import net.bananemdnsa.historystages.platform.DeferredHolder;
 
 import java.util.Collections;
 import java.util.EnumMap;
@@ -67,7 +66,7 @@ public class ModBlocks {
         return wood.flammable() ? props.ignitedByLava() : props;
     }
 
-    public static void register(IEventBus eventBus) {
-        BLOCKS.register(eventBus);
+    public static void register() {
+        BLOCKS.register();
     }
 }

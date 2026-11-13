@@ -147,7 +147,7 @@ public abstract class AbstractModalScreen extends Screen {
     }
 
     protected void onCancel() {
-        this.minecraft.setScreen(parent);
+        this.minecraft.gui.setScreen(parent);
     }
 
     // ============ Layout ============
@@ -285,7 +285,7 @@ public abstract class AbstractModalScreen extends Screen {
 
     @Override
     public void onClose() {
-        this.minecraft.setScreen(parent);
+        this.minecraft.gui.setScreen(parent);
     }
 
     @Override

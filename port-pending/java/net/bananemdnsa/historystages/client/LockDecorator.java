@@ -2,7 +2,7 @@ package net.bananemdnsa.historystages.client;
 
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.client.IItemDecorator;
 
@@ -17,7 +17,7 @@ public class LockDecorator implements IItemDecorator {
 
     @Override
     public boolean render(GuiGraphics guiGraphics, Font font, ItemStack stack, int xOffset, int yOffset) {
-        ResourceLocation icon = LockIconRenderer.iconFor(stack);
+        Identifier icon = LockIconRenderer.iconFor(stack);
         if (icon != null) {
             LockIconRenderer.draw(guiGraphics, icon, xOffset, yOffset);
         }

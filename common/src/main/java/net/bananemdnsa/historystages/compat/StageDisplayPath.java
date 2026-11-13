@@ -1,12 +1,12 @@
 package net.bananemdnsa.historystages.compat;
 
 /**
- * Turns a stage id into something a {@code ResourceLocation} path will accept.
+ * Turns a stage id into something a {@code Identifier} path will accept.
  *
  * <p>Stage ids are author-chosen, and this mod deliberately allows what a resource location does
  * not: {@code StageManager} takes an uppercase file name and only suggests lowercase as a matter
  * of style. The recipe viewers need a real id per displayed entry though, and
- * {@code ResourceLocation.fromNamespaceAndPath} throws on anything outside {@code [a-z0-9/._-]}.
+ * {@code Identifier.fromNamespaceAndPath} throws on anything outside {@code [a-z0-9/._-]}.
  *
  * <p>The two viewers used to sanitise only the colon. A single uppercase letter in a single stage
  * id then threw out of the middle of the registration loop, before the viewer was handed the list
@@ -50,7 +50,7 @@ public final class StageDisplayPath {
         return path + "_" + Integer.toHexString(id.hashCode() & 0x7fffffff);
     }
 
-    /** Exactly the set {@code ResourceLocation.assertValidPath} allows. */
+    /** Exactly the set {@code Identifier.assertValidPath} allows. */
     private static boolean isAllowed(char c) {
         return (c >= 'a' && c <= 'z')
                 || (c >= '0' && c <= '9')

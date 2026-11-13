@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.network.serverbound;
 
+import net.minecraft.server.permissions.Permissions;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.data.StagePaths;
@@ -9,9 +10,9 @@ import net.bananemdnsa.historystages.network.clientbound.SyncStageDefinitionsPac
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.bananemdnsa.historystages.platform.IPayloadContext;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,7 +27,7 @@ public record MoveStagesPacket(boolean individual, List<String> stageIds, String
     private static final int MAX_STAGES = 512;
 
     public static final CustomPacketPayload.Type<MoveStagesPacket> TYPE =
-            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "move_stages"));
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "move_stages"));
 
     public static final StreamCodec<FriendlyByteBuf, MoveStagesPacket> STREAM_CODEC =
             StreamCodec.of(MoveStagesPacket::encode, MoveStagesPacket::decode);
@@ -58,7 +59,7 @@ public record MoveStagesPacket(boolean individual, List<String> stageIds, String
     public static void handle(MoveStagesPacket msg, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer player)) return;
-            if (!player.hasPermissions(2)) return;
+            if (!player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)) return;
             if (!StagePaths.isValid(msg.targetFolder)) return;
 
             boolean moved = StageManager.moveStages(msg.individual, msg.stageIds, msg.targetFolder);

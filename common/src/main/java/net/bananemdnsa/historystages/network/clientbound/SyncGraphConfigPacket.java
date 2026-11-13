@@ -6,8 +6,8 @@ import net.bananemdnsa.historystages.data.graph.GraphConfigCodec;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.minecraft.resources.Identifier;
+import net.bananemdnsa.historystages.platform.IPayloadContext;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -27,7 +27,7 @@ public record SyncGraphConfigPacket(Map<String, String> values) implements Custo
 
     public static final CustomPacketPayload.Type<SyncGraphConfigPacket> TYPE =
             new CustomPacketPayload.Type<>(
-                    ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "sync_graph_config"));
+                    Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "sync_graph_config"));
 
     public static final StreamCodec<FriendlyByteBuf, SyncGraphConfigPacket> STREAM_CODEC =
             StreamCodec.of(SyncGraphConfigPacket::encode, SyncGraphConfigPacket::decode);

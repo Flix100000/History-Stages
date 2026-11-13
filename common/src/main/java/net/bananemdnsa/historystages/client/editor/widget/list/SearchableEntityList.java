@@ -17,7 +17,7 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.sounds.SoundEvents;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
@@ -122,7 +122,7 @@ public class SearchableEntityList implements PickerOverlay {
         this.searchBar = SearchPanelChrome.createSearchBar(Component.translatable("editor.historystages.search.placeholder.entities").getString(), this::applyFilter, alreadyAddedSupplier);
 
         for (EntityType<?> entityType : BuiltInRegistries.ENTITY_TYPE) {
-            ResourceLocation key = BuiltInRegistries.ENTITY_TYPE.getKey(entityType);
+            Identifier key = BuiltInRegistries.ENTITY_TYPE.getKey(entityType);
             if (key != null && isLivingEntityType(entityType)) {
                 String displayName = entityType.getDescription().getString();
                 allEntities.add(new EntityEntry(key.toString(), displayName, displayName.toLowerCase()));
@@ -166,7 +166,7 @@ public class SearchableEntityList implements PickerOverlay {
         EntityType<?> type = spawnEgg.getType(stack);
         if (type == null)
             return null;
-        ResourceLocation key = BuiltInRegistries.ENTITY_TYPE.getKey(type);
+        Identifier key = BuiltInRegistries.ENTITY_TYPE.getKey(type);
         return key != null ? key.toString() : null;
     }
 
@@ -381,7 +381,7 @@ public class SearchableEntityList implements PickerOverlay {
             if (entry.id.equals(id))
                 return entry.displayName;
         }
-        EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.get(ResourceLocation.tryParse(id));
+        EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.getValue(Identifier.tryParse(id));
         return type != null ? type.getDescription().getString() : id;
     }
 
@@ -767,7 +767,7 @@ public class SearchableEntityList implements PickerOverlay {
                 }
             }
 
-            EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.get(ResourceLocation.tryParse(selectedEntityId));
+            EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.getValue(Identifier.tryParse(selectedEntityId));
             if (type != null) {
                 String entityName = type.getDescription().getString();
                 guiGraphics.pose().pushPose();
@@ -824,7 +824,7 @@ public class SearchableEntityList implements PickerOverlay {
         if (hoveredSlot >= 0) {
             ItemStack stack = player.getInventory().getItem(hoveredSlot);
             if (!stack.isEmpty()) {
-                ResourceLocation key = BuiltInRegistries.ITEM.getKey(stack.getItem());
+                Identifier key = BuiltInRegistries.ITEM.getKey(stack.getItem());
                 if (key != null) {
                     String eggEntityId = getEntityIdFromSpawnEgg(stack);
                     String tooltip = stack.getHoverName().getString() + " §7(" + key + ")";

@@ -7,13 +7,13 @@ import net.bananemdnsa.historystages.util.lock.StageLockHelper;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.bus.api.EventPriority;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.neoforge.common.util.TriState;
+import net.bananemdnsa.historystages.platform.bus.EventPriority;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.TriState;
 import top.theillusivec4.curios.api.event.CurioCanEquipEvent;
 
 import java.util.HashMap;
@@ -38,7 +38,7 @@ public class CuriosEquipLockHandler {
 
         event.setEquipResult(TriState.FALSE);
         if (!isClient) {
-            ResourceLocation itemRL = BuiltInRegistries.ITEM.getKey(stack.getItem());
+            Identifier itemRL = BuiltInRegistries.ITEM.getKey(stack.getItem());
             DebugLogger.runtime(HsRuntimeCategories.CURIOS_LOCK, player.getName().getString(),
                     "Equipping locked item '" + itemRL + "' in curio slot '"
                             + event.getSlotContext().identifier() + "' — blocked");
@@ -70,10 +70,7 @@ public class CuriosEquipLockHandler {
         if (last != null && (now - last) < COOLDOWN_MS) return;
         MESSAGE_COOLDOWNS.put(player.getUUID(), now);
 
-        player.displayClientMessage(
-                net.bananemdnsa.historystages.util.lock.LockMessages.itemLocked()
-                        .withStyle(ChatFormatting.DARK_RED, ChatFormatting.ITALIC),
-                true
-        );
+        player.sendOverlayMessage(net.bananemdnsa.historystages.util.lock.LockMessages.itemLocked()
+                        .withStyle(ChatFormatting.DARK_RED, ChatFormatting.ITALIC));
     }
 }

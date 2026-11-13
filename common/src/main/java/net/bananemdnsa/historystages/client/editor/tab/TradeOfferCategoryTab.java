@@ -15,7 +15,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
@@ -152,9 +152,9 @@ public final class TradeOfferCategoryTab extends AbstractCategoryTab {
     }
 
     private static ItemStack stackOf(String itemId) {
-        ResourceLocation key = ResourceLocation.tryParse(itemId);
+        Identifier key = Identifier.tryParse(itemId);
         if (key == null || !BuiltInRegistries.ITEM.containsKey(key)) return ItemStack.EMPTY;
-        return new ItemStack(BuiltInRegistries.ITEM.get(key));
+        return new ItemStack(BuiltInRegistries.ITEM.getValue(key));
     }
 
     private static String nameOf(String itemId) {

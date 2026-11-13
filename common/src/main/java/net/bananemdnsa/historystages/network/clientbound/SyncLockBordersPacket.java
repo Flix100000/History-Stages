@@ -1,15 +1,15 @@
 package net.bananemdnsa.historystages.network.clientbound;
 
+import net.bananemdnsa.historystages.platform.Services;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.client.LockBorderClientCache;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.fml.loading.FMLEnvironment;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.bananemdnsa.historystages.platform.Dist;
+import net.bananemdnsa.historystages.platform.IPayloadContext;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,7 +22,7 @@ import java.util.List;
 public record SyncLockBordersPacket(List<BoundingBox> boxes) implements CustomPacketPayload {
 
     public static final CustomPacketPayload.Type<SyncLockBordersPacket> TYPE =
-            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "sync_lock_borders"));
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "sync_lock_borders"));
 
     public static final StreamCodec<FriendlyByteBuf, SyncLockBordersPacket> STREAM_CODEC = StreamCodec.of(
             (buf, msg) -> {
@@ -50,7 +50,7 @@ public record SyncLockBordersPacket(List<BoundingBox> boxes) implements CustomPa
 
     public static void handle(SyncLockBordersPacket msg, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
-            if (FMLEnvironment.dist != Dist.CLIENT) return;
+            if (Services.dist() != Dist.CLIENT) return;
             LockBorderClientCache.set(msg.boxes);
         });
     }

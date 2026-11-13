@@ -91,7 +91,7 @@ public class StageLogicScreen extends Screen {
                 PADDING, TOOLBAR_Y, addW, TOOLBAR_H));
 
         this.addRenderableWidget(StyledButton.of(Component.translatable("editor.historystages.back"),
-                btn -> this.minecraft.setScreen(parent), PADDING, this.height - 30, 60, 20));
+                btn -> this.minecraft.gui.setScreen(parent), PADDING, this.height - 30, 60, 20));
         this.addRenderableWidget(StyledButton.of(Component.translatable("editor.historystages.save"),
                 btn -> save(), this.width - PADDING - 100, this.height - 30, 100, 20));
 
@@ -277,7 +277,7 @@ public class StageLogicScreen extends Screen {
     /** A percentage, 0 to 1000; anything that is not a number leaves the value as it was. */
     private void openPercentInput(LogicDraft.Block block, String key) {
         String title = Component.translatable("editor.historystages.logic.cost." + key).getString() + " (%)";
-        this.minecraft.setScreen(new NbtItemEditScreen.SuggestingInputScreen(this, title, String.valueOf(block.percent(key)),
+        this.minecraft.gui.setScreen(new NbtItemEditScreen.SuggestingInputScreen(this, title, String.valueOf(block.percent(key)),
                 List.of("0", "25", "50", "75", "100", "150", "200"), value -> {
                     try {
                         block.setPercent(key, (int) Math.round(Double.parseDouble(value.trim().replace("%", ""))));
@@ -402,6 +402,6 @@ public class StageLogicScreen extends Screen {
     /** Escape goes back to the stage, not out of the editor. */
     @Override
     public void onClose() {
-        this.minecraft.setScreen(parent);
+        this.minecraft.gui.setScreen(parent);
     }
 }

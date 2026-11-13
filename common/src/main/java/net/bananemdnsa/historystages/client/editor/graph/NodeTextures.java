@@ -11,7 +11,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.texture.DynamicTexture;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.joml.Matrix4f;
 
 /**
@@ -38,23 +38,23 @@ public final class NodeTextures {
     /** Supersample grid per pixel for anti-aliasing (SS x SS samples). */
     private static final int SS = 4;
 
-    private static ResourceLocation circle;
-    private static ResourceLocation diamond;
-    private static ResourceLocation hexagon;
-    private static ResourceLocation rect;
-    private static ResourceLocation rounded;
-    private static ResourceLocation arrow;
-    private static ResourceLocation line;
-    private static ResourceLocation check;
+    private static Identifier circle;
+    private static Identifier diamond;
+    private static Identifier hexagon;
+    private static Identifier rect;
+    private static Identifier rounded;
+    private static Identifier arrow;
+    private static Identifier line;
+    private static Identifier check;
 
-    public static ResourceLocation circle()  { ensure(); return circle; }
-    public static ResourceLocation diamond() { ensure(); return diamond; }
-    public static ResourceLocation hexagon() { ensure(); return hexagon; }
-    public static ResourceLocation rect()    { ensure(); return rect; }
-    public static ResourceLocation rounded() { ensure(); return rounded; }
-    public static ResourceLocation arrow()   { ensure(); return arrow; }
-    public static ResourceLocation line()    { ensure(); return line; }
-    public static ResourceLocation check()   { ensure(); return check; }
+    public static Identifier circle()  { ensure(); return circle; }
+    public static Identifier diamond() { ensure(); return diamond; }
+    public static Identifier hexagon() { ensure(); return hexagon; }
+    public static Identifier rect()    { ensure(); return rect; }
+    public static Identifier rounded() { ensure(); return rounded; }
+    public static Identifier arrow()   { ensure(); return arrow; }
+    public static Identifier line()    { ensure(); return line; }
+    public static Identifier check()   { ensure(); return check; }
 
     private static void ensure() {
         if (circle != null) return;
@@ -130,7 +130,7 @@ public final class NodeTextures {
         return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
     }
 
-    private static ResourceLocation register(String name, NativeImage img) {
+    private static Identifier register(String name, NativeImage img) {
         return register(name, img, false);
     }
 
@@ -140,12 +140,12 @@ public final class NodeTextures {
      *               stretched to arbitrary lengths and angles, and nearest sampling turns its
      *               soft border rows into a stair pattern.
      */
-    private static ResourceLocation register(String name, NativeImage img, boolean smooth) {
+    private static Identifier register(String name, NativeImage img, boolean smooth) {
         DynamicTexture tex = new DynamicTexture(img);
         if (smooth) {
             tex.setFilter(true, false);
         }
-        ResourceLocation id = ResourceLocation.fromNamespaceAndPath("historystages", "dyn/" + name);
+        Identifier id = Identifier.fromNamespaceAndPath("historystages", "dyn/" + name);
         Minecraft.getInstance().getTextureManager().register(id, tex);
         return id;
     }
@@ -159,7 +159,7 @@ public final class NodeTextures {
      * the buffer keeps sub-pixel sizes exact and lets the rasteriser and the texture filter do the
      * smoothing, which is how FTB Quests draws its dependency lines.
      */
-    public static void quad(GuiGraphics g, ResourceLocation tex,
+    public static void quad(GuiGraphics g, Identifier tex,
                             float x1, float y1, float x2, float y2, int color) {
         float a = ((color >>> 24) & 0xFF) / 255f;
         if (a == 0f) a = 1f;
@@ -193,7 +193,7 @@ public final class NodeTextures {
      * <p>Relies on the texture's wrap mode being {@code GL_REPEAT}, which is the OpenGL default
      * and which Minecraft's texture loading does not change.
      */
-    public static void repeatingQuad(GuiGraphics g, ResourceLocation tex,
+    public static void repeatingQuad(GuiGraphics g, Identifier tex,
                                      float x1, float y1, float x2, float y2,
                                      float u1, float v1, float u2, float v2) {
         Matrix4f matrix = g.pose().last().pose();
@@ -215,7 +215,7 @@ public final class NodeTextures {
      * Blits the whole texture into a {@code w x h} box at (x,y), tinted by ARGB {@code color}.
      * Always restores the shader colour to white so later rendering is not tinted.
      */
-    public static void blit(GuiGraphics g, ResourceLocation tex, int x, int y, int w, int h,
+    public static void blit(GuiGraphics g, Identifier tex, int x, int y, int w, int h,
                             int texW, int texH, int color) {
         float a = ((color >>> 24) & 0xFF) / 255f;
         if (a == 0f) a = 1f; // colours passed without an alpha byte are fully opaque

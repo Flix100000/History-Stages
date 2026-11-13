@@ -3,7 +3,7 @@ package net.bananemdnsa.historystages.client;
 import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.util.lock.StageLockHelper;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 
 /**
@@ -12,9 +12,9 @@ import net.minecraft.world.item.ItemStack;
  * icon selection and drawing stay identical across surfaces.
  */
 public final class LockIconRenderer {
-    private static final ResourceLocation LOCK_ICON            = ResourceLocation.fromNamespaceAndPath("historystages", "textures/gui/lock/overlay_global.png");
-    private static final ResourceLocation SILVER_LOCK_ICON     = ResourceLocation.fromNamespaceAndPath("historystages", "textures/gui/lock/overlay_individual.png");
-    private static final ResourceLocation DUAL_PHASE_LOCK_ICON = ResourceLocation.fromNamespaceAndPath("historystages", "textures/gui/lock/overlay_dual.png");
+    private static final Identifier LOCK_ICON            = Identifier.fromNamespaceAndPath("historystages", "textures/gui/lock/overlay_global.png");
+    private static final Identifier SILVER_LOCK_ICON     = Identifier.fromNamespaceAndPath("historystages", "textures/gui/lock/overlay_individual.png");
+    private static final Identifier DUAL_PHASE_LOCK_ICON = Identifier.fromNamespaceAndPath("historystages", "textures/gui/lock/overlay_dual.png");
 
     private LockIconRenderer() {}
 
@@ -24,7 +24,7 @@ public final class LockIconRenderer {
      * stack not locked). Honours the {@code showLockIcons} / {@code showSilverLockIcons}
      * config and distinguishes global, individual, and dual-phase locks.
      */
-    public static ResourceLocation iconFor(ItemStack stack) {
+    public static Identifier iconFor(ItemStack stack) {
         if (!Config.VISUAL.showLockIcons.get()) return null;
         if (stack == null || stack.isEmpty()) return null;
         // A disguise that hides its hints would be given away by a lock on the "stone".
@@ -54,7 +54,7 @@ public final class LockIconRenderer {
      * has none — a fluid gated globally and individually at once shows the global lock, which is
      * the truthful half of the answer rather than a guess at the other.
      */
-    public static ResourceLocation iconForFluid(String fluidId) {
+    public static Identifier iconForFluid(String fluidId) {
         if (!Config.VISUAL.showLockIcons.get()) return null;
         if (fluidId == null) return null;
 
@@ -74,15 +74,15 @@ public final class LockIconRenderer {
      * anything drawing over an item. A notice explaining an empty window has no stack to ask
      * about — it has been told the answer by the server.
      */
-    public static ResourceLocation globalIcon() {
+    public static Identifier globalIcon() {
         return LOCK_ICON;
     }
 
-    public static ResourceLocation individualIcon() {
+    public static Identifier individualIcon() {
         return SILVER_LOCK_ICON;
     }
 
-    public static ResourceLocation dualIcon() {
+    public static Identifier dualIcon() {
         return DUAL_PHASE_LOCK_ICON;
     }
 
@@ -93,7 +93,7 @@ public final class LockIconRenderer {
      * and every caller of it wants exactly that; a notice in the middle of an empty window has no
      * slot setting its size.
      */
-    public static void drawSized(GuiGraphics guiGraphics, ResourceLocation icon,
+    public static void drawSized(GuiGraphics guiGraphics, Identifier icon,
                                  int x, int y, int size) {
         guiGraphics.pose().pushPose();
         guiGraphics.pose().translate(x, y, 250);
@@ -104,7 +104,7 @@ public final class LockIconRenderer {
     }
 
     /** Draws the given lock icon as an 8x8 overlay at the slot's top-left corner. */
-    public static void draw(GuiGraphics guiGraphics, ResourceLocation icon, int x, int y) {
+    public static void draw(GuiGraphics guiGraphics, Identifier icon, int x, int y) {
         guiGraphics.pose().pushPose();
         guiGraphics.pose().translate(x, y, 250);
         guiGraphics.pose().scale(0.25f, 0.25f, 1.0f);

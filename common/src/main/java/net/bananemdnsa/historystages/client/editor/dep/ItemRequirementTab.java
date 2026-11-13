@@ -15,7 +15,7 @@ import net.bananemdnsa.historystages.data.dependency.DependencyItem;
 import net.bananemdnsa.historystages.data.dependency.ItemTagResolution;
 import net.bananemdnsa.historystages.api.dependency.Requirement;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 import org.jetbrains.annotations.Nullable;
 
@@ -180,9 +180,9 @@ public final class ItemRequirementTab extends AbstractDependencyTab {
         if (ItemTagResolution.isTag(itemId)) {
             return ItemTagResolution.displayName(itemId, null, System.currentTimeMillis());
         }
-        ResourceLocation rl = ResourceLocation.tryParse(itemId);
+        Identifier rl = Identifier.tryParse(itemId);
         if (rl == null) return itemId;
-        Item item = BuiltInRegistries.ITEM.get(rl);
+        Item item = BuiltInRegistries.ITEM.getValue(rl);
         return item == null ? itemId : item.getDescription().getString();
     }
 }

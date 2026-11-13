@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.network.serverbound;
 
+import net.minecraft.server.permissions.Permissions;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.data.graph.GraphStageData;
@@ -9,9 +10,9 @@ import net.bananemdnsa.historystages.network.clientbound.SyncStageDefinitionsPac
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.bananemdnsa.historystages.platform.IPayloadContext;
 
 /**
  * Creates or replaces one style preset in {@code graph_stages.json}.
@@ -26,7 +27,7 @@ public record SaveStylePresetPacket(String id, String name, String json) impleme
     public static final int MAX_NAME_LENGTH = 32;
 
     public static final CustomPacketPayload.Type<SaveStylePresetPacket> TYPE =
-            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "save_style_preset"));
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "save_style_preset"));
 
     public static final StreamCodec<FriendlyByteBuf, SaveStylePresetPacket> STREAM_CODEC =
             StreamCodec.of(SaveStylePresetPacket::encode, SaveStylePresetPacket::decode);
@@ -44,7 +45,7 @@ public record SaveStylePresetPacket(String id, String name, String json) impleme
     public static void handle(SaveStylePresetPacket msg, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer player)) return;
-            if (!player.hasPermissions(2)) return;
+            if (!player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)) return;
 
             GraphStageData.Snapshot data = GraphStageData.get();
             String name = msg.name == null ? "" : msg.name.trim();

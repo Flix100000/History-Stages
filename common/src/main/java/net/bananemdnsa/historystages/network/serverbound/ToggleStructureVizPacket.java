@@ -1,14 +1,15 @@
 package net.bananemdnsa.historystages.network.serverbound;
 
+import net.minecraft.server.permissions.Permissions;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.structure.ClusterDebugRenderer;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.bananemdnsa.historystages.platform.IPayloadContext;
 
 /**
  * Client-issued: toggle the structure-cluster debug visualization for the requesting player.
@@ -17,7 +18,7 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 public record ToggleStructureVizPacket() implements CustomPacketPayload {
 
     public static final CustomPacketPayload.Type<ToggleStructureVizPacket> TYPE =
-            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "toggle_structure_viz"));
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "toggle_structure_viz"));
 
     public static final StreamCodec<FriendlyByteBuf, ToggleStructureVizPacket> STREAM_CODEC =
             StreamCodec.of((buf, msg) -> {}, buf -> new ToggleStructureVizPacket());
@@ -25,7 +26,7 @@ public record ToggleStructureVizPacket() implements CustomPacketPayload {
     public static void handle(ToggleStructureVizPacket msg, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer player)) return;
-            if (!player.hasPermissions(2)) return;
+            if (!player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)) return;
             boolean nowEnabled = ClusterDebugRenderer.toggle(player.getUUID());
             player.sendSystemMessage(Component.literal(nowEnabled
                     ? "§aStructure cluster visualization §lENABLED§a — particles will appear when near locked structures."

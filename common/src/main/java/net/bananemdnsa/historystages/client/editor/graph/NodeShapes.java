@@ -1,7 +1,7 @@
 package net.bananemdnsa.historystages.client.editor.graph;
 
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 /**
  * Drawing helpers for the graph's outline-ring node shapes. Each shape is rendered from a
@@ -105,7 +105,7 @@ public final class NodeShapes {
         ring(g, NodeTextures.rounded(), cx, cy, r, fill, border, bw);
     }
 
-    private static void ring(GuiGraphics g, ResourceLocation tex, int cx, int cy, int r,
+    private static void ring(GuiGraphics g, Identifier tex, int cx, int cy, int r,
                              int fill, int border, int bw) {
         if (r <= 0) return;
         blit(g, tex, cx, cy, r, border);
@@ -114,7 +114,7 @@ public final class NodeShapes {
     }
 
     /** Blits {@code tex} centred at (cx,cy) scaled to a {@code rad}-radius box, tinted {@code color}. */
-    private static void blit(GuiGraphics g, ResourceLocation tex, int cx, int cy, int rad, int color) {
+    private static void blit(GuiGraphics g, Identifier tex, int cx, int cy, int rad, int color) {
         int size = rad * 2;
         NodeTextures.blit(g, tex, cx - rad, cy - rad, size, size,
                 NodeTextures.SIZE, NodeTextures.SIZE, color);

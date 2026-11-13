@@ -79,7 +79,7 @@ public final class StageStyleValidator {
     }
 
     /**
-     * ResourceLocation's character rules, checked without loading ResourceLocation. A path that
+     * Identifier's character rules, checked without loading Identifier. A path that
      * fails them would throw the moment the canvas tried to bind it, for everyone on the server.
      */
     public static boolean isTexturePath(String text) {

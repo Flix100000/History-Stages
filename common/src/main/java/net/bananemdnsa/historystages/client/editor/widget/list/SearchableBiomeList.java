@@ -8,7 +8,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.biome.Biome;
 
 import java.util.ArrayList;
@@ -67,9 +67,9 @@ public class SearchableBiomeList extends AbstractSearchableList<String> {
         List<String> entries = new ArrayList<>();
         Minecraft mc = Minecraft.getInstance();
         if (mc.level != null) {
-            Registry<Biome> reg = mc.level.registryAccess().registryOrThrow(Registries.BIOME);
+            Registry<Biome> reg = mc.level.registryAccess().lookupOrThrow(Registries.BIOME);
             if (activeTab == 0) {
-                for (ResourceLocation key : reg.keySet()) {
+                for (Identifier key : reg.keySet()) {
                     entries.add(key.toString());
                 }
             } else {

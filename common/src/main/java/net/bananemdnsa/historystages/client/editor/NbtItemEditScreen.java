@@ -40,7 +40,7 @@ import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.item.Item;
@@ -158,7 +158,7 @@ public class NbtItemEditScreen extends Screen {
 
         this.addRenderableWidget(StyledButton.of(
                 Component.translatable("editor.historystages.back"),
-                btn -> this.minecraft.setScreen(parent),
+                btn -> this.minecraft.gui.setScreen(parent),
                 PADDING, this.height - 30, 60, 20));
 
         Component clearLabel = Component.translatable("editor.historystages.nbt.clear_all");
@@ -243,16 +243,16 @@ public class NbtItemEditScreen extends Screen {
     }
 
     private Integer maxEnchantmentLevel(String id) {
-        ResourceLocation rl = ResourceLocation.tryParse(id);
+        Identifier rl = Identifier.tryParse(id);
         if (rl == null) return null;
         Registry<Enchantment> registry = this.minecraft.level.registryAccess()
-                .registryOrThrow(Registries.ENCHANTMENT);
-        Enchantment enchantment = registry.get(rl);
+                .lookupOrThrow(Registries.ENCHANTMENT);
+        Enchantment enchantment = registry.getValue(rl);
         return enchantment == null ? null : enchantment.getMaxLevel();
     }
 
     private boolean potionExists(String id) {
-        ResourceLocation rl = ResourceLocation.tryParse(id);
+        Identifier rl = Identifier.tryParse(id);
         return rl != null && BuiltInRegistries.POTION.get(rl) != null;
     }
 
@@ -348,7 +348,7 @@ public class NbtItemEditScreen extends Screen {
         if (tagMode) {
             g.drawString(this.font, "#" + itemId, PADDING, 16, 0xFFFFFF);
         } else {
-            Item item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(itemId));
+            Item item = BuiltInRegistries.ITEM.getValue(Identifier.parse(itemId));
             if (item != null) {
                 g.renderItem(new ItemStack(item), PADDING, 12);
                 g.drawString(this.font, item.getDescription(), PADDING + 22, 14, 0xFFFFFF);
@@ -442,7 +442,7 @@ public class NbtItemEditScreen extends Screen {
     }
 
     private String itemDisplayName() {
-        Item item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(itemId));
+        Item item = BuiltInRegistries.ITEM.getValue(Identifier.parse(itemId));
         return item != null ? item.getDescription().getString() : itemId;
     }
 
@@ -532,7 +532,7 @@ public class NbtItemEditScreen extends Screen {
             // A raw-JSON field for a value that is simply a name or a number is what made this
             // screen unusable; only the shapes that really are free-form get the JSON dialog.
             if (comp.valueKind == ValueKind.JSON) {
-                this.minecraft.setScreen(new ComponentValueEditScreen(this, comp.componentId(),
+                this.minecraft.gui.setScreen(new ComponentValueEditScreen(this, comp.componentId(),
                         comp.valueJson.isEmpty() ? "{}" : comp.valueJson,
                         json -> comp.valueJson = json));
             } else if (comp.valueKind != ValueKind.PRESENCE) {
@@ -593,7 +593,7 @@ public class NbtItemEditScreen extends Screen {
     }
 
     private void openInput(String title, String current, List<String> suggestions, Consumer<String> onDone) {
-        this.minecraft.setScreen(new SuggestingInputScreen(this, title, current, suggestions, value -> {
+        this.minecraft.gui.setScreen(new SuggestingInputScreen(this, title, current, suggestions, value -> {
             onDone.accept(value);
             refresh();
         }));
@@ -647,7 +647,7 @@ public class NbtItemEditScreen extends Screen {
             criteria.add(ench);
 
         } else if (selection.startsWith(SearchableNbtCriterionList.CUSTOM_DATA)) {
-            this.minecraft.setScreen(new CustomNbtInputScreen(this, (key, value) -> {
+            this.minecraft.gui.setScreen(new CustomNbtInputScreen(this, (key, value) -> {
                 criteria.add(new CustomDataCriterion(key, value, NbtPresets.isLegacyKey(key)));
                 refresh();
             }));
@@ -722,7 +722,7 @@ public class NbtItemEditScreen extends Screen {
      */
     private void openItemValuePicker(ComponentCriterion comp) {
         DataComponentType<?> type = BuiltInRegistries.DATA_COMPONENT_TYPE
-                .get(ResourceLocation.parse(comp.componentId()));
+                .get(Identifier.parse(comp.componentId()));
 
         SearchableItemList picker = new SearchableItemList(id -> {
             // Reached only from the registry tab, where there is no stack behind the entry and so
@@ -851,7 +851,7 @@ public class NbtItemEditScreen extends Screen {
      */
     @Override
     public void onClose() {
-        this.minecraft.setScreen(parent);
+        this.minecraft.gui.setScreen(parent);
     }
 
     @Override
@@ -868,7 +868,7 @@ public class NbtItemEditScreen extends Screen {
     private static List<String> getPotionSuggestions() {
         if (potionIds == null || potionIds.isEmpty()) {
             potionIds = new ArrayList<>();
-            for (ResourceLocation key : BuiltInRegistries.POTION.keySet()) {
+            for (Identifier key : BuiltInRegistries.POTION.keySet()) {
                 potionIds.add(key.toString());
             }
             Collections.sort(potionIds);
@@ -893,7 +893,7 @@ public class NbtItemEditScreen extends Screen {
 
     private void confirmClearAll() {
         if (criteria.isEmpty()) return;
-        this.minecraft.setScreen(new ConfirmDialog(this,
+        this.minecraft.gui.setScreen(new ConfirmDialog(this,
                 Component.translatable("editor.historystages.nbt.clear_all.confirm.title"),
                 Component.translatable("editor.historystages.nbt.clear_all.confirm.message", criteria.size()),
                 () -> {
@@ -1116,7 +1116,7 @@ public class NbtItemEditScreen extends Screen {
         @Override
         protected void onConfirm(InputValues values) {
             onDone.accept(values.getString("value"));
-            this.minecraft.setScreen(parent);
+            this.minecraft.gui.setScreen(parent);
         }
     }
 
@@ -1157,7 +1157,7 @@ public class NbtItemEditScreen extends Screen {
         @Override
         protected void onConfirm(InputValues values) {
             onDone.accept(values.getString("key"), values.getString("value"));
-            this.minecraft.setScreen(parent);
+            this.minecraft.gui.setScreen(parent);
         }
     }
 
@@ -1297,7 +1297,7 @@ public class NbtItemEditScreen extends Screen {
         @Override
         protected void onConfirm(InputValues values) {
             onDone.accept(values.getString("json"));
-            this.minecraft.setScreen(parent);
+            this.minecraft.gui.setScreen(parent);
         }
     }
 }

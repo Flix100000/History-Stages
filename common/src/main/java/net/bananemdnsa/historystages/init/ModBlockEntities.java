@@ -6,9 +6,8 @@ import net.bananemdnsa.historystages.block.entity.ScrollShelfBlockEntity;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntityType;
-import net.neoforged.bus.api.IEventBus;
-import net.neoforged.neoforge.registries.DeferredRegister;
-import net.neoforged.neoforge.registries.DeferredHolder;
+import net.bananemdnsa.historystages.platform.DeferredRegister;
+import net.bananemdnsa.historystages.platform.DeferredHolder;
 
 public class ModBlockEntities {
     public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITIES =
@@ -27,7 +26,7 @@ public class ModBlockEntities {
                     BlockEntityType.Builder.of(ScrollShelfBlockEntity::new,
                             ModBlocks.SCROLL_SHELVES.values().stream().map(DeferredHolder::get).toArray(Block[]::new)).build(null));
 
-    public static void register(IEventBus eventBus) {
-        BLOCK_ENTITIES.register(eventBus);
+    public static void register() {
+        BLOCK_ENTITIES.register();
     }
 }

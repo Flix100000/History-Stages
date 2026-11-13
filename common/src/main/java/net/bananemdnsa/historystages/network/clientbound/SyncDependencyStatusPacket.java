@@ -8,8 +8,8 @@ import net.bananemdnsa.historystages.client.cache.ClientDependencyCache;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.minecraft.resources.Identifier;
+import net.bananemdnsa.historystages.platform.IPayloadContext;
 
 /**
  * Server -> Client: Sends dependency check results for a stage. Carries {@code individual} so
@@ -21,7 +21,7 @@ public record SyncDependencyStatusPacket(String stageId, boolean individual, Str
     private static final Gson GSON = new GsonBuilder().create();
 
     public static final CustomPacketPayload.Type<SyncDependencyStatusPacket> TYPE =
-            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "sync_dependency_status"));
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "sync_dependency_status"));
 
     public static final StreamCodec<FriendlyByteBuf, SyncDependencyStatusPacket> STREAM_CODEC =
             StreamCodec.of(SyncDependencyStatusPacket::encode, SyncDependencyStatusPacket::decode);

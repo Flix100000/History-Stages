@@ -6,7 +6,7 @@ import net.bananemdnsa.historystages.block.entity.ScrollShelfBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.stats.Stats;
@@ -57,7 +57,7 @@ public class ScrollShelfBlock extends BaseEntityBlock {
 
     /** Items a scroll shelf accepts. A tag rather than a fixed list so packs can add their own. */
     public static final TagKey<Item> SCROLLS = TagKey.create(Registries.ITEM,
-            ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "scroll_shelf_scrolls"));
+            Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "scroll_shelf_scrolls"));
 
     public static final int SLOTS = 6;
     public static final List<BooleanProperty> SLOT_OCCUPIED_PROPERTIES = ChiseledBookShelfBlock.SLOT_OCCUPIED_PROPERTIES;
@@ -137,12 +137,12 @@ public class ScrollShelfBlock extends BaseEntityBlock {
         if (state.getValue(SLOT_OCCUPIED_PROPERTIES.get(slot.getAsInt()))) {
             return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
         }
-        if (!level.isClientSide) {
+        if (!level.isClientSide()) {
             player.awardStat(Stats.ITEM_USED.get(stack.getItem()));
             shelf.setItem(slot.getAsInt(), stack.consumeAndReturn(1, player));
             level.playSound(null, pos, SoundEvents.CHISELED_BOOKSHELF_INSERT, SoundSource.BLOCKS, 1.0F, 1.0F);
         }
-        return ItemInteractionResult.sidedSuccess(level.isClientSide);
+        return ItemInteractionResult.sidedSuccess(level.isClientSide());
     }
 
     @Override
@@ -151,7 +151,7 @@ public class ScrollShelfBlock extends BaseEntityBlock {
         OptionalInt slot = getHitSlot(hit, state);
         if (slot.isEmpty()) return InteractionResult.PASS;
         if (!state.getValue(SLOT_OCCUPIED_PROPERTIES.get(slot.getAsInt()))) return InteractionResult.CONSUME;
-        if (!level.isClientSide) {
+        if (!level.isClientSide()) {
             ItemStack taken = shelf.removeItem(slot.getAsInt(), 1);
             level.playSound(null, pos, SoundEvents.CHISELED_BOOKSHELF_PICKUP, SoundSource.BLOCKS, 1.0F, 1.0F);
             if (!player.getInventory().add(taken)) {
@@ -159,7 +159,7 @@ public class ScrollShelfBlock extends BaseEntityBlock {
             }
             level.gameEvent(player, GameEvent.BLOCK_CHANGE, pos);
         }
-        return InteractionResult.sidedSuccess(level.isClientSide);
+        return InteractionResult.sidedSuccess(level.isClientSide());
     }
 
     /**
@@ -221,7 +221,7 @@ public class ScrollShelfBlock extends BaseEntityBlock {
     @Override
     public void setPlacedBy(Level level, BlockPos pos, BlockState state, @Nullable LivingEntity placer, ItemStack stack) {
         super.setPlacedBy(level, pos, state, placer, stack);
-        if (!level.isClientSide && level.getBlockEntity(pos) instanceof ScrollShelfBlockEntity shelf) {
+        if (!level.isClientSide() && level.getBlockEntity(pos) instanceof ScrollShelfBlockEntity shelf) {
             shelf.syncSlotStates();
         }
     }

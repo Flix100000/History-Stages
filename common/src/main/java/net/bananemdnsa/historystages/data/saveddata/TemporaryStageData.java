@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.data.saveddata;
 
+import net.minecraft.core.UUIDUtil;
 import net.bananemdnsa.historystages.data.StageCauses;
 import net.bananemdnsa.historystages.api.stage.StageChangeCause;
 import net.bananemdnsa.historystages.api.stage.StageStates;
@@ -332,22 +333,22 @@ public class TemporaryStageData extends SavedData {
 
     public static TemporaryStageData load(CompoundTag nbt, HolderLookup.Provider registries) {
         TemporaryStageData data = new TemporaryStageData();
-        readTickMap(nbt.getList("global_active", Tag.TAG_COMPOUND), data.globalActive);
-        readTickMap(nbt.getList("global_cooldown", Tag.TAG_COMPOUND), data.globalCooldown);
-        readCountMap(nbt.getList("global_count", Tag.TAG_COMPOUND), data.globalCount);
+        readTickMap(nbt.getListOrEmpty("global_active"), data.globalActive);
+        readTickMap(nbt.getListOrEmpty("global_cooldown"), data.globalCooldown);
+        readCountMap(nbt.getListOrEmpty("global_count"), data.globalCount);
 
-        ListTag players = nbt.getList("players", Tag.TAG_COMPOUND);
+        ListTag players = nbt.getListOrEmpty("players");
         for (int i = 0; i < players.size(); i++) {
-            CompoundTag pTag = players.getCompound(i);
-            UUID uuid = pTag.getUUID("uuid");
+            CompoundTag pTag = players.getCompoundOrEmpty(i);
+            UUID uuid = pTag.read("uuid", UUIDUtil.CODEC).orElseThrow();
             Map<String, Long> active = new ConcurrentHashMap<>();
-            readTickMap(pTag.getList("active", Tag.TAG_COMPOUND), active);
+            readTickMap(pTag.getListOrEmpty("active"), active);
             if (!active.isEmpty()) data.playerActive.put(uuid, active);
             Map<String, Long> cd = new ConcurrentHashMap<>();
-            readTickMap(pTag.getList("cooldown", Tag.TAG_COMPOUND), cd);
+            readTickMap(pTag.getListOrEmpty("cooldown"), cd);
             if (!cd.isEmpty()) data.playerCooldown.put(uuid, cd);
             Map<String, Integer> cnt = new ConcurrentHashMap<>();
-            readCountMap(pTag.getList("count", Tag.TAG_COMPOUND), cnt);
+            readCountMap(pTag.getListOrEmpty("count"), cnt);
             if (!cnt.isEmpty()) data.playerCount.put(uuid, cnt);
         }
         return data;
@@ -366,7 +367,7 @@ public class TemporaryStageData extends SavedData {
         uuids.addAll(playerCount.keySet());
         for (UUID uuid : uuids) {
             CompoundTag pTag = new CompoundTag();
-            pTag.putUUID("uuid", uuid);
+            pTag.store("uuid", UUIDUtil.CODEC, uuid);
             pTag.put("active", writeTickMap(playerActive.getOrDefault(uuid, Map.of())));
             pTag.put("cooldown", writeTickMap(playerCooldown.getOrDefault(uuid, Map.of())));
             pTag.put("count", writeCountMap(playerCount.getOrDefault(uuid, Map.of())));
@@ -378,8 +379,8 @@ public class TemporaryStageData extends SavedData {
 
     private static void readTickMap(ListTag list, Map<String, Long> into) {
         for (int i = 0; i < list.size(); i++) {
-            CompoundTag e = list.getCompound(i);
-            into.put(e.getString("id"), e.getLong("ticks"));
+            CompoundTag e = list.getCompoundOrEmpty(i);
+            into.put(e.getStringOr("id", ""), e.getLong("ticks"));
         }
     }
 
@@ -396,8 +397,8 @@ public class TemporaryStageData extends SavedData {
 
     private static void readCountMap(ListTag list, Map<String, Integer> into) {
         for (int i = 0; i < list.size(); i++) {
-            CompoundTag e = list.getCompound(i);
-            into.put(e.getString("id"), e.getInt("count"));
+            CompoundTag e = list.getCompoundOrEmpty(i);
+            into.put(e.getStringOr("id", ""), e.getInt("count"));
         }
     }
 

@@ -9,7 +9,7 @@ import net.bananemdnsa.historystages.data.lock.engine.LockSubjects;
 import net.bananemdnsa.historystages.data.lock.engine.StackContents;
 import net.bananemdnsa.historystages.data.lock.engine.StackContentsReader;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
@@ -48,14 +48,14 @@ public final class Subjects {
      */
     public static LockSubject item(ItemStack stack) {
         if (stack == null || stack.isEmpty()) return new LockSubjects.ItemSubject("", "", null, null, null);
-        ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
+        Identifier id = BuiltInRegistries.ITEM.getKey(stack.getItem());
         return new LockSubjects.ItemSubject(id.toString(), id.getNamespace(), stack, stack.getItem(),
                 FluidContent.of(stack), StackContentsReader.of(stack));
     }
 
     /** An item without a stack: no fluid, no enchantments, and NBT criteria never match it. */
     public static LockSubject item(Item item) {
-        ResourceLocation id = BuiltInRegistries.ITEM.getKey(item);
+        Identifier id = BuiltInRegistries.ITEM.getKey(item);
         return new LockSubjects.ItemSubject(id.toString(), id.getNamespace(), null, item, null);
     }
 
@@ -64,7 +64,7 @@ public final class Subjects {
      * about by its text, so a stage naming it answers as it would for the real item.
      */
     public static LockSubject item(String itemId) {
-        ResourceLocation id = ResourceLocation.tryParse(itemId);
+        Identifier id = Identifier.tryParse(itemId);
         if (id == null) return new LockSubjects.ItemSubject(itemId, "", null, null, null);
         Item item = BuiltInRegistries.ITEM.getOptional(id).orElse(null);
         return new LockSubjects.ItemSubject(id.toString(), id.getNamespace(), null, item, null);

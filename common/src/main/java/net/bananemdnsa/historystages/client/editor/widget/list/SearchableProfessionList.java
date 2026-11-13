@@ -15,7 +15,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 /**
  * Searchable overlay list of every villager profession, plus the merchants that have none.
@@ -43,7 +43,7 @@ public class SearchableProfessionList extends AbstractSearchableList<String> {
     @Override
     protected List<String> loadEntries() {
         List<String> professions = new ArrayList<>();
-        for (ResourceLocation id : BuiltInRegistries.VILLAGER_PROFESSION.keySet()) {
+        for (Identifier id : BuiltInRegistries.VILLAGER_PROFESSION.keySet()) {
             professions.add(id.toString());
         }
         professions.add(TradePreview.WANDERING_TRADER);

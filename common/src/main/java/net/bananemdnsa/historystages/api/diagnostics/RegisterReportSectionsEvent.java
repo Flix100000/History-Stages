@@ -4,8 +4,8 @@ import net.bananemdnsa.historystages.data.diagnostics.AddonRegistrations;
 import net.bananemdnsa.historystages.data.diagnostics.ApiExtension;
 import net.bananemdnsa.historystages.data.diagnostics.ApiOwners;
 import net.bananemdnsa.historystages.data.diagnostics.ReportSections;
-import net.neoforged.bus.api.Event;
-import net.neoforged.fml.event.IModBusEvent;
+import net.bananemdnsa.historystages.platform.bus.Event;
+import net.bananemdnsa.historystages.platform.bus.IModBusEvent;
 
 /**
  * Fired once during common setup so other mods can add sections to the debug report.

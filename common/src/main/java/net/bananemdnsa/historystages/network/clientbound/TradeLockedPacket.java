@@ -9,8 +9,8 @@ import net.bananemdnsa.historystages.data.lock.TradeLockKind;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.minecraft.resources.Identifier;
+import net.bananemdnsa.historystages.platform.IPayloadContext;
 
 /**
  * Tells the client that the trade window just opened is empty because of stage locks.
@@ -36,7 +36,7 @@ public record TradeLockedPacket(int containerId, List<String> stageNames, TradeL
 
     public static final CustomPacketPayload.Type<TradeLockedPacket> TYPE =
             new CustomPacketPayload.Type<>(
-                    ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "trade_locked"));
+                    Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "trade_locked"));
 
     public static final StreamCodec<FriendlyByteBuf, TradeLockedPacket> STREAM_CODEC =
             StreamCodec.of(

@@ -3,7 +3,7 @@ package net.bananemdnsa.historystages.client.scroll;
 import net.bananemdnsa.historystages.data.scroll.OpenScrollContent;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
@@ -25,16 +25,16 @@ public final class ClientTagResolver implements OpenScrollContent.TagResolver {
 
     @Override
     public List<String> itemsInTag(String tagId) {
-        ResourceLocation id = ResourceLocation.tryParse(tagId);
+        Identifier id = Identifier.tryParse(tagId);
         if (id == null) return List.of();
         TagKey<Item> key = ItemTags.create(id);
         // BuiltInRegistries.ITEM has no getTagOrEmpty in this NeoForge version — getTag() returns
         // an Optional instead, empty for an unknown tag. Same pattern already used by
         // LootLocks.
-        Optional<? extends Iterable<Holder<Item>>> holders = BuiltInRegistries.ITEM.getTag(key);
+        Optional<? extends Iterable<Holder<Item>>> holders = BuiltInRegistries.ITEM.get(key);
         List<String> out = new ArrayList<>();
         holders.ifPresent(iterable -> iterable.forEach(holder ->
-                holder.unwrapKey().ifPresent(resourceKey -> out.add(resourceKey.location().toString()))));
+                holder.unwrapKey().ifPresent(resourceKey -> out.add(resourceKey.identifier().toString()))));
         return out;
     }
 }

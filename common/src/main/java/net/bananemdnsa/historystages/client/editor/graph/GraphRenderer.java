@@ -10,7 +10,7 @@ import net.bananemdnsa.historystages.data.graph.ResolvedStyle;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -178,7 +178,7 @@ final class GraphRenderer {
      * whole graph would be far worse than a colour.
      */
     private void drawBackgroundTexture(GuiGraphics g, String texture) {
-        ResourceLocation tex = ResourceLocation.tryParse(texture);
+        Identifier tex = Identifier.tryParse(texture);
         if (tex == null) return;
 
         float tile = camera.cellSize() * camera.zoom();
@@ -295,9 +295,9 @@ final class GraphRenderer {
     /** Cached: this runs once per visible node per frame, and a registry lookup is not free. */
     private ItemStack iconStack(String id) {
         return iconCache.computeIfAbsent(id, key -> {
-            ResourceLocation rl = ResourceLocation.tryParse(key);
+            Identifier rl = Identifier.tryParse(key);
             if (rl == null) return ItemStack.EMPTY;
-            Item item = BuiltInRegistries.ITEM.get(rl);
+            Item item = BuiltInRegistries.ITEM.getValue(rl);
             // An unknown id resolves to AIR rather than null, so both cases land here.
             return item == null || item == Items.AIR ? ItemStack.EMPTY : new ItemStack(item);
         });

@@ -21,16 +21,16 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.common.util.TriState;
-import net.neoforged.neoforge.event.entity.ProjectileImpactEvent;
-import net.neoforged.neoforge.event.entity.player.AttackEntityEvent;
-import net.neoforged.neoforge.event.entity.player.PlayerEvent;
-import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
-import net.neoforged.neoforge.event.level.BlockEvent;
-import net.neoforged.neoforge.event.level.ExplosionEvent;
-import net.neoforged.neoforge.event.tick.PlayerTickEvent;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
+import net.bananemdnsa.historystages.platform.TriState;
+import net.bananemdnsa.historystages.platform.event.entity.ProjectileImpactEvent;
+import net.bananemdnsa.historystages.platform.event.entity.player.AttackEntityEvent;
+import net.bananemdnsa.historystages.platform.event.entity.player.PlayerEvent;
+import net.bananemdnsa.historystages.platform.event.entity.player.PlayerInteractEvent;
+import net.bananemdnsa.historystages.platform.event.level.BlockEvent;
+import net.bananemdnsa.historystages.platform.event.level.ExplosionEvent;
+import net.bananemdnsa.historystages.platform.event.tick.PlayerTickEvent;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -200,7 +200,7 @@ public class BiomeLockHandler {
 
     private static BiomeView viewOf(LevelReader level, BlockPos pos) {
         Holder<Biome> holder = level.getBiome(pos);
-        String id = holder.unwrapKey().map(k -> k.location().toString()).orElse(null);
+        String id = holder.unwrapKey().map(k -> k.identifier().toString()).orElse(null);
         Set<String> tags = new HashSet<>();
         holder.tags().forEach(t -> tags.add(t.location().toString()));
         return new BiomeView(id, tags);
@@ -270,7 +270,7 @@ public class BiomeLockHandler {
         if (Config.GAMEPLAY.biomeLockInChat.get()) {
             player.sendSystemMessage(msg);
         } else {
-            player.displayClientMessage(msg, true);
+            player.sendOverlayMessage(msg);
         }
 
         DebugLogger.runtime(HsRuntimeCategories.BIOME_LOCK, player.getName().getString(),

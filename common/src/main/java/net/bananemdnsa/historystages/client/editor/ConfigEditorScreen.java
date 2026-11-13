@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor;
 
+import net.bananemdnsa.historystages.platform.Services;
 import com.mojang.logging.LogUtils;
 import org.slf4j.Logger;
 import net.bananemdnsa.historystages.Config;
@@ -57,7 +58,7 @@ import net.bananemdnsa.historystages.client.editor.widget.list.SearchableTexture
 
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.core.registries.BuiltInRegistries;
 
 import java.util.ArrayList;
@@ -249,13 +250,13 @@ public class ConfigEditorScreen extends Screen {
         this.addRenderableWidget(StyledButton.of(
                 Component.translatable("editor.historystages.reset"),
                 btn -> {
-                    this.minecraft.setScreen(new ConfirmDialog(
+                    this.minecraft.gui.setScreen(new ConfirmDialog(
                             this,
                             Component.translatable("editor.historystages.reset_warning_title"),
                             Component.translatable("editor.historystages.reset_warning"),
                             () -> {
                                 resetToDefaults();
-                                this.minecraft.setScreen(this);
+                                this.minecraft.gui.setScreen(this);
                             }
                     ));
                 }, this.width - 70, this.height - 30, 60, 20));
@@ -1401,23 +1402,23 @@ public class ConfigEditorScreen extends Screen {
             case BOOLEAN -> {
                 if (picked != null) entry.value = String.valueOf(picked.booleanValue());
             }
-            case INTEGER, DOUBLE, STRING -> this.minecraft.setScreen(new ValueInputScreen(this, entry));
+            case INTEGER, DOUBLE, STRING -> this.minecraft.gui.setScreen(new ValueInputScreen(this, entry));
             case RICH_TEXT -> openRichTextEditor(entry);
             case CUSTOM_SCREEN -> openCustomFieldScreen(entry);
-            case ITEM_LIST -> this.minecraft.setScreen(new ItemListEditorScreen(this, entry));
-            case TAG_LIST -> this.minecraft.setScreen(new TagListEditorScreen(this, entry));
+            case ITEM_LIST -> this.minecraft.gui.setScreen(new ItemListEditorScreen(this, entry));
+            case TAG_LIST -> this.minecraft.gui.setScreen(new TagListEditorScreen(this, entry));
             case ITEM -> openItemPicker(entry);
-            case BOOSTER_LIST -> this.minecraft.setScreen(new BoosterListEditorScreen(this, entry));
-            case EFFECT_LIST -> this.minecraft.setScreen(new EffectListEditorScreen(this, entry));
+            case BOOSTER_LIST -> this.minecraft.gui.setScreen(new BoosterListEditorScreen(this, entry));
+            case EFFECT_LIST -> this.minecraft.gui.setScreen(new EffectListEditorScreen(this, entry));
             case ENUM -> openEnumDropdown(entry, contentLeft, rowY);
-            case COLOR -> this.minecraft.setScreen(new ColorInputScreen(this, entry));
+            case COLOR -> this.minecraft.gui.setScreen(new ColorInputScreen(this, entry));
             case SUBSCREEN -> {
                 if ("scroll_tooltip.lines".equals(entry.key)) {
-                    this.minecraft.setScreen(new ScrollTooltipScreen(this, entry));
+                    this.minecraft.gui.setScreen(new ScrollTooltipScreen(this, entry));
                 } else if ("open_scroll.chapters".equals(entry.key)) {
-                    this.minecraft.setScreen(new OpenScrollDocumentScreen(this));
+                    this.minecraft.gui.setScreen(new OpenScrollDocumentScreen(this));
                 } else {
-                    this.minecraft.setScreen(new GraphStyleScreen(this));
+                    this.minecraft.gui.setScreen(new GraphStyleScreen(this));
                 }
             }
             case TEXTURE -> openTexturePicker(entry);
@@ -1452,14 +1453,14 @@ public class ConfigEditorScreen extends Screen {
         if (field == null) return;
         CustomFieldScreens.Factory factory = CustomFieldScreens.forField(field);
         if (factory == null) return;
-        this.minecraft.setScreen(factory.create(this, entry.value, text -> entry.value = text == null ? "" : text));
+        this.minecraft.gui.setScreen(factory.create(this, entry.value, text -> entry.value = text == null ? "" : text));
     }
 
     private void openRichTextEditor(ConfigEntry entry) {
         List<String> placeholders = entry.placeholders != null
                 ? entry.placeholders
                 : RICH_TEXT_PLACEHOLDERS.getOrDefault(entry.key, List.of());
-        this.minecraft.setScreen(new FormattedTextScreen(this,
+        this.minecraft.gui.setScreen(new FormattedTextScreen(this,
                 Component.translatable(entry.labelKey),
                 entry.value,
                 entry.defaultValue,
@@ -1574,14 +1575,14 @@ public class ConfigEditorScreen extends Screen {
      */
     private void tryClose() {
         if (hasChanges()) {
-            this.minecraft.setScreen(new ConfirmDialog(
+            this.minecraft.gui.setScreen(new ConfirmDialog(
                     this,
                     Component.translatable("editor.historystages.unsaved_warning_title"),
                     Component.translatable("editor.historystages.unsaved_warning"),
-                    () -> this.minecraft.setScreen(parent)
+                    () -> this.minecraft.gui.setScreen(parent)
             ));
         } else {
-            this.minecraft.setScreen(parent);
+            this.minecraft.gui.setScreen(parent);
         }
     }
 
@@ -1673,14 +1674,14 @@ public class ConfigEditorScreen extends Screen {
         }
 
         // JEI hiding (Issue #64): live-apply config changes if JEI is loaded.
-        if (net.neoforged.fml.ModList.get().isLoaded("jei")) {
+        if (net.neoforged.fml.Services.isModLoaded("jei")) {
             try {
                 net.bananemdnsa.historystages.compat.jei.JEIPlugin.tryApplyDiff();
             } catch (Throwable ignored) {}
         }
 
         // EMI: rebuild its index so booster/config changes show up immediately.
-        if (net.neoforged.fml.ModList.get().isLoaded("emi")) {
+        if (net.neoforged.fml.Services.isModLoaded("emi")) {
             try {
                 net.bananemdnsa.historystages.compat.emi.EmiReloadBridge.reloadIfPresent();
             } catch (Throwable ignored) {}
@@ -1690,7 +1691,7 @@ public class ConfigEditorScreen extends Screen {
     @Override
     public void onClose() {
         closeDropdown();
-        this.minecraft.setScreen(parent);
+        this.minecraft.gui.setScreen(parent);
     }
 
     @Override
@@ -2029,7 +2030,7 @@ public class ConfigEditorScreen extends Screen {
         private void saveAndClose() {
             entry.value = String.join(ConfigSpecCodec.LIST_SEPARATOR, items);
 
-            this.minecraft.setScreen(parent);
+            this.minecraft.gui.setScreen(parent);
         }
 
         /**
@@ -2100,9 +2101,9 @@ public class ConfigEditorScreen extends Screen {
                     }
 
                     // Item icon
-                    ResourceLocation rl = ResourceLocation.tryParse(itemId);
+                    Identifier rl = Identifier.tryParse(itemId);
                     if (rl != null) {
-                        Item item = BuiltInRegistries.ITEM.get(rl);
+                        Item item = BuiltInRegistries.ITEM.getValue(rl);
                         if (item != null) {
                             guiGraphics.renderItem(new ItemStack(item), contentLeft + 2, y + 2);
                         }
@@ -2323,7 +2324,7 @@ public class ConfigEditorScreen extends Screen {
         private void saveAndClose() {
             entry.value = String.join(ConfigSpecCodec.LIST_SEPARATOR, tags);
 
-            this.minecraft.setScreen(parent);
+            this.minecraft.gui.setScreen(parent);
         }
 
         /**
@@ -2570,7 +2571,7 @@ public class ConfigEditorScreen extends Screen {
         @Override
         protected void onConfirm(InputValues values) {
             entry.value = values.getString("value");
-            this.minecraft.setScreen(parent);
+            this.minecraft.gui.setScreen(parent);
         }
     }
 
@@ -2691,7 +2692,7 @@ public class ConfigEditorScreen extends Screen {
                 final EffectRow rRef = r;
                 r.editButton = StyledButton.of(
                         Component.translatable("editor.historystages.edit"),
-                        btn -> this.minecraft.setScreen(new EffectValuesDialog(
+                        btn -> this.minecraft.gui.setScreen(new EffectValuesDialog(
                                 this, rRef.effectId, rRef.seconds, rRef.amplifier,
                                 (seconds, amplifier) -> {
                                     rRef.seconds = seconds;
@@ -2716,7 +2717,7 @@ public class ConfigEditorScreen extends Screen {
                 sb.append(r.effectId).append(',').append(r.seconds).append(',').append(r.amplifier);
             }
             entry.value = sb.toString();
-            this.minecraft.setScreen(parent);
+            this.minecraft.gui.setScreen(parent);
         }
 
         @Override
@@ -3047,7 +3048,7 @@ public class ConfigEditorScreen extends Screen {
                 final BoosterRow rRef = r;
                 r.editButton = StyledButton.of(
                         Component.translatable("editor.historystages.edit"),
-                        btn -> this.minecraft.setScreen(new BoosterEditScreen(this, rRef)),
+                        btn -> this.minecraft.gui.setScreen(new BoosterEditScreen(this, rRef)),
                         0, 0, 50, 18);
                 this.addRenderableWidget(r.editButton);
             }
@@ -3116,7 +3117,7 @@ public class ConfigEditorScreen extends Screen {
                         .append(',').append(r.tier).append(',').append(r.mode.serialize());
             }
             entry.value = sb.toString();
-            this.minecraft.setScreen(parent);
+            this.minecraft.gui.setScreen(parent);
         }
 
         @Override
@@ -3175,9 +3176,9 @@ public class ConfigEditorScreen extends Screen {
                     }
 
                     // Block icon
-                    ResourceLocation rl = ResourceLocation.tryParse(r.blockId);
+                    Identifier rl = Identifier.tryParse(r.blockId);
                     if (rl != null) {
-                        Item item = BuiltInRegistries.ITEM.get(rl);
+                        Item item = BuiltInRegistries.ITEM.getValue(rl);
                         if (item != null) {
                             guiGraphics.renderItem(new ItemStack(item), contentLeft + 2, y + 5);
                         }
@@ -3423,7 +3424,7 @@ public class ConfigEditorScreen extends Screen {
 
             this.addRenderableWidget(StyledButton.of(
                     Component.translatable("editor.historystages.back"),
-                    btn -> this.minecraft.setScreen(parent),
+                    btn -> this.minecraft.gui.setScreen(parent),
                     10, this.height - 25, 50, 18));
             this.addRenderableWidget(StyledButton.of(
                     Component.translatable("editor.historystages.save"),
@@ -3435,7 +3436,7 @@ public class ConfigEditorScreen extends Screen {
             row.cost = editCost;
             row.tier = editTier;
             row.mode = editMode;
-            this.minecraft.setScreen(parent);
+            this.minecraft.gui.setScreen(parent);
         }
 
         private static String modeKey(net.bananemdnsa.historystages.research.TierMode m) {
@@ -3457,9 +3458,9 @@ public class ConfigEditorScreen extends Screen {
                     this.width / 2, 8, 0xFFFFFF);
 
             // Block icon + ID header
-            ResourceLocation rl = ResourceLocation.tryParse(row.blockId);
+            Identifier rl = Identifier.tryParse(row.blockId);
             if (rl != null) {
-                Item item = BuiltInRegistries.ITEM.get(rl);
+                Item item = BuiltInRegistries.ITEM.getValue(rl);
                 if (item != null) g.renderItem(new ItemStack(item), 30, 22);
             }
             g.drawString(this.font, row.blockId, 52, 26, 0xCCCCCC, false);

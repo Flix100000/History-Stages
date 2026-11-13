@@ -1,7 +1,7 @@
 package net.bananemdnsa.historystages.client.editor.widget;
 
 import net.bananemdnsa.historystages.client.editor.anim.Timing;
-import net.minecraft.Util;
+import net.minecraft.util.Util;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 

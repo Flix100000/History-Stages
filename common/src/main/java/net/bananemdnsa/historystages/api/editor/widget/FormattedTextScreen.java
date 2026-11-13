@@ -128,7 +128,7 @@ public class FormattedTextScreen extends AbstractInputScreen {
     @Override
     protected void onConfirm(InputValues values) {
         if (onDone != null) onDone.accept(area.getValue());
-        this.minecraft.setScreen(parent);
+        this.minecraft.gui.setScreen(parent);
     }
 
     // --- layout ---

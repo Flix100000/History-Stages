@@ -4,7 +4,7 @@ import net.bananemdnsa.historystages.data.ItemEntry;
 import net.bananemdnsa.historystages.data.NbtMatcher;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -87,12 +87,12 @@ public class EntityInteractionLockEntry {
         if (entryId == null || entryId.isBlank()) return false;
 
         if (entryId.startsWith("#")) {
-            ResourceLocation tagRl = ResourceLocation.tryParse(entryId.substring(1));
+            Identifier tagRl = Identifier.tryParse(entryId.substring(1));
             if (tagRl == null) return false;
             TagKey<Item> tagKey = TagKey.create(Registries.ITEM, tagRl);
             if (!held.is(tagKey)) return false;
         } else {
-            ResourceLocation heldRl = BuiltInRegistries.ITEM.getKey(held.getItem());
+            Identifier heldRl = BuiltInRegistries.ITEM.getKey(held.getItem());
             if (heldRl == null || !heldRl.toString().equals(entryId)) return false;
         }
 

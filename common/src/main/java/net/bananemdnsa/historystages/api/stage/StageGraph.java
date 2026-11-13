@@ -105,8 +105,8 @@ public final class StageGraph {
     }
 
     private static Predicate<String> unlocked(ServerPlayer player) {
-        StageData global = StageData.get(player.serverLevel());
-        IndividualStageData individual = IndividualStageData.get(player.serverLevel());
+        StageData global = StageData.get(player.level());
+        IndividualStageData individual = IndividualStageData.get(player.level());
         return key -> key.startsWith("i:")
                 ? individual.hasStage(player.getUUID(), key.substring(2))
                 : global.hasStage(key.substring(2));

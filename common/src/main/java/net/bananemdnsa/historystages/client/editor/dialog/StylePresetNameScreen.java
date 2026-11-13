@@ -53,7 +53,7 @@ public class StylePresetNameScreen extends AbstractInputScreen {
     @Override
     protected void onConfirm(InputValues values) {
         // Back to the parent first: the callback may open a screen of its own.
-        this.minecraft.setScreen(parent);
+        this.minecraft.gui.setScreen(parent);
         onAccept.accept(values.getString("name").trim());
     }
 }

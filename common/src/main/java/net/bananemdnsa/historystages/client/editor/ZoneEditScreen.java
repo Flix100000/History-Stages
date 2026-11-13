@@ -164,10 +164,10 @@ public class ZoneEditScreen extends Screen {
         int y = this.height - BOTTOM_BAR + 6;
         addRenderableWidget(StyledButton.of(CommonComponents.GUI_DONE, b -> {
             onDone.accept(zone);
-            this.minecraft.setScreen(parent);
+            this.minecraft.gui.setScreen(parent);
         }, centre - 103, y, 100, 20));
         addRenderableWidget(StyledButton.of(CommonComponents.GUI_CANCEL,
-                b -> this.minecraft.setScreen(parent), centre + 3, y, 100, 20));
+                b -> this.minecraft.gui.setScreen(parent), centre + 3, y, 100, 20));
     }
 
     // -------------------------------------------------------------------------------------
@@ -376,7 +376,7 @@ public class ZoneEditScreen extends Screen {
     // -------------------------------------------------------------------------------------
 
     private void editMessage() {
-        this.minecraft.setScreen(new FormattedTextScreen(this,
+        this.minecraft.gui.setScreen(new FormattedTextScreen(this,
                 Component.translatable("editor.historystages.zone.rule.message_text"),
                 zone.getRules().getMessage().getText(),
                 Component.translatable("editor.historystages.zone.rule.message_text.desc").getString(),
@@ -386,14 +386,14 @@ public class ZoneEditScreen extends Screen {
 
     private void editDamageAmount() {
         ZoneRules.Damage damage = zone.getRules().getDamage();
-        this.minecraft.setScreen(new CountInputScreen(
+        this.minecraft.gui.setScreen(new CountInputScreen(
                 this, Component.translatable("editor.historystages.zone.rule.damage_amount"),
                 "", (int) Math.round(damage.getAmount()), 1, 100, damage::setAmount));
     }
 
     private void editDamageInterval() {
         ZoneRules.Damage damage = zone.getRules().getDamage();
-        this.minecraft.setScreen(new CountInputScreen(
+        this.minecraft.gui.setScreen(new CountInputScreen(
                 this, Component.translatable("editor.historystages.zone.rule.damage_interval"),
                 "", damage.getInterval(), 1, 600, damage::setInterval));
     }
@@ -407,7 +407,7 @@ public class ZoneEditScreen extends Screen {
      *                 from there would look like the map had closed itself
      */
     private void editShape(Screen returnTo, int index, ZoneShapeType type, ZoneShape initial) {
-        this.minecraft.setScreen(new ZoneShapeEditScreen(returnTo, type, initial, shape -> {
+        this.minecraft.gui.setScreen(new ZoneShapeEditScreen(returnTo, type, initial, shape -> {
             List<ZoneShape> list = new ArrayList<>(zone.getShapes());
             if (index < 0) {
                 list.add(shape);
@@ -509,7 +509,7 @@ public class ZoneEditScreen extends Screen {
         if (index < 0 || index >= list.size()) return;
 
         ZoneEffectSpec spec = list.get(index);
-        this.minecraft.setScreen(new EffectValuesDialog(this, spec.id(), spec.seconds(),
+        this.minecraft.gui.setScreen(new EffectValuesDialog(this, spec.id(), spec.seconds(),
                 spec.amplifier(), (seconds, amplifier) -> {
                     List<ZoneEffectSpec> updated =
                             new ArrayList<>(zone.getRules().getEffects().getList());
@@ -695,7 +695,7 @@ public class ZoneEditScreen extends Screen {
     /** The marker belongs on the map only when the player is in the world the zone lives in. */
     private boolean playerInSameDimension() {
         return this.minecraft.player != null
-                && this.minecraft.player.level().dimension().location().toString()
+                && this.minecraft.player.level().dimension().identifier().toString()
                         .equals(zone.getDimension());
     }
 
@@ -737,7 +737,7 @@ public class ZoneEditScreen extends Screen {
                 int size = mapSize();
                 if (mouseX >= contentX() && mouseX < contentX() + size
                         && mouseY >= TOP && mouseY < TOP + size) {
-                    this.minecraft.setScreen(new ZoneMapScreen(this, zone, selectedShape,
+                    this.minecraft.gui.setScreen(new ZoneMapScreen(this, zone, selectedShape,
                             index -> selectedShape = index,
                             (returnTo, index) -> {
                                 ZoneShape shape = zone.getShapes().get(index);
@@ -804,7 +804,7 @@ public class ZoneEditScreen extends Screen {
     // whole GUI and drops the player back into the world instead of one level up.
     @Override
     public void onClose() {
-        this.minecraft.setScreen(parent);
+        this.minecraft.gui.setScreen(parent);
     }
 
     @Override

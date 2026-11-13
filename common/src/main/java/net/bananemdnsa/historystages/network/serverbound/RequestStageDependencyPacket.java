@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.network.serverbound;
 
+import dev.architectury.networking.NetworkManager;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.StageManager;
@@ -11,10 +12,9 @@ import net.bananemdnsa.historystages.api.stage.StageScope;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.network.PacketDistributor;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.bananemdnsa.historystages.platform.IPayloadContext;
 
 /**
  * Client -> Server: Request dependency status for a stage without a Research Pedestal — used by
@@ -33,7 +33,7 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 public record RequestStageDependencyPacket(String stageId, boolean individual) implements CustomPacketPayload {
 
     public static final CustomPacketPayload.Type<RequestStageDependencyPacket> TYPE =
-            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "request_stage_dependency"));
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "request_stage_dependency"));
 
     public static final StreamCodec<FriendlyByteBuf, RequestStageDependencyPacket> STREAM_CODEC =
             StreamCodec.of(RequestStageDependencyPacket::encode, RequestStageDependencyPacket::decode);
@@ -63,7 +63,7 @@ public record RequestStageDependencyPacket(String stageId, boolean individual) i
                     .checkAll(entry, player, player.level(),
                             packet.individual ? StageScope.INDIVIDUAL : StageScope.GLOBAL, null, 0.0)
                     .withoutCanDeposit();
-            PacketDistributor.sendToPlayer(player,
+            NetworkManager.sendToPlayer(player,
                     new SyncDependencyStatusPacket(packet.stageId, packet.individual, result));
         });
     }

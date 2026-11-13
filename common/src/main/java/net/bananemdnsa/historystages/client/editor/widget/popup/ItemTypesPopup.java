@@ -22,7 +22,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.item.ItemStack;
 
@@ -85,8 +85,8 @@ public class ItemTypesPopup implements PickerOverlay {
         searchBar.filters().addOption("only_unticked",
                 Component.translatable("editor.historystages.search.filter.unticked").getString(), "ticked");
         for (String id : types) {
-            ResourceLocation key = ResourceLocation.tryParse(id);
-            ItemStack stack = key != null ? new ItemStack(BuiltInRegistries.ITEM.get(key)) : ItemStack.EMPTY;
+            Identifier key = Identifier.tryParse(id);
+            ItemStack stack = key != null ? new ItemStack(BuiltInRegistries.ITEM.getValue(key)) : ItemStack.EMPTY;
             String name = ItemTypeChoices.displayName(id);
             String namespace = key != null ? key.getNamespace() : "";
             entries.add(new Entry(id, stack, name, namespace, (name + " " + id).toLowerCase()));

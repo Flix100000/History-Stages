@@ -9,7 +9,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
@@ -39,9 +39,9 @@ public final class EntityPreviewRenderer {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null) return null;
         try {
-            ResourceLocation rl = ResourceLocation.tryParse(entityId);
+            Identifier rl = Identifier.tryParse(entityId);
             if (rl == null) return null;
-            EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.get(rl);
+            EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.getValue(rl);
             if (type == null) return null;
             Entity entity = type.create(mc.level);
             if (entity instanceof LivingEntity living) {

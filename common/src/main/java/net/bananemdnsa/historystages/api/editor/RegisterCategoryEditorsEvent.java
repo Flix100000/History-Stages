@@ -4,8 +4,8 @@ import net.bananemdnsa.historystages.client.editor.tab.CategoryEditors;
 
 import net.bananemdnsa.historystages.api.editor.CategoryEditor;
 
-import net.neoforged.bus.api.Event;
-import net.neoforged.fml.event.IModBusEvent;
+import net.bananemdnsa.historystages.platform.bus.Event;
+import net.bananemdnsa.historystages.platform.bus.IModBusEvent;
 
 /**
  * Fired once on the client so an addon can give its lock category a tab in the stage editor.

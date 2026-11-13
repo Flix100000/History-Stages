@@ -4,7 +4,7 @@ import java.util.List;
 
 import net.bananemdnsa.historystages.data.lock.ZoneMapView;
 import net.bananemdnsa.historystages.data.lock.ZoneShape;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.client.gui.Font;
 import com.mojang.math.Axis;
 
@@ -31,10 +31,10 @@ public final class ZoneMapRenderer {
     private static final int HOT_FILL = 0x38FFCC00;
 
     /** Vanilla's own map markers, so the arrow on this map is the arrow players already know. */
-    private static final ResourceLocation MARKER_ICON =
-            ResourceLocation.withDefaultNamespace("textures/map/decorations/player.png");
-    private static final ResourceLocation MARKER_OFF_MAP =
-            ResourceLocation.withDefaultNamespace("textures/map/decorations/player_off_map.png");
+    private static final Identifier MARKER_ICON =
+            Identifier.withDefaultNamespace("textures/map/decorations/player.png");
+    private static final Identifier MARKER_OFF_MAP =
+            Identifier.withDefaultNamespace("textures/map/decorations/player_off_map.png");
 
     /** The icon is eight pixels; a little larger reads better against terrain. */
     private static final float MARKER_SCALE = 1.5f;

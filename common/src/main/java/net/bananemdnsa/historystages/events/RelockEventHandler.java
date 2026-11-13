@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.events;
 
+import net.bananemdnsa.historystages.platform.Services;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.api.stage.StageEvent;
 import net.bananemdnsa.historystages.data.relock.ConditionalStageManager;
@@ -7,10 +8,9 @@ import net.bananemdnsa.historystages.data.relock.LockTriggerManager;
 import net.bananemdnsa.historystages.data.relock.LostStages;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.entity.player.PlayerEvent;
-import net.neoforged.neoforge.server.ServerLifecycleHooks;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
+import net.bananemdnsa.historystages.platform.event.entity.player.PlayerEvent;
 
 /** Housekeeping for re-locking that hangs off events rather than off the tick. */
 @EventBusSubscriber(modid = HistoryStages.MOD_ID)
@@ -44,7 +44,7 @@ public final class RelockEventHandler {
     }
 
     private static ServerLevel overworld() {
-        var server = ServerLifecycleHooks.getCurrentServer();
+        var server = Services.currentServer();
         return server != null ? server.overworld() : null;
     }
 }

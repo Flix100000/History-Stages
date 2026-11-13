@@ -4,7 +4,7 @@ import net.bananemdnsa.historystages.data.NbtMatcher;
 import net.bananemdnsa.historystages.util.lock.StageLockHelper;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.BlockItem;
@@ -87,7 +87,7 @@ public final class Disguises {
     private static TagKey<Item> tagKey(String tagId) {
         TagKey<Item> cached = TAG_KEYS.get(tagId);
         if (cached != null) return cached;
-        ResourceLocation rl = ResourceLocation.tryParse(tagId);
+        Identifier rl = Identifier.tryParse(tagId);
         if (rl == null) return null;
         TagKey<Item> key = TagKey.create(Registries.ITEM, rl);
         TAG_KEYS.put(tagId, key);
@@ -204,7 +204,7 @@ public final class Disguises {
 
     @Nullable
     public static Item itemById(String id) {
-        ResourceLocation rl = ResourceLocation.tryParse(id);
+        Identifier rl = Identifier.tryParse(id);
         if (rl == null) return null;
         Item item = BuiltInRegistries.ITEM.getOptional(rl).orElse(null);
         return item == Items.AIR ? null : item;

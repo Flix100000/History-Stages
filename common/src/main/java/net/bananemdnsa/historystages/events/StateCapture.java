@@ -8,7 +8,7 @@ import net.bananemdnsa.historystages.structure.StructureCluster;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -24,12 +24,12 @@ public final class StateCapture {
     private StateCapture() {}
 
     public static StateView forPlayer(ServerPlayer p) {
-        ServerLevel sl = p.serverLevel();
+        ServerLevel sl = p.level();
         BlockPos pos = p.blockPosition();
         return StateView.builder()
-                .dimension(() -> sl.dimension().location().toString())
+                .dimension(() -> sl.dimension().identifier().toString())
                 .biome(() -> {
-                    ResourceLocation key = sl.registryAccess().registryOrThrow(Registries.BIOME)
+                    Identifier key = sl.registryAccess().lookupOrThrow(Registries.BIOME)
                             .getKey(sl.getBiome(pos).value());
                     return key == null ? "" : key.toString();
                 })
@@ -65,7 +65,7 @@ public final class StateCapture {
         for (StructureCluster c : clusters) {
             if (!c.contains(pos)) continue;
             var h = c.structure();
-            h.unwrapKey().ifPresent(k -> ids.add(k.location().toString()));
+            h.unwrapKey().ifPresent(k -> ids.add(k.identifier().toString()));
             h.tags().forEach(tag -> tags.add(tag.location().toString()));
         }
         return new StateView.Structures(ids, tags);
@@ -74,7 +74,7 @@ public final class StateCapture {
     private static Set<String> effectsOf(ServerPlayer p) {
         Set<String> out = new HashSet<>();
         for (MobEffectInstance inst : p.getActiveEffects()) {
-            ResourceLocation key = BuiltInRegistries.MOB_EFFECT.getKey(inst.getEffect().value());
+            Identifier key = BuiltInRegistries.MOB_EFFECT.getKey(inst.getEffect().value());
             if (key != null) out.add(key.toString());
         }
         return out;
@@ -86,7 +86,7 @@ public final class StateCapture {
         for (int i = 0; i < inv.getContainerSize(); i++) {
             ItemStack s = inv.getItem(i);
             if (s.isEmpty()) continue;
-            ResourceLocation key = BuiltInRegistries.ITEM.getKey(s.getItem());
+            Identifier key = BuiltInRegistries.ITEM.getKey(s.getItem());
             if (key != null) out.add(key.toString());
         }
         return out;

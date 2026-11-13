@@ -12,7 +12,7 @@ import net.bananemdnsa.historystages.api.dependency.Requirement;
 import net.bananemdnsa.historystages.api.dependency.RequirementContext;
 import net.bananemdnsa.historystages.api.stage.StageScope;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.stats.ServerStatsCounter;
 import net.minecraft.stats.Stats;
@@ -70,18 +70,18 @@ public class EntityKillRequirement implements Requirement {
     }
 
     private static int getKillCount(ServerPlayer player, String entityId) {
-        ResourceLocation rl = ResourceLocation.tryParse(entityId);
+        Identifier rl = Identifier.tryParse(entityId);
         if (rl == null) return 0;
-        EntityType<?> entityType = BuiltInRegistries.ENTITY_TYPE.get(rl);
+        EntityType<?> entityType = BuiltInRegistries.ENTITY_TYPE.getValue(rl);
         if (entityType == null) return 0;
         ServerStatsCounter stats = player.getStats();
         return stats.getValue(Stats.ENTITY_KILLED.get(entityType));
     }
 
     private static String getEntityDisplayName(String entityId) {
-        ResourceLocation rl = ResourceLocation.tryParse(entityId);
+        Identifier rl = Identifier.tryParse(entityId);
         if (rl == null) return entityId;
-        EntityType<?> entityType = BuiltInRegistries.ENTITY_TYPE.get(rl);
+        EntityType<?> entityType = BuiltInRegistries.ENTITY_TYPE.getValue(rl);
         if (entityType == null) return entityId;
         return entityType.getDescription().getString();
     }

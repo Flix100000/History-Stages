@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.network.serverbound;
 
+import net.minecraft.server.permissions.Permissions;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.bananemdnsa.historystages.HistoryStages;
@@ -13,9 +14,9 @@ import net.bananemdnsa.historystages.network.clientbound.SyncStageDefinitionsPac
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.bananemdnsa.historystages.platform.IPayloadContext;
 
 /**
  * Sets or removes one rule in {@code disguises.json}.
@@ -28,7 +29,7 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 public record SaveDisguisePacket(String key, String previousKey, String ruleJson) implements CustomPacketPayload {
 
     public static final CustomPacketPayload.Type<SaveDisguisePacket> TYPE =
-            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "save_disguise"));
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "save_disguise"));
 
     public static final StreamCodec<FriendlyByteBuf, SaveDisguisePacket> STREAM_CODEC =
             StreamCodec.of(SaveDisguisePacket::encode, SaveDisguisePacket::decode);
@@ -49,7 +50,7 @@ public record SaveDisguisePacket(String key, String previousKey, String ruleJson
     public static void handle(SaveDisguisePacket msg, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer player)) return;
-            if (!player.hasPermissions(2)) return;
+            if (!player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)) return;
 
             DisguiseRuleSet set = DisguiseData.get();
             if (!msg.previousKey.isEmpty() && !msg.previousKey.equals(msg.key)) {

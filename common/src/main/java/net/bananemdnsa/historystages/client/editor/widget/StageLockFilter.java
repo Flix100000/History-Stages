@@ -5,7 +5,7 @@ import net.bananemdnsa.historystages.data.lock.NamedLockEntry;
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 
@@ -37,11 +37,11 @@ public final class StageLockFilter {
 
         Set<String> taggedItems = new HashSet<>();
         for (String tagId : entry.getTags()) {
-            ResourceLocation tagRl = ResourceLocation.tryParse(tagId);
+            Identifier tagRl = Identifier.tryParse(tagId);
             if (tagRl == null) continue;
             TagKey<Item> key = TagKey.create(Registries.ITEM, tagRl);
-            BuiltInRegistries.ITEM.getTag(key).ifPresent(holders -> holders.forEach(h ->
-                    h.unwrapKey().ifPresent(rk -> taggedItems.add(rk.location().toString()))));
+            BuiltInRegistries.ITEM.get(key).ifPresent(holders -> holders.forEach(h ->
+                    h.unwrapKey().ifPresent(rk -> taggedItems.add(rk.identifier().toString()))));
         }
 
         return id -> {

@@ -30,7 +30,7 @@ import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -189,7 +189,7 @@ public class SearchableItemList implements PickerOverlay {
 
         boolean askReliableRemover = ReliableRemoverCompat.isPresent();
         for (Item item : BuiltInRegistries.ITEM) {
-            ResourceLocation key = BuiltInRegistries.ITEM.getKey(item);
+            Identifier key = BuiltInRegistries.ITEM.getKey(item);
             if (key != null) {
                 ItemStack stack = new ItemStack(item);
                 String searchName = stack.getHoverName().getString().toLowerCase();
@@ -485,7 +485,7 @@ public class SearchableItemList implements PickerOverlay {
             for (Integer slot : selectedInventorySlots) {
                 ItemStack stack = player.getInventory().getItem(slot);
                 if (!stack.isEmpty()) {
-                    ResourceLocation key = BuiltInRegistries.ITEM.getKey(stack.getItem());
+                    Identifier key = BuiltInRegistries.ITEM.getKey(stack.getItem());
                     String id = key != null ? key.toString() : "?";
                     String searchName = stack.getHoverName().getString().toLowerCase();
                     ItemEntry entry = new ItemEntry(id, stack, searchName);
@@ -779,7 +779,7 @@ public class SearchableItemList implements PickerOverlay {
             return false;
         if (stackFilter != null && !stackFilter.test(stack))
             return false;
-        ResourceLocation key = BuiltInRegistries.ITEM.getKey(stack.getItem());
+        Identifier key = BuiltInRegistries.ITEM.getKey(stack.getItem());
         if (key == null)
             return false;
         if (modFilterSet != null && !modFilterSet.contains(key.getNamespace()))
@@ -851,7 +851,7 @@ public class SearchableItemList implements PickerOverlay {
         if (hoveredSlot >= 0) {
             ItemStack stack = player.getInventory().getItem(hoveredSlot);
             if (!stack.isEmpty()) {
-                ResourceLocation key = BuiltInRegistries.ITEM.getKey(stack.getItem());
+                Identifier key = BuiltInRegistries.ITEM.getKey(stack.getItem());
                 if (key != null) {
                     renderTooltip(guiGraphics, font, mouseX, mouseY,
                             stack.getHoverName().getString() + " §7(" + key + ")");
@@ -1181,7 +1181,7 @@ public class SearchableItemList implements PickerOverlay {
                 for (Integer slot : selectedInventorySlots) {
                     ItemStack stack = player.getInventory().getItem(slot);
                     if (stack.isEmpty()) continue;
-                    ResourceLocation key = BuiltInRegistries.ITEM.getKey(stack.getItem());
+                    Identifier key = BuiltInRegistries.ITEM.getKey(stack.getItem());
                     if (key == null) continue;
                     emitInventoryItem(key.toString(), stack, nbtSelectedInventorySlots.contains(slot));
                 }
@@ -1193,7 +1193,7 @@ public class SearchableItemList implements PickerOverlay {
                 int slot = selectedInventorySlots.iterator().next();
                 ItemStack stack = player.getInventory().getItem(slot);
                 if (!stack.isEmpty()) {
-                    ResourceLocation key = BuiltInRegistries.ITEM.getKey(stack.getItem());
+                    Identifier key = BuiltInRegistries.ITEM.getKey(stack.getItem());
                     if (key != null) {
                         emitInventoryItem(key.toString(), stack, nbtSelectedInventorySlots.contains(slot));
                     }
@@ -1263,7 +1263,7 @@ public class SearchableItemList implements PickerOverlay {
             if (emitLegacyTopLevel(result, type, value)) continue;
 
             if (type.codec() == null) continue;
-            ResourceLocation id = BuiltInRegistries.DATA_COMPONENT_TYPE.getKey(type);
+            Identifier id = BuiltInRegistries.DATA_COMPONENT_TYPE.getKey(type);
             if (id == null) continue;
             JsonElement encoded = ComponentShapes.encode(stack, type);
             if (encoded != null) components.add(id.toString(), encoded);
@@ -1299,7 +1299,7 @@ public class SearchableItemList implements PickerOverlay {
     private static JsonArray toEnchantmentJsonList(ItemEnchantments enchantments) {
         JsonArray arr = new JsonArray();
         for (var entry : enchantments.entrySet()) {
-            ResourceLocation id = entry.getKey().unwrapKey().map(ResourceKey::location).orElse(null);
+            Identifier id = entry.getKey().unwrapKey().map(ResourceKey::location).orElse(null);
             if (id == null) continue;
             JsonObject e = new JsonObject();
             e.addProperty("id", id.toString());
@@ -1360,7 +1360,7 @@ public class SearchableItemList implements PickerOverlay {
             if (!stack.isEmpty() && isItemAllowedByModFilter(stack)) {
                 Minecraft.getInstance().getSoundManager()
                         .play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
-                toggleInventorySelection(clickedSlot, Screen.hasControlDown());
+                toggleInventorySelection(clickedSlot, Minecraft.getInstance().hasControlDown());
             }
             return true;
         }
@@ -1563,7 +1563,7 @@ public class SearchableItemList implements PickerOverlay {
                 nbtSelectedInventorySlots.remove(ref.inventorySlot);
             } else {
                 selectedInventorySlots.add(ref.inventorySlot);
-                if (Screen.hasControlDown() && onSelectWithNbt != null) {
+                if (Minecraft.getInstance().hasControlDown() && onSelectWithNbt != null) {
                     nbtSelectedInventorySlots.add(ref.inventorySlot);
                 }
             }

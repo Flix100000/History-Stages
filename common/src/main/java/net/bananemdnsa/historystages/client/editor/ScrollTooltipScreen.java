@@ -386,13 +386,13 @@ public class ScrollTooltipScreen extends Screen {
         // to undo by hand.
         this.addRenderableWidget(StyledButton.of(
                 Component.translatable("editor.historystages.reset"),
-                btn -> this.minecraft.setScreen(new ConfirmDialog(
+                btn -> this.minecraft.gui.setScreen(new ConfirmDialog(
                         this,
                         Component.translatable("editor.historystages.scrolltip.reset_all_title"),
                         Component.translatable("editor.historystages.scrolltip.reset_all"),
                         () -> {
                             resetAll();
-                            this.minecraft.setScreen(this);
+                            this.minecraft.gui.setScreen(this);
                         })),
                 this.width - 70, this.height - 30, 60, 20));
     }
@@ -443,7 +443,7 @@ public class ScrollTooltipScreen extends Screen {
         List<String> tokens = placeholders == null ? List.of()
                 : List.of(placeholders.split(",\\s*"));
 
-        this.minecraft.setScreen(new FormattedTextScreen(this,
+        this.minecraft.gui.setScreen(new FormattedTextScreen(this,
                 Component.translatable("editor.historystages.scrolltip.line." + id),
                 line.text(),
                 hintKey == null ? "" : Component.translatable(hintKey).getString(),
@@ -983,7 +983,7 @@ public class ScrollTooltipScreen extends Screen {
         ScrollTooltipLine def = DEFAULTS_BY_ID.get(id);
         String defaultHex = def == null ? null : readStyleState(styleSource(def, id)).colorHex();
 
-        this.minecraft.setScreen(new ColorInputScreen(this,
+        this.minecraft.gui.setScreen(new ColorInputScreen(this,
                 Component.translatable("editor.historystages.scrolltip.line." + id),
                 state.colorHex() == null ? "" : state.colorHex(),
                 defaultHex == null ? "" : defaultHex,
@@ -1172,7 +1172,7 @@ public class ScrollTooltipScreen extends Screen {
 
     @Override
     public void onClose() {
-        this.minecraft.setScreen(parent);
+        this.minecraft.gui.setScreen(parent);
     }
 
     @Override

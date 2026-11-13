@@ -46,7 +46,7 @@ public class StylePresetsScreen extends Screen {
     @Override
     protected void init() {
         addRenderableWidget(StyledButton.of(Component.translatable("editor.historystages.graph.preset.new"),
-                b -> this.minecraft.setScreen(new StylePresetNameScreen(this,
+                b -> this.minecraft.gui.setScreen(new StylePresetNameScreen(this,
                         Component.translatable("editor.historystages.graph.preset.new.title"),
                         null, null, this::create)),
                 this.width - MARGIN - 110, 22, 110, 20));
@@ -109,10 +109,10 @@ public class StylePresetsScreen extends Screen {
         String editLabel = Component.translatable("editor.historystages.graph.preset.action.edit").getString();
         int buttonW = Math.max(font.width(deleteLabel), Math.max(font.width(renameLabel), font.width(editLabel))) + 12;
         row.button(deleteLabel, null, buttonW, () -> confirmDelete(id, preset));
-        row.button(renameLabel, null, buttonW, () -> this.minecraft.setScreen(new StylePresetNameScreen(this,
+        row.button(renameLabel, null, buttonW, () -> this.minecraft.gui.setScreen(new StylePresetNameScreen(this,
                 Component.translatable("editor.historystages.graph.preset.rename.title"),
                 id, preset.name, name -> rename(id, preset, name))));
-        row.button(editLabel, null, buttonW, () -> this.minecraft.setScreen(StageStyleScreen.forPreset(this, id)));
+        row.button(editLabel, null, buttonW, () -> this.minecraft.gui.setScreen(StageStyleScreen.forPreset(this, id)));
 
         row.badge(usageLabel(id), USAGE_COLOR, usageColumnW);
     }
@@ -142,7 +142,7 @@ public class StylePresetsScreen extends Screen {
         preset.name = name;
         PacketHandler.sendToServer(new SaveStylePresetPacket(id, name, "{}"));
         GraphStageData.set(data.withPreset(id, preset));
-        this.minecraft.setScreen(StageStyleScreen.forPreset(this, id));
+        this.minecraft.gui.setScreen(StageStyleScreen.forPreset(this, id));
     }
 
     private void rename(String id, GraphStageData.Preset preset, String name) {
@@ -160,14 +160,14 @@ public class StylePresetsScreen extends Screen {
         Component message = uses == 0
                 ? Component.translatable("editor.historystages.graph.preset.delete.confirm_unused", preset.name)
                 : Component.translatable("editor.historystages.graph.preset.delete.confirm_used", preset.name, uses);
-        this.minecraft.setScreen(new ConfirmDialog(this,
+        this.minecraft.gui.setScreen(new ConfirmDialog(this,
                 Component.translatable("editor.historystages.graph.preset.delete.title"),
                 message,
                 () -> {
                     PacketHandler.sendToServer(new DeleteStylePresetPacket(id));
                     GraphStageData.set(GraphStageData.get().withoutPreset(id));
                     StageGraphConfig.invalidateCache();
-                    this.minecraft.setScreen(this);
+                    this.minecraft.gui.setScreen(this);
                 }));
     }
 
@@ -187,7 +187,7 @@ public class StylePresetsScreen extends Screen {
         // A click on the row itself, beside the buttons, edits — the most common thing to do.
         int index = rows.rowAt(ctx, presets.size());
         if (index < 0) return false;
-        this.minecraft.setScreen(StageStyleScreen.forPreset(this, presets.get(index).getKey()));
+        this.minecraft.gui.setScreen(StageStyleScreen.forPreset(this, presets.get(index).getKey()));
         return true;
     }
 
@@ -200,7 +200,7 @@ public class StylePresetsScreen extends Screen {
     @Override
     public void onClose() {
         StageGraphConfig.invalidateCache();
-        this.minecraft.setScreen(parent);
+        this.minecraft.gui.setScreen(parent);
     }
 
     @Override

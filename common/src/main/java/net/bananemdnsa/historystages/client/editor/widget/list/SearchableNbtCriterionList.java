@@ -10,7 +10,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -122,7 +122,7 @@ public class SearchableNbtCriterionList extends AbstractSearchableList<Searchabl
         for (var entry : BuiltInRegistries.DATA_COMPONENT_TYPE.entrySet()) {
             DataComponentType<?> type = entry.getValue();
             if (type.codec() == null) continue;
-            ResourceLocation id = entry.getKey().location();
+            Identifier id = entry.getKey().identifier();
             options.add(new Option(id.getPath(), id.getNamespace(),
                     COMPONENT + id, "components." + id, id.toString()));
         }

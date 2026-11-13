@@ -1,10 +1,10 @@
 package net.bananemdnsa.historystages.data.config;
 
+import net.bananemdnsa.historystages.platform.Services;
 import com.electronwill.nightconfig.core.UnmodifiableConfig;
 import com.electronwill.nightconfig.core.file.CommentedFileConfig;
 import com.mojang.logging.LogUtils;
 import net.bananemdnsa.historystages.Config;
-import net.neoforged.fml.loading.FMLPaths;
 import org.slf4j.Logger;
 
 import java.io.File;
@@ -94,7 +94,7 @@ public final class LegacyConfigMigration {
     }
 
     private static void read(String fileName, String label, Map<String, String> out) {
-        File file = FMLPaths.CONFIGDIR.get().resolve(fileName).toFile();
+        File file = Services.configDir().resolve(fileName).toFile();
         if (!file.exists()) return;
 
         try (CommentedFileConfig config = CommentedFileConfig.builder(file).sync().build()) {
@@ -232,7 +232,7 @@ public final class LegacyConfigMigration {
      * settings are still sitting right there next to the new files.
      */
     private static void archive(String fileName) {
-        Path old = FMLPaths.CONFIGDIR.get().resolve(fileName);
+        Path old = Services.configDir().resolve(fileName);
         if (!Files.exists(old)) return;
 
         try {

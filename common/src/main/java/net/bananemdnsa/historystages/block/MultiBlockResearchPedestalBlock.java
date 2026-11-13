@@ -149,7 +149,7 @@ public class MultiBlockResearchPedestalBlock extends BaseEntityBlock implements 
     @Override
     public void setPlacedBy(Level level, BlockPos pos, BlockState state, @Nullable LivingEntity placer, ItemStack stack) {
         super.setPlacedBy(level, pos, state, placer, stack);
-        if (!level.isClientSide) {
+        if (!level.isClientSide()) {
             Direction facing = state.getValue(FACING);
             BlockPos headPos = pos.relative(facing);
             level.setBlock(headPos, state.setValue(PART, Part.HEAD), 3);
@@ -169,7 +169,7 @@ public class MultiBlockResearchPedestalBlock extends BaseEntityBlock implements 
 
     @Override
     public BlockState playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {
-        if (!level.isClientSide && player.isCreative()) {
+        if (!level.isClientSide() && player.isCreative()) {
             Direction partnerDir = getPartnerDirection(state);
             BlockPos partnerPos = pos.relative(partnerDir);
             BlockState partnerState = level.getBlockState(partnerPos);
@@ -201,7 +201,7 @@ public class MultiBlockResearchPedestalBlock extends BaseEntityBlock implements 
 
     @Override
     public InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
-        if (!level.isClientSide) {
+        if (!level.isClientSide()) {
             BlockPos footPos = state.getValue(PART) == Part.HEAD
                     ? pos.relative(state.getValue(FACING).getOpposite())
                     : pos;
@@ -210,7 +210,7 @@ public class MultiBlockResearchPedestalBlock extends BaseEntityBlock implements 
                 ((ServerPlayer) player).openMenu((MenuProvider) be, footPos);
             }
         }
-        return InteractionResult.sidedSuccess(level.isClientSide);
+        return InteractionResult.sidedSuccess(level.isClientSide());
     }
 
     @Nullable
@@ -222,7 +222,7 @@ public class MultiBlockResearchPedestalBlock extends BaseEntityBlock implements 
     @Nullable
     @Override
     public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type) {
-        if (level.isClientSide || state.getValue(PART) != Part.FOOT) return null;
+        if (level.isClientSide() || state.getValue(PART) != Part.FOOT) return null;
         return createTickerHelper(type, ModBlockEntities.RESEARCH_PEDESTAL_BE.get(),
                 (l, p, s, e) -> ResearchPedestalBlockEntity.tick(l, p, s, e));
     }

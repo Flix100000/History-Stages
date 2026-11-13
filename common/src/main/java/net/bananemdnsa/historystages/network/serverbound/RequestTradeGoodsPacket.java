@@ -1,15 +1,16 @@
 package net.bananemdnsa.historystages.network.serverbound;
 
+import dev.architectury.networking.NetworkManager;
+import net.minecraft.server.permissions.Permissions;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.data.lock.TradeGoodsScanner;
 import net.bananemdnsa.historystages.network.clientbound.SyncTradeGoodsPacket;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.network.PacketDistributor;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.bananemdnsa.historystages.platform.IPayloadContext;
 
 /**
  * The editor asking which items merchants here deal in.
@@ -24,7 +25,7 @@ public record RequestTradeGoodsPacket() implements CustomPacketPayload {
 
     public static final CustomPacketPayload.Type<RequestTradeGoodsPacket> TYPE =
             new CustomPacketPayload.Type<>(
-                    ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "request_trade_goods"));
+                    Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "request_trade_goods"));
 
     public static final StreamCodec<FriendlyByteBuf, RequestTradeGoodsPacket> STREAM_CODEC =
             StreamCodec.of((buf, msg) -> { }, buf -> new RequestTradeGoodsPacket());
@@ -32,8 +33,8 @@ public record RequestTradeGoodsPacket() implements CustomPacketPayload {
     public static void handle(RequestTradeGoodsPacket msg, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer player)) return;
-            if (!player.hasPermissions(2)) return;
-            PacketDistributor.sendToPlayer(player,
+            if (!player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)) return;
+            NetworkManager.sendToPlayer(player,
                     new SyncTradeGoodsPacket(TradeGoodsScanner.cached(player.level())));
         });
     }

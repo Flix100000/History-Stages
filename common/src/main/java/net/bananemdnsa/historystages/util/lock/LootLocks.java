@@ -3,7 +3,7 @@ package net.bananemdnsa.historystages.util.lock;
 import net.bananemdnsa.historystages.Config;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
@@ -55,7 +55,7 @@ public final class LootLocks {
         if (list != null && !list.isEmpty()) {
             try {
                 String randomId = list.get(RANDOM.nextInt(list.size()));
-                Item item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(randomId));
+                Item item = BuiltInRegistries.ITEM.getValue(Identifier.parse(randomId));
                 if (item != null && item != Items.AIR) {
                     return new ItemStack(item, count);
                 }
@@ -67,9 +67,9 @@ public final class LootLocks {
         if (tagList != null && !tagList.isEmpty()) {
             try {
                 String tagStr = tagList.get(RANDOM.nextInt(tagList.size()));
-                TagKey<Item> tagKey = ItemTags.create(ResourceLocation.parse(tagStr));
+                TagKey<Item> tagKey = ItemTags.create(Identifier.parse(tagStr));
                 List<Item> tagItems = new ArrayList<>();
-                Optional<? extends Iterable<Holder<Item>>> tagOptional = BuiltInRegistries.ITEM.getTag(tagKey);
+                Optional<? extends Iterable<Holder<Item>>> tagOptional = BuiltInRegistries.ITEM.get(tagKey);
                 tagOptional.ifPresent(holders -> {
                     for (Holder<Item> holder : holders) {
                         tagItems.add(holder.value());

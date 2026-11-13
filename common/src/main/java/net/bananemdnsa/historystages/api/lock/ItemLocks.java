@@ -10,7 +10,7 @@ import net.bananemdnsa.historystages.data.lock.engine.LockResolution;
 import net.bananemdnsa.historystages.data.lock.engine.StageLocks;
 import net.bananemdnsa.historystages.util.lock.StageLockHelper;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 
@@ -82,7 +82,7 @@ public final class ItemLocks {
     /** {@link #missingStages(ItemStack, ServerPlayer)} by UUID. */
     public static List<String> missingStages(ItemStack stack, UUID playerUuid) {
         if (stack == null || stack.isEmpty()) return List.of();
-        ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
+        Identifier id = BuiltInRegistries.ITEM.getKey(stack.getItem());
         return CategoryLockResolver.join(
                 missing(id, stack, StageScope.GLOBAL, StageLocks.serverGlobal()),
                 missing(id, stack, StageScope.INDIVIDUAL, StageLocks.serverIndividual(playerUuid)));
@@ -110,7 +110,7 @@ public final class ItemLocks {
                 player.getUUID());
     }
 
-    private static List<String> missing(ResourceLocation id, ItemStack stack, StageScope scope,
+    private static List<String> missing(Identifier id, ItemStack stack, StageScope scope,
                                         StageStateView state) {
         List<String> gating = StageLocks.engine().gatingStagesForItem(
                 id.toString(), id.getNamespace(), stack, scope);

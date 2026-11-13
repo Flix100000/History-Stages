@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.util;
 
+import net.bananemdnsa.historystages.platform.Services;
 import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.api.diagnostics.RuntimeCategory;
 import net.bananemdnsa.historystages.data.StageEntry;
@@ -46,7 +47,7 @@ public class DebugLogger {
     // classpath. That keeps pure/testable code (e.g. GraphLayoutData.fromJson) safe to unit-test
     // without a running game. The game logger is lazy for the same reason.
     private static Path logsPath() {
-        return FMLPaths.CONFIGDIR.get().resolve("historystages").resolve("logs");
+        return Services.configDir().resolve("historystages").resolve("logs");
     }
     private static Logger gameLog() {
         return LoggerFactory.getLogger("HistoryStages");
@@ -216,7 +217,7 @@ public class DebugLogger {
             List<String> parts = new ArrayList<>();
             a.registered().forEach((what, count) -> parts.add(what.label(count)));
             // A bundled addon such as the demo has no container of its own; it ships with HS.
-            String version = ModList.get().isLoaded(a.modId()) ? modVersion(a.modId()) : modVersion("historystages");
+            String version = Services.isModLoaded(a.modId()) ? modVersion(a.modId()) : modVersion("historystages");
             out.add(new DebugReport.AddonLine(a.modId(), version, String.join(", ", parts), a.errors(), a.warnings()));
         }
         return out;
@@ -233,7 +234,7 @@ public class DebugLogger {
     private static Map<String, String> compatMods() {
         Map<String, String> out = new LinkedHashMap<>();
         for (String id : COMPAT_MOD_IDS) {
-            if (ModList.get().isLoaded(id)) out.put(id, modVersion(id));
+            if (Services.isModLoaded(id)) out.put(id, modVersion(id));
         }
         return out;
     }

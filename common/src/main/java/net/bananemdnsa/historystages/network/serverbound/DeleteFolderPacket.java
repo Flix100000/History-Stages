@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.network.serverbound;
 
+import net.minecraft.server.permissions.Permissions;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.data.StagePaths;
@@ -9,15 +10,15 @@ import net.bananemdnsa.historystages.network.clientbound.SyncStageDefinitionsPac
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.bananemdnsa.historystages.platform.IPayloadContext;
 
 /** Deletes a folder inside a stage tree; its content moves up one level. */
 public record DeleteFolderPacket(boolean individual, String path) implements CustomPacketPayload {
 
     public static final CustomPacketPayload.Type<DeleteFolderPacket> TYPE =
-            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "delete_folder"));
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "delete_folder"));
 
     public static final StreamCodec<FriendlyByteBuf, DeleteFolderPacket> STREAM_CODEC =
             StreamCodec.of(DeleteFolderPacket::encode, DeleteFolderPacket::decode);
@@ -36,7 +37,7 @@ public record DeleteFolderPacket(boolean individual, String path) implements Cus
     public static void handle(DeleteFolderPacket msg, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer player)) return;
-            if (!player.hasPermissions(2)) return;
+            if (!player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)) return;
             if (!StagePaths.isValid(msg.path) || msg.path.isEmpty()) return;
 
             if (StageManager.deleteFolder(msg.individual, msg.path)) {

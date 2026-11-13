@@ -1,10 +1,10 @@
 package net.bananemdnsa.historystages;
 
+import net.bananemdnsa.historystages.platform.Services;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import net.neoforged.fml.loading.FMLPaths;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -14,7 +14,7 @@ import java.nio.file.Path;
 
 public class ConfigHandler {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final Path CONFIG_PATH = FMLPaths.CONFIGDIR.get().resolve("historystages");
+    private static final Path CONFIG_PATH = Services.configDir().resolve("historystages");
 
     public static void setupConfig() {
         try {

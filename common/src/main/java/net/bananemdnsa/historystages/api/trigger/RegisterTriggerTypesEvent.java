@@ -7,8 +7,8 @@ import net.bananemdnsa.historystages.data.auto.TriggerTypes;
 
 import net.bananemdnsa.historystages.api.trigger.TriggerCondition;
 import net.bananemdnsa.historystages.api.stage.StageScope;
-import net.neoforged.bus.api.Event;
-import net.neoforged.fml.event.IModBusEvent;
+import net.bananemdnsa.historystages.platform.bus.Event;
+import net.bananemdnsa.historystages.platform.bus.IModBusEvent;
 
 /**
  * Fired once so another mod can add its own auto-trigger type.

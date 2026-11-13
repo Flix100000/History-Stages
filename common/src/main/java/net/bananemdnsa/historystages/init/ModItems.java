@@ -12,9 +12,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Rarity;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.component.CustomData;
-import net.neoforged.bus.api.IEventBus;
-import net.neoforged.neoforge.registries.DeferredRegister;
-import net.neoforged.neoforge.registries.DeferredHolder;
+import net.bananemdnsa.historystages.platform.DeferredRegister;
+import net.bananemdnsa.historystages.platform.DeferredHolder;
 import net.bananemdnsa.historystages.HistoryStages;
 
 import java.util.Collections;
@@ -100,7 +99,7 @@ public class ModItems {
         return Collections.unmodifiableMap(items);
     }
 
-    public static void register(IEventBus eventBus) {
-        ITEMS.register(eventBus);
+    public static void register() {
+        ITEMS.register();
     }
 }

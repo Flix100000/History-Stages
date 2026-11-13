@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.graph;
 
+import net.minecraft.client.Minecraft;
 import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.data.graph.GraphPos;
 import net.minecraft.client.gui.Font;
@@ -256,7 +257,7 @@ final class GraphInteraction {
 
         // Ctrl never moves anything: on a node it toggles that node, on empty space it starts a
         // rubber band. Plain left-drag keeps panning, so nothing an author already does changes.
-        if (editor && Screen.hasControlDown()) {
+        if (editor && Minecraft.getInstance().hasControlDown()) {
             if (hit != null) {
                 if (!selection.remove(hit)) selection.add(hit);
             } else {

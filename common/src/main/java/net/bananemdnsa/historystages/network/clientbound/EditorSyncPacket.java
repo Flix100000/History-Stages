@@ -9,8 +9,8 @@ import net.bananemdnsa.historystages.network.PacketJson;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.minecraft.resources.Identifier;
+import net.bananemdnsa.historystages.platform.IPayloadContext;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -28,7 +28,7 @@ public record EditorSyncPacket(Map<String, StageEntry> stages) implements Custom
     private static final int MAX_JSON_CHARS = 8 * 1024 * 1024;
 
     public static final CustomPacketPayload.Type<EditorSyncPacket> TYPE =
-            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "editor_sync"));
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "editor_sync"));
 
     public static final StreamCodec<FriendlyByteBuf, EditorSyncPacket> STREAM_CODEC =
             StreamCodec.of(EditorSyncPacket::encode, EditorSyncPacket::decode);

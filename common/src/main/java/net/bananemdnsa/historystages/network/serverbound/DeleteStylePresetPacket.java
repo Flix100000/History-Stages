@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.network.serverbound;
 
+import net.minecraft.server.permissions.Permissions;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.data.graph.GraphStageData;
@@ -9,15 +10,15 @@ import net.bananemdnsa.historystages.network.clientbound.SyncStageDefinitionsPac
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.bananemdnsa.historystages.platform.IPayloadContext;
 
 /** Deletes a style preset and every stage's reference to it; the stages keep their own values. */
 public record DeleteStylePresetPacket(String id) implements CustomPacketPayload {
 
     public static final CustomPacketPayload.Type<DeleteStylePresetPacket> TYPE =
-            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "delete_style_preset"));
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "delete_style_preset"));
 
     public static final StreamCodec<FriendlyByteBuf, DeleteStylePresetPacket> STREAM_CODEC =
             StreamCodec.of((buffer, msg) -> buffer.writeUtf(msg.id), buffer -> new DeleteStylePresetPacket(buffer.readUtf()));
@@ -25,7 +26,7 @@ public record DeleteStylePresetPacket(String id) implements CustomPacketPayload 
     public static void handle(DeleteStylePresetPacket msg, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer player)) return;
-            if (!player.hasPermissions(2)) return;
+            if (!player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)) return;
 
             GraphStageData.Snapshot data = GraphStageData.get();
             GraphStageData.Preset preset = data.presets().get(msg.id);

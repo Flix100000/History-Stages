@@ -66,6 +66,6 @@ public class FolderNameScreen extends AbstractInputScreen {
     @Override
     protected void onConfirm(InputValues values) {
         onAccept.accept(values.getString("name"));
-        this.minecraft.setScreen(parent);
+        this.minecraft.gui.setScreen(parent);
     }
 }

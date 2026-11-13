@@ -114,7 +114,7 @@ public final class LockTriggerManager {
         Set<Relocked> relocked = null;
         for (Indexed it : candidates) {
             if (matcher.test(it.trigger())
-                    && record(it.stageId(), it.isIndividual(), it.trigger().signature(), player, player.serverLevel())) {
+                    && record(it.stageId(), it.isIndividual(), it.trigger().signature(), player, player.level())) {
                 if (relocked == null) relocked = new HashSet<>();
                 relocked.add(new Relocked(it.stageId(), it.isIndividual()));
             }
@@ -129,7 +129,7 @@ public final class LockTriggerManager {
                 StageEntry se = StageManager.getIndividualStages().get(stageId);
                 if (se == null) return;
                 for (NegatedTrigger n : StateEvaluation.firingNegations(se.getLockTrigger(), view, StageScope.INDIVIDUAL)) {
-                    record(stageId, true, n.signature(), player, player.serverLevel());
+                    record(stageId, true, n.signature(), player, player.level());
                 }
             });
         }

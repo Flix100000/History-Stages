@@ -4,12 +4,12 @@ import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.client.editor.widget.StyledButton;
 import net.bananemdnsa.historystages.api.editor.widget.AbstractModalScreen;
 import net.bananemdnsa.historystages.util.ModLinks;
-import net.minecraft.Util;
+import net.minecraft.util.Util;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.ConfirmLinkScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.neoforged.fml.ModList;
 
 import java.util.List;
@@ -31,8 +31,8 @@ public class CreditsScreen extends AbstractModalScreen {
 
     private static final int AUTHORS_COLOR = 0xFFFFFF;
 
-    private static final ResourceLocation LOGO =
-            ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "textures/gui/logo.png");
+    private static final Identifier LOGO =
+            Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "textures/gui/logo.png");
     /** Drawn at its native size, so the pixel art stays crisp at every GUI scale. */
     private static final int LOGO_SIZE = 64;
     private static final int LOGO_GAP = 8;
@@ -79,7 +79,7 @@ public class CreditsScreen extends AbstractModalScreen {
 
     @Override
     protected void onConfirm() {
-        this.minecraft.setScreen(parent);
+        this.minecraft.gui.setScreen(parent);
     }
 
     @Override
@@ -107,9 +107,9 @@ public class CreditsScreen extends AbstractModalScreen {
      * be thrown out of the game, and respects the player's link-trust setting.
      */
     private void openLink(String url) {
-        this.minecraft.setScreen(new ConfirmLinkScreen(confirmed -> {
+        this.minecraft.gui.setScreen(new ConfirmLinkScreen(confirmed -> {
             if (confirmed) Util.getPlatform().openUri(url);
-            this.minecraft.setScreen(this);
+            this.minecraft.gui.setScreen(this);
         }, url, false));
     }
 

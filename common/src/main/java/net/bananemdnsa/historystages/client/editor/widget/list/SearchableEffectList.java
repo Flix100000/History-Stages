@@ -6,7 +6,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.effect.MobEffect;
 
 import java.util.ArrayList;
@@ -35,7 +35,7 @@ public class SearchableEffectList extends AbstractSearchableList<String> {
     @Override
     protected List<String> loadEntries() {
         List<String> effects = new ArrayList<>();
-        for (ResourceLocation key : BuiltInRegistries.MOB_EFFECT.keySet()) {
+        for (Identifier key : BuiltInRegistries.MOB_EFFECT.keySet()) {
             effects.add(key.toString());
         }
         effects.sort(String::compareToIgnoreCase);
@@ -60,9 +60,9 @@ public class SearchableEffectList extends AbstractSearchableList<String> {
 
     /** Localised effect name, falling back to the raw ID for effects without a translation. */
     public static String displayName(String effectId) {
-        ResourceLocation rl = ResourceLocation.tryParse(effectId);
+        Identifier rl = Identifier.tryParse(effectId);
         if (rl == null) return effectId;
-        MobEffect effect = BuiltInRegistries.MOB_EFFECT.get(rl);
+        MobEffect effect = BuiltInRegistries.MOB_EFFECT.getValue(rl);
         if (effect == null) return effectId;
         return effect.getDisplayName().getString();
     }

@@ -142,7 +142,7 @@ public final class StructureGenerationGate {
     }
 
     private static String idOf(Holder<Structure> holder) {
-        return holder.unwrapKey().map(k -> k.location().toString()).orElse(null);
+        return holder.unwrapKey().map(k -> k.identifier().toString()).orElse(null);
     }
 
     private static List<String> tagsOf(Holder<Structure> holder) {

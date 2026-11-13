@@ -15,7 +15,7 @@ import net.bananemdnsa.historystages.data.DependencyGroup;
 import net.bananemdnsa.historystages.data.dependency.EntityKillDep;
 import net.bananemdnsa.historystages.api.dependency.Requirement;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 
@@ -146,9 +146,9 @@ public final class EntityKillTab extends AbstractDependencyTab {
     }
 
     private static String entityName(String entityId) {
-        ResourceLocation rl = ResourceLocation.tryParse(entityId);
+        Identifier rl = Identifier.tryParse(entityId);
         if (rl == null) return entityId;
-        EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.get(rl);
+        EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.getValue(rl);
         return type == null ? entityId : type.getDescription().getString();
     }
 }

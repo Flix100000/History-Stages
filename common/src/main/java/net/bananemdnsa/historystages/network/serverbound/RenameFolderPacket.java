@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.network.serverbound;
 
+import net.minecraft.server.permissions.Permissions;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.data.StagePaths;
@@ -9,15 +10,15 @@ import net.bananemdnsa.historystages.network.clientbound.SyncStageDefinitionsPac
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.bananemdnsa.historystages.platform.IPayloadContext;
 
 /** Renames a folder in place. Stage IDs are file names and stay untouched. */
 public record RenameFolderPacket(boolean individual, String path, String newName) implements CustomPacketPayload {
 
     public static final CustomPacketPayload.Type<RenameFolderPacket> TYPE =
-            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "rename_folder"));
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "rename_folder"));
 
     public static final StreamCodec<FriendlyByteBuf, RenameFolderPacket> STREAM_CODEC =
             StreamCodec.of(RenameFolderPacket::encode, RenameFolderPacket::decode);
@@ -38,7 +39,7 @@ public record RenameFolderPacket(boolean individual, String path, String newName
     public static void handle(RenameFolderPacket msg, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer player)) return;
-            if (!player.hasPermissions(2)) return;
+            if (!player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)) return;
             if (!StagePaths.isValid(msg.path) || msg.path.isEmpty()) return;
             if (!StagePaths.isValidSegment(msg.newName)) return;
 

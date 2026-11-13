@@ -37,7 +37,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.FormattedCharSequence;
 
@@ -553,7 +553,7 @@ public class StageStyleScreen extends Screen {
         // because it throws away hand-written work.
         this.addRenderableWidget(StyledButton.of(
                 Component.translatable("editor.historystages.graph.style.reset_all"),
-                btn -> this.minecraft.setScreen(new ConfirmDialog(this,
+                btn -> this.minecraft.gui.setScreen(new ConfirmDialog(this,
                         Component.translatable("editor.historystages.graph.style.reset_all.title"),
                         Component.translatable("editor.historystages.graph.style.reset_all.confirm"),
                         () -> {
@@ -561,7 +561,7 @@ public class StageStyleScreen extends Screen {
                             buffer.styles = new StateStyles();
                             buffer.background = new CanvasBackgroundStyle();
                             // setScreen runs init(), which rebuilds the rows on its own.
-                            this.minecraft.setScreen(this);
+                            this.minecraft.gui.setScreen(this);
                         })),
                 this.width - 120, this.height - 30, 110, 20));
     }
@@ -601,12 +601,12 @@ public class StageStyleScreen extends Screen {
                 Component.translatable("editor.historystages.graph.preset.edit"),
                 btn -> {
                     syncRowsIntoBuffer();
-                    this.minecraft.setScreen(StageStyleScreen.forPreset(this, buffer.preset));
+                    this.minecraft.gui.setScreen(StageStyleScreen.forPreset(this, buffer.preset));
                 }, x, PRESET_ROW_Y, editW, EnumDropdown.BUTTON_HEIGHT));
         x += editW + 4;
         this.addRenderableWidget(StyledButton.of(
                 Component.translatable("editor.historystages.graph.preset.save_as"),
-                btn -> this.minecraft.setScreen(new StylePresetNameScreen(this,
+                btn -> this.minecraft.gui.setScreen(new StylePresetNameScreen(this,
                         Component.translatable("editor.historystages.graph.preset.save_as.title"),
                         null, null, this::saveAsPreset)),
                 x, PRESET_ROW_Y, saveAsW, EnumDropdown.BUTTON_HEIGHT));
@@ -714,13 +714,13 @@ public class StageStyleScreen extends Screen {
             // The dialog's parent is this screen, so cancelling comes back here with the edits
             // intact; discarding is what the confirm callback does. The other way round would
             // have Cancel throw the edits away and leave Confirm with nothing to do.
-            this.minecraft.setScreen(new ConfirmDialog(this,
+            this.minecraft.gui.setScreen(new ConfirmDialog(this,
                     Component.translatable("editor.historystages.unsaved_warning_title"),
                     Component.translatable("editor.historystages.unsaved_warning"),
-                    () -> this.minecraft.setScreen(parent)));
+                    () -> this.minecraft.gui.setScreen(parent)));
             return;
         }
-        this.minecraft.setScreen(parent);
+        this.minecraft.gui.setScreen(parent);
     }
 
     @Override
@@ -913,7 +913,7 @@ public class StageStyleScreen extends Screen {
                 for (int ly = y; ly < y + h; ly += PREVIEW_CELL) g.fill(x, ly, x + w, ly + 1, PREVIEW_GRID_COLOR);
             }
             case "TEXTURE" -> {
-                ResourceLocation tex = ResourceLocation.tryParse(bg.texture());
+                Identifier tex = Identifier.tryParse(bg.texture());
                 if (tex != null) {
                     NodeTextures.repeatingQuad(g, tex, x, y, x + w, y + h,
                             0f, 0f, (float) w / PREVIEW_CELL, (float) h / PREVIEW_CELL);
@@ -1121,7 +1121,7 @@ public class StageStyleScreen extends Screen {
             }
             case COLOR -> {
                 applyRow(entry, entry.value);
-                this.minecraft.setScreen(new ColorInputScreen(this, entry));
+                this.minecraft.gui.setScreen(new ColorInputScreen(this, entry));
             }
             case ENUM -> {
                 applyRow(entry, entry.value);
@@ -1136,7 +1136,7 @@ public class StageStyleScreen extends Screen {
             }
             case INTEGER, DOUBLE, STRING -> {
                 applyRow(entry, entry.value);
-                this.minecraft.setScreen(new ConfigEditorScreen.ValueInputScreen(this, entry));
+                this.minecraft.gui.setScreen(new ConfigEditorScreen.ValueInputScreen(this, entry));
             }
             // Only picking writes the override; closing the picker leaves the row as it was.
             case TEXTURE -> openTexturePicker(entry);

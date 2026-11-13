@@ -80,7 +80,7 @@ public class StylePresetPickerScreen extends AbstractModalScreen {
             openManager.run();
             return;
         }
-        this.minecraft.setScreen(parent);
+        this.minecraft.gui.setScreen(parent);
     }
 
     @Override
@@ -127,7 +127,7 @@ public class StylePresetPickerScreen extends AbstractModalScreen {
                     Minecraft.getInstance().getSoundManager()
                             .play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
                     String id = options.get(index);
-                    this.minecraft.setScreen(parent);
+                    this.minecraft.gui.setScreen(parent);
                     onPick.accept(id.isEmpty() ? null : id);
                     return true;
                 }

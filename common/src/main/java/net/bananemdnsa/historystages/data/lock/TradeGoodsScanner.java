@@ -10,15 +10,15 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import net.bananemdnsa.historystages.util.DebugLogger;
 import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.npc.Villager;
-import net.minecraft.world.entity.npc.VillagerData;
-import net.minecraft.world.entity.npc.VillagerProfession;
-import net.minecraft.world.entity.npc.VillagerTrades;
-import net.minecraft.world.entity.npc.VillagerType;
+import net.minecraft.world.entity.npc.villager.Villager;
+import net.minecraft.world.entity.npc.villager.VillagerData;
+import net.minecraft.world.entity.npc.villager.VillagerProfession;
+import net.minecraft.world.item.trading.VillagerTrades;
+import net.minecraft.world.entity.npc.villager.VillagerType;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.trading.Merchant;
 import net.minecraft.world.item.trading.MerchantOffer;
@@ -127,7 +127,7 @@ public final class TradeGoodsScanner {
                 // Set before running, because a recipe may read the trader's profession or level.
                 trader.setVillagerData(
                         new VillagerData(VillagerType.PLAINS, profession, merchantLevel));
-                ResourceLocation professionId =
+                Identifier professionId =
                         BuiltInRegistries.VILLAGER_PROFESSION.getKey(profession);
                 recipes += run(listings, trader, random, offers,
                         professionId == null ? "" : professionId.toString(), merchantLevel,
@@ -222,7 +222,7 @@ public final class TradeGoodsScanner {
         for (EntityType<?> type : BuiltInRegistries.ENTITY_TYPE) {
             if (budget.spent()) break;
             if (type == EntityType.VILLAGER || type == EntityType.WANDERING_TRADER) continue;
-            ResourceLocation typeId = BuiltInRegistries.ENTITY_TYPE.getKey(type);
+            Identifier typeId = BuiltInRegistries.ENTITY_TYPE.getKey(type);
             if (typeId == null) continue;
 
             Entity probe = createQuietly(type, level);
@@ -310,7 +310,7 @@ public final class TradeGoodsScanner {
 
     private static String idOf(ItemStack stack) {
         if (stack == null || stack.isEmpty()) return null;
-        ResourceLocation key = BuiltInRegistries.ITEM.getKey(stack.getItem());
+        Identifier key = BuiltInRegistries.ITEM.getKey(stack.getItem());
         return key == null ? null : key.toString();
     }
 }

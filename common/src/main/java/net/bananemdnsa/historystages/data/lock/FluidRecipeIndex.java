@@ -14,7 +14,7 @@ import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.util.DebugLogger;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeSerializer;
@@ -169,11 +169,11 @@ public final class FluidRecipeIndex {
     private static void rebuild(Iterable<RecipeHolder<?>> recipes,
                                 HolderLookup.Provider registries) {
         Predicate<String> isFluid = id -> {
-            ResourceLocation key = ResourceLocation.tryParse(id);
+            Identifier key = Identifier.tryParse(id);
             return key != null && BuiltInRegistries.FLUID.containsKey(key);
         };
         Predicate<String> isItem = id -> {
-            ResourceLocation key = ResourceLocation.tryParse(id);
+            Identifier key = Identifier.tryParse(id);
             return key != null && BuiltInRegistries.ITEM.containsKey(key);
         };
 

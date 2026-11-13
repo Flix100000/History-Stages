@@ -5,9 +5,8 @@ import net.bananemdnsa.historystages.recipe.ResealScrollRecipe;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.item.crafting.SimpleCraftingRecipeSerializer;
-import net.neoforged.bus.api.IEventBus;
-import net.neoforged.neoforge.registries.DeferredHolder;
-import net.neoforged.neoforge.registries.DeferredRegister;
+import net.bananemdnsa.historystages.platform.DeferredHolder;
+import net.bananemdnsa.historystages.platform.DeferredRegister;
 
 public class ModRecipes {
 
@@ -22,7 +21,7 @@ public class ModRecipes {
             RESEAL_SCROLL = RECIPE_SERIALIZERS.register("reseal_scroll",
                     () -> new SimpleCraftingRecipeSerializer<>(ResealScrollRecipe::new));
 
-    public static void register(IEventBus eventBus) {
-        RECIPE_SERIALIZERS.register(eventBus);
+    public static void register() {
+        RECIPE_SERIALIZERS.register();
     }
 }
