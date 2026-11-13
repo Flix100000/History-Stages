@@ -1,7 +1,7 @@
 {
   "textures": {
-    "scroll": "historystages:item/research_scroll",
-    "particle": "historystages:item/research_scroll"
+    "scroll": "historystages:block/scroll_shelf/research_scroll",
+    "particle": "historystages:block/scroll_shelf/research_scroll"
   },
   "elements": [
     {
