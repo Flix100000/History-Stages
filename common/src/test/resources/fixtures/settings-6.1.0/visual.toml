@@ -1,0 +1,244 @@
+#Found a bug or have a feature request?
+#Report it on GitHub: https://github.com/Flix100000/History-Stages/issues
+#
+#Visual and UI settings (Individual for each player)
+[visuals]
+	# If an item is in multiple stages, show all of them until all are unlocked? [Default: true]
+	showAllUntilComplete = true
+	# Show a welcome message in chat when a player joins the world? [Default: true]
+	showWelcomeMessage = true
+	# List interchangeable stages under a "One of:" line in the tooltip?
+	# Off, they are listed like any other stage. [Default: true]
+	groupInterchangeableStages = true
+	# Show a lock icon overlay on locked items in JEI/EMI and Inventories? [Default: true]
+	showLockIcons = true
+	# Show the minimum required Pedestal tier on Research Scroll tooltips? [Default: true]
+	showScrollTierTooltip = true
+	# Show the Stage Editor button in the pause menu (operators only)?
+	# Turning it off does not lock the editor away: '/history editor'
+	# still opens it for anyone who could see the button. [Default: true]
+	showEditorButton = true
+	# Show information tooltips on locked items? [Default: true]
+	showTooltips = true
+	# Show a tooltip on Research Pedestal booster blocks describing their speed/cost effect? [Default: true]
+	showBoosterTooltips = true
+	# How far the world behind an open scroll is dimmed, in percent.
+	# 0 = not at all, 100 = black. [Default: 60]
+	openScrollBackdrop = 60
+	# If tooltips are enabled, show the name of the required stage? [Default: true]
+	showStageName = true
+#Visual feedback for locked structures (border + overlay)
+[structure_overlay]
+	# While standing inside a locked structure, tint the whole screen red (like looking through red glasses) to signal the lock? [Default: true]
+	structureLockOverlayEnabled = true
+	# Render a force-field-style border on the walls of locked structures when you get close? [Default: true]
+	structureBorderEnabled = true
+	# How close (in blocks) to a locked structure wall before the border becomes visible. The border fades in as you approach. [Default: 8.0]
+	structureBorderDistance = 8.0
+	# Opacity of the red lock-overlay (0.0 = invisible, 1.0 = fully opaque). [Default: 0.30]
+	structureLockOverlayOpacity = 0.3
+#Settings for Jade block overlay (requires Jade mod)
+[jade]
+	# If a block is in multiple stages, show all of them until all are unlocked? [Default: true]
+	showAllUntilComplete = true
+	# Show stage information on locked blocks in the Jade overlay? [Default: true]
+	showInfo = true
+	# List interchangeable stages under a "One of:" line in the Jade overlay?
+	# Off, they are listed like any other stage. [Default: true]
+	groupInterchangeableStages = true
+	# If Jade info is enabled, show the name of the required stage? [Default: true]
+	showStageName = true
+#Settings for dimension access feedback
+[dimension_lock]
+	# Show the dimension lock message in the chat? [Default: false]
+	showInChat = false
+	# If dimShowChat is true, should the required stages also be listed? [Default: true]
+	showStagesInChat = true
+	# Show a simple 'Dimension Locked' message in the actionbar? [Default: true]?
+	useActionbar = true
+#Settings for mob damage lock feedback
+[mob_lock]
+	# Show the mob lock message in the chat? [Default: false]
+	showInChat = false
+	# If mobShowChat is true, should the required stages also be listed? [Default: true]
+	showStagesInChat = true
+	# Show a 'Mob Protected' message in the actionbar? [Default: true]
+	useActionbar = true
+#Individual Stage Visual Settings
+[individual_stages]
+	# Show tooltip information for items locked by individual stages? [Default: true]
+	showIndividualTooltips = true
+	# Show a silver lock icon on items locked by individual stages? [Default: true]
+	showSilverLockIcons = true
+#JEI and EMI integration — fully hide locked items/recipes instead of using the lock overlay
+[jei_hiding]
+	# How to treat items assigned to multiple stages:
+	# STRICT  = locked while ANY assigned stage is still locked (default).
+	# LENIENT = unlocked as soon as ANY assigned stage is unlocked.
+	lockedItemMultiStagePolicy = "STRICT"
+	# Remove locked items from the JEI and EMI ingredient panels entirely. [Default: false]
+	hideLockedItemsInJei = false
+	# Hide locked recipes in JEI and EMI. JEI only catches vanilla recipe types by their OUTPUT;
+	# EMI hides every recipe the lock overlay would mark. [Default: false]
+	hideLockedRecipesInJei = false
+#Global Notification Settings (Server-controlled)
+[notifications]
+	# Play notification sounds for everyone? [Default: true]
+	useSounds = true
+	# Show unlock/lock messages in the chat for everyone? [Default: true]
+	broadcastChat = true
+	# Message format for unlocks (Only for the Chat and only if 'broadcastChat' = true). Use {stage} for the name and & for colors.
+	unlockMessageFormat = "&fThe world has entered the &b{stage}&f!"
+	# Show an advancement-style toast popup when a stage is unlocked? [Default: true]
+	useToasts = true
+	# Default icon item shown in unlock toasts when a stage has no icon set. Use the item's full registry ID. [Default: historystages:research_scroll]
+	defaultStageIcon = "historystages:research_scroll"
+	# Show messages in the actionbar for everyone? [Default: false]
+	useActionbar = false
+
+	#The same notifications, for individual (per-player) stages
+	[notifications.individual]
+		# Play notification sounds for individual stage unlocks? [Default: true]
+		useSounds = true
+		# Show individual stage unlock/lock messages in the chat for the player? [Default: true]
+		broadcastChat = true
+		# Message format for individual stage unlocks (chat). Use {stage} for the name, {player} for the player name, and & for colors.
+		unlockMessageFormat = "&fYou have unlocked &b{stage}&f!"
+		# Show an advancement-style toast popup when an individual stage is unlocked? [Default: true]
+		useToasts = true
+		# Show individual stage messages in the actionbar? [Default: false]
+		useActionbar = false
+#Override the displayed text for the six 'is locked' / 'unknown' messages.
+#Leave a value empty ("") to fall back to the default messages.
+#Use & for color codes (e.g. &c for red).
+[lock_messages]
+	# Actionbar message when entering a locked dimension. Lang key: message.historystages.dimension_unknown
+	dimensionUnknown = ""
+	# Actionbar message when taking a locked fluid out of the world. Lang key: message.historystages.fluid_locked
+	fluidLocked = ""
+	# Actionbar message when applying a locked enchantment. Lang key: message.historystages.enchantment_locked
+	enchantmentLocked = ""
+	# Actionbar message when interacting with armor stands / item frames holding locked items. Lang key: message.historystages.entity_item_locked
+	entityItemLocked = ""
+	# Actionbar message when interacting with a locked item. Lang key: message.historystages.item_locked
+	itemLocked = ""
+	# Notice shown inside the trade window when a merchant has nothing left after the trade locks are applied. Lang key: message.historystages.trade_locked
+	tradeLocked = ""
+	# Actionbar message when attacking a locked mob. Lang key: message.historystages.mob_unknown
+	mobUnknown = ""
+	# Actionbar message when interacting with a locked block. Lang key: message.historystages.block_locked
+	blockLocked = ""
+	# Actionbar message when clicking a locked recipe in the recipe book. Lang key: message.historystages.recipe_locked
+	recipeLocked = ""
+	# Actionbar message when starting research on a stage that is blocked by its logic.
+	# {stage} is the stage name. Lang key: message.historystages.stage_blocked
+	stageBlocked = ""
+	# Toast text when a "revoke when" logic block takes a stage away.
+	# {stage} is the stage name. Empty = the built-in text, which also names the cause.
+	stageRevoked = ""
+#Layout of the Research Scroll tooltip.
+#Each entry is one line: id|enabled|spacerBefore|style|text
+#  text  empty = use the built-in translation
+#  style empty = use the line's built-in colour;
+#        otherwise ChatFormatting names joined with '+', e.g. gray+italic
+#The order of the movable ids (individual_badge, owner, info1, info2, tier,
+#dependencies) is the order they render in. Unknown ids are ignored, missing
+#ones fall back to their default, so an update can add lines safely.
+#Easiest way to edit this is the in-game config editor.
+[scroll_tooltip]
+	# The tooltip lines, in render order.
+	lines = ["name|true|false|aqua|", "individual_badge|true|false|light_purple|", "owner|true|false|gray|", "info1|true|false|gray+italic|", "info2|true|false|gray+italic|", "tier|true|false|gray|", "dependencies|true|true||", "blocked|true|false|red|", "dep.header|true|false|gold|", "dep.group_header|true|false|yellow|", "dep.item|true|false||", "dep.stage|true|false||", "dep.individual|true|false||", "dep.xp|true|false||", "dep.separator|true|false|dark_gray|", "blocked.unlocked|true|false|gray|", "blocked.locked|true|false|gray|", "dep.icon_fulfilled|true|false||✔", "dep.icon_open|true|false||✘", "dep.icon_unknown|true|false||•", "dep.color_fulfilled|true|false||green", "dep.color_open|true|false||gray"]
+	# Hide already fulfilled dependencies in scroll tooltips? [Default: false]
+	hideFulfilledDependencies = false
+#The document an Open Scroll shows when right-clicked.
+#Chapters are drawn in the order they appear below.
+#Each entry is one chapter: id|enabled|mode
+#  id   overview, items, creatures, world
+#  mode icons or text; overview and world are always text
+#Unknown ids are ignored and missing ones fall back to their default,
+#so an update can add chapters safely.
+[open_scroll]
+	# The chapters, in tab order.
+	chapters = ["overview|true|text", "items|true|icons", "creatures|true|icons", "world|true|text"]
+	# The overview page's blocks, in reading order.
+	# Each entry is one block: id|enabled
+	#   id  icon, title, description, counts
+	# Blocks flow from the top of the page, so a short description no
+	# longer leaves a gap above the counts line.
+	overviewBlocks = ["title|true", "icon|true", "description|true", "counts|true"]
+	# Draw the search line? Off gives the content 12 more pixels.
+	# [Default: true]
+	showSearch = true
+	# Ink for the chapter words and the stage title. [Default: #3F2D13]
+	inkHeading = "#3F2D13"
+	# Ink for group headings, the counts line and the sheet counter.
+	# [Default: #7A5A2C]
+	inkFaint = "#7A5A2C"
+	# What a reader sees for a stage they have not unlocked.
+	# visible  = everything readable, the scroll is just a record
+	# obscured = locked entries as silhouettes, names in enchanting glyphs
+	# [Default: obscured]
+	lockedDisplay = "obscured"
+	# How the chapters are marked along the top of the parchment.
+	# icons = one small ink icon per chapter, the name on hover
+	# words = the chapter names written out
+	# [Default: icons]
+	tabStyle = "icons"
+	# In which order a chapter lists its entries.
+	# defined      = the order the stage file lists them in
+	# alphabetical = by display name
+	# [Default: defined]
+	entrySort = "defined"
+	# Ink for entries and the description. [Default: #4A3416]
+	inkBody = "#4A3416"
+	# Show the raw registry id in an entry's tooltip?
+	# Off keeps a story pack free of minecraft:iron_ingot. [Default: true]
+	showEntryIds = true
+#Vanilla recipe book
+[recipe_book]
+	# Hide locked recipes from the vanilla recipe book at the crafting table?
+	# Covers both halves of recipe gating: a recipe id on a stage, and an item
+	# whose lock_actions include "recipe". Individual stages count too — the book
+	# belongs to one player, so it is filtered for that player.
+	# Off shows them, which is what the game did before 6.0.0: visible in the book,
+	# and still not craftable. [Default: true]
+	hideLockedRecipesInBook = true
+#Settings for the trade lock notice shown in an empty merchant window
+[trade_lock]
+	# Should the trade lock notice also name the stages holding the offers back? [Default: false]
+	showStagesInWindow = false
+#Visual feedback for locked zones (border + overlay)
+[zone_overlay]
+	# Draw the force field of a locked zone far past the usual few blocks, so
+	# the whole wall is visible at once? It still fades out with distance, and it
+	# still stops well short of the horizon: the wall is worked out from the blocks
+	# in front of you, and the further it reaches the more of them there are.
+	# Off, it reaches as far as the distance above and no further.
+	# [Default: false]
+	zoneBorderFullView = false
+	# Opacity of the red lock-overlay while you stand in a locked zone (0.0 = off, 1.0 = fully opaque).
+	# Only zones that switch their overlay on show one at all - this decides how strong it is, not whether. [Default: 0.30]
+	zoneLockOverlayOpacity = 1.0
+	# How close (in blocks) to a locked zone wall before the border becomes visible. The border fades in as you approach. 0 turns the border off entirely.
+	# Only zones that switch their border on have one at all - this decides how far it carries, not whether. [Default: 8.0]
+	zoneBorderDistance = 32.0
+	# Also draw a wireframe outline of every shape in a locked zone, fading
+	# in from about fifty blocks away? It shows where an area is and how big
+	# before you can make out the wall itself, which is more use while laying
+	# a pack out than while playing one. [Default: false]
+	zoneBorderOutline = false
+	# Colour of both the force field and the outline, as #RRGGBB.
+	# [Default: #E61414]
+	zoneBorderColor = "#E61414"
+#How stages blocked by their logic ("Blocked while ...") are shown.
+[stage_logic]
+	# Warn on a stage whose unlock would take away a stage the player owns (scroll tooltip, pedestal)? [Default: true]
+	showRevokeWarningOnTrigger = true
+	# Show "Would be cheaper while ..." hints for cost blocks whose condition does not hold yet?
+	# Cost changes that are in effect are always shown. [Default: true]
+	showInactiveCostHints = true
+	# REASON = list the conditions that block the stage (pedestal, graph, tooltip).
+	# PLAIN  = only say that it is blocked. [Default: REASON]
+	blockedDisplay = "REASON"
+	# Warn on a stage that a "revoke when" block can take it away again (scroll tooltip, graph)? [Default: true]
+	showRevokeWarningOnStage = true

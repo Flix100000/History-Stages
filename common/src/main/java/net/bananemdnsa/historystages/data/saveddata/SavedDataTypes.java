@@ -66,13 +66,17 @@ public final class SavedDataTypes {
         return server.getDataStorage().computeIfAbsent(type);
     }
 
-    private static Identifier id(String legacyName) {
+    static Identifier id(String legacyName) {
         String path = legacyName.startsWith(LEGACY_PREFIX) ? legacyName.substring(LEGACY_PREFIX.length()) : legacyName;
         return Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, path);
     }
 
     private static void migrateLegacyFile(MinecraftServer server, String legacyName, Identifier id) {
-        Path dataDir = server.getWorldPath(LevelResource.DATA);
+        migrateLegacyFile(server.getWorldPath(LevelResource.DATA), legacyName, id);
+    }
+
+    /** Package-private for the test; moves {@code <dataDir>/<legacyName>.dat} once, if it is there. */
+    static void migrateLegacyFile(Path dataDir, String legacyName, Identifier id) {
         Path legacy = dataDir.resolve(legacyName + ".dat");
         if (!Files.exists(legacy)) return;
         Path target = id.withSuffix(".dat").resolveAgainst(dataDir);

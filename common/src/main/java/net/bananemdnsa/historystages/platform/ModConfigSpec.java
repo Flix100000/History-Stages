@@ -67,8 +67,9 @@ public final class ModConfigSpec {
     }
 
     /**
-     * Reads the file, writes back anything missing or out of range, and points the declared values
-     * at it. Creating the file when it is not there is the normal first-run path, not an error.
+     * Reads the file, writes it back only when a key was missing or held a value the spec rejects
+     * (NeoForge's correct() rule), and points the declared values at it. A valid file is left
+     * byte for byte as it was. Creating the file when it is not there is the normal first-run path.
      */
     public void load(Path path) {
         try {
@@ -84,8 +85,9 @@ public final class ModConfigSpec {
         loaded.load();
 
         this.file = loaded;
-        correct(specTree, new ArrayList<>());
-        loaded.save();
+        if (correct(specTree, new ArrayList<>())) {
+            loaded.save();
+        }
 
         for (ConfigValue<?> value : declared) {
             value.invalidate();
@@ -93,25 +95,34 @@ public final class ModConfigSpec {
         onReload.run();
     }
 
-    /** Fills in every key the file does not have, or holds a value the spec rejects. */
-    private void correct(UnmodifiableConfig level, List<String> prefix) {
+    /**
+     * Fills in every key the file does not have, or holds a value the spec rejects.
+     *
+     * @return whether a value changed, i.e. whether the file needs writing back
+     */
+    private boolean correct(UnmodifiableConfig level, List<String> prefix) {
+        boolean changed = false;
         for (UnmodifiableConfig.Entry entry : level.entrySet()) {
             List<String> path = new ArrayList<>(prefix);
             path.add(entry.getKey());
             Object raw = entry.getRawValue();
             if (raw instanceof UnmodifiableConfig nested) {
-                correct(nested, path);
+                changed |= correct(nested, path);
             } else if (raw instanceof ValueSpec spec) {
                 Object current = file.getRaw(path);
                 Object usable = spec.fromStored(current);
                 if (usable == null || !spec.test(usable)) {
                     file.set(path, spec.toStored(spec.getDefault()));
+                    changed = true;
                 }
                 if (spec.getComment() != null) {
+                    // In memory only: it reaches the file with the next save, so a valid file is
+                    // never rewritten just for its comments.
                     file.setComment(path, " " + String.join("\n ", spec.getComment()));
                 }
             }
         }
+        return changed;
     }
 
     public void save() {

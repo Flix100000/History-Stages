@@ -1,0 +1,187 @@
+#Found a bug or have a feature request?
+#Report it on GitHub: https://github.com/Flix100000/History-Stages/issues
+#
+#Diagnostics and log output
+[logging]
+	# Log runtime events (stage unlock/lock, blocked actions, loot replacements) to config/historystages/logs/runtime-*.log? [Default: false]
+	enableRuntimeLogging = true
+	# Show debug messages in chat if a JSON stage has errors or missing items? [Default: true]
+	showDebugErrors = true
+#Gameplay and Server-side settings
+[gameplay]
+	# Prevent applying locked enchantments via anvil (locked enchanted books) and enchanting table? [Default: true]
+	lockEnchanting = true
+	# Break speed multiplier for locked blocks. Lower = slower. 0.05 = 20x slower (like using wrong tool). [Default: 0.05]
+	lockedBlockBreakSpeedMultiplier = 0.05
+	# Make locked blocks much harder to break and prevent their drops? [Default: true]
+	lockBlockBreaking = true
+	# Prevent using locked items? (Blocks equipping armor, using weapons, eating food, etc.) [Default: true]
+	lockItemUsage = true
+	# Handle locked items in mob loot tables? [Default: true]
+	lockMobLoot = true
+	# Prevent opening the GUI of locked blocks? (Chests, furnaces, crafting tables, etc.) [Default: true]
+	lockBlockInteraction = true
+	# Prevent taking individually-locked items out of containers? (Chests, machines, backpacks, etc. Sorting your own inventory stays allowed.) [Default: true]
+	lockContainerInteraction = true
+	# Prevent interacting with or breaking armor stands and item frames that contain locked items? [Default: true]
+	lockEntityItems = true
+#Research Pedestal Settings
+[research]
+	# Allow crafting a sealed scroll back out of an open one?
+	# The open scroll acts as a template and is not consumed; one sheet of
+	# paper is. Turn this off for a pack where a finished stage's scroll is
+	# meant to stay a one-off.
+	# Crafting follows this immediately. JEI and EMI build their recipe lists
+	# once at startup, so the entry only appears or disappears there after a
+	# restart. [Default: true]
+	enableScrollResealing = true
+	# What happens to a research scroll when its research finishes.
+	#   consume: the scroll is used up (behaviour before this option existed).
+	#   replace: a fresh scroll for the same stage is placed back into the pedestal,
+	#            so the next player can research it without needing a second copy.
+	#   open:    an open scroll is placed into the pedestal as a keepsake. No refill.
+	# A single stage can override this with its own 'scroll_completion'. [Default: consume]
+	defaultScrollCompletion = "consume"
+	# Default research time in seconds. Used as fallback if a stage does not define its own 'research_time' in the JSON. [Default: 20]
+	researchTimeInSeconds = 20
+	# Booster blocks placed directly UNDER a Research Pedestal modify the active research.
+	# Format per entry: "block_id, speed_percent, cost_percent, tier, mode"
+	#   speed_percent: research time reduction (0-90). 90% = max (research runs 10x).
+	#   cost_percent:  item-dependency count reduction (0-90). Locked into the scroll on first deposit.
+	#   tier:          minimum pedestal tier the booster works under (1-4).
+	#   mode:          'min' = this tier and higher, 'exact' = only this tier.
+	# Unknown block ids and out-of-range values are logged and skipped/clamped.
+	researchBoosters = []
+#Settings for replacing locked loot with alternatives
+[loot_replacements]
+	# {ReplacementPriority:2} A list of tags (e.g. 'c:dusts') to pick a random replacement from. [Default: empty]
+	replacementTags = []
+	# If true, locked items are replaced by specific items/tags. If false, they disappear. [Default: false]
+	useReplacements = false
+	# {ReplacementPriority:1} A list of Item IDs to pick from if 'useReplacements' is true. [Default: cobblestone, dirt]
+	replacementItems = ["minecraft:cobblestone", "minecraft:dirt"]
+#Individual Stage Settings (per-player stages)
+[individual_stages]
+	# Prevent applying enchantments locked by individual stages via anvil and enchanting table? [Default: true]
+	lockEnchanting = true
+	# Break speed multiplier for blocks locked by individual stages. Lower = slower. 0.05 = 20x slower. [Default: 0.05]
+	lockedBlockBreakSpeedMultiplier = 0.05
+	# Make blocks locked by individual stages much harder to break and prevent their drops? [Default: true]
+	lockBlockBreaking = true
+	# Prevent using items locked by individual stages? (Blocks equipping armor, using weapons, eating food, etc.) [Default: true]
+	lockItemUsage = true
+	# Drop locked items from a player's inventory when their individual stage is revoked? [Default: true]
+	dropOnRevoke = false
+	# Prevent opening the GUI of blocks locked by individual stages? (Chests, furnaces, crafting tables, etc.) [Default: true]
+	lockBlockInteraction = true
+	# Handle items locked by individual stages in Lootr containers and mob loot? Lootr loot is checked against the player it is rolled for; mob drops are shared world items, so they are checked against the killing player. [Default: true]
+	lockLoot = true
+	# Prevent players from picking up items locked by individual stages? [Default: true]
+	lockItemPickup = true
+	# Let individual stages gate recipes at the stations that know who is crafting
+	# (crafting table, 2x2 inventory grid, stonecutter, smithing table)?
+	# Furnaces, hoppers and autocrafters resolve recipes with nobody there and stay global-only.
+	# [Default: true]
+	lockRecipes = true
+#Structure Lock Settings (locks player entry into specified structures)
+[structure_lock]
+	# How often (in ticks) to check if a player is inside a locked structure. Higher = better performance, lower = faster reaction. [Default: 10]
+	checkInterval = 10
+	# Cancel ALL left-click interactions (attacking entities, breaking blocks) while the player is inside a locked structure? [Default: true]
+	blockLeftClick = true
+	# Message format for structure lock. Use {structure} for the structure ID, {stage} for the required stage, and & for colors.
+	messageFormat = "&cYou cannot enter &e{structure}&c yet!"
+	# Show the structure lock message in chat as well (otherwise only actionbar)? [Default: false]
+	showInChat = false
+	# Amount of damage dealt per damage tick. [Default: 1.0]
+	damageAmount = 1.0
+	# Damage the player while they are inside a locked structure? [Default: false]
+	damageEnabled = false
+	# How often (in ticks) to deal damage while inside a locked structure. [Default: 20]
+	damageInterval = 20
+	# Cancel ALL right-click interactions (blocks, items, entities) while the player is inside a locked structure? [Default: true]
+	blockRightClick = true
+	# ADVANCED — leave this alone if you don't know what it does.
+	# How far apart (in blocks) two pieces of the same structure can be while still being
+	# joined into one connected lock zone. Example for a village: with a low value, each
+	# house is its own little zone and the gaps between houses are walkable; with a higher
+	# value, neighbouring houses + paths fuse into one lock zone covering the whole area.
+	# Higher = larger, more 'filled-in' lock zones. Lower = more precise, more gaps. [Default: 6]
+	clusterDistance = 6
+	# ADVANCED — leave this alone if you don't know what it does.
+	# Extra blocks added around each piece of a locked structure (rooms, corridors, houses, ...).
+	# Note: a fixed safety buffer of 2 blocks is ALWAYS added on top of this value, so
+	# the effective padding around structure walls is (lockPadding + 2). Setting this to 0
+	# still leaves a 2-block safety wall between you and the structure. [Default: 0]
+	lockPadding = 0
+	# Cancel projectiles (arrows, snowballs, ender pearls, etc.) the moment they would impact something inside a locked structure? [Default: true]
+	blockProjectiles = true
+	# Keep explosions from destroying blocks inside a locked structure? [Default: true]
+	blockExplosions = true
+	# Show the player a message when they are inside a locked structure? [Default: true]
+	messageEnabled = true
+#Biome Lock Settings (punishes players standing in a biome they haven't unlocked yet)
+[biome_lock]
+	# How often (in ticks) to re-check a player's biome even when they haven't moved to a new biome cell. Moving always re-checks immediately. [Default: 10]
+	checkInterval = 10
+	# Cancel ALL left-click interactions (attacking entities, breaking blocks) while the player is inside a locked biome? [Default: true]
+	blockLeftClick = true
+	# Message format for biome lock. Use {biome} for the biome ID, {stage} for the required stage, and & for colors.
+	messageFormat = "&cYou cannot survive in &e{biome}&c yet!"
+	# Show the biome lock message in chat as well (otherwise only actionbar)? [Default: false]
+	showInChat = false
+	# Amount of damage dealt per damage tick. [Default: 1.0]
+	damageAmount = 1.0
+	# Damage the player while they are inside a locked biome? [Default: true]
+	damageEnabled = true
+	# How often (in ticks) to deal damage while inside a locked biome. [Default: 20]
+	damageInterval = 20
+	# Cancel ALL right-click interactions (blocks, items, entities) while the player is inside a locked biome? [Default: true]
+	blockRightClick = true
+	# Apply the potion effects listed below while the player is inside a locked biome? [Default: true]
+	effectsEnabled = true
+	# Potion effects applied while the player stands in a locked biome.
+	# Format per entry: "effect_id, seconds, amplifier"
+	#   seconds:   how long the effect lasts. It is refreshed while the player stays inside,
+	#              so this is really 'how long it lingers after leaving' (1-3600).
+	#   amplifier: 0 = level I, 1 = level II, ... (0-255).
+	# Unknown effect ids are logged once and skipped.
+	effects = ["minecraft:blindness, 30, 0"]
+	# Cancel projectiles (arrows, snowballs, ender pearls, etc.) the moment they would impact inside a locked biome? [Default: true]
+	blockProjectiles = true
+	# Keep explosions from destroying blocks inside a locked biome? [Default: true]
+	blockExplosions = true
+	# Remove those effects the moment the player leaves the locked biome, instead of letting them run out? [Default: false]
+	clearEffectsOnLeave = false
+	# Show the player a message while they are inside a locked biome? [Default: true]
+	messageEnabled = true
+#Zone Lock Settings (areas you draw yourself; each zone carries its own rules)
+[zone_lock]
+	# Item used to mark out zone corners in the world.
+	# Sneak + left click sets the first corner, sneak + right click the second.
+	# Requires permission level 2, the same as opening the editor.
+	# Without sneaking the item behaves completely normally, so an item you
+	# already carry is a safe choice. Leave empty to switch marking by item
+	# off entirely and use /history zone instead. [Default: minecraft:stick]
+	markerItem = "minecraft:stick"
+#Stage logic ("Blocked while ..." and future logic blocks)
+[stage_logic]
+	# Tell an operator when a command or the editor unlocks a stage that was blocked?
+	# Those paths unlock anyway; this only decides whether they say so. [Default: true]
+	warnOnForcedUnlock = true
+	# What a Research Pedestal does when its stage becomes blocked while researching:
+	# PAUSE  = keep the progress and continue once the block clears (default).
+	# CANCEL = drop the progress; research has to be started again.
+	researchWhenBlocked = "PAUSE"
+#Team mods (FTB Teams): individual stages flagged "share with team"
+[team_mods]
+	# When one player loses a shared stage (on death, by a lock trigger, ...), the rest of
+	# the team loses it too? They lose it the normal way and can earn it back, even when the
+	# first player lost it for good. Admin locks are never shared. [Default: false]
+	shareLoss = false
+	# Hand a player who joins a team every shared stage someone in that team already has?
+	# Checked again at each login. Leaving a team never takes stages away. [Default: false]
+	shareOnJoin = false
+	# Count FTB Teams parties as teams for shared stages? Off = FTB Teams stays installed
+	# but its parties share nothing. Solo teams never count. [Default: true]
+	useFtbTeams = true
