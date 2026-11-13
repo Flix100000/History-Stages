@@ -334,7 +334,9 @@ class EventBusTest {
         CALLS.clear();
         EventBus.register(PerRank.class);
         EventBus.post(new Sliced(), EventPriority.NORMAL);
-        assertEquals(List.of("slice-exact-normal", "slice-super-normal"), CALLS);
+        // Both sit in one class, and getDeclaredMethods has no fixed order, so neither has the
+        // order between them.
+        assertEquals(List.of("slice-exact-normal", "slice-super-normal"), CALLS.stream().sorted().toList());
         CALLS.clear();
         EventBus.post(new Sliced(), EventPriority.HIGH);
         assertEquals(List.of(), CALLS, "nobody listens at HIGH");
