@@ -82,7 +82,7 @@ public class StructureLockHandler {
         PlayerState state = STATE.computeIfAbsent(player.getUUID(), u -> new PlayerState());
 
         int interval = Config.GAMEPLAY.structureCheckInterval.get();
-        long chunkKey = (((long) player.chunkPosition().x) << 32) | (player.chunkPosition().z & 0xFFFFFFFFL);
+        long chunkKey = (((long) player.chunkPosition().x()) << 32) | (player.chunkPosition().z() & 0xFFFFFFFFL);
         boolean chunkChanged = chunkKey != state.lastChunkKey;
 
         state.checkCooldown--;
@@ -327,8 +327,8 @@ public class StructureLockHandler {
         var registry = level.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.STRUCTURE);
         net.minecraft.world.level.ChunkPos center = new net.minecraft.world.level.ChunkPos(pos);
         Set<Structure> seen = new LinkedHashSet<>();
-        for (int cx = center.x - CHUNK_SCAN_RADIUS; cx <= center.x + CHUNK_SCAN_RADIUS; cx++) {
-            for (int cz = center.z - CHUNK_SCAN_RADIUS; cz <= center.z + CHUNK_SCAN_RADIUS; cz++) {
+        for (int cx = center.x() - CHUNK_SCAN_RADIUS; cx <= center.x() + CHUNK_SCAN_RADIUS; cx++) {
+            for (int cz = center.z() - CHUNK_SCAN_RADIUS; cz <= center.z() + CHUNK_SCAN_RADIUS; cz++) {
                 var chunk = level.getChunkSource().getChunkNow(cx, cz);
                 if (chunk == null) continue;
                 for (var entry : chunk.getAllStarts().entrySet()) {
@@ -344,7 +344,7 @@ public class StructureLockHandler {
         for (Structure s : seen) {
             var key = registry.getKey(s);
             if (key == null) continue;
-            registry.getHolder(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.STRUCTURE, key))
+            registry.get(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.STRUCTURE, key))
                     .ifPresent(out::add);
         }
         return out;

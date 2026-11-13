@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.block.entity;
 
+import net.bananemdnsa.historystages.util.PlayerSounds;
 import dev.architectury.networking.NetworkManager;
 import net.minecraft.core.UUIDUtil;
 import net.bananemdnsa.historystages.util.NbtTypes;
@@ -422,7 +423,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
         if (depositRl == null) return;
 
         CompoundTag deposited = scrollTag.contains("DepositedDependencies")
-                ? scrollTag.getCompound("DepositedDependencies")
+                ? scrollTag.getCompoundOrEmpty("DepositedDependencies")
                 : new CompoundTag();
         boolean changed = false;
 
@@ -505,7 +506,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
                     var player = level.getServer().getPlayerList().getPlayer(checkUUID);
                     if (player != null) {
                         CompoundTag updatedDeposited = scrollTag.contains("DepositedDependencies")
-                                ? scrollTag.getCompound("DepositedDependencies") : null;
+                                ? scrollTag.getCompoundOrEmpty("DepositedDependencies") : null;
                         var result = DependencyChecker.checkAll(entry, player, level,
                                 isCurrentScrollIndividual() ? StageScope.INDIVIDUAL : StageScope.GLOBAL,
                                 updatedDeposited, itemCostReduction(scrollTag), xpCostFactor(scrollTag));
@@ -540,7 +541,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
         if (depositRl == null) return false;
 
         CompoundTag depositedData = scrollTag.contains("DepositedDependencies")
-                ? scrollTag.getCompound("DepositedDependencies") : new CompoundTag();
+                ? scrollTag.getCompoundOrEmpty("DepositedDependencies") : new CompoundTag();
 
         double costReduction = itemCostReduction(scrollTag);
 
@@ -863,7 +864,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
         if (researchPlayer == null) return false;
 
         CompoundTag depositedTag = stackTag.contains("DepositedDependencies")
-                ? stackTag.getCompound("DepositedDependencies")
+                ? stackTag.getCompoundOrEmpty("DepositedDependencies")
                 : null;
         RequirementResult result = DependencyChecker.checkAll(stageEntry, researchPlayer, level,
                 isIndividual ? StageScope.INDIVIDUAL : StageScope.GLOBAL,
@@ -873,7 +874,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
 
     private void finishResearch(ItemStack stack) {
         CompoundTag stackTag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
-        String stageId = stackTag.contains("StageResearch") ? stackTag.getString("StageResearch") : null;
+        String stageId = stackTag.contains("StageResearch") ? stackTag.getStringOr("StageResearch", "") : null;
 
         if (!level.isClientSide() && stageId != null) {
             // Consuming items and XP is now handled when depositing into the scroll.
@@ -1034,7 +1035,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
                                         .withStyle(ChatFormatting.GREEN)));
             }
             if (Config.VISUAL.useSounds.get()) {
-                player.playNotifySound(net.minecraft.sounds.SoundEvents.UI_TOAST_CHALLENGE_COMPLETE,
+                PlayerSounds.notify(player, net.minecraft.sounds.SoundEvents.UI_TOAST_CHALLENGE_COMPLETE,
                         SoundSource.MASTER, 0.75F, 1.0F);
             }
         });

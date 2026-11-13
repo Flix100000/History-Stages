@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.api.stage;
 
+import net.bananemdnsa.historystages.util.PlayerSounds;
 import net.bananemdnsa.historystages.platform.bus.EventBus;
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.StageManager;
@@ -711,7 +712,7 @@ public final class StageStates {
                 player.sendOverlayMessage(actionMsg);
             }
             if (Config.VISUAL.useSounds.get()) {
-                player.playNotifySound(SoundEvents.BEACON_DEACTIVATE, SoundSource.MASTER, 0.75F, 1.0F);
+                PlayerSounds.notify(player, SoundEvents.BEACON_DEACTIVATE, SoundSource.MASTER, 0.75F, 1.0F);
             }
         });
     }
@@ -727,7 +728,7 @@ public final class StageStates {
             player.sendOverlayMessage(Component.translatable("message.historystages.stage_locked_action", displayName));
         }
         if (Config.VISUAL.individualUseSounds.get()) {
-            player.playNotifySound(SoundEvents.BEACON_DEACTIVATE, SoundSource.MASTER, 0.75F, 1.0F);
+            PlayerSounds.notify(player, SoundEvents.BEACON_DEACTIVATE, SoundSource.MASTER, 0.75F, 1.0F);
         }
     }
 
@@ -756,7 +757,7 @@ public final class StageStates {
                 player.sendOverlayMessage(actionMsg);
             }
             if (Config.VISUAL.useSounds.get()) {
-                player.playNotifySound(SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundSource.MASTER, 0.75F, 1.0F);
+                PlayerSounds.notify(player, SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundSource.MASTER, 0.75F, 1.0F);
             }
         });
 
@@ -786,7 +787,7 @@ public final class StageStates {
             player.sendOverlayMessage(Component.literal(finalChat));
         }
         if (Config.VISUAL.individualUseSounds.get()) {
-            player.playNotifySound(SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundSource.MASTER, 0.75F, 1.0F);
+            PlayerSounds.notify(player, SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundSource.MASTER, 0.75F, 1.0F);
         }
         if (Config.VISUAL.individualUseToasts.get()) {
             String iconId = (entry != null && !entry.getIcon().isEmpty())

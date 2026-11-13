@@ -348,7 +348,7 @@ public class DisguiseDialog extends AbstractInputScreen {
     public static Component keyName(String id) {
         if (id.startsWith("#")) return Component.literal(id);
         Item item = Disguises.itemById(id);
-        return item != null ? new ItemStack(item).getItem().getDescription() : Component.literal(id);
+        return item != null ? new ItemStack(item).getItem().getName(ItemStack(item).getItem().getDefaultInstance()) : Component.literal(id);
     }
 
     // --- input ---

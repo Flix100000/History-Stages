@@ -79,7 +79,7 @@ public record DepositDependencyPacket(BlockPos pos, int groupIndex, String depos
             String groupKey = DependencyProgress.groupKey(group, packet.groupIndex);
 
             CompoundTag deposited = tag.contains("DepositedDependencies")
-                    ? tag.getCompound("DepositedDependencies")
+                    ? tag.getCompoundOrEmpty("DepositedDependencies")
                     : new CompoundTag();
 
             boolean changed = false;

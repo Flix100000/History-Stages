@@ -94,7 +94,7 @@ public class ResearchPedestalBlock extends BaseEntityBlock implements TieredPede
                 ((ServerPlayer) pPlayer).openMenu((MenuProvider) entity, pPos);
             }
         }
-        return InteractionResult.sidedSuccess(pLevel.isClientSide());
+        return InteractionResult.SUCCESS;
     }
 
     @Nullable

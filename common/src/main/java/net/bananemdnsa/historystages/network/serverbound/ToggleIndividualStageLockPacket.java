@@ -63,10 +63,10 @@ public record ToggleIndividualStageLockPacket(String stageId, Optional<UUID> tar
 
             List<ServerPlayer> targets = new ArrayList<>();
             if (msg.target.isPresent()) {
-                ServerPlayer target = sender.server.getPlayerList().getPlayer(msg.target.get());
+                ServerPlayer target = sender.level().getServer().getPlayerList().getPlayer(msg.target.get());
                 if (target != null) targets.add(target);
             } else {
-                targets.addAll(sender.server.getPlayerList().getPlayers());
+                targets.addAll(sender.level().getServer().getPlayerList().getPlayers());
             }
             if (targets.isEmpty()) return;
 

@@ -38,7 +38,7 @@ public record RequestIndividualStatesPacket() implements CustomPacketPayload {
 
             IndividualStageData data = IndividualStageData.get(player.level());
             Map<UUID, Set<String>> states = new HashMap<>();
-            for (ServerPlayer online : player.server.getPlayerList().getPlayers()) {
+            for (ServerPlayer online : player.level().getServer().getPlayerList().getPlayers()) {
                 states.put(online.getUUID(), new HashSet<>(data.getUnlockedStages(online.getUUID())));
             }
             NetworkManager.sendToPlayer(player, new SyncIndividualStatesPacket(states));

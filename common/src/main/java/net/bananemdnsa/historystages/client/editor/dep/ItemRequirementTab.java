@@ -183,6 +183,6 @@ public final class ItemRequirementTab extends AbstractDependencyTab {
         Identifier rl = Identifier.tryParse(itemId);
         if (rl == null) return itemId;
         Item item = BuiltInRegistries.ITEM.getValue(rl);
-        return item == null ? itemId : item.getDescription().getString();
+        return item == null ? itemId : item.getName(item.getDefaultInstance()).getString();
     }
 }

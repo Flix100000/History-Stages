@@ -70,7 +70,7 @@ public final class OpenScrollNames {
         Identifier key = Identifier.tryParse(id);
         if (key == null) return null;
         if (isProfessionlessMerchant(id)) {
-            return BuiltInRegistries.ENTITY_TYPE.get(key).getDescription().getString();
+            return BuiltInRegistries.ENTITY_TYPE.get(key).getName(BuiltInRegistries.ENTITY_TYPE.get(key).getDefaultInstance()).getString();
         }
         // Vanilla's own pattern, then the one mods like Vinery ship for their professions.
         String candidate = "entity." + key.getNamespace() + ".villager." + key.getPath();

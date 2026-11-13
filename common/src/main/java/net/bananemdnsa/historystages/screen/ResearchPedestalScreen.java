@@ -490,7 +490,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
                                 PedestalLayout.LINE_2_Y, SLAB_ERROR);
                     } else if (tag.contains("ResearchProgress")) {
                         int currentProgress = tag.getIntOr("ResearchProgress", 0);
-                        int maxProgress = tag.contains("MaxProgress") ? tag.getInt("MaxProgress") : 400;
+                        int maxProgress = tag.contains("MaxProgress") ? tag.getIntOr("MaxProgress", 0) : 400;
 
                         int percent = (int) (((double) currentProgress / maxProgress) * 100);
                         drawBarPercent(guiGraphics, Math.min(100, percent));
@@ -813,7 +813,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
         ItemStack stack = menu.getSlot(36).getItem();
         if (stack.isEmpty()) return null;
         CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
-        return tag.contains("StageResearch") ? tag.getString("StageResearch") : null;
+        return tag.contains("StageResearch") ? tag.getStringOr("StageResearch", "") : null;
     }
 
     private void renderDependencyPanel(GuiGraphicsExtractor guiGraphics, int x, int y, int mouseX, int mouseY) {

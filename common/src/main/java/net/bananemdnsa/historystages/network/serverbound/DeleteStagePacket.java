@@ -69,7 +69,7 @@ public record DeleteStagePacket(String stageId, boolean individual) implements C
                 PacketHandler.sendEditorFeedback(
                         EditorFeedbackPacket.success(titleKey, "editor.historystages.toast.stage_deleted.message", msg.stageId),
                         player);
-                PacketHandler.reloadForLockChange(player.server);
+                PacketHandler.reloadForLockChange(player.level().getServer());
             } else {
                 PacketHandler.sendEditorFeedback(
                         EditorFeedbackPacket.error(

@@ -159,7 +159,7 @@ public class ScrollShelfBlock extends BaseEntityBlock {
             }
             level.gameEvent(player, GameEvent.BLOCK_CHANGE, pos);
         }
-        return InteractionResult.sidedSuccess(level.isClientSide());
+        return InteractionResult.SUCCESS;
     }
 
     /**

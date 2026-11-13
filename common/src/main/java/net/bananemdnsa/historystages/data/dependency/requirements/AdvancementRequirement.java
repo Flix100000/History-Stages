@@ -58,8 +58,8 @@ public class AdvancementRequirement implements Requirement {
 
     private static boolean checkAdvancement(ServerPlayer player, String advancementId) {
         Identifier rl = Identifier.tryParse(advancementId);
-        if (rl == null || player.getServer() == null) return false;
-        AdvancementHolder holder = player.getServer().getAdvancements().get(rl);
+        if (rl == null || player.level().getServer() == null) return false;
+        AdvancementHolder holder = player.level().getServer().getAdvancements().get(rl);
         if (holder == null) return false;
         return player.getAdvancements().getOrStartProgress(holder).isDone();
     }

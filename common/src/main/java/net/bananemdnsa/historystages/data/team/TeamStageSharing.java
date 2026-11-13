@@ -160,7 +160,7 @@ public final class TeamStageSharing {
 
     /** Hands {@code player} every shared stage any teammate already has, online or not. */
     static void catchUp(ServerPlayer player) {
-        MinecraftServer server = player.getServer();
+        MinecraftServer server = player.level().getServer();
         if (server == null) return;
         Set<UUID> mates = TeamProviders.teammates(server, player.getUUID());
         if (mates.isEmpty()) return;

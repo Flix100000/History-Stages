@@ -78,6 +78,6 @@ public class ItemRequirement implements Requirement {
         if (rl == null) return itemId;
         Item item = BuiltInRegistries.ITEM.getValue(rl);
         if (item == null) return itemId;
-        return item.getDescription().getString();
+        return item.getName(item.getDefaultInstance()).getString();
     }
 }

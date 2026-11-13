@@ -109,7 +109,7 @@ public final class ScrollTooltipRenderer {
         StageEntry stageEntry = stage(stageId);
         String stageName = stageEntry != null ? stageEntry.getDisplayName() : "";
         boolean individual = stageId != null && StageManager.isIndividualStage(stageId);
-        String ownerName = tag != null && tag.contains("OwnerName") ? tag.getString("OwnerName") : null;
+        String ownerName = tag != null && tag.contains("OwnerName") ? tag.getStringOr("OwnerName", "") : null;
 
         int minTier = 0;
         TierMode tierMode = null;
@@ -470,7 +470,7 @@ public final class ScrollTooltipRenderer {
         } else {
             Identifier rl = Identifier.tryParse(item.getId());
             Item mcItem = rl != null ? BuiltInRegistries.ITEM.get(rl) : null;
-            name = mcItem != null ? mcItem.getDescription().getString() : item.getId();
+            name = mcItem != null ? mcItem.getName(mcItem.getDefaultInstance()).getString() : item.getId();
         }
 
         boolean fulfilled = er != null && er.isFulfilled();
@@ -589,7 +589,7 @@ public final class ScrollTooltipRenderer {
     }
 
     private static @Nullable String stageIdOf(CompoundTag tag) {
-        return tag != null && tag.contains("StageResearch") ? tag.getString("StageResearch") : null;
+        return tag != null && tag.contains("StageResearch") ? tag.getStringOr("StageResearch", "") : null;
     }
 
     /** Shorthand for a reserved dependency-block option, sourced from the given layout (not the live one). */

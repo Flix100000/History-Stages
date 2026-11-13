@@ -19,7 +19,7 @@ public final class Teams {
 
     /** This player's teammates, not counting the player. Empty without a team or a provider. */
     public static Set<UUID> teammates(ServerPlayer player) {
-        MinecraftServer server = player.getServer();
+        MinecraftServer server = player.level().getServer();
         if (server == null) return Set.of();
         return teammates(player.getUUID(), server);
     }

@@ -98,7 +98,7 @@ public class TooltipEventHandler {
 
             if (nbt.contains("ResearchProgress")) {
                 int progress = nbt.getIntOr("ResearchProgress", 0);
-                int maxProgress = nbt.contains("MaxProgress") ? nbt.getInt("MaxProgress") : 400;
+                int maxProgress = nbt.contains("MaxProgress") ? nbt.getIntOr("MaxProgress", 0) : 400;
 
                 int percent = (int) Math.min(100, ((double) progress / maxProgress * 100));
 

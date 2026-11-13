@@ -32,7 +32,7 @@ public final class ScrollVariants {
         if (stack == null || stack.isEmpty()) return null;
         CustomData data = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY);
         CompoundTag tag = data.copyTag();
-        return tag.contains(STAGE_RESEARCH_KEY) ? tag.getString(STAGE_RESEARCH_KEY) : null;
+        return tag.contains(STAGE_RESEARCH_KEY) ? tag.getStringOr(STAGE_RESEARCH_KEY, "") : null;
     }
 
     /**

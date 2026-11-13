@@ -134,7 +134,7 @@ public record SaveStagePacket(String stageId, String stageJson, boolean individu
                 PacketHandler.sendEditorFeedback(
                         EditorFeedbackPacket.success(titleKey, messageKey, msg.stageId),
                         player);
-                PacketHandler.reloadForLockChange(player.server);
+                PacketHandler.reloadForLockChange(player.level().getServer());
             } else {
                 PacketHandler.sendEditorFeedback(
                         EditorFeedbackPacket.error(

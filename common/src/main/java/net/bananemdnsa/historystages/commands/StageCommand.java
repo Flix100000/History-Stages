@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.commands;
 
+import net.bananemdnsa.historystages.util.PlayerSounds;
 import net.minecraft.server.permissions.Permissions;
 import net.bananemdnsa.historystages.platform.bus.EventBus;
 import net.bananemdnsa.historystages.api.stage.StageChangeCause;
@@ -467,7 +468,7 @@ public class StageCommand {
             }
 
             if (Config.VISUAL.useSounds.get()) {
-                player.playNotifySound(isUnlock ? SoundEvents.UI_TOAST_CHALLENGE_COMPLETE : SoundEvents.BEACON_DEACTIVATE, SoundSource.MASTER, 0.75F, 1.0F);
+                PlayerSounds.notify(player, isUnlock ? SoundEvents.UI_TOAST_CHALLENGE_COMPLETE : SoundEvents.BEACON_DEACTIVATE, SoundSource.MASTER, 0.75F, 1.0F);
             }
         });
 
@@ -537,7 +538,7 @@ public class StageCommand {
         );
 
         if (Config.VISUAL.useSounds.get()) {
-            target.playNotifySound(SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundSource.MASTER, 0.75F, 1.0F);
+            PlayerSounds.notify(target, SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundSource.MASTER, 0.75F, 1.0F);
         }
 
         DebugLogger.runtime(HsRuntimeCategories.INDIVIDUAL_UNLOCK, source.getTextName(),
@@ -661,7 +662,7 @@ public class StageCommand {
             );
         }
         if (announce && Config.VISUAL.individualUseSounds.get()) {
-            target.playNotifySound(SoundEvents.NOTE_BLOCK_BASS.value(), SoundSource.MASTER, 0.75F, 0.5F);
+            PlayerSounds.notify(target, SoundEvents.NOTE_BLOCK_BASS.value(), SoundSource.MASTER, 0.75F, 0.5F);
         }
 
         DebugLogger.runtime(HsRuntimeCategories.INDIVIDUAL_LOCK, source.getTextName(),

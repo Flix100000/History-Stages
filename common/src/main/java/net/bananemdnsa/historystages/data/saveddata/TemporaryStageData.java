@@ -380,7 +380,7 @@ public class TemporaryStageData extends SavedData {
     private static void readTickMap(ListTag list, Map<String, Long> into) {
         for (int i = 0; i < list.size(); i++) {
             CompoundTag e = list.getCompoundOrEmpty(i);
-            into.put(e.getStringOr("id", ""), e.getLong("ticks"));
+            into.put(e.getStringOr("id", ""), e.getLongOr("ticks", 0L));
         }
     }
 
@@ -398,7 +398,7 @@ public class TemporaryStageData extends SavedData {
     private static void readCountMap(ListTag list, Map<String, Integer> into) {
         for (int i = 0; i < list.size(); i++) {
             CompoundTag e = list.getCompoundOrEmpty(i);
-            into.put(e.getStringOr("id", ""), e.getInt("count"));
+            into.put(e.getStringOr("id", ""), e.getIntOr("count", 0));
         }
     }
 

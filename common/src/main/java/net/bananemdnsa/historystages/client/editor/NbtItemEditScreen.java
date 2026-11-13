@@ -363,7 +363,7 @@ public class NbtItemEditScreen extends Screen {
             Item item = BuiltInRegistries.ITEM.getValue(Identifier.parse(itemId));
             if (item != null) {
                 g.item(new ItemStack(item), PADDING, 12);
-                g.text(this.font, item.getDescription(), PADDING + 22, 14, 0xFFFFFF);
+                g.text(this.font, item.getName(item.getDefaultInstance()), PADDING + 22, 14, 0xFFFFFF);
             }
             g.text(this.font, itemId, PADDING + 22, 28, 0x888888);
         }
@@ -455,7 +455,7 @@ public class NbtItemEditScreen extends Screen {
 
     private String itemDisplayName() {
         Item item = BuiltInRegistries.ITEM.getValue(Identifier.parse(itemId));
-        return item != null ? item.getDescription().getString() : itemId;
+        return item != null ? item.getName(item.getDefaultInstance()).getString() : itemId;
     }
 
     // ==========================================
