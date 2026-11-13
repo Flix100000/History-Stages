@@ -26,6 +26,7 @@
 		],
 		"fabric-gametest": [
 			"net.bananemdnsa.historystages.fabric.gametest.BridgeCancelTests",
+			"net.bananemdnsa.historystages.fabric.gametest.BridgeMixinTests",
 			"net.bananemdnsa.historystages.fabric.gametest.BridgePriorityTests"
 		]
 	},

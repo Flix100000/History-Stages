@@ -85,7 +85,9 @@ public final class ClientBridge {
 
     /**
      * Two of the screen events are per screen in Fabric, so they are hooked while each screen is
-     * built, once per init and not once per priority.
+     * built, once per init and not once per priority. Fabric creates fresh per-screen events before
+     * every init and resize (ScreenMixin.beforeInit in fabric-screen-api 5.2.1), so listeners do not
+     * stack up when a screen is resized.
      */
     private static void screens() {
         Phases.listen(ScreenEvents.AFTER_INIT, priority -> (client, screen, width, height) -> {

@@ -44,6 +44,12 @@ final class TestPlayers {
             return true;
         }
 
+        // A pearl only teleports a thrower whose connection is live.
+        @Override
+        public boolean isAcceptingMessages() {
+            return true;
+        }
+
         @Override
         public void send(Packet<?> packet) {}
 

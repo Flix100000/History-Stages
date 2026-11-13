@@ -1,6 +1,8 @@
 package net.bananemdnsa.historystages.fabric.events;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
 
 import net.minecraft.world.entity.LivingEntity;
@@ -15,19 +17,20 @@ import net.minecraft.world.entity.item.ItemEntity;
  * ({@code LivingDropsMixin}), which lets a lock remove one rather than delete it again a tick later
  * in front of the player.
  *
- * <p>One capture at a time, on the server thread, which is where dying happens. Anything dropped
- * while no capture is running goes straight through.
+ * <p>On the server thread, which is where dying happens. Anything dropped while no capture is
+ * running goes straight through. Captures nest: a death inside a death (a drop that kills, a loot
+ * function that hurts) keeps its own list, and the outer one carries on with its own afterwards.
  */
 public final class DeathDropCapture {
 
-    private static LivingEntity capturing;
-    private static List<ItemEntity> captured;
+    private record Capture(LivingEntity entity, List<ItemEntity> drops) {}
+
+    private static final Deque<Capture> OPEN = new ArrayDeque<>();
 
     private DeathDropCapture() {}
 
     public static void begin(LivingEntity entity) {
-        capturing = entity;
-        captured = new ArrayList<>();
+        OPEN.push(new Capture(entity, new ArrayList<>()));
     }
 
     /**
@@ -36,18 +39,16 @@ public final class DeathDropCapture {
      * says who may pick it up, not where it came from.
      */
     public static boolean isActive() {
-        return capturing != null;
+        return !OPEN.isEmpty();
     }
 
     public static void capture(ItemEntity drop) {
-        captured.add(drop);
+        OPEN.peek().drops().add(drop);
     }
 
-    /** Ends the capture and hands back what was held. Never null. */
+    /** Ends the innermost capture and hands back what it held. Never null. */
     public static List<ItemEntity> end() {
-        List<ItemEntity> drops = captured == null ? List.of() : captured;
-        capturing = null;
-        captured = null;
-        return drops;
+        Capture capture = OPEN.poll();
+        return capture == null ? List.of() : capture.drops();
     }
 }
