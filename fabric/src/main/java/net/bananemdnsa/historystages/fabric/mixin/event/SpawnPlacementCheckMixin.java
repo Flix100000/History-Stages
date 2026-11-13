@@ -1,0 +1,41 @@
+package net.bananemdnsa.historystages.fabric.mixin.event;
+
+import net.bananemdnsa.historystages.fabric.events.Phases;
+import net.bananemdnsa.historystages.platform.bus.EventBus;
+import net.bananemdnsa.historystages.platform.event.entity.living.MobSpawnEvent;
+import net.minecraft.core.BlockPos;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.SpawnPlacements;
+import net.minecraft.world.level.ServerLevelAccessor;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+
+/**
+ * Raises "may this kind of mob spawn here at all", which vanilla asks before it builds one.
+ * Refusing here is cheaper than refusing the finished mob and does not count against the chunk's
+ * spawn attempts.
+ */
+@Mixin(SpawnPlacements.class)
+public abstract class SpawnPlacementCheckMixin {
+
+    @Inject(method = "checkSpawnRules", at = @At("RETURN"), cancellable = true)
+    private static <T extends Entity> void historystages$raise(EntityType<T> type, ServerLevelAccessor level,
+                                                              EntitySpawnReason spawnType, BlockPos pos,
+                                                              RandomSource random, CallbackInfoReturnable<Boolean> cir) {
+        if (!Phases.wanted(MobSpawnEvent.SpawnPlacementCheck.class)) {
+            return;
+        }
+        MobSpawnEvent.SpawnPlacementCheck event = EventBus.post(
+                new MobSpawnEvent.SpawnPlacementCheck(type, level, spawnType, pos));
+        switch (event.getResult()) {
+            case FAIL -> cir.setReturnValue(false);
+            case SUCCEED -> cir.setReturnValue(true);
+            case DEFAULT -> { }
+        }
+    }
+}

@@ -41,8 +41,24 @@ dependencies {
     implementation "dev.architectury:architectury-fabric:${rootProject.architectury_api_version}"
     implementation "maven.modrinth:lootr:${rootProject.lootr_fabric_modrinth_id}"
 
+    // The platform ModConfigSpec is built on NightConfig. NeoForge ships 3.9.0; Fabric does not,
+    // so the jar carries the same version.
+    include(implementation("com.electronwill.night-config:core:3.9.0"))
+    include(implementation("com.electronwill.night-config:toml:3.9.0"))
+
+    testImplementation platform("org.junit:junit-bom:5.10.2")
+    testImplementation "org.junit.jupiter:junit-jupiter"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+
     common(project(path: ":common")) { transitive false }
     shadowCommon(project(path: ":common", configuration: "transformProductionFabric")) { transitive false }
+}
+
+tasks.named("test", Test) {
+    useJUnitPlatform()
+    testLogging {
+        events "passed", "skipped", "failed"
+    }
 }
 
 processResources {

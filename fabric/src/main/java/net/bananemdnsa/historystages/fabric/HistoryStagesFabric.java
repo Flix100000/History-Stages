@@ -7,5 +7,6 @@ public final class HistoryStagesFabric implements ModInitializer {
     @Override
     public void onInitialize() {
         HistoryStages.init();
+        FabricEventSources.register();
     }
 }

@@ -1,0 +1,38 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "net.bananemdnsa.historystages.fabric.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": [
+    "ItemCombinerMenuAccessor",
+    "event.AdvancementEarnMixin",
+    "event.AnvilUpdateMixin",
+    "event.BabyEntitySpawnMixin",
+    "event.BlockPlaceMixin",
+    "event.BreakSpeedMixin",
+    "event.DimensionTravelMixin",
+    "event.EnderPearlTeleportMixin",
+    "event.EntityJoinLevelMixin",
+    "event.ExplosionDetonateMixin",
+    "event.FinalizeSpawnMixin",
+    "event.GetProjectileMixin",
+    "event.ItemEntityPickupMixin",
+    "event.LivingDeathMixin",
+    "event.LivingDropsMixin",
+    "event.MobEffectAddedMixin",
+    "event.MobSpawnChecksMixin",
+    "event.PlayerTickMixin",
+    "event.PotentialSpawnsMixin",
+    "event.ProjectileImpactMixin",
+    "event.ServerPlayerDimensionTravelMixin",
+    "event.ServerUseItemOnMixin",
+    "event.SpawnPlacementCheckMixin"
+  ],
+  "client": [
+    "client.ClientCommandTreeMixin",
+    "client.ClientUseItemOnMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
