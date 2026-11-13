@@ -15,16 +15,17 @@ public class ModBlockEntities {
 
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ResearchPedestalBlockEntity>> RESEARCH_PEDESTAL_BE =
             BLOCK_ENTITIES.register("research_pedestal_be", () ->
-                    BlockEntityType.Builder.of(ResearchPedestalBlockEntity::new,
+                    new BlockEntityType<>(ResearchPedestalBlockEntity::new, java.util.Set.of(
                             ModBlocks.RESEARCH_PEDESTAL.get(),
                             ModBlocks.RESEARCH_PEDESTAL_TIER_2.get(),
                             ModBlocks.RESEARCH_PEDESTAL_TIER_3.get(),
-                            ModBlocks.RESEARCH_PEDESTAL_TIER_4.get()).build(null));
+                            ModBlocks.RESEARCH_PEDESTAL_TIER_4.get())));
 
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ScrollShelfBlockEntity>> SCROLL_SHELF_BE =
             BLOCK_ENTITIES.register("scroll_shelf_be", () ->
-                    BlockEntityType.Builder.of(ScrollShelfBlockEntity::new,
-                            ModBlocks.SCROLL_SHELVES.values().stream().map(DeferredHolder::get).toArray(Block[]::new)).build(null));
+                    new BlockEntityType<>(ScrollShelfBlockEntity::new,
+                            ModBlocks.SCROLL_SHELVES.values().stream().map(DeferredHolder::get)
+                                    .collect(java.util.stream.Collectors.<Block>toUnmodifiableSet())));
 
     public static void register() {
         BLOCK_ENTITIES.register();

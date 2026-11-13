@@ -21,6 +21,7 @@ import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.level.biome.Biome;
+import net.minecraft.util.random.Weighted;
 import net.minecraft.world.level.biome.MobSpawnSettings;
 import net.bananemdnsa.historystages.platform.event.level.LevelEvent;
 
@@ -44,7 +45,7 @@ public final class SpawnControlGate {
      */
     private static final Map<ResourceKey<Level>, String> DIMENSION_IDS = new ConcurrentHashMap<>();
 
-    private record ResolvedExtra(EntityType<?> type, MobSpawnSettings.SpawnerData data, SpawnRuleSet.ActiveExtra rule) {}
+    private record ResolvedExtra(EntityType<?> type, Weighted<MobSpawnSettings.SpawnerData> data, SpawnRuleSet.ActiveExtra rule) {}
 
     private SpawnControlGate() {}
 
@@ -92,9 +93,9 @@ public final class SpawnControlGate {
         }
     }
 
-    private static boolean listed(List<MobSpawnSettings.SpawnerData> list, EntityType<?> type) {
-        for (MobSpawnSettings.SpawnerData data : list) {
-            if (data.type == type) return true;
+    private static boolean listed(List<Weighted<MobSpawnSettings.SpawnerData>> list, EntityType<?> type) {
+        for (Weighted<MobSpawnSettings.SpawnerData> data : list) {
+            if (data.value().type() == type) return true;
         }
         return false;
     }
@@ -114,15 +115,16 @@ public final class SpawnControlGate {
             SpawnWeight weight = extra.spawns().weight() != null
                     ? extra.spawns().weight()
                     : defaultWeight(type.get(), biomes);
-            MobSpawnSettings.SpawnerData data = new MobSpawnSettings.SpawnerData(
-                    type.get(), weight.weight(), weight.minGroup(), weight.maxGroup());
+            // 26.2 moved the weight out of SpawnerData into the Weighted wrapper.
+            Weighted<MobSpawnSettings.SpawnerData> data = new Weighted<>(new MobSpawnSettings.SpawnerData(
+                    type.get(), weight.minGroup(), weight.maxGroup()), weight.weight());
             out.computeIfAbsent(type.get().getCategory(), k -> new ArrayList<>())
                     .add(new ResolvedExtra(type.get(), data, extra));
         }
 
         Map<MobCategory, List<ResolvedExtra>> frozen = new EnumMap<>(MobCategory.class);
         out.forEach((category, list) -> {
-            list.sort(Comparator.comparingInt((ResolvedExtra r) -> r.data().getWeight().asInt()).reversed());
+            list.sort(Comparator.comparingInt((ResolvedExtra r) -> r.data().weight()).reversed());
             frozen.put(category, List.copyOf(list));
         });
         return Collections.unmodifiableMap(frozen);
@@ -135,8 +137,9 @@ public final class SpawnControlGate {
     private static SpawnWeight defaultWeight(EntityType<?> type, Registry<Biome> biomes) {
         if (biomes != null) {
             for (Biome biome : biomes) {
-                for (MobSpawnSettings.SpawnerData data : biome.getMobSettings().getMobs(type.getCategory()).unwrap()) {
-                    if (data.type == type) return new SpawnWeight(data.getWeight().asInt(), data.minCount, data.maxCount);
+                for (Weighted<MobSpawnSettings.SpawnerData> data : biome.getMobSettings().getMobs(type.getCategory()).unwrap()) {
+                    MobSpawnSettings.SpawnerData spawner = data.value();
+                    if (spawner.type() == type) return new SpawnWeight(data.weight(), spawner.minCount(), spawner.maxCount());
                 }
             }
         }
@@ -150,7 +153,7 @@ public final class SpawnControlGate {
         List<String> tags = biome.tags().map(t -> t.location().toString()).toList();
         return new SpawnContext(dimensionId(level), biomeId, tags, pos.getY(),
                 accessor.getMaxLocalRawBrightness(pos), accessor.canSeeSky(pos),
-                level.getDayTime(), level.isRaining(), level.isThundering(), level.getMoonPhase());
+                net.bananemdnsa.historystages.util.LevelTime.dayTime(level), level.isRaining(), level.isThundering(), net.bananemdnsa.historystages.util.LevelTime.moonPhase(level, pos));
     }
 
     public static String dimensionId(Level level) {

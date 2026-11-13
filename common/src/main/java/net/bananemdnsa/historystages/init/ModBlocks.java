@@ -8,6 +8,8 @@ import net.bananemdnsa.historystages.block.ResearchPedestalTier2Block;
 import net.bananemdnsa.historystages.block.ScrollShelfBlock;
 import net.bananemdnsa.historystages.block.ScrollShelfWood;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.SoundType;
@@ -24,23 +26,28 @@ public class ModBlocks {
     public static final DeferredRegister<Block> BLOCKS =
             DeferredRegister.create(Registries.BLOCK, HistoryStages.MOD_ID);
 
-    private static BlockBehaviour.Properties pedestalProps() {
-        return BlockBehaviour.Properties.ofFullCopy(Blocks.IRON_BLOCK)
+    // 26.2 builds the loot table and description id from a key set on the properties.
+    private static ResourceKey<Block> key(String name) {
+        return ResourceKey.create(Registries.BLOCK, Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, name));
+    }
+
+    private static BlockBehaviour.Properties pedestalProps(String name) {
+        return BlockBehaviour.Properties.ofFullCopy(Blocks.IRON_BLOCK).setId(key(name))
                 .strength(5.0f)
                 .requiresCorrectToolForDrops();
     }
 
     public static final DeferredHolder<Block, Block> RESEARCH_PEDESTAL = BLOCKS.register("research_pedestal",
-            () -> new ResearchPedestalBlock(pedestalProps()));
+            () -> new ResearchPedestalBlock(pedestalProps("research_pedestal")));
 
     public static final DeferredHolder<Block, Block> RESEARCH_PEDESTAL_TIER_2 = BLOCKS.register("research_pedestal_tier_2",
-            () -> new ResearchPedestalTier2Block(pedestalProps()));
+            () -> new ResearchPedestalTier2Block(pedestalProps("research_pedestal_tier_2")));
 
     public static final DeferredHolder<Block, Block> RESEARCH_PEDESTAL_TIER_3 = BLOCKS.register("research_pedestal_tier_3",
-            () -> new MultiBlockTier3Block(pedestalProps()));
+            () -> new MultiBlockTier3Block(pedestalProps("research_pedestal_tier_3")));
 
     public static final DeferredHolder<Block, Block> RESEARCH_PEDESTAL_TIER_4 = BLOCKS.register("research_pedestal_tier_4",
-            () -> new MultiBlockTier4Block(pedestalProps()));
+            () -> new MultiBlockTier4Block(pedestalProps("research_pedestal_tier_4")));
 
     public static final Map<ScrollShelfWood, DeferredHolder<Block, ScrollShelfBlock>> SCROLL_SHELVES = registerScrollShelves();
 
@@ -56,6 +63,7 @@ public class ModBlocks {
     // last three would follow from a full-cube collision shape, which the shelf doesn't have.
     private static BlockBehaviour.Properties scrollShelfProps(ScrollShelfWood wood) {
         BlockBehaviour.Properties props = BlockBehaviour.Properties.of()
+                .setId(key(wood.blockId()))
                 .mapColor(wood.planks().defaultMapColor())
                 .instrument(NoteBlockInstrument.BASS)
                 .strength(1.5F)

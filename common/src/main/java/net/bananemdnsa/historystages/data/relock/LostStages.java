@@ -40,7 +40,7 @@ public final class LostStages {
      * once the loss has really happened.
      */
     public static void announce(String stageId, @org.jetbrains.annotations.Nullable UUID player) {
-        net.neoforged.neoforge.common.EventBus.post(new net.bananemdnsa.historystages.api.stage.StageEvent.LostForGood(
+        net.bananemdnsa.historystages.platform.bus.EventBus.post(new net.bananemdnsa.historystages.api.stage.StageEvent.LostForGood(
                 stageId, displayName(stageId, player != null), player));
     }
 

@@ -3,6 +3,7 @@ package net.bananemdnsa.historystages.block;
 import net.bananemdnsa.historystages.block.entity.ResearchPedestalBlockEntity;
 import net.bananemdnsa.historystages.init.ModBlockEntities;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -50,7 +51,7 @@ public class ResearchPedestalBlock extends BaseEntityBlock implements TieredPede
     }
 
     @Override
-    public boolean propagatesSkylightDown(BlockState pState, BlockGetter pLevel, BlockPos pPos) {
+    public boolean propagatesSkylightDown(BlockState pState) {
         return true;
     }
 
@@ -59,10 +60,8 @@ public class ResearchPedestalBlock extends BaseEntityBlock implements TieredPede
         return 1.0F;
     }
 
-    @Override
-    public boolean isOcclusionShapeFullBlock(BlockState state, BlockGetter world, BlockPos pos) {
-        return false;
-    }
+    // 26.2 derives isOcclusionShapeFullBlock from the occlusion shape; noOcclusion() keeps it
+    // false, which is what the 1.21.1 override answered.
 
     @Override
     public RenderShape getRenderShape(BlockState pState) {
@@ -75,23 +74,15 @@ public class ResearchPedestalBlock extends BaseEntityBlock implements TieredPede
         return new ResearchPedestalBlockEntity(pPos, pState);
     }
 
-    @Override
-    public void onRemove(BlockState oldState, Level level, BlockPos pos, BlockState newState, boolean movedByPiston) {
-        if (!oldState.is(newState.getBlock())) {
-            BlockEntity be = level.getBlockEntity(pos);
-            if (be instanceof ResearchPedestalBlockEntity rpbe) {
-                rpbe.dropContents(level, pos);
-            }
-        }
-        super.onRemove(oldState, level, pos, newState, movedByPiston);
-    }
+    // 1.21.1's onRemove dropped the slots here; 26.2 removed the hook, so the block entity drops
+    // them in preRemoveSideEffects, under the same "block changed" condition.
 
     @Override
     public InteractionResult useWithoutItem(BlockState pState, Level pLevel, BlockPos pPos, Player pPlayer, BlockHitResult pHit) {
         if (!pLevel.isClientSide()) {
             BlockEntity entity = pLevel.getBlockEntity(pPos);
             if (entity instanceof ResearchPedestalBlockEntity) {
-                ((ServerPlayer) pPlayer).openMenu((MenuProvider) entity, pPos);
+                dev.architectury.registry.menu.MenuRegistry.openExtendedMenu((ServerPlayer) pPlayer, (MenuProvider) entity, buf -> buf.writeBlockPos(pPos));
             }
         }
         return InteractionResult.SUCCESS;
@@ -129,7 +120,7 @@ public class ResearchPedestalBlock extends BaseEntityBlock implements TieredPede
     }
 
     @Override
-    public int getAnalogOutputSignal(BlockState state, Level level, BlockPos pos) {
+    public int getAnalogOutputSignal(BlockState state, Level level, BlockPos pos, Direction direction) {
         BlockEntity be = level.getBlockEntity(pos);
         return be instanceof ResearchPedestalBlockEntity rpbe ? rpbe.getComparatorOutput() : 0;
     }

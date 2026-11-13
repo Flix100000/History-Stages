@@ -247,8 +247,8 @@ public final class ClientDebugCommand {
         Style copyStyle = Style.EMPTY
                 .withColor(ChatFormatting.AQUA)
                 .withUnderlined(true)
-                .withClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, jsonStr))
-                .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
+                .withClickEvent(new ClickEvent.CopyToClipboard(jsonStr))
+                .withHoverEvent(new HoverEvent.ShowText(
                         Component.literal("Click to copy this component's JSON value to clipboard")));
 
         MutableComponent copyBtn = Component.literal(" [Copy]").withStyle(copyStyle);

@@ -195,7 +195,7 @@ public class PacketHandler {
         reloadRequested = false;
 
         if (!net.bananemdnsa.historystages.data.lock.VisibleRecipes.gatedSetChanged(
-                server.getRecipeManager().getOrderedRecipes())) {
+                server.getRecipeManager().getRecipes())) {
             resyncRecipes(server);
             return;
         }
@@ -227,7 +227,8 @@ public class PacketHandler {
      */
     private static void resyncRecipes(MinecraftServer server) {
         ClientboundUpdateRecipesPacket recipePacket = new ClientboundUpdateRecipesPacket(
-                server.getRecipeManager().getOrderedRecipes());
+                server.getRecipeManager().getSynchronizedItemProperties(),
+                server.getRecipeManager().getSynchronizedStonecutterRecipes());
         for (ServerPlayer p : server.getPlayerList().getPlayers()) {
             p.connection.send(recipePacket);
             p.getRecipeBook().sendInitialRecipeBook(p);

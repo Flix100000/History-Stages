@@ -45,7 +45,7 @@ public final class ClientScreenCommand {
             source.sendFailure(Component.translatable("command.historystages.player_only"));
             return 0;
         }
-        mc.tell(() -> mc.gui.setScreen(new StageOverviewScreen()));
+        mc.execute(() -> mc.gui.setScreen(new StageOverviewScreen()));
         return 1;
     }
 
@@ -66,7 +66,7 @@ public final class ClientScreenCommand {
         }
         // By the time this runs the chat has closed, so the parent is null and ESC drops straight
         // back into the world instead of the pause screen the button opens it from.
-        mc.tell(() -> mc.gui.setScreen(StageGraphScreen.forPlayer(mc.gui.screen())));
+        mc.execute(() -> mc.gui.setScreen(StageGraphScreen.forPlayer(mc.gui.screen())));
         return 1;
     }
 }

@@ -68,19 +68,20 @@ public class StyledButton extends Button {
                 && mouseX < ex + ew && mouseY < this.getY() + this.height;
     }
 
+    // 26.2 dropped clicked(x, y); the click test is isMouseOver now.
     @Override
-    protected boolean clicked(double mouseX, double mouseY) {
+    public boolean isMouseOver(double mouseX, double mouseY) {
         return this.active && this.visible && overEffective(mouseX, mouseY);
     }
 
     @Override
-    public void onClick(double mouseX, double mouseY) {
+    public void onClick(net.minecraft.client.input.MouseButtonEvent event, boolean doubleClick) {
         press.set(1.0f);
-        super.onClick(mouseX, mouseY);
+        super.onClick(event, doubleClick);
     }
 
     @Override
-    protected void extractWidgetRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+    protected void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         renderWidget(graphics, mouseX, mouseY, partialTick);
     }
 

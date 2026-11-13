@@ -38,7 +38,7 @@ public class RecipeHandler {
 
         ItemStack result;
         try {
-            result = holder.value().getResultItem(CurrentRegistries.orEmpty());
+            result = net.bananemdnsa.historystages.util.RecipeOutputs.resultOf(holder.value(), CurrentRegistries.orEmpty());
         } catch (Exception e) {
             return false;
         }
@@ -138,7 +138,7 @@ public class RecipeHandler {
      */
     public static boolean isLockedForResolution(RecipeHolder<?> holder, boolean isClientSide) {
         if (holder == null) return false;
-        return isOutputLocked(holder, isClientSide) || isRecipeIdLocked(holder.id(), isClientSide);
+        return isOutputLocked(holder, isClientSide) || isRecipeIdLocked(holder.id().identifier(), isClientSide);
     }
 
     /**
@@ -156,7 +156,7 @@ public class RecipeHandler {
 
         ItemStack result;
         try {
-            result = holder.value().getResultItem(CurrentRegistries.orEmpty());
+            result = net.bananemdnsa.historystages.util.RecipeOutputs.resultOf(holder.value(), CurrentRegistries.orEmpty());
         } catch (Exception e) {
             result = ItemStack.EMPTY;
         }

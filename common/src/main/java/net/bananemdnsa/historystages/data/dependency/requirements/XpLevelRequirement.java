@@ -70,7 +70,7 @@ public class XpLevelRequirement implements Requirement {
                 currentLevel = 0;
             } else if (xpLevel.isConsume()) {
                 met = ctx.depositedData() != null
-                        && ctx.depositedData().getBoolean(ctx.progressKey(DependencyProgress.XP_SUFFIX));
+                        && ctx.depositedData().getBooleanOr(ctx.progressKey(DependencyProgress.XP_SUFFIX), false);
                 currentLevel = met ? required : currentLevel;
             } else {
                 met = currentLevel >= required;

@@ -5,9 +5,8 @@ import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.capabilities.Capabilities;
-import net.neoforged.neoforge.fluids.FluidStack;
-import net.neoforged.neoforge.fluids.capability.IFluidHandlerItem;
+import net.bananemdnsa.historystages.platform.Fluids;
+import net.minecraft.world.level.material.Fluid;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -34,13 +33,10 @@ public final class FluidContent {
      */
     @Nullable
     public static String of(@Nullable ItemStack stack) {
-        IFluidHandlerItem handler = handlerOf(stack);
-        if (handler == null || handler.getTanks() == 0) return null;
+        Fluid contents = ask(stack, true);
+        if (contents == null) return null;
 
-        FluidStack contents = handler.getFluidInTank(0);
-        if (contents.isEmpty()) return null;
-
-        Identifier id = BuiltInRegistries.FLUID.getKey(contents.getFluid());
+        Identifier id = BuiltInRegistries.FLUID.getKey(contents);
         return id != null ? id.toString() : null;
     }
 
@@ -51,7 +47,7 @@ public final class FluidContent {
      * thing a player scoops lava with.
      */
     public static boolean isContainer(@Nullable ItemStack stack) {
-        return handlerOf(stack) != null;
+        return ask(stack, false) != null;
     }
 
     /**
@@ -63,10 +59,12 @@ public final class FluidContent {
      * the game down over it is not proportionate.
      */
     @Nullable
-    private static IFluidHandlerItem handlerOf(@Nullable ItemStack stack) {
+    private static Fluid ask(@Nullable ItemStack stack, boolean contents) {
         if (stack == null || stack.isEmpty()) return null;
         try {
-            return stack.getCapability(Capabilities.FluidHandler.ITEM);
+            if (contents) return Fluids.firstItemFluid(stack);
+            // Any non-null fluid stands for "is a container" here.
+            return Fluids.isItemContainer(stack) ? net.minecraft.world.level.material.Fluids.EMPTY : null;
         } catch (Exception e) {
             Identifier item = BuiltInRegistries.ITEM.getKey(stack.getItem());
             DebugLogger.runtimeThrottled(HsRuntimeCategories.FLUID_CONTENT, "fluid-cap-" + item,

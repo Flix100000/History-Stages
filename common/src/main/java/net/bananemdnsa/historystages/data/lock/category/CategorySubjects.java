@@ -13,7 +13,6 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.material.Fluid;
-import net.neoforged.neoforge.fluids.FluidStack;
 
 /**
  * Turns what a caller naturally has into what a built-in category reads.
@@ -46,7 +45,8 @@ public final class CategorySubjects {
         switch (categoryId) {
             case "historystages:fluids" -> {
                 if (subject instanceof ItemStack stack) return Subjects.item(stack);
-                if (subject instanceof FluidStack fluid) return Subjects.fluid(fluidId(fluid.getFluid()));
+                Fluid loaderFluid = net.bananemdnsa.historystages.platform.Fluids.fluidOfLoaderStack(subject);
+                if (loaderFluid != null) return Subjects.fluid(fluidId(loaderFluid));
                 if (subject instanceof Fluid fluid) return Subjects.fluid(fluidId(fluid));
                 String id = idOf(subject);
                 return id != null ? Subjects.fluid(id) : subject;

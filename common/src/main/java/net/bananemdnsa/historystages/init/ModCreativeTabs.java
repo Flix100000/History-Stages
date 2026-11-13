@@ -19,7 +19,7 @@ public class ModCreativeTabs {
             DeferredRegister.create(Registries.CREATIVE_MODE_TAB, HistoryStages.MOD_ID);
 
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> HISTORY_TAB = CREATIVE_MODE_TABS.register("history_tab",
-            () -> CreativeModeTab.builder()
+            () -> dev.architectury.registry.CreativeTabRegistry.create(builder -> builder
                     .icon(() -> new ItemStack(ModItems.RESEARCH_SCROLL.get()))
                     .title(Component.translatable("creativetab.history_tab"))
                     .displayItems((parameters, output) -> {
@@ -53,8 +53,7 @@ public class ModCreativeTabs {
                             if (stageEntry.getValue().getMode().usesAutoTrigger()) continue;
                             output.accept(ScrollVariants.createScroll(stageEntry.getKey()));
                         }
-                    })
-                    .build());
+                    })));
 
     public static void register() {
         CREATIVE_MODE_TABS.register();

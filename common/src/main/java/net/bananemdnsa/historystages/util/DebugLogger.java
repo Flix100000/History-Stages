@@ -10,8 +10,6 @@ import net.bananemdnsa.historystages.data.config.ConfigSpecCodec;
 import net.bananemdnsa.historystages.data.diagnostics.AddonRegistrations;
 import net.bananemdnsa.historystages.data.diagnostics.ReportSections;
 import net.bananemdnsa.historystages.data.lock.category.LockCategories;
-import net.neoforged.fml.ModList;
-import net.neoforged.fml.loading.FMLPaths;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -213,7 +211,7 @@ public class DebugLogger {
 
     private static List<DebugReport.AddonLine> addons() {
         List<DebugReport.AddonLine> out = new ArrayList<>();
-        for (AddonRegistrations.AddonSummary a : AddonRegistrations.summaries(ModList.get()::isLoaded)) {
+        for (AddonRegistrations.AddonSummary a : AddonRegistrations.summaries(Services::isModLoaded)) {
             List<String> parts = new ArrayList<>();
             a.registered().forEach((what, count) -> parts.add(what.label(count)));
             // A bundled addon such as the demo has no container of its own; it ships with HS.
@@ -227,7 +225,12 @@ public class DebugLogger {
         Map<String, String> out = new LinkedHashMap<>();
         out.put("History Stages", modVersion("historystages"));
         out.put("Minecraft", modVersion("minecraft"));
-        out.put("NeoForge", modVersion("neoforge"));
+        if (dev.architectury.platform.Platform.isNeoForge()) {
+            out.put("NeoForge", modVersion("neoforge"));
+        } else {
+            out.put("Fabric Loader", modVersion("fabricloader"));
+            out.put("Fabric API", modVersion("fabric-api"));
+        }
         return out;
     }
 
@@ -272,7 +275,7 @@ public class DebugLogger {
         return out;
     }
 
-    private static ConfigFile changedFromDefault(String name, net.neoforged.neoforge.common.ModConfigSpec spec) {
+    private static ConfigFile changedFromDefault(String name, net.bananemdnsa.historystages.platform.ModConfigSpec spec) {
         Map<String, String[]> all = ConfigSpecCodec.collectWithDefaults(spec);
         Map<String, String> changed = new LinkedHashMap<>();
         for (Map.Entry<String, String[]> e : all.entrySet()) {
@@ -283,8 +286,8 @@ public class DebugLogger {
 
     private static String modVersion(String modId) {
         try {
-            return ModList.get().getModContainerById(modId)
-                    .map(c -> c.getModInfo().getVersion().toString())
+            return dev.architectury.platform.Platform.getOptionalMod(modId)
+                    .map(dev.architectury.platform.Mod::getVersion)
                     .orElse("unknown");
         } catch (Exception e) {
             return "unknown";
@@ -359,7 +362,9 @@ public class DebugLogger {
                             "  Session started: " + sessionStarted,
                             "  History Stages:  " + modVersion("historystages"),
                             "  Minecraft:       " + modVersion("minecraft"),
-                            "  NeoForge:        " + modVersion("neoforge"),
+                            dev.architectury.platform.Platform.isNeoForge()
+                                    ? "  NeoForge:        " + modVersion("neoforge")
+                                    : "  Fabric Loader:   " + modVersion("fabricloader"),
                             "",
                             "  LOCK   = a lock stopped or changed what a player did",
                             "  STAGE  = a stage was gained, lost or refused",

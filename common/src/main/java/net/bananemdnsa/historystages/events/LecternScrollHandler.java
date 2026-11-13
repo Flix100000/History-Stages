@@ -65,8 +65,8 @@ public final class LecternScrollHandler {
         // reading only the sneak half would open the document on a lectern the player may not
         // touch. LOW priority makes sure that handler has already written it.
         boolean holdingSomething = !player.getMainHandItem().isEmpty() || !player.getOffhandItem().isEmpty();
-        boolean bothHandsBypassSneak = player.getMainHandItem().doesSneakBypassUse(level, pos, player)
-                && player.getOffhandItem().doesSneakBypassUse(level, pos, player);
+        boolean bothHandsBypassSneak = net.bananemdnsa.historystages.platform.ItemHooks.doesSneakBypassUse(player.getMainHandItem(), level, pos, player)
+                && net.bananemdnsa.historystages.platform.ItemHooks.doesSneakBypassUse(player.getOffhandItem(), level, pos, player);
         boolean sneakPlacing = player.isSecondaryUseActive() && holdingSomething && !bothHandsBypassSneak;
         if (!(event.getUseBlock().isTrue() || (event.getUseBlock().isDefault() && !sneakPlacing))) return;
 

@@ -38,7 +38,7 @@ public final class StateCapture {
                 .items(() -> itemsOf(p))
                 .xpLevel(() -> p.experienceLevel)
                 .weather(sl::isRaining, sl::isThundering)
-                .dayTime(sl::getDayTime)
+                .dayTime(() -> net.bananemdnsa.historystages.util.LevelTime.dayTime(sl))
                 .handles(p, sl)
                 .build();
     }
@@ -47,7 +47,7 @@ public final class StateCapture {
     public static StateView forWorld(ServerLevel overworld) {
         return StateView.builder()
                 .weather(overworld::isRaining, overworld::isThundering)
-                .dayTime(overworld::getDayTime)
+                .dayTime(() -> net.bananemdnsa.historystages.util.LevelTime.dayTime(overworld))
                 .handles(null, overworld)
                 .build();
     }

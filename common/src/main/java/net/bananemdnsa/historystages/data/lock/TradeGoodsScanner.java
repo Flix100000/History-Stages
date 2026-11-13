@@ -6,7 +6,22 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import net.minecraft.core.Holder;
+import net.minecraft.core.HolderSet;
+import net.minecraft.core.Registry;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.Unit;
+import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.item.trading.TradeSet;
+import net.minecraft.world.item.trading.TradeSets;
+import net.minecraft.world.item.trading.VillagerTrade;
+import net.minecraft.world.level.storage.loot.LootContext;
+import net.minecraft.world.level.storage.loot.LootParams;
+import net.minecraft.world.level.storage.loot.functions.ExplorationMapFunction;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.bananemdnsa.historystages.util.DebugLogger;
 import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -17,7 +32,6 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.entity.npc.villager.VillagerData;
 import net.minecraft.world.entity.npc.villager.VillagerProfession;
-import net.minecraft.world.item.trading.VillagerTrades;
 import net.minecraft.world.entity.npc.villager.VillagerType;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.trading.Merchant;
@@ -104,43 +118,46 @@ public final class TradeGoodsScanner {
         // Keyed by what makes two rolls the same trade, so a recipe that rolls its own price does
         // not appear eight times at eight prices. First roll wins; see TradePreview#identity.
         Map<String, TradePreview> offers = new LinkedHashMap<>();
-        if (level == null) return List.of();
+        // 26.2 trades are loot-driven data: rolling one needs a server level's loot context, and
+        // the trade registry is not sent to clients. A client relies on the server's answer.
+        if (!(level instanceof ServerLevel serverLevel)) return List.of();
 
         TradeScanBudget budget = new TradeScanBudget(System::currentTimeMillis);
         long startedAt = budget.now();
         // Someone for the recipes to be dealt to. Several of them ask what kind of villager they
         // are dealing with and hand back nothing for anything else. It never enters the world, and
         // it is never asked for its offers — that is the call that refuses.
-        Villager trader = EntityType.VILLAGER.create(level);
+        Villager trader = EntityType.VILLAGER.create(level, EntitySpawnReason.LOAD);
         if (trader == null) return List.of();
-        RandomSource random = level.getRandom();
         int recipes = 0;
 
-        for (VillagerProfession profession : BuiltInRegistries.VILLAGER_PROFESSION) {
+        Registry<TradeSet> tradeSets = level.registryAccess().lookupOrThrow(Registries.TRADE_SET);
+        Holder<VillagerType> plains = level.registryAccess()
+                .lookupOrThrow(Registries.VILLAGER_TYPE).getOrThrow(VillagerType.PLAINS);
+
+        for (Holder.Reference<VillagerProfession> profession
+                : level.registryAccess().lookupOrThrow(Registries.VILLAGER_PROFESSION).listElements().toList()) {
             if (budget.spent()) break;
-            Int2ObjectMap<VillagerTrades.ItemListing[]> byLevel =
-                    VillagerTrades.TRADES.get(profession);
-            if (byLevel == null) continue;
             for (int merchantLevel = 1; merchantLevel <= MAX_LEVEL; merchantLevel++) {
-                VillagerTrades.ItemListing[] listings = byLevel.get(merchantLevel);
-                if (listings == null) continue;
+                ResourceKey<TradeSet> setKey = profession.value().getTrades(merchantLevel);
+                if (setKey == null) continue;
+                TradeSet set = tradeSets.getValue(setKey);
+                if (set == null) continue;
                 // Set before running, because a recipe may read the trader's profession or level.
-                trader.setVillagerData(
-                        new VillagerData(VillagerType.PLAINS, profession, merchantLevel));
-                Identifier professionId =
-                        BuiltInRegistries.VILLAGER_PROFESSION.getKey(profession);
-                recipes += run(listings, trader, random, offers,
-                        professionId == null ? "" : professionId.toString(), merchantLevel,
-                        budget);
+                trader.setVillagerData(new VillagerData(plains, profession, merchantLevel));
+                recipes += run(set.getTrades(), tradeContext(serverLevel, trader), offers,
+                        profession.key().identifier().toString(), merchantLevel, budget);
             }
         }
 
-        for (Int2ObjectMap.Entry<VillagerTrades.ItemListing[]> entry
-                : VillagerTrades.WANDERING_TRADER_TRADES.int2ObjectEntrySet()) {
+        for (ResourceKey<TradeSet> setKey : List.of(TradeSets.WANDERING_TRADER_BUYING,
+                TradeSets.WANDERING_TRADER_COMMON, TradeSets.WANDERING_TRADER_UNCOMMON)) {
             if (budget.spent()) break;
-            // Its own two tiers are "generic" and "rare"; both are level 1 as far as a lock is
-            // concerned, because a wandering trader never has another.
-            recipes += run(entry.getValue(), trader, random, offers,
+            TradeSet set = tradeSets.getValue(setKey);
+            if (set == null) continue;
+            // All its tiers are level 1 as far as a lock is concerned, because a wandering trader
+            // never has another.
+            recipes += run(set.getTrades(), tradeContext(serverLevel, trader), offers,
                     TradePreview.WANDERING_TRADER, 1, budget);
         }
 
@@ -164,19 +181,28 @@ public final class TradeGoodsScanner {
         return List.copyOf(offers.values());
     }
 
+    /** The loot context a merchant rolls its trades with, as {@code AbstractVillager} builds it. */
+    private static LootContext tradeContext(ServerLevel level, Villager trader) {
+        return new LootContext.Builder(new LootParams.Builder(level)
+                .withParameter(LootContextParams.ORIGIN, trader.position())
+                .withParameter(LootContextParams.THIS_ENTITY, trader)
+                .withParameter(LootContextParams.ADDITIONAL_COST_COMPONENT_ALLOWED, Unit.INSTANCE)
+                .create(LootContextParamSets.VILLAGER_TRADE)).create(java.util.Optional.empty());
+    }
+
     /** @return how many recipes were run */
-    private static int run(VillagerTrades.ItemListing[] listings, Villager trader,
-                           RandomSource random, Map<String, TradePreview> offers,
+    private static int run(HolderSet<VillagerTrade> listings, LootContext context,
+                           Map<String, TradePreview> offers,
                            String professionId, int level, TradeScanBudget budget) {
         int ran = 0;
-        for (VillagerTrades.ItemListing listing : listings) {
-            if (listing == null) continue;
+        for (Holder<VillagerTrade> holder : listings) {
+            VillagerTrade listing = holder.value();
             if (searchesTheWorld(listing)) continue;
             if (budget.spent()) break;
             for (int attempt = 0; attempt < RUNS_PER_LISTING; attempt++) {
                 long runStartedAt = budget.now();
                 try {
-                    MerchantOffer offer = listing.getOffer(trader, random);
+                    MerchantOffer offer = listing.getOffer(context);
                     if (offer == null) continue;
                     TradePreview preview = previewOf(offer, professionId, level);
                     if (preview != null) offers.putIfAbsent(preview.identity(), preview);
@@ -190,7 +216,7 @@ public final class TradeGoodsScanner {
                     // Not quiet, unlike the refusal above: this one cost real time and the pack
                     // author is the only person who can do anything about it.
                     DebugLogger.runtime(HsRuntimeCategories.TRADE_GOODS,
-                            listing.getClass().getName() + " took "
+                            holder.getRegisteredName() + " took "
                                     + (budget.now() - runStartedAt) + "ms to name one offer and "
                                     + "was not asked again. A trade that searches the world for "
                                     + "its answer cannot be listed in the picker; lock the item "
@@ -263,7 +289,7 @@ public final class TradeGoodsScanner {
     /** One entity that never enters the world, or null when its type will not be made here. */
     private static Entity createQuietly(EntityType<?> type, Level level) {
         try {
-            return type.create(level);
+            return type.create(level, EntitySpawnReason.LOAD);
         } catch (Throwable refused) {
             // Some modded types will not be made outside a real spawn. Not a merchant we can ask.
             rethrowIfFatal(refused);
@@ -292,8 +318,31 @@ public final class TradeGoodsScanner {
      * answer until the search finishes. The maps are missing from the trade picker as a result;
      * locking one by its item still works.
      */
-    private static boolean searchesTheWorld(VillagerTrades.ItemListing listing) {
-        return listing instanceof VillagerTrades.TreasureMapForEmeralds;
+    private static boolean searchesTheWorld(VillagerTrade listing) {
+        // 26.2 makes the map through an item modifier on a data-driven trade. The field is
+        // private; 26.2 is not obfuscated, so the name holds on both loaders.
+        if (GIVEN_ITEM_MODIFIERS == null) return false;
+        try {
+            if (!(GIVEN_ITEM_MODIFIERS.get(listing) instanceof List<?> modifiers)) return false;
+            for (Object modifier : modifiers) {
+                if (modifier instanceof ExplorationMapFunction) return true;
+            }
+            return false;
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            return false;
+        }
+    }
+
+    private static final java.lang.reflect.Field GIVEN_ITEM_MODIFIERS = givenItemModifiersField();
+
+    private static java.lang.reflect.Field givenItemModifiersField() {
+        try {
+            java.lang.reflect.Field field = VillagerTrade.class.getDeclaredField("givenItemModifiers");
+            field.setAccessible(true);
+            return field;
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            return null;
+        }
     }
 
     /** Null when the offer hands over nothing recognisable, which no lock could name anyway. */

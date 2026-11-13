@@ -17,12 +17,13 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.Saddleable;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.animal.Animal;
-import net.minecraft.world.entity.animal.horse.AbstractHorse;
+import net.minecraft.world.entity.animal.equine.AbstractHorse;
 import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.AnimalArmorItem;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -138,10 +139,21 @@ public class InteractionLockHandler {
         // Armor stands: every interaction (placing, swapping or removing gear) is an equip action.
         if (target instanceof ArmorStand) return "equip";
         // Mob tack / wearable gear on living entities (saddle, horse/wolf armor, llama carpet).
-        if (item == Items.SADDLE || item instanceof AnimalArmorItem || held.is(ItemTags.WOOL_CARPETS)) return "equip";
+        if (item == Items.SADDLE || isAnimalArmor(held) || held.is(ItemTags.WOOL_CARPETS)) return "equip";
         if (target instanceof Animal animal && !held.isEmpty() && animal.isFood(held)) return "breed";
         if (target instanceof Merchant) return "trade";
-        if (held.isEmpty() && (target instanceof AbstractHorse || target instanceof Saddleable)) return "mount";
+        if (held.isEmpty() && (target instanceof AbstractHorse || takesSaddle(target))) return "mount";
         return "other";
+    }
+
+    // 26.2 dropped AnimalArmorItem: horse and wolf armor are items equippable in the body slot.
+    private static boolean isAnimalArmor(ItemStack held) {
+        var equippable = held.get(DataComponents.EQUIPPABLE);
+        return equippable != null && equippable.slot() == EquipmentSlot.BODY;
+    }
+
+    // 26.2 dropped Saddleable: a saddle is an equipment slot now.
+    private static boolean takesSaddle(Entity target) {
+        return target instanceof LivingEntity living && living.canUseSlot(EquipmentSlot.SADDLE);
     }
 }

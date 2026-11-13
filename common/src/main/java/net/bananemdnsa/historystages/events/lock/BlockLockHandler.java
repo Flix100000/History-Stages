@@ -50,7 +50,7 @@ public class BlockLockHandler {
         if (locked) {
             // Only deny the block's own interaction (GUI opening), not the item use.
             // setCanceled(true) would also block placing items on locked block surfaces.
-            event.setUseBlock(net.neoforged.neoforge.common.util.TriState.FALSE);
+            event.setUseBlock(net.bananemdnsa.historystages.platform.TriState.FALSE);
 
             // Only show the "block locked" message when the block actually has a GUI to open.
             // Blocks without a MenuProvider (plain stone, dirt, etc.) don't need a message —

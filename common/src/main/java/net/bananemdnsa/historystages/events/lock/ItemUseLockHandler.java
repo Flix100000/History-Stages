@@ -243,7 +243,7 @@ public class ItemUseLockHandler {
      * so the {@code use} action decides.
      */
     @SubscribeEvent
-    public static void onGetProjectile(net.neoforged.neoforge.event.entity.living.LivingGetProjectileEvent event) {
+    public static void onGetProjectile(net.bananemdnsa.historystages.platform.event.entity.living.LivingGetProjectileEvent event) {
         if (!(event.getEntity() instanceof Player player)) return;
         ItemStack ammo = event.getProjectileItemStack();
         if (ammo.isEmpty() || !isActionLocked(ammo, player, "use")) return;
@@ -254,17 +254,18 @@ public class ItemUseLockHandler {
 
     private static ItemStack firstFreeAmmo(Player player, ItemStack weapon,
                                            net.minecraft.world.item.ProjectileWeaponItem launcher) {
-        java.util.function.Predicate<ItemStack> held = launcher.getSupportedHeldProjectiles(weapon);
+        java.util.function.Predicate<ItemStack> held = launcher.getSupportedHeldProjectiles();
         for (ItemStack hand : List.of(player.getOffhandItem(), player.getMainHandItem())) {
             if (held.test(hand) && !isActionLocked(hand, player, "use")) return hand;
         }
-        java.util.function.Predicate<ItemStack> any = launcher.getAllSupportedProjectiles(weapon);
+        java.util.function.Predicate<ItemStack> any = launcher.getAllSupportedProjectiles();
         for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
             ItemStack stack = player.getInventory().getItem(i);
             if (any.test(stack) && !isActionLocked(stack, player, "use")) return stack;
         }
         if (player.getAbilities().instabuild) {
-            ItemStack creative = launcher.getDefaultCreativeAmmo(player, weapon);
+            // 26.2 lost the per-weapon hook; vanilla hands out a plain arrow (Player.getProjectile).
+            ItemStack creative = new ItemStack(net.minecraft.world.item.Items.ARROW);
             if (!isActionLocked(creative, player, "use")) return creative;
         }
         return ItemStack.EMPTY;

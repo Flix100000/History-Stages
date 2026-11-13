@@ -93,12 +93,9 @@ public class EntityItemLockHandler {
     }
 
     static boolean hasLockedItem(ArmorStand armorStand, Player player, boolean isClient) {
-        for (ItemStack stack : armorStand.getArmorSlots()) {
-            if (!stack.isEmpty() && isItemLockedForContext(stack, player, isClient)) {
-                return true;
-            }
-        }
-        for (ItemStack stack : armorStand.getHandSlots()) {
+        // 26.2 has no armor/hand slot lists; the stand's slots are its equipment slots.
+        for (net.minecraft.world.entity.EquipmentSlot slot : net.minecraft.world.entity.EquipmentSlot.values()) {
+            ItemStack stack = armorStand.getItemBySlot(slot);
             if (!stack.isEmpty() && isItemLockedForContext(stack, player, isClient)) {
                 return true;
             }

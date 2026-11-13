@@ -39,6 +39,14 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
 
 public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPedestalMenu> {
+    private int imageW = PedestalLayout.WIDTH;
+    private int imageH = PedestalLayout.HEIGHT;
+
+    @Override
+    protected boolean hasClickedOutside(double mx, double my, int xo, int yo) {
+        return mx < xo || my < yo || mx >= xo + this.imageW || my >= yo + this.imageH;
+    }
+
     private static final Identifier[] TIER_TEXTURES = {
             Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "textures/gui/pedestal/gui_t1.png"),
             Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "textures/gui/pedestal/gui_t2.png"),
@@ -148,15 +156,19 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
 
     @Override
     protected void init() {
-        // Determine dependency state before super.init() so imageWidth is set correctly
+        // Determine dependency state before super.init() so imageW is set correctly
         checkDependencies();
 
-        this.imageWidth = hasDependencies
+        this.imageW = hasDependencies
                 ? PedestalLayout.WIDTH + PedestalLayout.DEP_GAP + PedestalLayout.DEP_W
                 : PedestalLayout.WIDTH;
-        this.imageHeight = PedestalLayout.HEIGHT;
+        this.imageH = PedestalLayout.HEIGHT;
 
         super.init();
+        // 26.2 made imageWidth/imageHeight final; the pedestal grows with its dependency panel,
+        // so it keeps its own size and centres itself on it.
+        this.leftPos = (this.width - this.imageW) / 2;
+        this.topPos = (this.height - this.imageH) / 2;
 
         // If we have dependencies, anchor leftPos so the MAIN panel area stays centered.
         // This keeps all slots at their expected screen positions.
@@ -346,7 +358,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
         if ("item".equals(entry.getType())) {
             Identifier rl = Identifier.tryParse(entry.getId());
             if (rl != null) {
-                var item = BuiltInRegistries.ITEM.get(rl);
+                var item = BuiltInRegistries.ITEM.getValue(rl);
                 if (item != null) return new ItemStack(item);
             }
             return ItemStack.EMPTY;
@@ -385,7 +397,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
     }
 
     @Override
-    protected void renderLabels(GuiGraphicsExtractor guiGraphics, int pMouseX, int pMouseY) {
+    protected void extractLabels(GuiGraphicsExtractor guiGraphics, int pMouseX, int pMouseY) {
         // No block-name title and no "Inventory" caption: the artwork says both already, and
         // the band below the parchment is the only place a label fits — two lines, no more.
 
@@ -535,17 +547,22 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
     }
 
     @Override
+    public void extractBackground(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
+        super.extractBackground(guiGraphics, mouseX, mouseY, partialTick);
+        renderBg(guiGraphics, partialTick, mouseX, mouseY);
+    }
+
     protected void renderBg(GuiGraphicsExtractor guiGraphics, float pPartialTick, int pMouseX, int pMouseY) {
         // Update dependency state in case it changed (scroll inserted/removed)
         boolean prevDeps = hasDependencies;
         checkDependencies();
 
-        // Re-initialize if state changed so imageWidth and leftPos are recalculated
+        // Re-initialize if state changed so imageW and leftPos are recalculated
         if (hasDependencies != prevDeps) {
-            this.init(this.minecraft, this.width, this.height);
+            this.init(this.width, this.height);
         }
 
-        // One blit for the whole sheet, candles included: imageHeight covers everything that
+        // One blit for the whole sheet, candles included: imageH covers everything that
         // is painted, so the screen centres on what the player actually sees.
         Identifier sheet = tierTexture();
         guiGraphics.blit(sheet, this.leftPos, this.topPos,
@@ -626,9 +643,9 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
             guiGraphics.pose().translate(0, 0);
             guiGraphics.setTooltipForNextFrame(this.font, pendingTooltip, mouseX, mouseY);
             guiGraphics.pose().popMatrix();
-        } else {
-            renderTooltip(guiGraphics, mouseX, mouseY);
         }
+        // Otherwise the slot tooltip stands: super.extractRenderState already queued it, and a
+        // tooltip set above replaces it (the last one set for the frame wins).
     }
 
     @Override
@@ -747,12 +764,12 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
     private static String costLabel(CompoundTag tag) {
         StringBuilder out = new StringBuilder();
         if (tag.contains("LockedCostReduction")) {
-            long pct = Math.round(tag.getDouble("LockedCostReduction") * 100);
+            long pct = Math.round(tag.getDoubleOr("LockedCostReduction", 0.0) * 100);
             if (pct >= 100) out.append("0");
             else if (pct != 0) out.append(pct > 0 ? "-" : "+").append(Math.abs(pct)).append('%');
         }
         if (tag.contains("LockedXpFactor")) {
-            long pct = Math.round((tag.getDouble("LockedXpFactor") - 1.0) * 100);
+            long pct = Math.round((tag.getDoubleOr("LockedXpFactor", 0.0) - 1.0) * 100);
             if (pct != 0) {
                 if (out.length() > 0) out.append(' ');
                 out.append("XP ").append(pct > 0 ? "+" : "-").append(Math.abs(pct)).append('%');

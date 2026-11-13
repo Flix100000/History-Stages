@@ -9,6 +9,7 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.saveddata.SavedData;
+import net.minecraft.world.level.saveddata.SavedDataType;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -22,6 +23,8 @@ public class StageData extends SavedData {
     /** Game time each stage was unlocked at. Stages unlocked before times were recorded have none. */
     private final Map<String, Long> unlockTimes = new HashMap<>();
     private static final String DATA_NAME = "historystages_global";
+    private static final SavedDataType<StageData> TYPE =
+            SavedDataTypes.of(DATA_NAME, StageData::new, StageData::load, (data, tag) -> data.save(tag, null));
 
     public static final Set<String> SERVER_CACHE = ConcurrentHashMap.newKeySet();
 
@@ -92,7 +95,6 @@ public class StageData extends SavedData {
         return data;
     }
 
-    @Override
     public CompoundTag save(CompoundTag nbt, HolderLookup.Provider registries) {
         ListTag list = new ListTag();
         for (String s : unlockedStages) {
@@ -107,11 +109,7 @@ public class StageData extends SavedData {
 
     public static StageData get(Level level) {
         if (level instanceof ServerLevel serverLevel) {
-            StageData data = serverLevel.getServer().overworld().getDataStorage()
-                    .computeIfAbsent(
-                            new SavedData.Factory<>(StageData::new, StageData::load),
-                            DATA_NAME
-                    );
+            StageData data = SavedDataTypes.get(serverLevel.getServer(), DATA_NAME, TYPE);
 
             refreshCache(data.unlockedStages);
             // load() of a second instance (a save/load round trip) replaces the mirror, so it is

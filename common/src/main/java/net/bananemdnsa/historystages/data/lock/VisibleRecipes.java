@@ -127,7 +127,7 @@ public final class VisibleRecipes {
     public static synchronized boolean gatedSetChanged(Collection<RecipeHolder<?>> loaded) {
         Set<Identifier> now = new HashSet<>();
         for (RecipeHolder<?> holder : loaded) {
-            if (RecipeHandler.isLockedForEveryone(holder)) now.add(holder.id());
+            if (RecipeHandler.isLockedForEveryone(holder)) now.add(holder.id().identifier());
         }
 
         boolean changed = !now.equals(gatedIds);

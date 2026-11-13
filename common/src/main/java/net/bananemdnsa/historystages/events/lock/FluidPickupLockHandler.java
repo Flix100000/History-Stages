@@ -24,7 +24,6 @@ import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
 import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
 import net.bananemdnsa.historystages.platform.TriState;
 import net.bananemdnsa.historystages.platform.event.entity.player.PlayerInteractEvent;
-import net.neoforged.neoforge.fluids.CauldronFluidContent;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -137,10 +136,10 @@ public class FluidPickupLockHandler {
     @Nullable
     private static String cauldronFluid(Level level, BlockPos pos) {
         BlockState state = level.getBlockState(pos);
-        CauldronFluidContent content = CauldronFluidContent.getForBlock(state.getBlock());
-        if (content == null || content.currentLevel(state) <= 0) return null;
+        net.minecraft.world.level.material.Fluid fluid = net.bananemdnsa.historystages.platform.Fluids.cauldronFluid(state);
+        if (fluid == null) return null;
 
-        Identifier id = BuiltInRegistries.FLUID.getKey(content.fluid);
+        Identifier id = BuiltInRegistries.FLUID.getKey(fluid);
         return id != null ? id.toString() : null;
     }
 

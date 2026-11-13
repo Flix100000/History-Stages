@@ -4,11 +4,12 @@ import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.compat.ScrollVariants;
 import net.bananemdnsa.historystages.init.ModItems;
 import net.bananemdnsa.historystages.init.ModRecipes;
-import net.minecraft.core.HolderLookup;
+import com.mojang.serialization.MapCodec;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.core.NonNullList;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.item.crafting.CraftingBookCategory;
 import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.CustomRecipe;
 import net.minecraft.world.item.crafting.RecipeSerializer;
@@ -26,8 +27,14 @@ import net.minecraft.world.level.Level;
  */
 public class ResealScrollRecipe extends CustomRecipe {
 
-    public ResealScrollRecipe(CraftingBookCategory category) {
-        super(category);
+    // 26.2 special recipes are singletons with a unit codec; the "category" field in the json is
+    // ignored, and CustomRecipe reports MISC as before.
+    public static final ResealScrollRecipe INSTANCE = new ResealScrollRecipe();
+    public static final MapCodec<ResealScrollRecipe> MAP_CODEC = MapCodec.unit(INSTANCE);
+    public static final StreamCodec<RegistryFriendlyByteBuf, ResealScrollRecipe> STREAM_CODEC = StreamCodec.unit(INSTANCE);
+    public static final RecipeSerializer<ResealScrollRecipe> SERIALIZER = new RecipeSerializer<>(MAP_CODEC, STREAM_CODEC);
+
+    private ResealScrollRecipe() {
     }
 
     @Override
@@ -55,7 +62,7 @@ public class ResealScrollRecipe extends CustomRecipe {
     }
 
     @Override
-    public ItemStack assemble(CraftingInput input, HolderLookup.Provider registries) {
+    public ItemStack assemble(CraftingInput input) {
         for (int i = 0; i < input.size(); i++) {
             ItemStack stack = input.getItem(i);
             if (!stack.is(ModItems.RESEARCH_SCROLL_OPEN.get())) continue;
@@ -80,12 +87,7 @@ public class ResealScrollRecipe extends CustomRecipe {
     }
 
     @Override
-    public boolean canCraftInDimensions(int width, int height) {
-        return width * height >= 2;
-    }
-
-    @Override
-    public RecipeSerializer<?> getSerializer() {
+    public RecipeSerializer<ResealScrollRecipe> getSerializer() {
         return ModRecipes.RESEAL_SCROLL.get();
     }
 }

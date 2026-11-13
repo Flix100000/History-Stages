@@ -382,7 +382,7 @@ public class HistoryStages {
         if (event.getServer() != null
                 && net.bananemdnsa.historystages.data.lock.VisibleRecipes.gatedSetNeedsSeeding()) {
             net.bananemdnsa.historystages.data.lock.VisibleRecipes.seedGatedSet(
-                    event.getServer().getRecipeManager().getOrderedRecipes());
+                    event.getServer().getRecipeManager().getRecipes());
         }
 
         net.bananemdnsa.historystages.events.AutoTriggerEventBridge.pollPlayers(event.getServer(), tickCounter);
@@ -395,9 +395,11 @@ public class HistoryStages {
         // fluid-gated recipe is exactly one of the recipes it leaves out — building the index from
         // it would drop that recipe from the index, which would ungate it, which would put it back
         // in the list. This one has to see every recipe there is.
+        // PORT(Task 12): 26.2 has no getOrderedRecipes. getRecipes is ungated until the recipe
+        // mixin moves; it must then leave getRecipes alone or these callers need their own accessor.
         if (event.getServer() != null) {
             net.bananemdnsa.historystages.data.lock.FluidRecipeIndex.rebuildIfDirty(
-                    event.getServer().getRecipeManager().getOrderedRecipes(),
+                    event.getServer().getRecipeManager().getRecipes(),
                     event.getServer().registryAccess());
         }
 

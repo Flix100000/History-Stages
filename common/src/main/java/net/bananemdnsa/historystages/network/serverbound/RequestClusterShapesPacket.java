@@ -74,8 +74,8 @@ public record RequestClusterShapesPacket() implements CustomPacketPayload {
             Component header = Component.literal("§6--- Cluster shapes §e[click to copy full report]§6 ---")
                     .copy()
                     .withStyle(Style.EMPTY
-                            .withClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, plainReport))
-                            .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
+                            .withClickEvent(new ClickEvent.CopyToClipboard(plainReport))
+                            .withHoverEvent(new HoverEvent.ShowText(
                                     Component.literal("Copy full report to clipboard")
                                             .withStyle(ChatFormatting.GRAY))));
             player.sendSystemMessage(header);

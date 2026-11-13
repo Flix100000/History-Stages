@@ -116,7 +116,7 @@ public final class TradeLockHelper {
      */
     public static int levelOf(Merchant merchant) {
         return merchant instanceof Villager villager
-                ? villager.getVillagerData().getLevel()
+                ? villager.getVillagerData().level()
                 : 1;
     }
 
@@ -195,7 +195,7 @@ public final class TradeLockHelper {
     @Nullable
     private static String professionIdOf(Merchant merchant) {
         if (!(merchant instanceof Villager villager)) return null;
-        VillagerProfession profession = villager.getVillagerData().getProfession();
+        VillagerProfession profession = villager.getVillagerData().profession().value();
         Identifier key = BuiltInRegistries.VILLAGER_PROFESSION.getKey(profession);
         return key == null ? null : key.toString();
     }

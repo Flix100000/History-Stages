@@ -58,7 +58,7 @@ public record SyncStructureRegistryPacket(List<String> structureIds, List<String
             ids.add(key.toString());
         }
         List<String> tagIds = new ArrayList<>();
-        registry.getTagNames().forEach(tag -> tagIds.add(tag.location().toString()));
+        registry.listTagIds().forEach(tag -> tagIds.add(tag.location().toString()));
         return new SyncStructureRegistryPacket(ids, tagIds);
     }
 

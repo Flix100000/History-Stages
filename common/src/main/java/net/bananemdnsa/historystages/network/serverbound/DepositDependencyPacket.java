@@ -127,7 +127,7 @@ public record DepositDependencyPacket(BlockPos pos, int groupIndex, String depos
                 if (xpLevel != null && xpLevel.isConsume() && xpLevel.getLevel() > 0) {
                     String key = DependencyProgress.key(groupKey, DependencyProgress.XP_SUFFIX);
                     int cost = XpLevelRequirement.effectiveLevel(xpLevel.getLevel(), pedestal.xpCostFactor(tag));
-                    if (!deposited.getBoolean(key) && player.experienceLevel >= cost) {
+                    if (!deposited.getBooleanOr(key, false) && player.experienceLevel >= cost) {
                         player.giveExperienceLevels(-cost);
                         deposited.putBoolean(key, true);
                         changed = true;

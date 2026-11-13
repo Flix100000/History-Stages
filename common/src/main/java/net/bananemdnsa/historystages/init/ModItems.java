@@ -5,6 +5,10 @@ import net.bananemdnsa.historystages.block.ScrollShelfWood;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.item.component.TooltipDisplay;
+import java.util.function.Consumer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
@@ -28,7 +32,7 @@ public class ModItems {
     public static final String CREATIVE_STAGE_ID = "_creative";
 
     public static final DeferredHolder<Item, Item> RESEARCH_SCROLL = ITEMS.register("research_scroll",
-            () -> new Item(new Item.Properties().stacksTo(1).rarity(Rarity.EPIC)) {
+            () -> new Item(props("research_scroll").stacksTo(1).rarity(Rarity.EPIC)) {
 
                 @Override
                 public Component getName(ItemStack stack) {
@@ -38,14 +42,16 @@ public class ModItems {
                 }
 
                 @Override
-                public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
+                public void appendHoverText(ItemStack stack, TooltipContext context, TooltipDisplay display, Consumer<Component> tooltip, TooltipFlag flag) {
                     CustomData customData = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY);
-                    ScrollTooltipRenderer.append(customData.copyTag(), tooltip);
+                    List<Component> lines = new java.util.ArrayList<>();
+                    ScrollTooltipRenderer.append(customData.copyTag(), lines);
+                    lines.forEach(tooltip);
                 }
             });
 
     public static final DeferredHolder<Item, Item> CREATIVE_SCROLL = ITEMS.register("creative_scroll",
-            () -> new Item(new Item.Properties().stacksTo(1).rarity(Rarity.EPIC)) {
+            () -> new Item(props("creative_scroll").stacksTo(1).rarity(Rarity.EPIC)) {
 
                 @Override
                 public boolean isFoil(ItemStack stack) {
@@ -53,16 +59,16 @@ public class ModItems {
                 }
 
                 @Override
-                public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
-                    tooltip.add(Component.translatable("tooltip.historystages.creative_scroll.info1")
+                public void appendHoverText(ItemStack stack, TooltipContext context, TooltipDisplay display, Consumer<Component> tooltip, TooltipFlag flag) {
+                    tooltip.accept(Component.translatable("tooltip.historystages.creative_scroll.info1")
                             .withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC));
-                    tooltip.add(Component.translatable("tooltip.historystages.creative_scroll.info2")
+                    tooltip.accept(Component.translatable("tooltip.historystages.creative_scroll.info2")
                             .withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC));
                 }
             });
 
     public static final DeferredHolder<Item, Item> RESEARCH_SCROLL_OPEN = ITEMS.register("research_scroll_open",
-            () -> new Item(new Item.Properties().stacksTo(1).rarity(Rarity.EPIC)) {
+            () -> new Item(props("research_scroll_open").stacksTo(1).rarity(Rarity.EPIC)) {
 
                 @Override
                 public Component getName(ItemStack stack) {
@@ -72,31 +78,42 @@ public class ModItems {
                 }
 
                 @Override
-                public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
-                    tooltip.add(Component.translatable("tooltip.historystages.research_scroll_open.info")
+                public void appendHoverText(ItemStack stack, TooltipContext context, TooltipDisplay display, Consumer<Component> tooltip, TooltipFlag flag) {
+                    tooltip.accept(Component.translatable("tooltip.historystages.research_scroll_open.info")
                             .withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC));
                 }
             });
 
     public static final DeferredHolder<Item, Item> RESEARCH_PEDESTAL_ITEM = ITEMS.register("research_pedestal",
-            () -> new BlockItem(ModBlocks.RESEARCH_PEDESTAL.get(), new Item.Properties()));
+            () -> new BlockItem(ModBlocks.RESEARCH_PEDESTAL.get(), blockProps("research_pedestal")));
 
     public static final DeferredHolder<Item, Item> RESEARCH_PEDESTAL_TIER_2_ITEM = ITEMS.register("research_pedestal_tier_2",
-            () -> new BlockItem(ModBlocks.RESEARCH_PEDESTAL_TIER_2.get(), new Item.Properties()));
+            () -> new BlockItem(ModBlocks.RESEARCH_PEDESTAL_TIER_2.get(), blockProps("research_pedestal_tier_2")));
 
     public static final DeferredHolder<Item, Item> RESEARCH_PEDESTAL_TIER_3_ITEM = ITEMS.register("research_pedestal_tier_3",
-            () -> new BlockItem(ModBlocks.RESEARCH_PEDESTAL_TIER_3.get(), new Item.Properties()));
+            () -> new BlockItem(ModBlocks.RESEARCH_PEDESTAL_TIER_3.get(), blockProps("research_pedestal_tier_3")));
 
     public static final DeferredHolder<Item, Item> RESEARCH_PEDESTAL_TIER_4_ITEM = ITEMS.register("research_pedestal_tier_4",
-            () -> new BlockItem(ModBlocks.RESEARCH_PEDESTAL_TIER_4.get(), new Item.Properties()));
+            () -> new BlockItem(ModBlocks.RESEARCH_PEDESTAL_TIER_4.get(), blockProps("research_pedestal_tier_4")));
 
     public static final Map<ScrollShelfWood, DeferredHolder<Item, Item>> SCROLL_SHELF_ITEMS = registerScrollShelfItems();
 
     private static Map<ScrollShelfWood, DeferredHolder<Item, Item>> registerScrollShelfItems() {
         Map<ScrollShelfWood, DeferredHolder<Item, Item>> items = new EnumMap<>(ScrollShelfWood.class);
         ModBlocks.SCROLL_SHELVES.forEach((wood, block) -> items.put(wood,
-                ITEMS.register(wood.blockId(), () -> new BlockItem(block.get(), new Item.Properties()))));
+                ITEMS.register(wood.blockId(), () -> new BlockItem(block.get(), blockProps(wood.blockId())))));
         return Collections.unmodifiableMap(items);
+    }
+
+    // 26.2 needs the registry key on the properties before the item is built.
+    private static Item.Properties props(String name) {
+        return new Item.Properties().setId(ResourceKey.create(Registries.ITEM,
+                Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, name)));
+    }
+
+    // Block items keep the block's name, as 1.21.1 BlockItems did.
+    private static Item.Properties blockProps(String name) {
+        return props(name).useBlockDescriptionPrefix();
     }
 
     public static void register() {

@@ -70,10 +70,10 @@ public class ItemTagRequirement implements Requirement {
             int current = 0;
             String settled = null;
             if (ctx.depositedData() != null) {
-                current = ctx.depositedData().getInt(
-                        ctx.progressKey(DependencyProgress.itemTagSuffix(tag.getId())));
-                settled = ctx.depositedData().getString(
-                        ctx.progressKey(DependencyProgress.itemTagChoiceSuffix(tag.getId())));
+                current = ctx.depositedData().getIntOr(
+                        ctx.progressKey(DependencyProgress.itemTagSuffix(tag.getId())), 0);
+                settled = ctx.depositedData().getStringOr(
+                        ctx.progressKey(DependencyProgress.itemTagChoiceSuffix(tag.getId())), "");
             }
 
             // getString answers "" for an absent key; the entry says "not settled" with null, so

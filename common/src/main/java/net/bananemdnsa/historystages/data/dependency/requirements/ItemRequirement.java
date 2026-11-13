@@ -62,7 +62,7 @@ public class ItemRequirement implements Requirement {
             int original = item.getCount();
             int required = BoosterUtil.effectiveCount(original, ctx.costReduction());
             int current = (ctx.depositedData() != null)
-                    ? ctx.depositedData().getInt(ctx.progressKey(DependencyProgress.itemSuffix(item.getId())))
+                    ? ctx.depositedData().getIntOr(ctx.progressKey(DependencyProgress.itemSuffix(item.getId())), 0)
                     : 0;
             boolean met = current >= required;
             String itemName = getItemDisplayName(item.getId());

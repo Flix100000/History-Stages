@@ -14,7 +14,6 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.world.Containers;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.ItemInteractionResult;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
@@ -108,7 +107,7 @@ public class ScrollShelfBlock extends BaseEntityBlock {
     }
 
     @Override
-    protected VoxelShape getOcclusionShape(BlockState state, BlockGetter level, BlockPos pos) {
+    protected VoxelShape getOcclusionShape(BlockState state) {
         return SHAPES.get(state.getValue(HorizontalDirectionalBlock.FACING));
     }
 
@@ -124,25 +123,25 @@ public class ScrollShelfBlock extends BaseEntityBlock {
     }
 
     @Override
-    protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos,
+    protected InteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos,
                                               Player player, InteractionHand hand, BlockHitResult hit) {
         if (!(level.getBlockEntity(pos) instanceof ScrollShelfBlockEntity shelf)) {
-            return ItemInteractionResult.SKIP_DEFAULT_BLOCK_INTERACTION;
+            return InteractionResult.PASS;
         }
-        if (!stack.is(SCROLLS)) return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+        if (!stack.is(SCROLLS)) return InteractionResult.TRY_WITH_EMPTY_HAND;
         OptionalInt slot = getHitSlot(hit, state);
-        if (slot.isEmpty()) return ItemInteractionResult.SKIP_DEFAULT_BLOCK_INTERACTION;
+        if (slot.isEmpty()) return InteractionResult.PASS;
         // Falls through to useWithoutItem: clicking a full slot with a scroll in hand takes the
         // one already there out, as vanilla does with books.
         if (state.getValue(SLOT_OCCUPIED_PROPERTIES.get(slot.getAsInt()))) {
-            return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+            return InteractionResult.TRY_WITH_EMPTY_HAND;
         }
         if (!level.isClientSide()) {
             player.awardStat(Stats.ITEM_USED.get(stack.getItem()));
             shelf.setItem(slot.getAsInt(), stack.consumeAndReturn(1, player));
             level.playSound(null, pos, SoundEvents.CHISELED_BOOKSHELF_INSERT, SoundSource.BLOCKS, 1.0F, 1.0F);
         }
-        return ItemInteractionResult.sidedSuccess(level.isClientSide());
+        return InteractionResult.SUCCESS;
     }
 
     @Override
@@ -196,24 +195,13 @@ public class ScrollShelfBlock extends BaseEntityBlock {
         SLOT_OCCUPIED_PROPERTIES.forEach(builder::add);
     }
 
+    // 1.21.1 onRemove: the shelf (a Container) drops its scrolls in BlockEntity
+    // preRemoveSideEffects now; the comparator update follows here, after the block changed.
     @Override
-    protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean movedByPiston) {
-        if (state.is(newState.getBlock())) return;
-        boolean hadScrolls = false;
-        if (level.getBlockEntity(pos) instanceof ScrollShelfBlockEntity shelf && !shelf.isEmpty()) {
-            for (int i = 0; i < SLOTS; i++) {
-                ItemStack stack = shelf.getItem(i);
-                if (!stack.isEmpty()) {
-                    Containers.dropItemStack(level, pos.getX(), pos.getY(), pos.getZ(), stack);
-                }
-            }
-            shelf.clearContent();
-            hadScrolls = true;
-        }
-        super.onRemove(state, level, pos, newState, movedByPiston);
-        if (hadScrolls) {
-            level.updateNeighbourForOutputSignal(pos, this);
-        }
+    protected void affectNeighborsAfterRemoval(BlockState state, net.minecraft.server.level.ServerLevel level,
+                                               BlockPos pos, boolean movedByPiston) {
+        level.updateNeighbourForOutputSignal(pos, this);
+        super.affectNeighborsAfterRemoval(state, level, pos, movedByPiston);
     }
 
     // Runs after the item's stored scrolls were copied in, which happens when a filled shelf is
@@ -247,7 +235,7 @@ public class ScrollShelfBlock extends BaseEntityBlock {
     }
 
     @Override
-    protected int getAnalogOutputSignal(BlockState state, Level level, BlockPos pos) {
+    protected int getAnalogOutputSignal(BlockState state, Level level, BlockPos pos, Direction direction) {
         if (level.isClientSide()) return 0;
         return level.getBlockEntity(pos) instanceof ScrollShelfBlockEntity shelf ? shelf.getLastInteractedSlot() + 1 : 0;
     }

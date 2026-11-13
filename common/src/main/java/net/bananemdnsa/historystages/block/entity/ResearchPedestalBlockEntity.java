@@ -62,7 +62,11 @@ import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.neoforged.neoforge.items.ItemStackHandler;
+import net.bananemdnsa.historystages.platform.SimpleItemHandler;
+import net.bananemdnsa.historystages.util.LegacyNbt;
+import net.bananemdnsa.historystages.util.CurrentRegistries;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -72,7 +76,7 @@ import java.util.UUID;
 public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProvider {
 
     // Slot 0: Research Scroll, Slot 1: Deposit item
-    private final ItemStackHandler itemHandler = new ItemStackHandler(2) {
+    private final SimpleItemHandler itemHandler = new SimpleItemHandler(2) {
         @Override
         public @NotNull ItemStack extractItem(int slot, int amount, boolean simulate) {
             if (slot == 0 && isScrollLocked()) return ItemStack.EMPTY;
@@ -186,8 +190,14 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
         };
     }
 
-    public ItemStackHandler getItemHandler() {
+    public SimpleItemHandler getItemHandler() {
         return itemHandler;
+    }
+
+    /** 26.2 calls this before the block entity goes, where 1.21.1's Block.onRemove dropped the slots. */
+    @Override
+    public void preRemoveSideEffects(BlockPos pos, BlockState state) {
+        if (level != null) dropContents(level, pos);
     }
 
     /** Drop both inventory slots at the given position. Saves current research progress to the
@@ -561,15 +571,15 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
             // the delay counter stays at zero, tryProcessDeposit is never called, and the slot
             // just sits there holding the ingot.
             for (var tag : group.getItemTags()) {
-                String settled = depositedData.getString(DependencyProgress.key(groupKey,
-                        DependencyProgress.itemTagChoiceSuffix(tag.getId())));
+                String settled = depositedData.getStringOr(DependencyProgress.key(groupKey,
+                        DependencyProgress.itemTagChoiceSuffix(tag.getId())), "");
                 boolean fits = settled.isEmpty()
                         ? ItemTagResolution.matches(tag.getId(), depositStack)
                         : settled.equals(depositRl.toString());
                 if (!fits) continue;
 
-                int count = depositedData.getInt(DependencyProgress.key(groupKey,
-                        DependencyProgress.itemTagSuffix(tag.getId())));
+                int count = depositedData.getIntOr(DependencyProgress.key(groupKey,
+                        DependencyProgress.itemTagSuffix(tag.getId())), 0);
                 if (count < BoosterUtil.effectiveCount(tag.getCount(), costReduction)) return true;
             }
         }
@@ -628,7 +638,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
         CustomData custom = stack.isEmpty()
                 ? CustomData.EMPTY
                 : stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY);
-        boolean hasValidBook = isResearchable(stack) && custom.contains("StageResearch");
+        boolean hasValidBook = isResearchable(stack) && custom.copyTag().contains("StageResearch");
         CompoundTag stackTag = hasValidBook ? custom.copyTag() : new CompoundTag();
         boolean isResearching = false;
 
@@ -1227,7 +1237,15 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
     }
 
     @Override
-    protected void saveAdditional(CompoundTag nbt, HolderLookup.Provider registries) {
+    protected void saveAdditional(ValueOutput output) {
+        super.saveAdditional(output);
+        // 26.2 hands over a ValueOutput; the 1.21.1 tag is built as before and written key by key.
+        CompoundTag nbt = new CompoundTag();
+        saveLegacy(nbt, level != null ? level.registryAccess() : CurrentRegistries.orEmpty());
+        LegacyNbt.write(output, nbt);
+    }
+
+    private void saveLegacy(CompoundTag nbt, HolderLookup.Provider registries) {
         nbt.put("inventory", itemHandler.serializeNBT(registries));
         nbt.putInt("research.progress", progress);
         nbt.putInt("research.finishDelay", finishDelay);
@@ -1240,19 +1258,22 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
         if (lastInteractingPlayer != null) {
             nbt.store("research.lastPlayer", UUIDUtil.CODEC, lastInteractingPlayer);
         }
-        super.saveAdditional(nbt, registries);
     }
 
     @Override
-    protected void loadAdditional(CompoundTag nbt, HolderLookup.Provider registries) {
-        super.loadAdditional(nbt, registries);
+    protected void loadAdditional(ValueInput input) {
+        super.loadAdditional(input);
+        loadLegacy(LegacyNbt.read(input), input.lookup());
+    }
+
+    private void loadLegacy(CompoundTag nbt, HolderLookup.Provider registries) {
 
         // Manual loading with size check for backward compatibility (old NBT had 1 slot)
         CompoundTag invTag = nbt.getCompoundOrEmpty("inventory");
         if (NbtTypes.has(invTag, "Size", 3)) {
             int savedSize = invTag.getIntOr("Size", 0);
             if (savedSize != itemHandler.getSlots()) {
-                ItemStackHandler temp = new ItemStackHandler(savedSize);
+                SimpleItemHandler temp = new SimpleItemHandler(savedSize);
                 temp.deserializeNBT(registries, invTag);
                 for (int i = 0; i < Math.min(savedSize, itemHandler.getSlots()); i++) {
                     itemHandler.setStackInSlot(i, temp.getStackInSlot(i));

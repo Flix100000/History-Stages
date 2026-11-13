@@ -6,6 +6,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.saveddata.SavedData;
+import net.minecraft.world.level.saveddata.SavedDataType;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -23,6 +24,8 @@ import java.util.Map;
 public class StructureGenerationCountData extends SavedData {
 
     private static final String DATA_NAME = "historystages_structure_counts";
+    private static final SavedDataType<StructureGenerationCountData> TYPE =
+            SavedDataTypes.of(DATA_NAME, StructureGenerationCountData::new, StructureGenerationCountData::load, (data, tag) -> data.save(tag, null));
 
     /** The instance of the currently loaded world, so the gate can mark it dirty after a booking. */
     private static volatile StructureGenerationCountData INSTANCE;
@@ -42,7 +45,6 @@ public class StructureGenerationCountData extends SavedData {
         return data;
     }
 
-    @Override
     public CompoundTag save(CompoundTag nbt, HolderLookup.Provider registries) {
         CompoundTag counts = new CompoundTag();
         for (Map.Entry<String, Integer> e : StructureGenerationGate.snapshotCounts().entrySet()) {
@@ -60,12 +62,7 @@ public class StructureGenerationCountData extends SavedData {
      * server's budgets.
      */
     public static StructureGenerationCountData get(ServerLevel level) {
-        StructureGenerationCountData data = level.getServer().overworld().getDataStorage()
-                .computeIfAbsent(
-                        new SavedData.Factory<>(StructureGenerationCountData::new,
-                                StructureGenerationCountData::load),
-                        DATA_NAME
-                );
+        StructureGenerationCountData data = SavedDataTypes.get(level.getServer(), DATA_NAME, TYPE);
         INSTANCE = data;
         return data;
     }

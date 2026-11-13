@@ -67,7 +67,7 @@ public final class LootLocks {
         if (tagList != null && !tagList.isEmpty()) {
             try {
                 String tagStr = tagList.get(RANDOM.nextInt(tagList.size()));
-                TagKey<Item> tagKey = ItemTags.create(Identifier.parse(tagStr));
+                TagKey<Item> tagKey = TagKey.create(net.minecraft.core.registries.Registries.ITEM, Identifier.parse(tagStr));
                 List<Item> tagItems = new ArrayList<>();
                 Optional<? extends Iterable<Holder<Item>>> tagOptional = BuiltInRegistries.ITEM.get(tagKey);
                 tagOptional.ifPresent(holders -> {

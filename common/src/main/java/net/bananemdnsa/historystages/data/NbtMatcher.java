@@ -126,7 +126,7 @@ public class NbtMatcher {
     private static ListTag toLegacyEnchantmentList(ItemEnchantments enchantments) {
         ListTag list = new ListTag();
         for (Object2IntMap.Entry<Holder<Enchantment>> entry : enchantments.entrySet()) {
-            Identifier id = entry.getKey().unwrapKey().map(ResourceKey::location).orElse(null);
+            Identifier id = entry.getKey().unwrapKey().map(ResourceKey::identifier).orElse(null);
             if (id == null) continue;
             CompoundTag e = new CompoundTag();
             e.putString("id", id.toString());
@@ -167,25 +167,25 @@ public class NbtMatcher {
             if (prim.isString()) {
                 String str = prim.getAsString();
                 if (str.matches("\\d+-\\d+") && nbtValue instanceof NumericTag numeric) {
-                    return matchesRange(numeric.getAsInt(), str);
+                    return matchesRange(numeric.intValue(), str);
                 }
                 // String comparison
-                if (nbtValue instanceof StringTag) {
-                    return nbtValue.getAsString().equals(str);
+                if (nbtValue instanceof StringTag stringTag) {
+                    return stringTag.value().equals(str);
                 }
                 return false;
             }
 
             if (prim.isNumber()) {
                 if (nbtValue instanceof NumericTag numeric) {
-                    return numeric.getAsNumber().doubleValue() == prim.getAsDouble();
+                    return numeric.doubleValue() == prim.getAsDouble();
                 }
                 return false;
             }
 
             if (prim.isBoolean()) {
                 if (nbtValue instanceof ByteTag byteTag) {
-                    return (byteTag.getAsByte() != 0) == prim.getAsBoolean();
+                    return (byteTag.byteValue() != 0) == prim.getAsBoolean();
                 }
                 return false;
             }

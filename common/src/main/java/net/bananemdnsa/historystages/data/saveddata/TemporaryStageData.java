@@ -14,6 +14,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.saveddata.SavedData;
+import net.minecraft.world.level.saveddata.SavedDataType;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -42,6 +43,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public class TemporaryStageData extends SavedData {
 
     private static final String DATA_NAME = "historystages_temporary";
+    private static final SavedDataType<TemporaryStageData> TYPE =
+            SavedDataTypes.of(DATA_NAME, TemporaryStageData::new, TemporaryStageData::load, (data, tag) -> data.save(tag, null));
 
     /** Game ticks between timer decrements (1 second). Decrement amount matches. */
     public static final int TICK_STEP = 20;
@@ -58,11 +61,7 @@ public class TemporaryStageData extends SavedData {
 
     public static TemporaryStageData get(Level level) {
         if (level instanceof ServerLevel sl) {
-            return sl.getServer().overworld().getDataStorage()
-                    .computeIfAbsent(
-                            new SavedData.Factory<>(TemporaryStageData::new, TemporaryStageData::load),
-                            DATA_NAME
-                    );
+            return SavedDataTypes.get(sl.getServer(), DATA_NAME, TYPE);
         }
         return new TemporaryStageData();
     }
@@ -354,7 +353,6 @@ public class TemporaryStageData extends SavedData {
         return data;
     }
 
-    @Override
     public CompoundTag save(CompoundTag nbt, HolderLookup.Provider registries) {
         nbt.put("global_active", writeTickMap(globalActive));
         nbt.put("global_cooldown", writeTickMap(globalCooldown));

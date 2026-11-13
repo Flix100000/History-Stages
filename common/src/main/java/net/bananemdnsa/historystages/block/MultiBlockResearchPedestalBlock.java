@@ -68,7 +68,7 @@ public class MultiBlockResearchPedestalBlock extends BaseEntityBlock implements 
     }
 
     @Override
-    public boolean propagatesSkylightDown(BlockState s, BlockGetter l, BlockPos p) {
+    public boolean propagatesSkylightDown(BlockState s) {
         return true;
     }
 
@@ -77,10 +77,8 @@ public class MultiBlockResearchPedestalBlock extends BaseEntityBlock implements 
         return 1.0F;
     }
 
-    @Override
-    public boolean isOcclusionShapeFullBlock(BlockState s, BlockGetter w, BlockPos p) {
-        return false;
-    }
+    // isOcclusionShapeFullBlock: 26.2 derives it from the occlusion shape, which noOcclusion()
+    // (set by every pedestal's constructor) leaves empty, so it stays false as before.
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
@@ -153,18 +151,21 @@ public class MultiBlockResearchPedestalBlock extends BaseEntityBlock implements 
             Direction facing = state.getValue(FACING);
             BlockPos headPos = pos.relative(facing);
             level.setBlock(headPos, state.setValue(PART, Part.HEAD), 3);
-            level.blockUpdated(pos, Blocks.AIR);
+            level.updateNeighborsAt(pos, Blocks.AIR);
             state.updateNeighbourShapes(level, pos, 3);
         }
     }
 
     @Override
-    public BlockState updateShape(BlockState state, Direction direction, BlockState neighborState, LevelAccessor level, BlockPos pos, BlockPos neighborPos) {
+    protected BlockState updateShape(BlockState state, net.minecraft.world.level.LevelReader level,
+                                     net.minecraft.world.level.ScheduledTickAccess ticks, BlockPos pos,
+                                     Direction direction, BlockPos neighborPos, BlockState neighborState,
+                                     net.minecraft.util.RandomSource random) {
         Direction towardPartner = getPartnerDirection(state);
         if (direction == towardPartner) {
             return isPartnerValid(neighborState, state) ? state : Blocks.AIR.defaultBlockState();
         }
-        return super.updateShape(state, direction, neighborState, level, pos, neighborPos);
+        return super.updateShape(state, level, ticks, pos, direction, neighborPos, neighborState, random);
     }
 
     @Override
@@ -181,22 +182,18 @@ public class MultiBlockResearchPedestalBlock extends BaseEntityBlock implements 
         return super.playerWillDestroy(level, pos, state, player);
     }
 
+    // 1.21.1 onRemove, split the 26.2 way: the foot's block entity drops its slots itself
+    // (preRemoveSideEffects), and the partner half goes here, after the block has changed.
     @Override
-    public void onRemove(BlockState oldState, Level level, BlockPos pos, BlockState newState, boolean movedByPiston) {
-        if (!oldState.is(newState.getBlock())) {
-            // Foot has the BE — drop its inventory (scroll + deposit slot).
-            BlockEntity be = level.getBlockEntity(pos);
-            if (be instanceof ResearchPedestalBlockEntity rpbe) {
-                rpbe.dropContents(level, pos);
-            }
-            Direction partnerDir = getPartnerDirection(oldState);
-            BlockPos partnerPos = pos.relative(partnerDir);
-            BlockState partnerState = level.getBlockState(partnerPos);
-            if (isPartnerValid(partnerState, oldState)) {
-                level.removeBlock(partnerPos, false);
-            }
+    protected void affectNeighborsAfterRemoval(BlockState oldState, net.minecraft.server.level.ServerLevel level,
+                                               BlockPos pos, boolean movedByPiston) {
+        Direction partnerDir = getPartnerDirection(oldState);
+        BlockPos partnerPos = pos.relative(partnerDir);
+        BlockState partnerState = level.getBlockState(partnerPos);
+        if (isPartnerValid(partnerState, oldState)) {
+            level.removeBlock(partnerPos, false);
         }
-        super.onRemove(oldState, level, pos, newState, movedByPiston);
+        super.affectNeighborsAfterRemoval(oldState, level, pos, movedByPiston);
     }
 
     @Override
@@ -207,7 +204,7 @@ public class MultiBlockResearchPedestalBlock extends BaseEntityBlock implements 
                     : pos;
             BlockEntity be = level.getBlockEntity(footPos);
             if (be instanceof ResearchPedestalBlockEntity) {
-                ((ServerPlayer) player).openMenu((MenuProvider) be, footPos);
+                dev.architectury.registry.menu.MenuRegistry.openExtendedMenu((ServerPlayer) player, (MenuProvider) be, buf -> buf.writeBlockPos(footPos));
             }
         }
         return InteractionResult.SUCCESS;
@@ -233,7 +230,7 @@ public class MultiBlockResearchPedestalBlock extends BaseEntityBlock implements 
     }
 
     @Override
-    public int getAnalogOutputSignal(BlockState state, Level level, BlockPos pos) {
+    public int getAnalogOutputSignal(BlockState state, Level level, BlockPos pos, Direction direction) {
         BlockPos footPos = state.getValue(PART) == Part.HEAD
                 ? pos.relative(state.getValue(FACING).getOpposite())
                 : pos;

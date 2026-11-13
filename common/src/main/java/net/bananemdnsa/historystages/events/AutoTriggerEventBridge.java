@@ -309,7 +309,7 @@ public final class AutoTriggerEventBridge {
     private static void pollDayCount(ServerPlayer p) {
         ServerLevel sl = p.level();
         if (sl == null) return;
-        long dayTime = sl.getDayTime();
+        long dayTime = net.bananemdnsa.historystages.util.LevelTime.dayTime(sl);
         AutoTriggerManager.process(
                 "day_count",
                 t -> (t instanceof DayCountTrigger dt) && dt.matches(dayTime),

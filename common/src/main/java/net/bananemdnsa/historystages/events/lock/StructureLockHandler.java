@@ -325,7 +325,7 @@ public class StructureLockHandler {
      */
     public static List<Holder.Reference<Structure>> collectStructureHoldersAt(ServerLevel level, BlockPos pos) {
         var registry = level.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.STRUCTURE);
-        net.minecraft.world.level.ChunkPos center = new net.minecraft.world.level.ChunkPos(pos);
+        net.minecraft.world.level.ChunkPos center = net.minecraft.world.level.ChunkPos.containing(pos);
         Set<Structure> seen = new LinkedHashSet<>();
         for (int cx = center.x() - CHUNK_SCAN_RADIUS; cx <= center.x() + CHUNK_SCAN_RADIUS; cx++) {
             for (int cz = center.z() - CHUNK_SCAN_RADIUS; cz <= center.z() + CHUNK_SCAN_RADIUS; cz++) {

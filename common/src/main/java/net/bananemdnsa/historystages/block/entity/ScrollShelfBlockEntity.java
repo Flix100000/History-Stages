@@ -4,6 +4,9 @@ import net.bananemdnsa.historystages.block.ScrollShelfBlock;
 import net.bananemdnsa.historystages.init.ModBlockEntities;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.component.DataComponentGetter;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.core.component.DataComponents;
@@ -64,18 +67,18 @@ public class ScrollShelfBlockEntity extends BlockEntity implements Container {
     }
 
     @Override
-    protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-        super.loadAdditional(tag, registries);
+    protected void loadAdditional(ValueInput input) {
+        super.loadAdditional(input);
         items.clear();
-        ContainerHelper.loadAllItems(tag, items, registries);
-        lastInteractedSlot = tag.getIntOr("last_interacted_slot", 0);
+        ContainerHelper.loadAllItems(input, items);
+        lastInteractedSlot = input.getIntOr("last_interacted_slot", 0);
     }
 
     @Override
-    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-        super.saveAdditional(tag, registries);
-        ContainerHelper.saveAllItems(tag, items, true, registries);
-        tag.putInt("last_interacted_slot", lastInteractedSlot);
+    protected void saveAdditional(ValueOutput output) {
+        super.saveAdditional(output);
+        ContainerHelper.saveAllItems(output, items, true);
+        output.putInt("last_interacted_slot", lastInteractedSlot);
     }
 
     @Override
@@ -160,7 +163,7 @@ public class ScrollShelfBlockEntity extends BlockEntity implements Container {
 
     // Keeps the contents on a shelf picked with ctrl+middle-click in creative, like vanilla.
     @Override
-    protected void applyImplicitComponents(BlockEntity.DataComponentInput input) {
+    protected void applyImplicitComponents(DataComponentGetter input) {
         super.applyImplicitComponents(input);
         input.getOrDefault(DataComponents.CONTAINER, ItemContainerContents.EMPTY).copyInto(items);
     }
@@ -172,7 +175,7 @@ public class ScrollShelfBlockEntity extends BlockEntity implements Container {
     }
 
     @Override
-    public void removeComponentsFromTag(CompoundTag tag) {
-        tag.remove("Items");
+    public void removeComponentsFromTag(ValueOutput output) {
+        output.discard("Items");
     }
 }

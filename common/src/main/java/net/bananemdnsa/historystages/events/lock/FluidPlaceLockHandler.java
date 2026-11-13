@@ -15,10 +15,9 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
 import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
-import net.neoforged.neoforge.capabilities.Capabilities;
 import net.bananemdnsa.historystages.platform.TriState;
 import net.bananemdnsa.historystages.platform.event.entity.player.PlayerInteractEvent;
-import net.neoforged.neoforge.fluids.CauldronFluidContent;
+import net.bananemdnsa.historystages.platform.Fluids;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -102,11 +101,11 @@ public class FluidPlaceLockHandler {
      * taken worlds down before (#130).
      */
     private static boolean takesFluid(Level level, BlockPos pos) {
-        if (CauldronFluidContent.getForBlock(level.getBlockState(pos).getBlock()) != null) {
+        if (Fluids.isFluidCauldron(level.getBlockState(pos).getBlock())) {
             return true;
         }
         try {
-            return level.getCapability(Capabilities.FluidHandler.BLOCK, pos, null) != null;
+            return Fluids.hasBlockContainer(level, pos);
         } catch (RuntimeException e) {
             // Somebody else's block, somebody else's exception. Refusing the item already stopped
             // the pour; losing the block half here is the smaller error.

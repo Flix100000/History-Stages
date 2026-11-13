@@ -114,7 +114,7 @@ public class StringStageLockEngine implements StageLockEngine {
     private CategoryLockIndexes.ItemGating computeItemGating(String itemId, String modId,
                                                              @Nullable ItemStack stack, StageScope scope,
                                                              StackFacts facts) {
-        Item item = stack != null ? stack.getItem() : BuiltInRegistries.ITEM.get(Identifier.parse(itemId));
+        Item item = stack != null ? stack.getItem() : BuiltInRegistries.ITEM.getValue(Identifier.parse(itemId));
         // Resolved once and threaded through both uses: the capability lookup is not free, and
         // the four-argument ItemSubject constructor would repeat it.
         String fluidId = facts.fluidId();
