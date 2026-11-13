@@ -2,15 +2,9 @@
   "type": "minecraft:crafting_shaped",
   "category": "building",
   "key": {
-    "#": {
-      "item": "minecraft:crimson_planks"
-    },
-    "X": {
-      "item": "minecraft:crimson_slab"
-    },
-    "P": {
-      "item": "minecraft:paper"
-    }
+    "#": "minecraft:crimson_planks",
+    "X": "minecraft:crimson_slab",
+    "P": "minecraft:paper"
   },
   "pattern": [
     "###",

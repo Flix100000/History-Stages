@@ -27,7 +27,11 @@
 		"fabric-gametest": [
 			"net.bananemdnsa.historystages.fabric.gametest.BridgeCancelTests",
 			"net.bananemdnsa.historystages.fabric.gametest.BridgeMixinTests",
-			"net.bananemdnsa.historystages.fabric.gametest.BridgePriorityTests"
+			"net.bananemdnsa.historystages.fabric.gametest.BridgePriorityTests",
+			"net.bananemdnsa.historystages.fabric.gametest.AddonRegistrationTests"
+		],
+		"historystages": [
+			"net.bananemdnsa.historystages.fabric.gametest.TestAddonPlugin"
 		]
 	},
 	"mixins": [

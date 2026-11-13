@@ -26,7 +26,18 @@ import java.util.function.Consumer;
 public final class EventBus {
 
     private record Listener(Method method, Object instance, EventPriority priority, boolean receiveCanceled,
-                            long order) {}
+                            long order, @org.jetbrains.annotations.Nullable String owner) {}
+
+    /**
+     * The mod whose listener is running on this thread, or null. Stands in for the mod context
+     * NeoForge set around each listener ({@code postEventWrapContainerInModOrder}), which the
+     * debug report reads to name the addon that registered something.
+     */
+    private static final ThreadLocal<String> RUNNING_OWNER = new ThreadLocal<>();
+
+    public static @org.jetbrains.annotations.Nullable String runningOwner() {
+        return RUNNING_OWNER.get();
+    }
 
     // Highest priority first; within a priority, in the order the listeners were registered,
     // regardless of whether they listen for the exact class or a supertype.
@@ -52,15 +63,47 @@ public final class EventBus {
 
     /** Registers the static handler methods of a class. */
     public static void register(Class<?> handlerClass) {
-        add(handlerClass, null);
+        add(handlerClass, null, null);
+    }
+
+    /**
+     * Registers the static handler methods of a class another mod provided, remembering that mod
+     * as their owner while they run.
+     */
+    public static void register(Class<?> handlerClass, @org.jetbrains.annotations.Nullable String ownerModId) {
+        add(handlerClass, null, ownerModId);
     }
 
     /** Registers the instance handler methods of an object. */
     public static void register(Object handler) {
-        add(handler.getClass(), handler);
+        add(handler.getClass(), handler, null);
     }
 
-    private static void add(Class<?> owner, Object instance) {
+    /**
+     * The mod registering right now when no owner is given: the one whose constructor or
+     * entrypoint is running (NeoForge mod context, Fabric {@code LoaderContextImpl.runAs}).
+     * History Stages itself and Minecraft's fallback context own nothing.
+     */
+    private static @org.jetbrains.annotations.Nullable String defaultOwner() {
+        String id;
+        try {
+            id = net.bananemdnsa.historystages.platform.LoaderContext.activeModId();
+        } catch (AssertionError | LinkageError e) {
+            // No loader behind the facade (unit tests).
+            return null;
+        }
+        return id == null || "minecraft".equals(id) || "historystages".equals(id) ? null : id;
+    }
+
+    /** Classes whose static handlers are on the bus; a second registration of one is ignored. */
+    private static final java.util.Set<Class<?>> REGISTERED_CLASSES = ConcurrentHashMap.newKeySet();
+
+    private static void add(Class<?> owner, Object instance, @org.jetbrains.annotations.Nullable String ownerModId) {
+        // NeoForge's annotation scan also finds History Stages' own subscribers, which the handler
+        // lists registered already; twice would run every handler twice.
+        if (instance == null && !REGISTERED_CLASSES.add(owner)) return;
+        if ("historystages".equals(ownerModId)) ownerModId = null;
+        if (ownerModId == null) ownerModId = defaultOwner();
         for (Method method : owner.getDeclaredMethods()) {
             SubscribeEvent annotation = method.getAnnotation(SubscribeEvent.class);
             if (annotation == null) {
@@ -80,7 +123,7 @@ public final class EventBus {
             method.setAccessible(true);
             addEntry(method.getParameterTypes()[0],
                     new Listener(method, instance, annotation.priority(), annotation.receiveCanceled(),
-                            NEXT_ORDER.getAndIncrement()));
+                            NEXT_ORDER.getAndIncrement(), ownerModId));
         }
     }
 
@@ -130,7 +173,14 @@ public final class EventBus {
             if (listener.method() == null) {
                 @SuppressWarnings("unchecked")
                 Consumer<Event> consumer = (Consumer<Event>) listener.instance();
-                consumer.accept(event);
+                String previousOwner = RUNNING_OWNER.get();
+                if (listener.owner() != null) RUNNING_OWNER.set(listener.owner());
+                try {
+                    consumer.accept(event);
+                } finally {
+                    if (previousOwner == null) RUNNING_OWNER.remove();
+                    else RUNNING_OWNER.set(previousOwner);
+                }
             } else {
                 invoke(listener, event);
             }
@@ -139,6 +189,8 @@ public final class EventBus {
     }
 
     private static void invoke(Listener listener, Event event) {
+        String previousOwner = RUNNING_OWNER.get();
+        if (listener.owner() != null) RUNNING_OWNER.set(listener.owner());
         try {
             listener.method().invoke(listener.instance(), event);
         } catch (InvocationTargetException e) {
@@ -153,6 +205,9 @@ public final class EventBus {
             throw new RuntimeException(cause);
         } catch (IllegalAccessException e) {
             throw new IllegalStateException(e);
+        } finally {
+            if (previousOwner == null) RUNNING_OWNER.remove();
+            else RUNNING_OWNER.set(previousOwner);
         }
     }
 
@@ -205,7 +260,8 @@ public final class EventBus {
     /** {@link #addListener(Class, Consumer)} with the two settings {@link SubscribeEvent} offers. */
     public static <T extends Event> void addListener(Class<T> eventType, EventPriority priority, boolean receiveCanceled,
                                                      Consumer<T> listener) {
-        addEntry(eventType, new Listener(null, listener, priority, receiveCanceled, NEXT_ORDER.getAndIncrement()));
+        addEntry(eventType, new Listener(null, listener, priority, receiveCanceled, NEXT_ORDER.getAndIncrement(),
+                defaultOwner()));
     }
 
     /**

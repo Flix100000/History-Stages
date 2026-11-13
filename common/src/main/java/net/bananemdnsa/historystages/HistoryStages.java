@@ -88,35 +88,37 @@ public class HistoryStages {
         if (Services.isClient()) {
             ClientHandlers.register();
         }
+        // Other mods' platform @EventBusSubscriber classes (NeoForge scan data); a no-op on
+        // Fabric, where addons come in through the historystages entrypoint below.
+        net.bananemdnsa.historystages.platform.AddonEntrypoints.discoverSubscribers();
 
         // Registration window for addon lock categories, at the point main used: once every mod
         // has been constructed (FMLCommonSetupEvent, here Architectury's SETUP), before anything
         // plays. Every registry it fills is closed on the way out.
         LifecycleEvent.SETUP.register(() -> {
-            // PORT(Task 8): NeoForge wrapped each post in the listener's mod context so the
-            // debug report could name the addon (ApiOwners). The platform bus has no such context;
-            // owners read as null until the addon entrypoint window sets them.
-            EventBus.post(new net.bananemdnsa.historystages.api.lock.RegisterLockCategoriesEvent());
+            // Each event goes to the bus (subscribers, owned by the mod that provided them) and to
+            // every historystages entrypoint on Fabric (owned by the entrypoint's mod).
+            fireRegistration(new net.bananemdnsa.historystages.api.lock.RegisterLockCategoriesEvent(), net.bananemdnsa.historystages.api.HistoryStagesPlugin::registerLockCategories);
             net.bananemdnsa.historystages.data.lock.category.LockCategories.freeze();
-            EventBus.post(new net.bananemdnsa.historystages.api.trigger.RegisterTriggerTypesEvent());
+            fireRegistration(new net.bananemdnsa.historystages.api.trigger.RegisterTriggerTypesEvent(), net.bananemdnsa.historystages.api.HistoryStagesPlugin::registerTriggerTypes);
             net.bananemdnsa.historystages.data.auto.TriggerTypes.freeze();
-            EventBus.post(new net.bananemdnsa.historystages.api.dependency.RegisterRequirementTypesEvent());
+            fireRegistration(new net.bananemdnsa.historystages.api.dependency.RegisterRequirementTypesEvent(), net.bananemdnsa.historystages.api.HistoryStagesPlugin::registerRequirementTypes);
             net.bananemdnsa.historystages.data.dependency.RequirementTypes.freeze();
-            EventBus.post(new net.bananemdnsa.historystages.api.settings.RegisterStageSettingsGroupsEvent());
+            fireRegistration(new net.bananemdnsa.historystages.api.settings.RegisterStageSettingsGroupsEvent(), net.bananemdnsa.historystages.api.HistoryStagesPlugin::registerStageSettingsGroups);
             net.bananemdnsa.historystages.data.settings.StageSettingsGroups.freeze();
-            EventBus.post(new net.bananemdnsa.historystages.api.config.RegisterConfigSectionsEvent());
+            fireRegistration(new net.bananemdnsa.historystages.api.config.RegisterConfigSectionsEvent(), net.bananemdnsa.historystages.api.HistoryStagesPlugin::registerConfigSections);
             // The freeze is what makes the section list safe to read from the config
             // packets, which now go to AddonConfigSections directly rather than through a
             // registry the values had to be copied into first.
             net.bananemdnsa.historystages.data.config.AddonConfigSections.freeze();
-            EventBus.post(new net.bananemdnsa.historystages.api.lock.RegisterIndividualRecipeSupportEvent());
+            fireRegistration(new net.bananemdnsa.historystages.api.lock.RegisterIndividualRecipeSupportEvent(), net.bananemdnsa.historystages.api.HistoryStagesPlugin::registerIndividualRecipeSupport);
             net.bananemdnsa.historystages.data.lock.IndividualRecipeSupport.freeze();
-            EventBus.post(new net.bananemdnsa.historystages.api.team.RegisterTeamProvidersEvent());
+            fireRegistration(new net.bananemdnsa.historystages.api.team.RegisterTeamProvidersEvent(), net.bananemdnsa.historystages.api.HistoryStagesPlugin::registerTeamProviders);
             net.bananemdnsa.historystages.data.team.TeamProviders.freeze();
-            EventBus.post(new net.bananemdnsa.historystages.api.diagnostics.RegisterStageChecksEvent());
+            fireRegistration(new net.bananemdnsa.historystages.api.diagnostics.RegisterStageChecksEvent(), net.bananemdnsa.historystages.api.HistoryStagesPlugin::registerStageChecks);
             net.bananemdnsa.historystages.data.diagnostics.StageChecks.freeze();
             net.bananemdnsa.historystages.util.DebugLogger.registerBuiltInSections();
-            EventBus.post(new net.bananemdnsa.historystages.api.diagnostics.RegisterReportSectionsEvent());
+            fireRegistration(new net.bananemdnsa.historystages.api.diagnostics.RegisterReportSectionsEvent(), net.bananemdnsa.historystages.api.HistoryStagesPlugin::registerReportSections);
             net.bananemdnsa.historystages.data.diagnostics.ReportSections.freeze();
 
             // Logged here rather than inside freeze(): LockCategories is unit-tested, and
@@ -224,6 +226,23 @@ public class HistoryStages {
                 event.accept(ScrollVariants.createScroll(stageEntry.getKey()));
             }
         }
+    }
+
+    /**
+     * Posts one register event to the bus and hands it to every Fabric plugin. A plugin that throws
+     * must not close the window for everyone else: the registry is frozen right after.
+     */
+    private static <E extends net.bananemdnsa.historystages.platform.bus.Event> void fireRegistration(
+            E event, java.util.function.BiConsumer<net.bananemdnsa.historystages.api.HistoryStagesPlugin, E> call) {
+        EventBus.post(event);
+        net.bananemdnsa.historystages.platform.AddonEntrypoints.forEachPlugin((modId, plugin) -> {
+            try {
+                call.accept(plugin, event);
+            } catch (Exception e) {
+                LOGGER.error("[HistoryStages] {} ({}) failed during {}", plugin.getClass().getName(), modId,
+                        event.getClass().getSimpleName(), e);
+            }
+        });
     }
 
     @SubscribeEvent

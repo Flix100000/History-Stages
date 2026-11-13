@@ -11,6 +11,10 @@ public final class HistoryStagesNeoForge {
     public HistoryStagesNeoForge(IEventBus modBus) {
         HistoryStages.init();
         NeoForgeEventSources.register(modBus);
+        NeoForgeRegistrations.register(modBus);
+        if (net.bananemdnsa.historystages.platform.Services.isClient()) {
+            net.bananemdnsa.historystages.neoforge.client.NeoForgeClientRegistrations.register(modBus);
+        }
         if (!FMLEnvironment.isProduction()) {
             NeoForgeGameTests.register(modBus);
         }

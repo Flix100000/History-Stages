@@ -15,6 +15,10 @@ public final class ApiOwners {
      * caller of an addon's entrypoint sets it ({@code LoaderContextImpl.runAs}).
      */
     public static @Nullable String active() {
+        // The platform bus knows the owner of an addon's listener (the mod that provided the
+        // subscriber class or entrypoint); the loader context is the fallback.
+        String owner = net.bananemdnsa.historystages.platform.bus.EventBus.runningOwner();
+        if (owner != null) return owner;
         String id = LoaderContext.activeModId();
         return id == null || "minecraft".equals(id) ? null : id;
     }

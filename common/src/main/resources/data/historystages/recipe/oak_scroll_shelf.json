@@ -2,15 +2,9 @@
   "type": "minecraft:crafting_shaped",
   "category": "building",
   "key": {
-    "#": {
-      "item": "minecraft:oak_planks"
-    },
-    "X": {
-      "item": "minecraft:oak_slab"
-    },
-    "P": {
-      "item": "minecraft:paper"
-    }
+    "#": "minecraft:oak_planks",
+    "X": "minecraft:oak_slab",
+    "P": "minecraft:paper"
   },
   "pattern": [
     "###",

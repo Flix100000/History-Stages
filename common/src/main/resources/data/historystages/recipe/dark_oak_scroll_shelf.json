@@ -2,15 +2,9 @@
   "type": "minecraft:crafting_shaped",
   "category": "building",
   "key": {
-    "#": {
-      "item": "minecraft:dark_oak_planks"
-    },
-    "X": {
-      "item": "minecraft:dark_oak_slab"
-    },
-    "P": {
-      "item": "minecraft:paper"
-    }
+    "#": "minecraft:dark_oak_planks",
+    "X": "minecraft:dark_oak_slab",
+    "P": "minecraft:paper"
   },
   "pattern": [
     "###",

@@ -2,15 +2,9 @@
   "type": "minecraft:crafting_shaped",
   "category": "building",
   "key": {
-    "#": {
-      "item": "minecraft:cherry_planks"
-    },
-    "X": {
-      "item": "minecraft:cherry_slab"
-    },
-    "P": {
-      "item": "minecraft:paper"
-    }
+    "#": "minecraft:cherry_planks",
+    "X": "minecraft:cherry_slab",
+    "P": "minecraft:paper"
   },
   "pattern": [
     "###",
