@@ -44,7 +44,7 @@ public final class RecipeShape {
     }
 
     /**
-     * The ingredient behind each slot, in the same order as {@link #slots()}; {@code Ingredient.EMPTY}
+     * The ingredient behind each slot, in the same order as {@link #slots()}; {@code null}
      * for a hole. Lets a caller mark the slots an item fits without re-deriving the layout.
      */
     public List<Ingredient> slotIngredients() {
@@ -69,7 +69,7 @@ public final class RecipeShape {
     }
 
     private static RecipeShape read(Recipe<?> recipe) {
-        List<Ingredient> ingredients = recipe.getIngredients();
+        List<Ingredient> ingredients = net.bananemdnsa.historystages.util.RecipeOutputs.ingredientsOf(recipe);
 
         if (recipe instanceof ShapedRecipe shaped) {
             int w = shaped.getWidth();
@@ -84,7 +84,7 @@ public final class RecipeShape {
             // (ingredients.get(j + i * width)) and against StageDetailScreen.renderRecipePopup's
             // existing grid draw (idx = row * gridCols + col), which agree with each other.
             for (int i = 0; i < layout.slotCount(); i++) {
-                Ingredient ingredient = i < ingredients.size() ? ingredients.get(i) : Ingredient.EMPTY;
+                Ingredient ingredient = i < ingredients.size() ? ingredients.get(i) : null;
                 slots.add(firstStackOf(ingredient));
                 slotIngredients.add(ingredient);
             }
@@ -114,13 +114,13 @@ public final class RecipeShape {
         List<Ingredient> slotIngredients = new ArrayList<>(layout.slotCount());
         for (int i = 0; i < layout.slotCount(); i++) {
             slots.add(i < present.size() ? present.get(i) : ItemStack.EMPTY);
-            slotIngredients.add(i < presentIngredients.size() ? presentIngredients.get(i) : Ingredient.EMPTY);
+            slotIngredients.add(i < presentIngredients.size() ? presentIngredients.get(i) : null);
         }
         return new RecipeShape(layout, slots, slotIngredients);
     }
 
     private static ItemStack firstStackOf(Ingredient ingredient) {
-        ItemStack[] items = ingredient.getItems();
+        ItemStack[] items = net.bananemdnsa.historystages.util.RecipeOutputs.itemsOf(ingredient);
         return items.length > 0 ? items[0] : ItemStack.EMPTY;
     }
 }

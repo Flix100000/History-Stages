@@ -373,9 +373,10 @@ public class FormattedTextScreen extends AbstractInputScreen {
             if (cx + SWATCH > x + w) break;
             boolean hovered = mouseX >= cx && mouseX < cx + SWATCH
                     && mouseY >= y && mouseY < y + SWATCH;
-            hitRects.put("col:" + colour.getChar(), new int[]{cx, y, SWATCH, SWATCH});
+            hitRects.put("col:" + colour.toString().charAt(1), new int[]{cx, y, SWATCH, SWATCH});
 
-            Integer rgb = colour.getColor();
+            net.minecraft.network.chat.TextColor textColor = net.minecraft.network.chat.TextColor.fromLegacyFormat(colour);
+            Integer rgb = textColor == null ? null : textColor.getValue();
             g.fill(cx, y, cx + SWATCH, y + SWATCH, hovered ? 0xFFFFCC00 : 0xFF3D3D3D);
             g.fill(cx + 1, y + 1, cx + SWATCH - 1, y + SWATCH - 1,
                     0xFF000000 | (rgb == null ? 0 : rgb));

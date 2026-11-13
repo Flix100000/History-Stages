@@ -214,10 +214,10 @@ public abstract class AbstractModalScreen extends Screen {
 
     public void render(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
         if (renderParentBehind() && parent != null) {
-            parent.render(g, -1, -1, partialTick);
+            parent.extractRenderState(g, -1, -1, partialTick);
             // The parent batches its text and items and would otherwise flush them after our
             // fills, painting them back over the dialog. Force them out now.
-            g.flush();
+            g.nextStratum();
         }
 
         float t = Ease.outCubic(open.ramp(1.0f, Timing.MODAL_MS));
@@ -258,7 +258,7 @@ public abstract class AbstractModalScreen extends Screen {
 
         super.extractRenderState(g, mouseX, mouseY, partialTick);
 
-        g.flush();
+        g.nextStratum();
         g.pose().popMatrix();
         g.pose().popMatrix();
     }

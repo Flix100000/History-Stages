@@ -241,13 +241,12 @@ public class ScrollShelfBlock extends BaseEntityBlock {
     }
 
     // Same fire behaviour as the chiseled bookshelf; nether wood shelves are built without
-    // ignitedByLava and so never catch.
-    @Override
+    // ignitedByLava and so never catch. No @Override: these are NeoForge block extensions, which
+    // vanilla (common's compile target) lacks; Fabric registers the same numbers in its module.
     public int getFlammability(BlockState state, BlockGetter level, BlockPos pos, Direction direction) {
         return state.ignitedByLava() ? 30 : 0;
     }
 
-    @Override
     public int getFireSpreadSpeed(BlockState state, BlockGetter level, BlockPos pos, Direction direction) {
         return state.ignitedByLava() ? 20 : 0;
     }

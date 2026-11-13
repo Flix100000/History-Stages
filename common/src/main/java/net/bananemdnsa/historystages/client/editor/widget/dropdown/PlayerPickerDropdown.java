@@ -7,7 +7,7 @@ import net.bananemdnsa.historystages.client.editor.anim.Timing;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.components.PlayerFaceRenderer;
+import net.minecraft.client.gui.components.PlayerFaceExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
@@ -101,7 +101,7 @@ public class PlayerPickerDropdown {
         Minecraft mc = Minecraft.getInstance();
         if (mc.getConnection() == null) return list;
         for (PlayerInfo info : mc.getConnection().getOnlinePlayers()) {
-            list.add(new Entry(info.getProfile().getId(), info.getProfile().getName()));
+            list.add(new Entry(info.getProfile().id(), info.getProfile().name()));
         }
         list.sort((a, b) -> a.name().compareToIgnoreCase(b.name()));
         return list;
@@ -156,7 +156,7 @@ public class PlayerPickerDropdown {
         if (selected == null) return allShortLabel();
         Minecraft mc = Minecraft.getInstance();
         PlayerInfo info = mc.getConnection() != null ? mc.getConnection().getPlayerInfo(selected) : null;
-        return info != null ? info.getProfile().getName() : allShortLabel();
+        return info != null ? info.getProfile().name() : allShortLabel();
     }
 
     // --- rendering --------------------------------------------------------
@@ -170,7 +170,7 @@ public class PlayerPickerDropdown {
         Minecraft mc = Minecraft.getInstance();
         PlayerInfo info = mc.getConnection() != null ? mc.getConnection().getPlayerInfo(uuid) : null;
         if (info != null) {
-            PlayerFaceRenderer.draw(g, info.getSkin().texture(), x, y, FACE_SIZE);
+            PlayerFaceExtractor.extractRenderState(g, info.getSkin(), x, y, FACE_SIZE);
         }
     }
 

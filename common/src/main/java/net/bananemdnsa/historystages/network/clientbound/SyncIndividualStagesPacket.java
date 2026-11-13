@@ -50,8 +50,8 @@ public record SyncIndividualStagesPacket(Set<String> unlockedStages, Map<String,
 
             // Trigger visual refresh for lock icons
             net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
-            if (mc.levelRenderer != null) {
-                mc.levelRenderer.allChanged();
+            if (mc.levelExtractor != null) {
+                mc.levelExtractor.allChanged();
             }
 
             // The vanilla recipe book is filtered as it is built, and nothing else rebuilds it
@@ -60,16 +60,19 @@ public record SyncIndividualStagesPacket(Set<String> unlockedStages, Map<String,
             net.bananemdnsa.historystages.client.ClientFluidRecipeIndex.refresh();
 
             // JEI hiding (Issue #64): refresh visibility after individual-stage cache updated.
-            if (net.neoforged.fml.Services.isModLoaded("jei")) {
+            // PORT(Task 13): JEI refresh comes back with the JEI integration. PORT(later): EMI has no 26.2 build.
+            /*
+            if (net.bananemdnsa.historystages.platform.Services.isModLoaded("jei")) {
                 try {
                     net.bananemdnsa.historystages.compat.jei.JEIPlugin.tryApplyDiff();
                 } catch (Throwable ignored) {}
             }
-            if (net.neoforged.fml.Services.isModLoaded("emi")) {
+            if (net.bananemdnsa.historystages.platform.Services.isModLoaded("emi")) {
                 try {
                     net.bananemdnsa.historystages.compat.emi.EmiReloadBridge.reloadIfHiding();
                 } catch (Throwable ignored) {}
             }
+            */
         });
     }
 

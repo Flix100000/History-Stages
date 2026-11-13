@@ -16,7 +16,7 @@ public final class EditorToastHandler {
     /** {@code face} may be null; when set, that player's head is drawn on the toast. */
     public static void show(EditorToast.Level level, Component title, Component message, UUID face) {
         Minecraft mc = Minecraft.getInstance();
-        mc.execute(() -> mc.getToasts().addToast(new EditorToast(level, title, message, face)));
+        mc.execute(() -> mc.gui.toastManager().addToast(new EditorToast(level, title, message, face)));
     }
 
     public static void copiedToClipboard(String value) {

@@ -8,7 +8,6 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.inventory.InventoryMenu;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
-import net.neoforged.neoforge.client.extensions.common.IClientFluidTypeExtensions;
 
 /**
  * Draws a fluid the way a recipe viewer does: its own still texture, in its own colour.
@@ -41,32 +40,26 @@ public final class FluidIcon {
         Fluid fluid = fluidOf(fluidId);
         if (fluid == null) return;
 
-        IClientFluidTypeExtensions extensions = IClientFluidTypeExtensions.of(fluid);
-        // Contractually only the empty fluid answers null here, but it is a defaulted method and
-        // a mod that never overrides it lands on exactly this.
-        Identifier texture = extensions.getStillTexture();
-        if (texture == null) return;
-
-        TextureAtlasSprite sprite = Minecraft.getInstance()
-                .getTextureAtlas(InventoryMenu.BLOCK_ATLAS)
-                .apply(texture);
+        // 26.2 keeps the fluid's look in vanilla fluid models on both loaders.
+        net.minecraft.world.level.material.FluidState state = fluid.defaultFluidState();
+        net.minecraft.client.renderer.block.FluidModel model = Minecraft.getInstance().getModelManager()
+                .getFluidStateModelSet().get(state);
+        if (model == null) return;
+        TextureAtlasSprite sprite = model.stillMaterial().sprite();
         if (sprite == null) return;
 
-        int tint = extensions.getTintColor();
-        float alpha = (tint >> 24 & 0xFF) / 255.0f;
-        float red = (tint >> 16 & 0xFF) / 255.0f;
-        float green = (tint >> 8 & 0xFF) / 255.0f;
-        float blue = (tint & 0xFF) / 255.0f;
+        int tint = model.tintSource() != null ? model.tintSource().color(state.createLegacyBlock()) : -1;
         // Water's texture is grey; the tint is what makes it water. A tint with no alpha channel
         // set would otherwise render the fluid invisible rather than opaque.
-        g.blit(x, y, 0, size, size, sprite, red, green, blue, alpha == 0 ? 1.0f : alpha);
+        if ((tint >>> 24) == 0) tint |= 0xFF000000;
+        g.blitSprite(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, sprite, x, y, size, size, tint);
     }
 
     /** The fluid's display name, or its id when there is no fluid behind the id. */
     public static String nameOf(String fluidId) {
         Fluid fluid = fluidOf(fluidId);
         if (fluid == null) return fluidId;
-        return fluid.getFluidType().getDescription().getString();
+        return net.bananemdnsa.historystages.platform.Fluids.nameOf(fluid).getString();
     }
 
     private static Fluid fluidOf(String fluidId) {

@@ -106,7 +106,7 @@ public final class ClientDisguises {
         Minecraft mc = Minecraft.getInstance();
         // Chunk meshes hold the old look; without this the ore stays stone (or stays ore) until
         // the chunk happens to be rebuilt for some other reason.
-        if (mc.level != null) mc.levelRenderer.allChanged();
+        if (mc.level != null) mc.levelExtractor.allChanged();
     }
 
     private static Map<BlockState, BlockState> build() {

@@ -347,14 +347,14 @@ public class ScrollTooltipScreen extends Screen {
                 colorHex = GraphColors.format(GraphColors.parse(token, 0));
                 continue;
             }
-            ChatFormatting format = ChatFormatting.getByName(token);
+            ChatFormatting format = net.bananemdnsa.historystages.util.Formats.byName(token);
             if (format == null) continue;
             if (format == ChatFormatting.BOLD) {
                 bold = true;
             } else if (format == ChatFormatting.ITALIC) {
                 italic = true;
-            } else if (format.isColor() && format.getColor() != null) {
-                colorHex = GraphColors.format(format.getColor());
+            } else if (net.bananemdnsa.historystages.util.Formats.colorOf(format) != null) {
+                colorHex = GraphColors.format(net.bananemdnsa.historystages.util.Formats.colorOf(format));
             }
         }
         return new StyleState(colorHex, bold, italic);
@@ -795,7 +795,7 @@ public class ScrollTooltipScreen extends Screen {
         // The real thing is a vanilla tooltip, so the preview draws vanilla's own background
         // rather than an editor-styled panel — a preview in a different skin than the item it
         // previews is worth less than no preview.
-        TooltipRenderUtil.renderTooltipBackground(g, 0, 0, boxW, boxH, 0);
+        TooltipRenderUtil.extractTooltipBackground(g, 0, 0, boxW, boxH, null);
         int ly = 0;
         for (Component component : components) {
             g.text(this.font, component, 0, ly, 0xFFFFFF, true);

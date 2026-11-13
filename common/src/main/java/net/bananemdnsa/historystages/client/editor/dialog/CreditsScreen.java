@@ -10,7 +10,6 @@ import net.minecraft.client.gui.screens.ConfirmLinkScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
-import net.neoforged.fml.ModList;
 
 import java.util.List;
 
@@ -56,8 +55,8 @@ public class CreditsScreen extends AbstractModalScreen {
 
     /** Reads the version off the loaded mod rather than a constant, so it cannot go stale. */
     private static String modVersion() {
-        return ModList.get().getModContainerById(HistoryStages.MOD_ID)
-                .map(c -> c.getModInfo().getVersion().toString())
+        return dev.architectury.platform.Platform.getOptionalMod(HistoryStages.MOD_ID)
+                .map(dev.architectury.platform.Mod::getVersion)
                 .orElse("?");
     }
 
@@ -116,7 +115,7 @@ public class CreditsScreen extends AbstractModalScreen {
     @Override
     protected void renderContent(GuiGraphicsExtractor g, int x, int y, int w, int mouseX, int mouseY) {
         int centerX = x + w / 2;
-        g.blit(LOGO, centerX - LOGO_SIZE / 2, y, 0f, 0f, LOGO_SIZE, LOGO_SIZE, LOGO_SIZE, LOGO_SIZE);
+        net.bananemdnsa.historystages.client.LegacyGui.blit(g, LOGO, centerX - LOGO_SIZE / 2, y, 0f, 0f, LOGO_SIZE, LOGO_SIZE, LOGO_SIZE, LOGO_SIZE);
         int textY = y + LOGO_SIZE + LOGO_GAP;
         g.centeredText(this.font, Component.translatable("editor.historystages.credits.made_by"),
                 centerX, textY, SUBTITLE_GREY);

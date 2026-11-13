@@ -856,11 +856,11 @@ public class ConfigEditorScreen extends Screen {
      */
     private void warnAboutMissingLangKeys() {
         for (ConfigEntry entry : graphEntries()) {
-            if (!I18n.exists(entry.labelKey)) {
+            if (!net.bananemdnsa.historystages.client.LegacyGui.i18nExists(entry.labelKey)) {
                 LOGGER.warn("Graph config row {} has no label key {}",
                         entry.key, entry.labelKey);
             }
-            if (!I18n.exists(entry.descKey)) {
+            if (!net.bananemdnsa.historystages.client.LegacyGui.i18nExists(entry.descKey)) {
                 LOGGER.warn("Graph config row {} has no description key {}",
                         entry.key, entry.descKey);
             }
@@ -1129,7 +1129,7 @@ public class ConfigEditorScreen extends Screen {
                 // one of its own, so this only shows a tooltip when the key actually resolves —
                 // the alternative is the raw, untranslated key string on hover.
                 String tooltipKey = tabKeys[i] + ".tooltip";
-                if (I18n.exists(tooltipKey)) {
+                if (net.bananemdnsa.historystages.client.LegacyGui.i18nExists(tooltipKey)) {
                     hoveredTabTooltip = Component.translatable(tooltipKey).getString();
                 }
             }
@@ -1177,7 +1177,7 @@ public class ConfigEditorScreen extends Screen {
                             && mouseY >= listTop && mouseY <= listBottom;
                     // A missing .desc key resolves to the raw key, so ask I18n instead of
                     // checking the resolved string for emptiness.
-                    if (entryHovered && I18n.exists(entry.descKey)) {
+                    if (entryHovered && net.bananemdnsa.historystages.client.LegacyGui.i18nExists(entry.descKey)) {
                         currentHovered = entry.key;
                         currentDescription = Component.translatable(entry.descKey).getString();
                     }
@@ -1705,19 +1705,23 @@ public class ConfigEditorScreen extends Screen {
             entry.initialValue = entry.value;
         }
 
+        // PORT(Task 13): JEI live-apply (JEIPlugin.tryApplyDiff) returns with the JEI integration.
+        // PORT(later): EMI has no 26.2 build (EmiReloadBridge.reloadIfPresent).
+        /*
         // JEI hiding (Issue #64): live-apply config changes if JEI is loaded.
-        if (net.neoforged.fml.Services.isModLoaded("jei")) {
+        if (net.bananemdnsa.historystages.platform.Services.isModLoaded("jei")) {
             try {
                 net.bananemdnsa.historystages.compat.jei.JEIPlugin.tryApplyDiff();
             } catch (Throwable ignored) {}
         }
 
         // EMI: rebuild its index so booster/config changes show up immediately.
-        if (net.neoforged.fml.Services.isModLoaded("emi")) {
+        if (net.bananemdnsa.historystages.platform.Services.isModLoaded("emi")) {
             try {
                 net.bananemdnsa.historystages.compat.emi.EmiReloadBridge.reloadIfPresent();
             } catch (Throwable ignored) {}
         }
+        */
     }
 
     @Override
@@ -3499,8 +3503,8 @@ public class ConfigEditorScreen extends Screen {
         private final BoosterListEditorScreen parent;
         private final BoosterListEditorScreen.BoosterRow row;
 
-        private EditBox speedField;
-        private EditBox costField;
+        private net.bananemdnsa.historystages.client.editor.widget.FilteredEditBox speedField;
+        private net.bananemdnsa.historystages.client.editor.widget.FilteredEditBox costField;
         private net.bananemdnsa.historystages.client.editor.widget.dropdown.PedestalTierDropdown tierDropdown;
         private net.minecraft.client.gui.components.Button modeButton;
 
@@ -3531,7 +3535,7 @@ public class ConfigEditorScreen extends Screen {
                     Math.max(this.font.width(labelTier), this.font.width(labelMode)));
             int fieldX = labelX + maxLabelW + 10;
 
-            speedField = new EditBox(this.font, fieldX, 44, 60, 18, Component.literal("speed"));
+            speedField = new net.bananemdnsa.historystages.client.editor.widget.FilteredEditBox(this.font, fieldX, 44, 60, 18, Component.literal("speed"));
             speedField.setMaxLength(2);
             speedField.setValue(String.valueOf(editSpeed));
             speedField.setFilter(s -> s.isEmpty() || s.matches("\\d+"));
@@ -3541,7 +3545,7 @@ public class ConfigEditorScreen extends Screen {
             });
             this.addRenderableWidget(speedField);
 
-            costField = new EditBox(this.font, fieldX, 66, 60, 18, Component.literal("cost"));
+            costField = new net.bananemdnsa.historystages.client.editor.widget.FilteredEditBox(this.font, fieldX, 66, 60, 18, Component.literal("cost"));
             costField.setMaxLength(2);
             costField.setValue(String.valueOf(editCost));
             costField.setFilter(s -> s.isEmpty() || s.matches("\\d+"));

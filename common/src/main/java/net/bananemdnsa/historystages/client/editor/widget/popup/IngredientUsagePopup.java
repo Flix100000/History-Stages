@@ -121,8 +121,8 @@ public class IngredientUsagePopup {
                      Supplier<Collection<String>> recipesAdded, Supplier<Collection<String>> itemsAdded,
                      int screenW, int screenH) {
         IngredientUsageScan.Result result = IngredientUsageScan.scan(clickedId, locked, individualScope);
-        clickedName = BuiltInRegistries.ITEM.get(net.minecraft.resources.Identifier.parse(clickedId))
-                .getDescription().getString();
+        var clickedItem = BuiltInRegistries.ITEM.getValue(net.minecraft.resources.Identifier.parse(clickedId));
+        clickedName = clickedItem.getName(clickedItem.getDefaultInstance()).getString();
 
         Set<String> haveRecipes = new HashSet<>(recipesAdded.get());
         Set<String> haveItems = new HashSet<>(itemsAdded.get());

@@ -497,7 +497,7 @@ final class GraphRenderer {
 
             g.pose().pushMatrix();
             g.pose().translate(x1, y1);
-            g.pose().mulPose(Axis.ZP.rotation(angle));
+            g.pose().rotate(angle);
 
             // Stepped by dash index, not by an accumulating cursor. The previous version advanced
             // a float `pos` by a computed remainder; that remainder can be arbitrarily small, and
@@ -531,7 +531,7 @@ final class GraphRenderer {
         float angle = (float) Math.atan2(dy, dx);
         g.pose().pushMatrix();
         g.pose().translate(x1, y1);
-        g.pose().mulPose(Axis.ZP.rotation(angle));
+        g.pose().rotate(angle);
         blitLine(g, 0f, len, h, color);
         g.pose().popMatrix();
         return len;
@@ -566,7 +566,7 @@ final class GraphRenderer {
         int ah = Math.max(2, Math.round(2.2f * thickness));
         g.pose().pushMatrix();
         g.pose().translate(tx, ty);
-        g.pose().mulPose(Axis.ZP.rotation(angle));
+        g.pose().rotate(angle);
         NodeTextures.blit(g, NodeTextures.arrow(), -2 * ah, -ah, 2 * ah, 2 * ah,
                 NodeTextures.SIZE, NodeTextures.SIZE, color);
         g.pose().popMatrix();

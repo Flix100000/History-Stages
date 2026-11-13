@@ -73,7 +73,7 @@ public class SearchableBiomeList extends AbstractSearchableList<String> {
                     entries.add(key.toString());
                 }
             } else {
-                reg.getTagNames().forEach(tag -> entries.add(tag.location().toString()));
+                reg.listTagIds().forEach(tag -> entries.add(tag.location().toString()));
             }
         }
         entries.sort(String::compareToIgnoreCase);

@@ -29,7 +29,7 @@ public class SearchableTagList extends AbstractSearchableList<String> {
     @Override
     protected List<String> loadEntries() {
         List<String> tags = new ArrayList<>();
-        BuiltInRegistries.ITEM.getTagNames().forEach(tagKey -> tags.add(tagKey.location().toString()));
+        BuiltInRegistries.ITEM.listTagIds().forEach(tagKey -> tags.add(tagKey.location().toString()));
         tags.sort(String::compareToIgnoreCase);
         return tags;
     }

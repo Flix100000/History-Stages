@@ -540,7 +540,7 @@ public class OpenScrollDocumentScreen extends Screen {
                     // A real item, drawn at the real 32px, rather than a coloured rectangle.
                     ItemStack icon = ClientToastHandler.resolveIcon(Config.VISUAL.defaultStageIcon.get());
                     g.pose().pushMatrix();
-                    g.pose().translate((float) (x + (width - 32) / 2), (float) y, 0.0f);
+                    g.pose().translate((float) (x + (width - 32) / 2), (float) y);
                     g.pose().scale(2.0f, 2.0f);
                     g.item(icon, 0, 0);
                     g.pose().popMatrix();

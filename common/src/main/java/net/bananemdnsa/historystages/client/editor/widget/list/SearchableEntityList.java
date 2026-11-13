@@ -142,7 +142,7 @@ public class SearchableEntityList implements PickerOverlay {
     private boolean isLivingEntityType(EntityType<?> type) {
         try {
             if (Minecraft.getInstance().level != null) {
-                Entity entity = type.create(Minecraft.getInstance().level);
+                Entity entity = type.create(Minecraft.getInstance().level, net.minecraft.world.entity.EntitySpawnReason.LOAD);
                 boolean isLiving = entity instanceof LivingEntity;
                 if (entity != null)
                     entity.discard();
@@ -697,7 +697,7 @@ public class SearchableEntityList implements PickerOverlay {
         // method derives the look angle itself as atan((boxCentre - mouse) / 40); handing it a
         // pre-computed offset made it subtract twice, which cancelled the box centre out and
         // left the model staring at the raw screen coordinate — pinned aside and inverted.
-        InventoryScreen.renderEntityInInventoryFollowsMouse(guiGraphics,
+        InventoryScreen.extractEntityInInventoryFollowsMouse(guiGraphics,
                 entityAreaX, topY, entityAreaX + entityAreaW, topY + entityAreaH, 25,
                 0.0625f, (float) mouseX, (float) mouseY, player);
 

@@ -7,8 +7,6 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
-import net.neoforged.fml.ModList;
-import net.neoforged.neoforgespi.language.IModInfo;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -44,10 +42,10 @@ public class SearchableModList extends AbstractSearchableList<SearchableModList.
         for (Identifier key : BuiltInRegistries.ENTITY_TYPE.keySet()) contentMods.add(key.getNamespace());
 
         List<ModEntry> list = new ArrayList<>();
-        for (IModInfo mod : ModList.get().getMods()) {
+        for (dev.architectury.platform.Mod mod : dev.architectury.platform.Platform.getMods()) {
             String modId = mod.getModId();
             if (!contentMods.contains(modId)) continue;
-            String displayName = mod.getDisplayName();
+            String displayName = mod.getName();
             list.add(new ModEntry(modId, displayName, displayName.toLowerCase()));
         }
         list.sort((a, b) -> a.modId.compareToIgnoreCase(b.modId));

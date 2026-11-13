@@ -653,7 +653,7 @@ public class StageOverviewScreen extends Screen {
         guiGraphics.fill(0, 0, this.width, this.height, 0xE0101010);
         guiGraphics.centeredText(this.font, this.title, this.width / 2, 10, 0xFFFFFF);
 
-        guiGraphics.blit(LOGO, LOGO_X, LOGO_Y, LOGO_SIZE, LOGO_SIZE, 0f, 0f,
+        net.bananemdnsa.historystages.client.LegacyGui.blit(guiGraphics, LOGO, LOGO_X, LOGO_Y, LOGO_SIZE, LOGO_SIZE, 0f, 0f,
                 LOGO_TEX, LOGO_TEX, LOGO_TEX, LOGO_TEX);
         searchBox.render(guiGraphics, this.font, mouseX, mouseY);
 
@@ -694,7 +694,7 @@ public class StageOverviewScreen extends Screen {
         boolean navigating = navT < 0.999f;
         if (navigating) {
             guiGraphics.pose().pushMatrix();
-            guiGraphics.pose().translate((1.0f - navT) * NAV_SLIDE_PX * navDirection, 0.0f);
+            guiGraphics.pose().translate((1.0f - navT) * NAV_SLIDE_PX * navDirection, 0);
         }
 
         boolean overlayOpen = contextMenu != null && contextMenu.isVisible();
@@ -1467,7 +1467,7 @@ public class StageOverviewScreen extends Screen {
         float halfW = this.font.width(caret) / 2.0f;
         g.pose().pushMatrix();
         g.pose().translate(x + halfW, y + 4.0f);
-        g.pose().mulPose(com.mojang.math.Axis.ZP.rotationDegrees(
+        g.pose().rotate((float) Math.toRadians(
                 Ease.outCubic(menuCaret.value()) * 180.0f));
         g.pose().translate(-halfW, -4.0f);
         g.text(this.font, caret, 0, 0, 0xFFCC00, false);
@@ -2033,7 +2033,7 @@ public class StageOverviewScreen extends Screen {
         int have = 0;
         for (var info : connection.getOnlinePlayers()) {
             total++;
-            if (ClientPlayerStageCache.hasStage(info.getProfile().getId(), stageId)) have++;
+            if (ClientPlayerStageCache.hasStage(info.getProfile().id(), stageId)) have++;
         }
         if (total == 0 || have == 0) return 0;
         return have == total ? 2 : 1;

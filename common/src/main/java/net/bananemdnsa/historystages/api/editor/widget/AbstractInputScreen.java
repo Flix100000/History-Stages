@@ -204,7 +204,7 @@ public abstract class AbstractInputScreen extends AbstractModalScreen {
                 // bordered=false: the frame is drawn in renderContent, focus-aware. The box is
                 // only as tall as its text and sits centred in the drawn field, so its own hit
                 // rect never spills into the gap below; mouseClicked maps the drawn field onto it.
-                EditBox box = new EditBox(this.font, fx + 4, fy + TEXT_INSET_Y, fw - 8, TEXT_H,
+                net.bananemdnsa.historystages.client.editor.widget.FilteredEditBox box = new net.bananemdnsa.historystages.client.editor.widget.FilteredEditBox(this.font, fx + 4, fy + TEXT_INSET_Y, fw - 8, TEXT_H,
                         f.label() != null ? f.label() : Component.literal(f.key()));
                 box.setMaxLength(f.maxLength());
                 box.setBordered(false);
@@ -366,7 +366,7 @@ public abstract class AbstractInputScreen extends AbstractModalScreen {
             box.setFocused(true);
             this.setFocused(box);
             // Forward at the box's own height so the caret lands under the cursor's x.
-            box.mouseClicked(mx, box.getY() + TEXT_H / 2.0, button);
+            net.bananemdnsa.historystages.client.editor.widget.LegacyInput.mouseClicked(box, mx, box.getY() + TEXT_H / 2.0, button);
             return true;
         }
         return false;

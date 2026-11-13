@@ -2,17 +2,13 @@ package net.bananemdnsa.historystages.client.editor.graph;
 
 import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.BufferBuilder;
-import com.mojang.blaze3d.vertex.BufferUploader;
-import com.mojang.blaze3d.vertex.DefaultVertexFormat;
-import com.mojang.blaze3d.vertex.Tesselator;
-import com.mojang.blaze3d.vertex.VertexFormat;
+import com.mojang.blaze3d.textures.AddressMode;
+import com.mojang.blaze3d.textures.FilterMode;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.renderer.GameRenderer;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.resources.Identifier;
-import org.joml.Matrix4f;
 
 /**
  * Lazily generates and caches anti-aliased shape/edge textures for the dependency graph.
@@ -85,7 +81,7 @@ public final class NodeTextures {
                     }
                 }
                 int a = (int) Math.round(255.0 * hits / (SS * SS));
-                img.setPixelRGBA(px, py, (a << 24) | 0x00FFFFFF);
+                img.setPixel(px, py, (a << 24) | 0x00FFFFFF);
             }
         }
         return img;
@@ -98,7 +94,7 @@ public final class NodeTextures {
             double cov = Math.min(1.0, Math.min(py + 0.5, LINE_H - (py + 0.5)));
             int a = (int) Math.round(255.0 * cov);
             for (int px = 0; px < SIZE; px++) {
-                img.setPixelRGBA(px, py, (a << 24) | 0x00FFFFFF);
+                img.setPixel(px, py, (a << 24) | 0x00FFFFFF);
             }
         }
         return img;
@@ -141,11 +137,15 @@ public final class NodeTextures {
      *               soft border rows into a stair pattern.
      */
     private static Identifier register(String name, NativeImage img, boolean smooth) {
-        DynamicTexture tex = new DynamicTexture(img);
-        if (smooth) {
-            tex.setFilter(true, false);
-        }
         Identifier id = Identifier.fromNamespaceAndPath("historystages", "dyn/" + name);
+        // 26.2 sets filtering and wrapping through the sampler. Repeat keeps repeatingQuad tiling.
+        FilterMode filter = smooth ? FilterMode.LINEAR : FilterMode.NEAREST;
+        DynamicTexture tex = new DynamicTexture(id::toString, img) {
+            {
+                this.sampler = RenderSystem.getSamplerCache()
+                        .getSampler(AddressMode.REPEAT, AddressMode.REPEAT, filter, filter, false);
+            }
+        };
         Minecraft.getInstance().getTextureManager().register(id, tex);
         return id;
     }
@@ -167,19 +167,14 @@ public final class NodeTextures {
         float gg = ((color >> 8) & 0xFF) / 255f;
         float b = (color & 0xFF) / 255f;
 
-        Matrix4f matrix = g.pose().last().pose();
-        RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
-        RenderSystem.setShader(GameRenderer::getPositionTexColorShader);
-        RenderSystem.setShaderTexture(0, tex);
-
-        BufferBuilder buf = Tesselator.getInstance()
-                .begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
-        buf.addVertex(matrix, x1, y2, 0f).setUv(0f, 1f).setColor(r, gg, b, a);
-        buf.addVertex(matrix, x2, y2, 0f).setUv(1f, 1f).setColor(r, gg, b, a);
-        buf.addVertex(matrix, x2, y1, 0f).setUv(1f, 0f).setColor(r, gg, b, a);
-        buf.addVertex(matrix, x1, y1, 0f).setUv(0f, 0f).setColor(r, gg, b, a);
-        BufferUploader.drawWithShader(buf.buildOrThrow());
+        // 26.2 GUI drawing goes through render states, so the float corners become a unit blit
+        // scaled into place by the pose; sub-pixel sizes stay exact that way too.
+        int argb = ((int) (a * 255) << 24) | ((int) (r * 255) << 16) | ((int) (gg * 255) << 8) | (int) (b * 255);
+        g.pose().pushMatrix();
+        g.pose().translate(x1, y1);
+        g.pose().scale(x2 - x1, y2 - y1);
+        g.blit(RenderPipelines.GUI_TEXTURED, tex, 0, 0, 0f, 0f, 1, 1, 1, 1, 1, 1, argb);
+        g.pose().popMatrix();
     }
 
     /**
@@ -196,19 +191,12 @@ public final class NodeTextures {
     public static void repeatingQuad(GuiGraphicsExtractor g, Identifier tex,
                                      float x1, float y1, float x2, float y2,
                                      float u1, float v1, float u2, float v2) {
-        Matrix4f matrix = g.pose().last().pose();
-        RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
-        RenderSystem.setShader(GameRenderer::getPositionTexColorShader);
-        RenderSystem.setShaderTexture(0, tex);
-
-        BufferBuilder buf = Tesselator.getInstance()
-                .begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
-        buf.addVertex(matrix, x1, y2, 0f).setUv(u1, v2).setColor(1f, 1f, 1f, 1f);
-        buf.addVertex(matrix, x2, y2, 0f).setUv(u2, v2).setColor(1f, 1f, 1f, 1f);
-        buf.addVertex(matrix, x2, y1, 0f).setUv(u2, v1).setColor(1f, 1f, 1f, 1f);
-        buf.addVertex(matrix, x1, y1, 0f).setUv(u1, v1).setColor(1f, 1f, 1f, 1f);
-        BufferUploader.drawWithShader(buf.buildOrThrow());
+        // One blit with a UV range past 1; the REPEAT sampler tiles it, still one draw.
+        g.pose().pushMatrix();
+        g.pose().translate(x1, y1);
+        g.pose().scale(x2 - x1, y2 - y1);
+        g.blit(tex, 0, 0, 1, 1, u1, u2, v1, v2);
+        g.pose().popMatrix();
     }
 
     /**
@@ -222,11 +210,8 @@ public final class NodeTextures {
         float r = ((color >> 16) & 0xFF) / 255f;
         float gg = ((color >> 8) & 0xFF) / 255f;
         float b = (color & 0xFF) / 255f;
-        RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
-        RenderSystem.setShaderColor(r, gg, b, a);
-        g.blit(tex, x, y, w, h, 0f, 0f, texW, texH, texW, texH);
-        RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
+        int argb = ((int) (a * 255) << 24) | ((int) (r * 255) << 16) | ((int) (gg * 255) << 8) | (int) (b * 255);
+        g.blit(RenderPipelines.GUI_TEXTURED, tex, x, y, 0f, 0f, w, h, texW, texH, texW, texH, argb);
     }
 
     // --- Coverage functions, normalised to [-1, 1] ---

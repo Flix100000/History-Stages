@@ -106,7 +106,7 @@ public final class DropdownChrome {
         float cy = y + 1.5f;
         g.pose().pushMatrix();
         g.pose().translate(cx, cy);
-        g.pose().mulPose(Axis.ZP.rotationDegrees(180.0f * Ease.outCubic(flip)));
+        g.pose().rotate((float) Math.toRadians(180.0f * Ease.outCubic(flip)));
         g.pose().translate(-cx, -cy);
         g.fill(x, y, x + 5, y + 1, color);
         g.fill(x + 1, y + 1, x + 4, y + 2, color);

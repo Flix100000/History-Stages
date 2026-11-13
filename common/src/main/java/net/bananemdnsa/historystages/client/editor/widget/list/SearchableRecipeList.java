@@ -178,7 +178,7 @@ public class SearchableRecipeList implements PickerOverlay {
         RegistryAccess registryAccess = mc.level.registryAccess();
         Collection<RecipeHolder<?>> allCached = AllRecipesCache.get();
         Collection<RecipeHolder<?>> recipes = allCached.isEmpty()
-                ? mc.level.getRecipeManager().getRecipes()
+                ? net.bananemdnsa.historystages.client.ClientRecipes.all()
                 : allCached;
 
         for (RecipeHolder<?> holder : recipes) {
@@ -187,8 +187,8 @@ public class SearchableRecipeList implements PickerOverlay {
                 if (individualScope && !isIndividuallyGateable(recipe.getType()))
                     continue;
 
-                ItemStack result = recipe.getResultItem(registryAccess);
-                Identifier recipeId = holder.id();
+                ItemStack result = net.bananemdnsa.historystages.util.RecipeOutputs.resultOf(recipe, registryAccess);
+                Identifier recipeId = holder.id().identifier();
                 Map<String, Set<FluidRecipeScanner.Position>> sides =
                         FluidRecipeIndex.fluidsIn(recipeId.toString());
                 List<String> fluidOutputs = RecipeFluids.definiteOutputs(sides);

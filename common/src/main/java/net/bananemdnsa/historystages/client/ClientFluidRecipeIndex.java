@@ -46,7 +46,7 @@ public final class ClientFluidRecipeIndex {
 
         try {
             FluidRecipeIndex.rebuildIfDirty(
-                    mc.level.getRecipeManager().getRecipes(), mc.level.registryAccess());
+                    net.bananemdnsa.historystages.client.ClientRecipes.all(), mc.level.registryAccess());
         } catch (Exception e) {
             // A stale index greys out too little in a recipe viewer. It must not take the packet
             // handler down with it.

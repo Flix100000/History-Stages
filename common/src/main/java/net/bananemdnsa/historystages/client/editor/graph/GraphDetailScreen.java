@@ -740,7 +740,7 @@ public final class GraphDetailScreen extends AbstractModalScreen {
      * editor behind this field writes.
      */
     private static Component describe(String raw) {
-        return I18n.exists(raw) ? Component.translatable(raw)
+        return net.bananemdnsa.historystages.client.LegacyGui.i18nExists(raw) ? Component.translatable(raw)
                 : Component.literal(raw.replace('&', '§'));
     }
 

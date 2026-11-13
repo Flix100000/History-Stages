@@ -124,7 +124,7 @@ public class ZoneShapeEditScreen extends AbstractInputScreen {
      */
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (Screen.isPaste(keyCode)) {
+        if (net.bananemdnsa.historystages.client.LegacyGui.isPaste(keyCode)) {
             ZoneCoordinateParser.Result parsed =
                     ZoneCoordinateParser.parse(this.minecraft.keyboardHandler.getClipboard());
             if (parsed != null && fillFocusedPoint(parsed)) return true;

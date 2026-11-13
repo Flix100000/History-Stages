@@ -231,7 +231,7 @@ public class GraphStyleScreen extends Screen {
         }
 
         boolean hasText = hoveredDesc != null
-                && net.minecraft.client.resources.language.I18n.exists(hoveredDesc);
+                && net.bananemdnsa.historystages.client.LegacyGui.i18nExists(hoveredDesc);
         tooltip.render(g, this.font, hasText ? hoveredDesc : null,
                 hasText ? Component.translatable(hoveredDesc).getString() : null,
                 mouseX, mouseY, this.width, this.height);

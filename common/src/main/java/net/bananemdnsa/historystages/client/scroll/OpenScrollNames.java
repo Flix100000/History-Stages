@@ -27,7 +27,7 @@ public final class OpenScrollNames {
     /** The entity's name, or a prettified id when the type is not registered. */
     public static String creature(String id) {
         Identifier key = Identifier.tryParse(id);
-        EntityType<?> type = key == null ? null : BuiltInRegistries.ENTITY_TYPE.get(key);
+        EntityType<?> type = key == null ? null : BuiltInRegistries.ENTITY_TYPE.getValue(key);
         return type == null ? prettify(id) : type.getDescription().getString();
     }
 
@@ -46,7 +46,7 @@ public final class OpenScrollNames {
     public static String fluid(String id) {
         Identifier key = Identifier.tryParse(id);
         if (key == null || !BuiltInRegistries.FLUID.containsKey(key)) return prettify(id);
-        return BuiltInRegistries.FLUID.get(key).getFluidType().getDescription().getString();
+        return net.bananemdnsa.historystages.platform.Fluids.nameOf(BuiltInRegistries.FLUID.getValue(key)).getString();
     }
 
     public static String item(String id) {
@@ -70,13 +70,13 @@ public final class OpenScrollNames {
         Identifier key = Identifier.tryParse(id);
         if (key == null) return null;
         if (isProfessionlessMerchant(id)) {
-            return BuiltInRegistries.ENTITY_TYPE.get(key).getName(BuiltInRegistries.ENTITY_TYPE.get(key).getDefaultInstance()).getString();
+            return BuiltInRegistries.ENTITY_TYPE.getValue(key).getDescription().getString();
         }
         // Vanilla's own pattern, then the one mods like Vinery ship for their professions.
         String candidate = "entity." + key.getNamespace() + ".villager." + key.getPath();
-        if (I18n.exists(candidate)) return I18n.get(candidate);
+        if (net.bananemdnsa.historystages.client.LegacyGui.i18nExists(candidate)) return I18n.get(candidate);
         String modded = "entity.minecraft.villager." + key.getNamespace() + "." + key.getPath();
-        return I18n.exists(modded) ? I18n.get(modded) : null;
+        return net.bananemdnsa.historystages.client.LegacyGui.i18nExists(modded) ? I18n.get(modded) : null;
     }
 
     /** Whether a merchant key names an entity type rather than a villager profession. */
@@ -91,7 +91,7 @@ public final class OpenScrollNames {
     /** Novice through Master; vanilla ships these keys, so any other number is shown as it is. */
     public static String merchantLevel(String level) {
         String candidate = "merchant.level." + level;
-        return I18n.exists(candidate) ? I18n.get(candidate) : level;
+        return net.bananemdnsa.historystages.client.LegacyGui.i18nExists(candidate) ? I18n.get(candidate) : level;
     }
 
     /** {@code <prefix>.<namespace>.<path>} when that key exists, a prettified path otherwise. */
@@ -99,7 +99,7 @@ public final class OpenScrollNames {
         Identifier key = Identifier.tryParse(id);
         if (key != null) {
             String candidate = prefix + "." + key.getNamespace() + "." + key.getPath();
-            if (I18n.exists(candidate)) return I18n.get(candidate);
+            if (net.bananemdnsa.historystages.client.LegacyGui.i18nExists(candidate)) return I18n.get(candidate);
         }
         return prettify(id);
     }

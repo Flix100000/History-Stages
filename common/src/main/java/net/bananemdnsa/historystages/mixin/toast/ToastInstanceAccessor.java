@@ -9,10 +9,10 @@ import org.spongepowered.asm.mixin.gen.Accessor;
  * net.bananemdnsa.historystages.client.ToastLayout} can map each occupied slot to the height of
  * the toast in it.
  */
-@Mixin(targets = "net.minecraft.client.gui.components.toasts.ToastComponent$ToastInstance")
+@Mixin(targets = "net.minecraft.client.gui.components.toasts.ToastManager$ToastInstance")
 public interface ToastInstanceAccessor {
 
-    @Accessor("index")
+    @Accessor("firstSlotIndex")
     int historystages$getIndex();
 
     @Accessor("toast")

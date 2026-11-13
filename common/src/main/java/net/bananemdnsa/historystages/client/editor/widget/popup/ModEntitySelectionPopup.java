@@ -9,7 +9,6 @@ import net.bananemdnsa.historystages.client.editor.anim.Timing;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
@@ -136,7 +135,7 @@ public class ModEntitySelectionPopup {
     private boolean isLivingEntityType(EntityType<?> type) {
         try {
             if (Minecraft.getInstance().level != null) {
-                Entity entity = type.create(Minecraft.getInstance().level);
+                Entity entity = type.create(Minecraft.getInstance().level, net.minecraft.world.entity.EntitySpawnReason.LOAD);
                 boolean isLiving = entity instanceof LivingEntity;
                 if (entity != null) entity.discard();
                 return isLiving;
@@ -156,7 +155,7 @@ public class ModEntitySelectionPopup {
             if (rl == null) return null;
             EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.getValue(rl);
             if (type == null) return null;
-            Entity entity = type.create(Minecraft.getInstance().level);
+            Entity entity = type.create(Minecraft.getInstance().level, net.minecraft.world.entity.EntitySpawnReason.LOAD);
             if (entity instanceof LivingEntity living) {
                 entityCache.put(entityId, living);
                 return living;
@@ -488,39 +487,21 @@ public class ModEntitySelectionPopup {
         entity.yHeadRot = 180.0F;
         entity.yHeadRotO = 180.0F;
 
-        org.joml.Matrix4fStack modelViewStack = RenderSystem.getModelViewStack();
-        modelViewStack.pushMatrix();
         try {
-            modelViewStack.translate(0.0F, 0.0F, 1500.0F);
-            RenderSystem.applyModelViewMatrix();
-
-            PoseStack poseStack = new PoseStack();
-            poseStack.translate((double) x, (double) y, -950.0D);
-            poseStack.scale((float) scale, (float) scale, (float) scale);
-
+            // 26.2 draws GUI entities as a render state the GUI renders off-screen; no direct
+            // buffer access. Feet at (x, y) as before, with the box big enough to hold the mob.
             Quaternionf flipAndSpin = new Quaternionf().rotateZ((float) Math.PI);
             flipAndSpin.mul(new Quaternionf().rotateY(angleDegrees * ((float) Math.PI / 180.0F)));
-            poseStack.mulPose(flipAndSpin);
-
-            Lighting.setupForEntityInInventory();
-            RenderSystem.disableDepthTest();
 
             EntityRenderDispatcher dispatcher = Minecraft.getInstance().getEntityRenderDispatcher();
-            dispatcher.overrideCameraOrientation(new Quaternionf());
-            dispatcher.setRenderShadow(false);
-
-            MultiBufferSource.BufferSource bufferSource = Minecraft.getInstance().renderBuffers().bufferSource();
-            RenderSystem.runAsFancy(() -> {
-                dispatcher.render(entity, 0.0D, 0.0D, 0.0D, 0.0F, 1.0F, poseStack, bufferSource, 15728880);
-            });
-            bufferSource.endBatch();
-            dispatcher.setRenderShadow(true);
-            RenderSystem.enableDepthTest();
+            net.minecraft.client.renderer.entity.EntityRenderer<? super LivingEntity, ?> renderer = dispatcher.getRenderer(entity);
+            net.minecraft.client.renderer.entity.state.EntityRenderState state = renderer.createRenderState(entity, 1.0F);
+            state.shadowPieces.clear();
+            state.outlineColor = 0;
+            int half = scale * 6;
+            guiGraphics.entity(state, scale, new org.joml.Vector3f(), flipAndSpin, new Quaternionf(),
+                    x - half, y - half, x + half, y + half);
         } finally {
-            modelViewStack.popMatrix();
-            RenderSystem.applyModelViewMatrix();
-            Lighting.setupFor3DItems();
-
             entity.yBodyRot = origBodyRot;
             entity.setYRot(origYRot);
             entity.setXRot(origXRot);

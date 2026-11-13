@@ -20,7 +20,7 @@ public class ClientToastHandler {
     public static void showToast(String stageName, String iconId) {
         Minecraft mc = Minecraft.getInstance();
         ItemStack icon = resolveIcon(iconId);
-        mc.execute(() -> mc.getToasts().addToast(new StageUnlockedToast(stageName, icon)));
+        mc.execute(() -> mc.gui.toastManager().addToast(new StageUnlockedToast(stageName, icon)));
     }
 
     /**

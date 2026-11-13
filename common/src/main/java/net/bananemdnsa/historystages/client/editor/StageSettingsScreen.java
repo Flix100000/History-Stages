@@ -272,16 +272,16 @@ public class StageSettingsScreen extends Screen {
 
     private EditBox stageIdField;
     private EditBox displayNameField;
-    private EditBox researchTimeField;
+    private net.bananemdnsa.historystages.client.editor.widget.FilteredEditBox researchTimeField;
     private PedestalTierDropdown tierDropdown;
     private Button tierModeButton;
     private Button autoTriggerButton;
 
     // TEMPORARY-mode widgets
-    private EditBox durationField;
+    private net.bananemdnsa.historystages.client.editor.widget.FilteredEditBox durationField;
     private DurationUnitDropdown durationUnitDropdown;
-    private EditBox maxTriggersField;
-    private EditBox cooldownField;
+    private net.bananemdnsa.historystages.client.editor.widget.FilteredEditBox maxTriggersField;
+    private net.bananemdnsa.historystages.client.editor.widget.FilteredEditBox cooldownField;
     private DurationUnitDropdown cooldownUnitDropdown;
 
     // Mode dropdown state (inline, no widget class needed)
@@ -511,7 +511,7 @@ public class StageSettingsScreen extends Screen {
         int cardFieldW = cardW - 12 - labelInsetW() - 12;
 
         // Research time (DEFAULT card)
-        researchTimeField = new EditBox(this.font, cardFieldX, bodyY, 80, FIELD_HEIGHT,
+        researchTimeField = new net.bananemdnsa.historystages.client.editor.widget.FilteredEditBox(this.font, cardFieldX, bodyY, 80, FIELD_HEIGHT,
                 Component.translatable("editor.historystages.field.research_time"));
         researchTimeField.setMaxLength(5);
         researchTimeField.setValue(String.valueOf(editResearchTime));
@@ -605,7 +605,7 @@ public class StageSettingsScreen extends Screen {
         int tempFieldX = cardX + 12 + tempLabelInsetW();
         int durRowY = bodyY + 22;
 
-        durationField = new EditBox(this.font, tempFieldX, durRowY, 48, FIELD_HEIGHT,
+        durationField = new net.bananemdnsa.historystages.client.editor.widget.FilteredEditBox(this.font, tempFieldX, durRowY, 48, FIELD_HEIGHT,
                 Component.translatable("editor.historystages.temporary.duration"));
         durationField.setMaxLength(6);
         durationField.setValue(String.valueOf(tShown.getDuration()));
@@ -622,7 +622,7 @@ public class StageSettingsScreen extends Screen {
         });
         durationUnitDropdown.setPosition(tempFieldX + 52, durRowY);
 
-        maxTriggersField = new EditBox(this.font, tempFieldX, bodyY + 44, 48, FIELD_HEIGHT,
+        maxTriggersField = new net.bananemdnsa.historystages.client.editor.widget.FilteredEditBox(this.font, tempFieldX, bodyY + 44, 48, FIELD_HEIGHT,
                 Component.translatable("editor.historystages.temporary.max_triggers"));
         maxTriggersField.setMaxLength(6);
         maxTriggersField.setValue(String.valueOf(tShown.getMaxTriggers()));
@@ -635,7 +635,7 @@ public class StageSettingsScreen extends Screen {
         addContentWidget(maxTriggersField);
 
         int cdRowY = bodyY + 66;
-        cooldownField = new EditBox(this.font, tempFieldX, cdRowY, 48, FIELD_HEIGHT,
+        cooldownField = new net.bananemdnsa.historystages.client.editor.widget.FilteredEditBox(this.font, tempFieldX, cdRowY, 48, FIELD_HEIGHT,
                 Component.translatable("editor.historystages.temporary.cooldown"));
         cooldownField.setMaxLength(6);
         cooldownField.setValue(String.valueOf(tShown.getCooldown()));
@@ -740,7 +740,7 @@ public class StageSettingsScreen extends Screen {
                 // clamp itself already happens per keystroke via the responder below; this box
                 // only ever rewrites its own displayed text, and only at commit, so it never fights
                 // the user mid-type (typing "100" into a 0-100 field stays uninterrupted).
-                EditBox box = new EditBox(this.font, 0, 0, ADDON_INT_FIELD_W, FIELD_HEIGHT,
+                net.bananemdnsa.historystages.client.editor.widget.FilteredEditBox box = new net.bananemdnsa.historystages.client.editor.widget.FilteredEditBox(this.font, 0, 0, ADDON_INT_FIELD_W, FIELD_HEIGHT,
                         Component.translatable(field.langKey())) {
                     @Override
                     public void setFocused(boolean focused) {
@@ -1760,7 +1760,7 @@ public class StageSettingsScreen extends Screen {
 
         // Content widgets (manually rendered at their scrolled positions)
         for (AbstractWidget w : contentWidgets) {
-            w.render(guiGraphics, mouseX, mouseY, partialTick);
+            w.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
         }
 
         renderRelockCardContent(guiGraphics, mouseX, mouseY);

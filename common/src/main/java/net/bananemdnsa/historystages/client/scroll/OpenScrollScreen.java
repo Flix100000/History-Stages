@@ -602,7 +602,7 @@ public class OpenScrollScreen extends Screen {
     }
 
     private static Component glyphs(String text) {
-        return Component.literal(text).withStyle(style -> style.withFont(GLYPH_FONT));
+        return Component.literal(text).withStyle(style -> style.withFont(new net.minecraft.network.chat.FontDescription.Resource(GLYPH_FONT)));
     }
 
     /**
@@ -791,10 +791,10 @@ public class OpenScrollScreen extends Screen {
      */
     public static void drawChapterIcon(GuiGraphicsExtractor g, OpenScrollChapter chapter, int x, int y, int rgb) {
         int size = OpenScrollGeometry.TAB_ICON_SIZE;
-        g.setColor(((rgb >> 16) & 0xFF) / 255f, ((rgb >> 8) & 0xFF) / 255f, (rgb & 0xFF) / 255f, 1f);
         // The texture is 8x8; blitting it into the larger square scales it with nearest filtering.
-        g.blit(chapterIconTexture(chapter), x, y, size, size, 0, 0, 8, 8, 8, 8);
-        g.setColor(1f, 1f, 1f, 1f);
+        // 26.2 has no shader colour; the blit takes the tint itself.
+        g.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, chapterIconTexture(chapter),
+                x, y, 0f, 0f, size, size, 8, 8, 8, 8, 0xFF000000 | (rgb & 0xFFFFFF));
     }
 
     /** An ink rule is the same ink, thinned — not a separate configurable colour. */
@@ -855,7 +855,7 @@ public class OpenScrollScreen extends Screen {
     private int drawOverviewIcon(GuiGraphicsExtractor g, int x, int y, int width) {
         ItemStack icon = ClientToastHandler.resolveIcon(document.iconId());
         g.pose().pushMatrix();
-        g.pose().translate((float) (x + (width - OVERVIEW_ICON_SIZE) / 2), (float) y, 0.0f);
+        g.pose().translate((float) (x + (width - OVERVIEW_ICON_SIZE) / 2), (float) y);
         g.pose().scale(2.0f, 2.0f);
         g.item(icon, 0, 0);
         g.pose().popMatrix();
@@ -958,7 +958,7 @@ public class OpenScrollScreen extends Screen {
             // test is on here, so a wash at the ambient depth loses to the icon it is meant to
             // hide no matter how late it is drawn.
             g.pose().pushMatrix();
-            g.pose().translate(0.0f, 0.0f);
+            g.pose().translate(0.0f, 0);
             g.fill(x + 1, y + 1, x + OpenScrollGeometry.CELL - 1,
                     y + OpenScrollGeometry.CELL - 1, SILHOUETTE);
             g.pose().popMatrix();
@@ -1156,7 +1156,7 @@ public class OpenScrollScreen extends Screen {
         }
 
         @Override
-        protected void extractWidgetRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        public void extractWidgetRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
             renderWidget(graphics, mouseX, mouseY, partialTick);
         }
 

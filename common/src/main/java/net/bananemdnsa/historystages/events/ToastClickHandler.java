@@ -7,7 +7,7 @@ import net.bananemdnsa.historystages.mixin.toast.ToastComponentAccessor;
 import net.bananemdnsa.historystages.mixin.toast.ToastInstanceAccessor;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.toasts.Toast;
-import net.minecraft.client.gui.components.toasts.ToastComponent;
+import net.minecraft.client.gui.components.toasts.ToastManager;
 import net.bananemdnsa.historystages.platform.Dist;
 import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
 import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
@@ -29,7 +29,7 @@ public final class ToastClickHandler {
     @SubscribeEvent
     public static void onMouseButtonPressed(ScreenEvent.MouseButtonPressed.Pre event) {
         Minecraft mc = Minecraft.getInstance();
-        ToastComponent toasts = mc.getToasts();
+        ToastManager toasts = mc.gui.toastManager();
         List<?> visible = ((ToastComponentAccessor) toasts).historystages$getVisible();
         if (visible.isEmpty()) {
             return;

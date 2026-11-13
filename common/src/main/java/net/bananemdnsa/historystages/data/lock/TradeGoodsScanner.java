@@ -127,7 +127,7 @@ public final class TradeGoodsScanner {
         // Someone for the recipes to be dealt to. Several of them ask what kind of villager they
         // are dealing with and hand back nothing for anything else. It never enters the world, and
         // it is never asked for its offers — that is the call that refuses.
-        Villager trader = EntityType.VILLAGER.create(level, EntitySpawnReason.LOAD);
+        Villager trader = net.minecraft.world.entity.EntityTypes.VILLAGER.create(level, EntitySpawnReason.LOAD);
         if (trader == null) return List.of();
         int recipes = 0;
 
@@ -247,7 +247,7 @@ public final class TradeGoodsScanner {
         int found = 0;
         for (EntityType<?> type : BuiltInRegistries.ENTITY_TYPE) {
             if (budget.spent()) break;
-            if (type == EntityType.VILLAGER || type == EntityType.WANDERING_TRADER) continue;
+            if (type == net.minecraft.world.entity.EntityTypes.VILLAGER || type == net.minecraft.world.entity.EntityTypes.WANDERING_TRADER) continue;
             Identifier typeId = BuiltInRegistries.ENTITY_TYPE.getKey(type);
             if (typeId == null) continue;
 

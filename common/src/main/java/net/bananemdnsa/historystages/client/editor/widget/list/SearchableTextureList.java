@@ -85,9 +85,9 @@ public class SearchableTextureList extends AbstractSearchableList<String> {
         if (path.startsWith("textures/")) path = path.substring("textures/".length());
         if (path.endsWith(".png")) path = path.substring(0, path.length() - 4);
 
-        return Minecraft.getInstance()
-                .getTextureAtlas(InventoryMenu.BLOCK_ATLAS)
-                .apply(Identifier.fromNamespaceAndPath(rl.getNamespace(), path));
+        return Minecraft.getInstance().getAtlasManager()
+                .getAtlasOrThrow(net.minecraft.data.AtlasIds.BLOCKS)
+                .getSprite(Identifier.fromNamespaceAndPath(rl.getNamespace(), path));
     }
 
     @Override
@@ -95,7 +95,7 @@ public class SearchableTextureList extends AbstractSearchableList<String> {
                              int x, int y, int w, int h, boolean hovered, int rowIndex) {
         TextureAtlasSprite sprite = spriteFor(entry);
         if (sprite != null) {
-            g.blit(x + 2, y + (h - PREVIEW) / 2, 0, PREVIEW, PREVIEW, sprite);
+            g.blitSprite(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, sprite, x + 2, y + (h - PREVIEW) / 2, PREVIEW, PREVIEW);
         }
 
         // The directory prefix is the same on every row and only pushes the part that

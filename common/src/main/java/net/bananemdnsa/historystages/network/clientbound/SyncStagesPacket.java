@@ -74,8 +74,8 @@ public record SyncStagesPacket(List<String> unlockedStages, Map<String, Long> un
             net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
             mc.execute(() -> {
                 try {
-                    if (mc.levelRenderer != null) {
-                        mc.levelRenderer.allChanged();
+                    if (mc.levelExtractor != null) {
+                        mc.levelExtractor.allChanged();
                     }
 
                     // Same for the vanilla recipe book. The global path also triggers a recipe
@@ -86,16 +86,20 @@ public record SyncStagesPacket(List<String> unlockedStages, Map<String, Long> un
 
                     // JEI hiding (Issue #64): refresh visibility after stage cache updated.
                     // Null-safe — no-op if JEI is not installed.
-                    if (net.neoforged.fml.Services.isModLoaded("jei")) {
+                    // PORT(Task 13): JEI refresh (JEIPlugin.tryApplyDiff) comes back with the JEI integration.
+                    // PORT(later): EMI has no 26.2 build (EmiReloadBridge.reloadIfHiding).
+                    /*
+                    if (net.bananemdnsa.historystages.platform.Services.isModLoaded("jei")) {
                         try {
                             net.bananemdnsa.historystages.compat.jei.JEIPlugin.tryApplyDiff();
                         } catch (Throwable ignored) {}
                     }
-                    if (net.neoforged.fml.Services.isModLoaded("emi")) {
+                    if (net.bananemdnsa.historystages.platform.Services.isModLoaded("emi")) {
                         try {
                             net.bananemdnsa.historystages.compat.emi.EmiReloadBridge.reloadIfHiding();
                         } catch (Throwable ignored) {}
                     }
+                    */
 
                     System.out.println("[HistoryStages] Hard-Reset & Mod-Sync completed.");
                 } catch (Exception e) {

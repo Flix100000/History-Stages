@@ -144,7 +144,7 @@ public final class ZoneTerrainSampler {
         if (colour == MapColor.NONE) return 0;
 
         if (!state.getFluidState().isEmpty()) {
-            return colour.calculateRGBColor(waterBrightness(level, pos, surface));
+            return net.minecraft.util.ARGB.toABGR(colour.calculateARGBColor(waterBrightness(level, pos, surface)));
         }
 
         // Measured against the sample step, the way the vanilla map does it, so a coarse map does
@@ -153,7 +153,7 @@ public final class ZoneTerrainSampler {
         MapColor.Brightness brightness = slope > 0.6 ? MapColor.Brightness.HIGH
                 : slope < -0.6 ? MapColor.Brightness.LOW
                 : MapColor.Brightness.NORMAL;
-        return colour.calculateRGBColor(brightness);
+        return net.minecraft.util.ARGB.toABGR(colour.calculateARGBColor(brightness));
     }
 
     private static MapColor.Brightness waterBrightness(ClientLevel level,

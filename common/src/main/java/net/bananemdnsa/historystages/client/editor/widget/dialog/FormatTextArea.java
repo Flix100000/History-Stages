@@ -327,21 +327,21 @@ public final class FormatTextArea {
         if (!focused) return false;
         boolean shift = (modifiers & GLFW.GLFW_MOD_SHIFT) != 0;
 
-        if (net.minecraft.client.gui.screens.Screen.isSelectAll(keyCode)) {
+        if (net.bananemdnsa.historystages.client.LegacyGui.isSelectAll(keyCode)) {
             anchor = 0;
             cursor = value.length();
             return true;
         }
-        if (net.minecraft.client.gui.screens.Screen.isCopy(keyCode)) {
+        if (net.bananemdnsa.historystages.client.LegacyGui.isCopy(keyCode)) {
             copySelection();
             return true;
         }
-        if (net.minecraft.client.gui.screens.Screen.isCut(keyCode)) {
+        if (net.bananemdnsa.historystages.client.LegacyGui.isCut(keyCode)) {
             copySelection();
             deleteSelection();
             return true;
         }
-        if (net.minecraft.client.gui.screens.Screen.isPaste(keyCode)) {
+        if (net.bananemdnsa.historystages.client.LegacyGui.isPaste(keyCode)) {
             insert(Minecraft.getInstance().keyboardHandler.getClipboard().replace("\n", " "));
             return true;
         }

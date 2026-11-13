@@ -27,7 +27,7 @@ public final class ClientTagResolver implements OpenScrollContent.TagResolver {
     public List<String> itemsInTag(String tagId) {
         Identifier id = Identifier.tryParse(tagId);
         if (id == null) return List.of();
-        TagKey<Item> key = ItemTags.create(id);
+        TagKey<Item> key = net.minecraft.tags.TagKey.create(net.minecraft.core.registries.Registries.ITEM, id);
         // BuiltInRegistries.ITEM has no getTagOrEmpty in this NeoForge version — getTag() returns
         // an Optional instead, empty for an unknown tag. Same pattern already used by
         // LootLocks.

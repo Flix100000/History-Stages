@@ -100,7 +100,6 @@ import net.bananemdnsa.historystages.client.editor.widget.StyledButton;
 import net.minecraft.client.gui.components.EditBox;
 import net.bananemdnsa.historystages.api.editor.widget.SearchBar;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
@@ -2176,13 +2175,13 @@ public class StageDetailScreen extends Screen {
             if (mc.level != null) {
                 Collection<RecipeHolder<?>> allCachedRecipes = AllRecipesCache.get();
                 Collection<RecipeHolder<?>> recipes = allCachedRecipes.isEmpty()
-                        ? mc.level.getRecipeManager().getRecipes()
+                        ? net.bananemdnsa.historystages.client.ClientRecipes.all()
                         : allCachedRecipes;
                 for (RecipeHolder<?> holder : recipes) {
                     try {
                         Recipe<?> recipe = holder.value();
                         String id = holder.id().toString();
-                        ItemStack result = recipe.getResultItem(mc.level.registryAccess());
+                        ItemStack result = net.bananemdnsa.historystages.util.RecipeOutputs.resultOf(recipe, mc.level.registryAccess());
                         ItemStack workstation = RecipeCardRenderer.resolveWorkstation(
                                 RecipeTypeMetas.get(String.valueOf(
                                         BuiltInRegistries.RECIPE_TYPE.getKey(recipe.getType()))));
@@ -2208,14 +2207,14 @@ public class StageDetailScreen extends Screen {
         Recipe<?> recipe = null;
         Collection<RecipeHolder<?>> allCached = AllRecipesCache.get();
         Collection<RecipeHolder<?>> allRecipes = allCached.isEmpty()
-                ? mc.level.getRecipeManager().getRecipes()
+                ? net.bananemdnsa.historystages.client.ClientRecipes.all()
                 : allCached;
         for (RecipeHolder<?> r : allRecipes) {
             if (r.id().toString().equals(recipePopupId)) { recipe = r.value(); break; }
         }
         if (recipe == null) { recipePopupVisible = false; return; }
 
-        ItemStack result = recipe.getResultItem(mc.level.registryAccess());
+        ItemStack result = net.bananemdnsa.historystages.util.RecipeOutputs.resultOf(recipe, mc.level.registryAccess());
         String typeId = String.valueOf(BuiltInRegistries.RECIPE_TYPE.getKey(recipe.getType()));
         RecipeTypeMeta typeMeta = RecipeTypeMetas.get(typeId);
         ItemStack workstation = RecipeCardRenderer.resolveWorkstation(typeMeta);
@@ -2755,7 +2754,7 @@ public class StageDetailScreen extends Screen {
                                         // silently doing nothing.
                                         net.minecraft.client.gui.Gui gui = Minecraft.getInstance().gui;
                                         if (gui != null)
-                                            gui.getChat().addMessage(Component.translatable(
+                                            gui.hud.getChat().addClientSystemMessage(Component.translatable(
                                                     "editor.historystages.edit.nothing_to_edit",
                                                     pendingModDisplayName));
                                         editingModId = null;
@@ -3175,8 +3174,8 @@ public class StageDetailScreen extends Screen {
         if (overridePopupVisible) {
             if (keyCode == 256) { applyOverrideAndClose(); return true; }
             if (keyCode == 257 || keyCode == 335) { applyOverrideAndClose(); return true; } // Enter
-            if (overrideNameField.isFocused() && overrideNameField.keyPressed(keyCode, scanCode, modifiers)) return true;
-            if (overrideTooltipField.isFocused() && overrideTooltipField.keyPressed(keyCode, scanCode, modifiers)) return true;
+            if (overrideNameField.isFocused() && net.bananemdnsa.historystages.client.editor.widget.LegacyInput.keyPressed(overrideNameField, keyCode, scanCode, modifiers)) return true;
+            if (overrideTooltipField.isFocused() && net.bananemdnsa.historystages.client.editor.widget.LegacyInput.keyPressed(overrideTooltipField, keyCode, scanCode, modifiers)) return true;
             return true;
         }
         if (ingredientUsagePopup.isVisible() && ingredientUsagePopup.keyPressed(keyCode)) return true;
@@ -3233,8 +3232,8 @@ public class StageDetailScreen extends Screen {
 
     public boolean charTyped(char c, int modifiers) {
         if (overridePopupVisible) {
-            if (overrideNameField.isFocused() && overrideNameField.charTyped(c, modifiers)) return true;
-            if (overrideTooltipField.isFocused() && overrideTooltipField.charTyped(c, modifiers)) return true;
+            if (overrideNameField.isFocused() && net.bananemdnsa.historystages.client.editor.widget.LegacyInput.charTyped(overrideNameField, c, modifiers)) return true;
+            if (overrideTooltipField.isFocused() && net.bananemdnsa.historystages.client.editor.widget.LegacyInput.charTyped(overrideTooltipField, c, modifiers)) return true;
             return true;
         }
         if (ingredientUsagePopup.isVisible() && ingredientUsagePopup.charTyped(c)) return true;
@@ -3425,14 +3424,14 @@ public class StageDetailScreen extends Screen {
             applyOverrideAndClose();
             return true;
         }
-        if (overrideResetBtn.mouseClicked(mouseX, mouseY, button)) return true;
-        if (overrideDoneBtn.mouseClicked(mouseX, mouseY, button)) return true;
-        if (overrideShowName && overrideNameField.mouseClicked(mouseX, mouseY, button)) {
+        if (net.bananemdnsa.historystages.client.editor.widget.LegacyInput.mouseClicked(overrideResetBtn, mouseX, mouseY, button)) return true;
+        if (net.bananemdnsa.historystages.client.editor.widget.LegacyInput.mouseClicked(overrideDoneBtn, mouseX, mouseY, button)) return true;
+        if (overrideShowName && net.bananemdnsa.historystages.client.editor.widget.LegacyInput.mouseClicked(overrideNameField, mouseX, mouseY, button)) {
             overrideNameField.setFocused(true);
             overrideTooltipField.setFocused(false);
             return true;
         }
-        if (overrideShowTooltip && overrideTooltipField.mouseClicked(mouseX, mouseY, button)) {
+        if (overrideShowTooltip && net.bananemdnsa.historystages.client.editor.widget.LegacyInput.mouseClicked(overrideTooltipField, mouseX, mouseY, button)) {
             overrideTooltipField.setFocused(true);
             overrideNameField.setFocused(false);
             return true;
@@ -3455,16 +3454,16 @@ public class StageDetailScreen extends Screen {
         if (overrideShowName) {
             g.text(this.font, Component.translatable("editor.historystages.text_override.name").getString(),
                     x + 12, cy, 0xAAAAAA, false);
-            overrideNameField.render(g, mouseX, mouseY, 0f);
+            overrideNameField.extractRenderState(g, mouseX, mouseY, 0f);
             cy += 44;
         }
         if (overrideShowTooltip) {
             g.text(this.font, Component.translatable("editor.historystages.text_override.tooltip").getString(),
                     x + 12, cy, 0xAAAAAA, false);
-            overrideTooltipField.render(g, mouseX, mouseY, 0f);
+            overrideTooltipField.extractRenderState(g, mouseX, mouseY, 0f);
         }
-        overrideResetBtn.render(g, mouseX, mouseY, 0f);
-        overrideDoneBtn.render(g, mouseX, mouseY, 0f);
+        overrideResetBtn.extractRenderState(g, mouseX, mouseY, 0f);
+        overrideDoneBtn.extractRenderState(g, mouseX, mouseY, 0f);
     }
 
     private static void putOrRemove(Map<Integer, String> map, int idx, String value) {
@@ -3596,7 +3595,7 @@ public class StageDetailScreen extends Screen {
         }
 
         @Override
-        public void onClick(double mouseX, double mouseY) {
+        public void onClick(net.minecraft.client.input.MouseButtonEvent event, boolean doubleClick) {
             action.run();
         }
 

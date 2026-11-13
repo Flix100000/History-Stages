@@ -51,6 +51,10 @@ public final class FluidsImpl {
         return level.getCapability(Capabilities.Fluid.BLOCK, pos, null) != null;
     }
 
+    public static net.minecraft.network.chat.Component nameOf(Fluid fluid) {
+        return fluid.getFluidType().getDescription();
+    }
+
     public static @Nullable Fluid fluidOfLoaderStack(Object subject) {
         if (subject instanceof FluidStack stack) return stack.getFluid();
         if (subject instanceof FluidResource resource) return resource.getFluid();

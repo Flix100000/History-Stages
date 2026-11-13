@@ -68,7 +68,7 @@ public final class IngredientUsageScan {
         RegistryAccess registryAccess = mc.level.registryAccess();
         Collection<RecipeHolder<?>> all = AllRecipesCache.get();
         Collection<RecipeHolder<?>> recipes = all.isEmpty()
-                ? mc.level.getRecipeManager().getRecipes()
+                ? net.bananemdnsa.historystages.client.ClientRecipes.all()
                 : all;
 
         List<RecipeRow> rows = new ArrayList<>();
@@ -82,13 +82,13 @@ public final class IngredientUsageScan {
                 String typeId = typeKey == null ? "" : typeKey.toString();
                 if (individualScope && !IndividualRecipeSupport.supports(typeId)) continue;
 
-                ItemStack result = recipe.getResultItem(registryAccess);
+                ItemStack result = net.bananemdnsa.historystages.util.RecipeOutputs.resultOf(recipe, registryAccess);
                 if (result.isEmpty()) continue;
                 if (ReliableRemoverCompat.isPresent() && ReliableRemoverCompat.isRemoved(result)) continue;
                 String resultId = BuiltInRegistries.ITEM.getKey(result.getItem()).toString();
 
                 List<Set<String>> slots = new ArrayList<>();
-                for (Ingredient ingredient : recipe.getIngredients()) {
+                for (Ingredient ingredient : net.bananemdnsa.historystages.util.RecipeOutputs.ingredientsOf(recipe)) {
                     slots.add(idsOf(ingredient));
                 }
                 requiresLockedByResult.computeIfAbsent(resultId, k -> new ArrayList<>())
@@ -130,7 +130,7 @@ public final class IngredientUsageScan {
 
     private static Set<String> idsOf(Ingredient ingredient) {
         Set<String> ids = new HashSet<>();
-        for (ItemStack stack : ingredient.getItems()) {
+        for (ItemStack stack : net.bananemdnsa.historystages.util.RecipeOutputs.itemsOf(ingredient)) {
             if (!stack.isEmpty()) ids.add(BuiltInRegistries.ITEM.getKey(stack.getItem()).toString());
         }
         return ids;
@@ -157,7 +157,7 @@ public final class IngredientUsageScan {
             List<ItemStack> unlocked = new ArrayList<>();
             if (marks[i] == RecipeCardRenderer.MARK_ALTERNATIVE) {
                 Set<String> seen = new HashSet<>();
-                for (ItemStack stack : shape.slotIngredients().get(i).getItems()) {
+                for (ItemStack stack : net.bananemdnsa.historystages.util.RecipeOutputs.itemsOf(shape.slotIngredients().get(i))) {
                     String id = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
                     if (!stack.isEmpty() && !lockedIds.contains(id) && seen.add(id)) unlocked.add(stack);
                 }

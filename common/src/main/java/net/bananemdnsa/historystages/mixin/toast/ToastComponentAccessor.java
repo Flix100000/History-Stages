@@ -1,6 +1,6 @@
 package net.bananemdnsa.historystages.mixin.toast;
 
-import net.minecraft.client.gui.components.toasts.ToastComponent;
+import net.minecraft.client.gui.components.toasts.ToastManager;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 
@@ -11,9 +11,9 @@ import java.util.List;
  * ToastClickHandler} can hit-test the toast under the cursor. Elements are the private inner
  * {@code ToastInstance}; read their fields via {@link ToastInstanceAccessor}.
  */
-@Mixin(ToastComponent.class)
+@Mixin(ToastManager.class)
 public interface ToastComponentAccessor {
 
-    @Accessor("visible")
+    @Accessor("visibleToasts")
     List<?> historystages$getVisible();
 }

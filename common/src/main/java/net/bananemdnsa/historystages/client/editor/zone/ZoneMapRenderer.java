@@ -70,7 +70,7 @@ public final class ZoneMapRenderer {
         int y1 = y + Math.round(view.screenZ(surface.minZ() + (double) surface.rows() * surface.step()));
         if (x1 <= x0 || y1 <= y0) return;
 
-        g.blit(texture.id(), x0, y0, x1 - x0, y1 - y0,
+        net.bananemdnsa.historystages.client.LegacyGui.blit(g, texture.id(), x0, y0, x1 - x0, y1 - y0,
                 0, 0, texture.cols(), texture.rows(), texture.cols(), texture.rows());
     }
 
@@ -207,9 +207,9 @@ public final class ZoneMapRenderer {
         // The two zero points sit opposite each other, so the offset is exactly half a turn.
         g.pose().pushMatrix();
         g.pose().translate(cx, cz);
-        g.pose().mulPose(Axis.ZP.rotationDegrees(yawDegrees + 180));
+        g.pose().rotate((float) Math.toRadians(yawDegrees + 180));
         g.pose().scale(MARKER_SCALE, MARKER_SCALE);
-        g.blit(clamped ? MARKER_OFF_MAP : MARKER_ICON, -4, -4, 8, 8, 0, 0, 8, 8, 8, 8);
+        net.bananemdnsa.historystages.client.LegacyGui.blit(g, clamped ? MARKER_OFF_MAP : MARKER_ICON, -4, -4, 8, 8, 0f, 0f, 8, 8, 8, 8);
         g.pose().popMatrix();
 
         return clamped;

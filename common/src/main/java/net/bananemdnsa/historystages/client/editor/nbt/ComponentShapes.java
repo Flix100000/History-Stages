@@ -53,7 +53,7 @@ public final class ComponentShapes {
 
         var player = Minecraft.getInstance().player;
         if (player != null) {
-            for (ItemStack stack : player.getInventory().items) {
+            for (ItemStack stack : player.getInventory().getNonEquipmentItems()) {
                 String encoded = encodeToString(stack, type);
                 if (encoded != null) return encoded;
             }

@@ -48,6 +48,12 @@ public final class Fluids {
         throw new AssertionError();
     }
 
+    /** The fluid's display name (NeoForge fluid type description, Fabric fluid variant name). */
+    @ExpectPlatform
+    public static net.minecraft.network.chat.Component nameOf(Fluid fluid) {
+        throw new AssertionError();
+    }
+
     /** The fluid of a loader fluid stack (NeoForge {@code FluidStack}, Fabric {@code FluidVariant}), else null. */
     @ExpectPlatform
     public static @Nullable Fluid fluidOfLoaderStack(Object subject) {

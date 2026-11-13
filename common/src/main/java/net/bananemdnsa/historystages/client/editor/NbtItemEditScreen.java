@@ -257,7 +257,7 @@ public class NbtItemEditScreen extends Screen {
 
     private boolean potionExists(String id) {
         Identifier rl = Identifier.tryParse(id);
-        return rl != null && BuiltInRegistries.POTION.get(rl) != null;
+        return rl != null && BuiltInRegistries.POTION.containsKey(rl);
     }
 
     /** The bar keeps its column even while nothing is drawn there, so text never reflows. */
@@ -738,7 +738,7 @@ public class NbtItemEditScreen extends Screen {
      */
     private void openItemValuePicker(ComponentCriterion comp) {
         DataComponentType<?> type = BuiltInRegistries.DATA_COMPONENT_TYPE
-                .get(Identifier.parse(comp.componentId()));
+                .getValue(Identifier.parse(comp.componentId()));
 
         SearchableItemList picker = new SearchableItemList(id -> {
             // Reached only from the registry tab, where there is no stack behind the entry and so

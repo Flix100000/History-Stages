@@ -335,7 +335,7 @@ public class ConfigRowList {
                         && mouseY >= y + 2 && mouseY < y + ENTRY_HEIGHT - 2;
                 TextureAtlasSprite sprite = SearchableTextureList.spriteFor(entry.value);
                 if (sprite != null) {
-                    guiGraphics.blit(controlX, y + 4, 0, 16, 16, sprite);
+                    guiGraphics.blitSprite(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, sprite, controlX, y + 4, 16, 16);
                 }
                 String shown = entry.value.isEmpty()
                         ? Component.translatable("editor.historystages.config.texture_none").getString()
@@ -409,7 +409,7 @@ public class ConfigRowList {
      */
     public static String enumDescription(String enumType, String constant) {
         String key = enumKey(enumType, constant) + ".desc";
-        return net.minecraft.client.resources.language.I18n.exists(key)
+        return net.bananemdnsa.historystages.client.LegacyGui.i18nExists(key)
                 ? Component.translatable(key).getString()
                 : null;
     }

@@ -54,6 +54,10 @@ public final class FluidsImpl {
         return FluidStorage.SIDED.find(level, pos, null) != null;
     }
 
+    public static net.minecraft.network.chat.Component nameOf(Fluid fluid) {
+        return net.fabricmc.fabric.api.transfer.v1.fluid.FluidVariantAttributes.getName(FluidVariant.of(fluid));
+    }
+
     public static @Nullable Fluid fluidOfLoaderStack(Object subject) {
         return subject instanceof FluidVariant variant ? variant.getFluid() : null;
     }

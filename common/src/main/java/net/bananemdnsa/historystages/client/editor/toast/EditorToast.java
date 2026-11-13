@@ -9,9 +9,9 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.toasts.Toast;
-import net.minecraft.client.gui.components.toasts.ToastComponent;
+import net.minecraft.client.gui.components.toasts.ToastManager;
 import net.minecraft.network.chat.Component;
-import net.minecraft.client.gui.components.PlayerFaceRenderer;
+import net.minecraft.client.gui.components.PlayerFaceExtractor;
 import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.util.FormattedCharSequence;
 
@@ -95,7 +95,7 @@ public class EditorToast implements Toast, DismissibleToast {
         Minecraft mc = Minecraft.getInstance();
         PlayerInfo info = mc.getConnection() != null ? mc.getConnection().getPlayerInfo(uuid) : null;
         if (info != null) {
-            PlayerFaceRenderer.draw(g, info.getSkin().texture(), x, y, FACE_SIZE);
+            PlayerFaceExtractor.extractRenderState(g, info.getSkin(), x, y, FACE_SIZE);
         }
     }
 
@@ -111,7 +111,7 @@ public class EditorToast implements Toast, DismissibleToast {
     }
 
     @Override
-    public int slotCount() {
+    public int occcupiedSlotCount() {
         // Occupy a single grid slot regardless of height so up to five toasts stay visible.
         // Overlap with the following toast is prevented by ToastComponentMixin/ToastInstanceMixin,
         // which stack toasts by their real pixel height instead of the 32px slot grid.
@@ -132,8 +132,29 @@ public class EditorToast implements Toast, DismissibleToast {
         computedHeight = Math.max(BASE_HEIGHT, 8 + 10 + lines * 10 + 4);
     }
 
+
+    // 26.2 split Toast.render into update/getWantedVisibility/extractRenderState. The old render
+    // body stays and reports the visibility it decided on for the next update.
+    private ToastManager toastManager;
+    private Visibility wantedVisibility = Visibility.SHOW;
+
     @Override
-    public Visibility render(GuiGraphicsExtractor g, ToastComponent toastComponent, long timeSinceLastVisible) {
+    public Visibility getWantedVisibility() {
+        return wantedVisibility;
+    }
+
+    @Override
+    public void update(ToastManager manager, long fullyVisibleForMs) {
+        this.toastManager = manager;
+    }
+
+    @Override
+    public void extractRenderState(GuiGraphicsExtractor graphics, net.minecraft.client.gui.Font font, long fullyVisibleForMs) {
+        if (toastManager == null) return;
+        wantedVisibility = render(graphics, toastManager, fullyVisibleForMs);
+    }
+
+    private Visibility render(GuiGraphicsExtractor g, ToastManager toastComponent, long timeSinceLastVisible) {
         Font font = toastComponent.getMinecraft().font;
 
         ensureLayout();

@@ -821,7 +821,7 @@ public class SearchableItemList implements PickerOverlay {
         // method derives the look angle itself as atan((boxCentre - mouse) / 40); handing it a
         // pre-computed offset made it subtract twice, which cancelled the box centre out and
         // left the model staring at the raw screen coordinate — pinned aside and inverted.
-        InventoryScreen.renderEntityInInventoryFollowsMouse(guiGraphics,
+        InventoryScreen.extractEntityInInventoryFollowsMouse(guiGraphics,
                 entityAreaX, topY, entityAreaX + entityAreaW, topY + entityAreaH, 25,
                 0.0625f, (float) mouseX, (float) mouseY, player);
 
@@ -1299,7 +1299,7 @@ public class SearchableItemList implements PickerOverlay {
     private static JsonArray toEnchantmentJsonList(ItemEnchantments enchantments) {
         JsonArray arr = new JsonArray();
         for (var entry : enchantments.entrySet()) {
-            Identifier id = entry.getKey().unwrapKey().map(ResourceKey::location).orElse(null);
+            Identifier id = entry.getKey().unwrapKey().map(ResourceKey::identifier).orElse(null);
             if (id == null) continue;
             JsonObject e = new JsonObject();
             e.addProperty("id", id.toString());

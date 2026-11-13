@@ -186,7 +186,7 @@ public class StageGraphScreen extends Screen {
      */
     private static Component resolveTitle() {
         String raw = GraphConfig.GRAPH.title.get();
-        return I18n.exists(raw) ? Component.translatable(raw)
+        return net.bananemdnsa.historystages.client.LegacyGui.i18nExists(raw) ? Component.translatable(raw)
                 : Component.literal(raw.replace('&', '§'));
     }
 

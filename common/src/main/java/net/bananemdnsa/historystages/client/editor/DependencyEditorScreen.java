@@ -51,7 +51,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
@@ -1324,7 +1323,7 @@ public class DependencyEditorScreen extends Screen {
                     stack = ItemTagResolution.displayStack(iconId, null, System.currentTimeMillis());
                 } else {
                     Identifier rl = Identifier.tryParse(iconId);
-                    Item icon = rl == null ? null : BuiltInRegistries.ITEM.get(rl);
+                    Item icon = rl == null ? null : BuiltInRegistries.ITEM.getValue(rl);
                     stack = icon == null ? ItemStack.EMPTY : new ItemStack(icon);
                 }
                 if (!stack.isEmpty()) {

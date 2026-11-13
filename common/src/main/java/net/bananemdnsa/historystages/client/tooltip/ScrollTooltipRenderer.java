@@ -469,7 +469,7 @@ public final class ScrollTooltipRenderer {
                     er != null ? er.getSettledId() : null, System.currentTimeMillis());
         } else {
             Identifier rl = Identifier.tryParse(item.getId());
-            Item mcItem = rl != null ? BuiltInRegistries.ITEM.get(rl) : null;
+            Item mcItem = rl != null ? BuiltInRegistries.ITEM.getValue(rl) : null;
             name = mcItem != null ? mcItem.getName(mcItem.getDefaultInstance()).getString() : item.getId();
         }
 
@@ -653,7 +653,7 @@ public final class ScrollTooltipRenderer {
                 any = true;
                 continue;
             }
-            ChatFormatting format = ChatFormatting.getByName(token);
+            ChatFormatting format = net.bananemdnsa.historystages.util.Formats.byName(token);
             if (format == null) {
                 LOGGER.warn("[HistoryStages] Unknown scroll tooltip style '{}' — ignored.", token);
                 continue;

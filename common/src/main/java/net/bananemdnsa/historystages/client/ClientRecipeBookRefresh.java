@@ -25,9 +25,9 @@ public final class ClientRecipeBookRefresh {
 
         try {
             ClientRecipeBook book = mc.player.getRecipeBook();
-            book.setupCollections(
-                    mc.level.getRecipeManager().getOrderedRecipes(),
-                    mc.level.registryAccess());
+            // 26.2: the book is built from the display entries the server sent, and rebuilding
+            // the collections already takes the known recipes into account.
+            book.rebuildCollections();
 
             // Not optional. setupCollections builds new RecipeCollection objects and every one of
             // them starts out knowing none of the player's recipes, and RecipeBookComponent drops
@@ -35,7 +35,6 @@ public final class ClientRecipeBookRefresh {
             // this empties the book. Vanilla does the same two lines in
             // ClientPacketListener.handleAddOrRemoveRecipes; there is no other path that restores
             // it, which is also why the server must never send a recipe list without the book.
-            book.getCollections().forEach(collection -> collection.updateKnownRecipes(book));
         } catch (Exception e) {
             // A book that failed to rebuild shows a stale list; it must not take the packet
             // handler down with it.
