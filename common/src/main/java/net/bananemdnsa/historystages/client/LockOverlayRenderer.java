@@ -3,13 +3,13 @@ package net.bananemdnsa.historystages.client;
 import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.RenderGuiEvent;
+import net.bananemdnsa.historystages.platform.Dist;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
+import net.bananemdnsa.historystages.platform.event.client.RenderGuiEvent;
 
 import java.util.List;
 
@@ -34,7 +34,7 @@ public final class LockOverlayRenderer {
         Minecraft mc = Minecraft.getInstance();
         LocalPlayer player = mc.player;
         if (player == null || player.isSpectator()) return;
-        if (mc.options.hideGui) return;
+        if (mc.gui.hud.isHidden()) return;
 
         if (!isInsideLockedShape(player.getX(), player.getY(), player.getZ())) return;
 
@@ -42,10 +42,10 @@ public final class LockOverlayRenderer {
         if (opacity <= 0.0) return;
 
         int alpha = (int) Math.round(Math.min(1.0, opacity) * 255.0);
-        // ARGB: high alpha + saturated red; GuiGraphics#fill takes 0xAARRGGBB.
+        // ARGB: high alpha + saturated red; GuiGraphicsExtractor#fill takes 0xAARRGGBB.
         int color = (alpha << 24) | 0x00C00000;
 
-        GuiGraphics gg = event.getGuiGraphics();
+        GuiGraphicsExtractor gg = event.getGuiGraphics();
         gg.fill(0, 0, gg.guiWidth(), gg.guiHeight(), color);
     }
 

@@ -1,6 +1,5 @@
 package net.bananemdnsa.historystages.fabric.client;
 
-import com.mojang.blaze3d.vertex.PoseStack;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.fabric.events.Phases;
 import net.bananemdnsa.historystages.platform.bus.EventBus;
@@ -8,8 +7,8 @@ import net.bananemdnsa.historystages.platform.event.client.ClientPlayerNetworkEv
 import net.bananemdnsa.historystages.platform.event.client.ClientTickEvent;
 import net.bananemdnsa.historystages.platform.event.client.RecipesUpdatedEvent;
 import net.bananemdnsa.historystages.platform.event.client.RenderGuiEvent;
-import net.bananemdnsa.historystages.platform.event.client.RenderLevelStageEvent;
 import net.bananemdnsa.historystages.platform.event.client.ScreenEvent;
+import net.bananemdnsa.historystages.platform.event.client.SubmitCustomGeometryEvent;
 import net.bananemdnsa.historystages.platform.event.entity.player.ItemTooltipEvent;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.item.v1.ItemTooltipCallback;
@@ -20,7 +19,6 @@ import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents;
 import net.fabricmc.fabric.api.client.screen.v1.Screens;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.resources.Identifier;
@@ -62,14 +60,13 @@ public final class ClientBridge {
 
         ClientCommandBridge.register();
 
-        // After the translucent terrain, the stage this mod draws its see-through walls in.
-        Phases.listen(LevelRenderEvents.AFTER_TRANSLUCENT_TERRAIN, priority -> context -> {
-            if (!Phases.wanted(RenderLevelStageEvent.class, priority)) {
-                return;
+        // Where 26.2 collects level geometry; it is drawn later with the rest of the frame.
+        Phases.listen(LevelRenderEvents.COLLECT_SUBMITS, priority -> context -> {
+            if (Phases.wanted(SubmitCustomGeometryEvent.class, priority)) {
+                var camera = context.levelState().cameraRenderState;
+                EventBus.post(new SubmitCustomGeometryEvent(context.submitNodeCollector(), context.poseStack(),
+                        camera.pos, camera.orientation), priority);
             }
-            PoseStack poseStack = context.poseStack() != null ? context.poseStack() : new PoseStack();
-            EventBus.post(new RenderLevelStageEvent(RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS,
-                    poseStack, Minecraft.getInstance().gameRenderer.mainCamera()), priority);
         });
 
         // A HUD element is a layer, not a callback: all priorities in one go, drawn last.

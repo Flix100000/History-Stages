@@ -1,25 +1,16 @@
 package net.bananemdnsa.historystages.client;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.BufferBuilder;
-import com.mojang.blaze3d.vertex.BufferUploader;
-import com.mojang.blaze3d.vertex.DefaultVertexFormat;
-import com.mojang.blaze3d.vertex.MeshData;
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.Tesselator;
-import com.mojang.blaze3d.vertex.VertexFormat;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.HistoryStages;
-import net.minecraft.Util;
-import net.minecraft.client.renderer.GameRenderer;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.Util;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
-import org.joml.Matrix4f;
+import net.bananemdnsa.historystages.platform.Dist;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
+import net.bananemdnsa.historystages.platform.event.client.SubmitCustomGeometryEvent;
 
 import java.util.List;
 
@@ -36,9 +27,6 @@ import java.util.List;
 @EventBusSubscriber(modid = HistoryStages.MOD_ID, value = Dist.CLIENT)
 public final class LockBorderRenderer {
 
-    private static final ResourceLocation FORCEFIELD =
-            ResourceLocation.parse("minecraft:textures/misc/forcefield.png");
-
     /** How many blocks one texture tile covers. Smaller = more tiling on the wall. */
     private static final float TILE_BLOCKS = 4.0f;
 
@@ -48,8 +36,7 @@ public final class LockBorderRenderer {
     private LockBorderRenderer() {}
 
     @SubscribeEvent
-    public static void onRenderLevel(RenderLevelStageEvent event) {
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS) return;
+    public static void onSubmitGeometry(SubmitCustomGeometryEvent event) {
         if (!Config.VISUAL.structureBorderEnabled.get()) return;
 
         List<BoundingBox> boxes = LockBorderClientCache.get();
@@ -57,45 +44,23 @@ public final class LockBorderRenderer {
 
         double threshold = Config.VISUAL.structureBorderDistance.get();
 
-        Vec3 cam = event.getCamera().getPosition();
+        Vec3 cam = event.getCameraPosition();
         float scroll = (float) ((Util.getMillis() % 3000L) / 3000.0);
 
-        RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
-        RenderSystem.depthMask(false);
-        // Depth test ON: only the parts of the force-field in front of blocks are drawn.
-        // depthMask(false) keeps us from writing to the depth buffer ourselves.
-        RenderSystem.enableDepthTest();
-        RenderSystem.disableCull();
-        RenderSystem.setShader(GameRenderer::getPositionTexColorShader);
-        RenderSystem.setShaderTexture(0, FORCEFIELD);
-
+        // Blend, depth test without depth write and no culling live in the render type now.
         PoseStack pose = event.getPoseStack();
         pose.pushPose();
         pose.translate(-cam.x, -cam.y, -cam.z);
-        Matrix4f matrix = pose.last().pose();
-
-        BufferBuilder buffer = Tesselator.getInstance().begin(
-                VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
-
-        for (int i = 0; i < boxes.size(); i++) {
-            renderBox(buffer, matrix, boxes, i, boxes.get(i), cam, threshold, scroll);
-        }
-
-        MeshData mesh = buffer.build();
-        if (mesh != null) {
-            BufferUploader.drawWithShader(mesh);
-        }
-
+        event.getSubmitNodeCollector().submitCustomGeometry(pose, WorldOverlayRenderTypes.forcefield(),
+                (p, buffer) -> {
+                    for (int i = 0; i < boxes.size(); i++) {
+                        renderBox(buffer, p, boxes, i, boxes.get(i), cam, threshold, scroll);
+                    }
+                });
         pose.popPose();
-
-        RenderSystem.enableCull();
-        RenderSystem.enableDepthTest();
-        RenderSystem.depthMask(true);
-        RenderSystem.disableBlend();
     }
 
-    private static void renderBox(BufferBuilder buf, Matrix4f m, List<BoundingBox> all, int ownerIdx,
+    private static void renderBox(VertexConsumer buf, PoseStack.Pose m, List<BoundingBox> all, int ownerIdx,
                                    BoundingBox bb, Vec3 cam, double threshold, float scroll) {
         float x0 = bb.minX();
         float y0 = bb.minY();
@@ -123,7 +88,7 @@ public final class LockBorderRenderer {
         renderFaceZ(buf, m, all, ownerIdx, bb, z1, x0, x1, y0, y1, cam, threshold, scroll, 5);
     }
 
-    private static void renderFaceX(BufferBuilder buf, Matrix4f m, List<BoundingBox> all, int ownerIdx,
+    private static void renderFaceX(VertexConsumer buf, PoseStack.Pose m, List<BoundingBox> all, int ownerIdx,
                                      BoundingBox owner, float planeX, float minY, float maxY,
                                      float minZ, float maxZ, Vec3 cam, double threshold, float scroll,
                                      int face) {
@@ -173,7 +138,7 @@ public final class LockBorderRenderer {
         }
     }
 
-    private static void renderFaceY(BufferBuilder buf, Matrix4f m, List<BoundingBox> all, int ownerIdx,
+    private static void renderFaceY(VertexConsumer buf, PoseStack.Pose m, List<BoundingBox> all, int ownerIdx,
                                      BoundingBox owner, float planeY, float minX, float maxX,
                                      float minZ, float maxZ, Vec3 cam, double threshold, float scroll,
                                      int face) {
@@ -223,7 +188,7 @@ public final class LockBorderRenderer {
         }
     }
 
-    private static void renderFaceZ(BufferBuilder buf, Matrix4f m, List<BoundingBox> all, int ownerIdx,
+    private static void renderFaceZ(VertexConsumer buf, PoseStack.Pose m, List<BoundingBox> all, int ownerIdx,
                                      BoundingBox owner, float planeZ, float minX, float maxX,
                                      float minY, float maxY, Vec3 cam, double threshold, float scroll,
                                      int face) {

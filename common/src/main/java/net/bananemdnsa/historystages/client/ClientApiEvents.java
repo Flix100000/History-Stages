@@ -5,11 +5,11 @@ import net.bananemdnsa.historystages.api.client.ClientStagesChangedEvent;
 import net.bananemdnsa.historystages.client.cache.ClientIndividualStageCache;
 import net.bananemdnsa.historystages.client.cache.ClientStageCache;
 import net.bananemdnsa.historystages.events.StageDefinitionsEventBridge;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.ClientTickEvent;
-import net.neoforged.neoforge.common.NeoForge;
+import net.bananemdnsa.historystages.platform.Dist;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
+import net.bananemdnsa.historystages.platform.event.client.ClientTickEvent;
+import net.bananemdnsa.historystages.platform.bus.EventBus;
 
 /**
  * Posts the client-side api events from the client tick: {@link ClientStagesChangedEvent}, and
@@ -35,7 +35,7 @@ public final class ClientApiEvents {
         if (global != seenGlobal || individual != seenIndividual) {
             seenGlobal = global;
             seenIndividual = individual;
-            NeoForge.EVENT_BUS.post(new ClientStagesChangedEvent());
+            EventBus.post(new ClientStagesChangedEvent());
         }
     }
 }

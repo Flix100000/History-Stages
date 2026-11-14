@@ -10,16 +10,16 @@ import net.bananemdnsa.historystages.util.lock.LockMessages;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.inventory.MerchantScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.FormattedCharSequence;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.ScreenEvent;
+import net.bananemdnsa.historystages.platform.Dist;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
+import net.bananemdnsa.historystages.platform.event.client.ScreenEvent;
 
 /**
  * Says, inside the trade window, why there is nothing in it.
@@ -70,6 +70,9 @@ public final class TradeLockNoticeRenderer {
 
     private static final int LINE_HEIGHT = 10;
 
+    private static final int MERCHANT_WIDTH = 276;
+    private static final int MERCHANT_HEIGHT = 166;
+
     /**
      * Faint rather than solid. The offer column is light enough to read dark text on, so the
      * panel is there for the resource pack that swaps the texture for a dark one — not to be
@@ -100,7 +103,10 @@ public final class TradeLockNoticeRenderer {
         if (!screen.getMenu().getOffers().isEmpty()) return;
 
         int openId = mc.player.containerMenu.containerId;
-        draw(event.getGuiGraphics(), mc.font, screen.getGuiLeft(), screen.getGuiTop(),
+        // 26.2 has no getter for leftPos/topPos; MerchantScreen centres its 276x166 window the same way.
+        int guiLeft = (screen.width - MERCHANT_WIDTH) / 2;
+        int guiTop = (screen.height - MERCHANT_HEIGHT) / 2;
+        draw(event.getGuiGraphics(), mc.font, guiLeft, guiTop,
                 TradeLockNotice.stageNamesFor(openId), TradeLockNotice.kindFor(openId));
     }
 
@@ -110,7 +116,7 @@ public final class TradeLockNoticeRenderer {
      * <p>Takes plain numbers rather than the screen, so everything about where the text goes is
      * arithmetic in one place — the caller has already decided which screen and which window.
      */
-    private static void draw(GuiGraphics g, Font font, int guiLeft, int guiTop,
+    private static void draw(GuiGraphicsExtractor g, Font font, int guiLeft, int guiTop,
                              List<String> stageNames, TradeLockKind kind) {
         int available = OFFER_AREA_RIGHT - OFFER_AREA_LEFT - 4;
         List<FormattedCharSequence> lines = new ArrayList<>(
@@ -141,7 +147,7 @@ public final class TradeLockNoticeRenderer {
 
         int y = top + LOCK_SIZE + LOCK_GAP;
         for (FormattedCharSequence line : lines) {
-            g.drawString(font, line, centreX - font.width(line) / 2, y, 0xFFFFFF, false);
+            g.text(font, line, centreX - font.width(line) / 2, y, 0xFFFFFFFF, false);
             y += LINE_HEIGHT;
         }
     }
@@ -154,7 +160,7 @@ public final class TradeLockNoticeRenderer {
      * its symbol for no reason a player could follow, and the silver-lock switch would draw an
      * individual lock as a global one — a wrong answer where none had been asked for.
      */
-    private static ResourceLocation iconFor(TradeLockKind kind) {
+    private static Identifier iconFor(TradeLockKind kind) {
         return switch (kind) {
             case INDIVIDUAL -> LockIconRenderer.individualIcon();
             case DUAL -> LockIconRenderer.dualIcon();

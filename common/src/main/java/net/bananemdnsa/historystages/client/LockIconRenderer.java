@@ -7,8 +7,8 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 
 /**
- * Shared lock-icon logic used by both the vanilla-inventory {@link LockDecorator}
- * (a NeoForge {@code IItemDecorator}) and the EMI ingredient-panel mixin, so the
+ * Shared lock-icon logic used by both the vanilla-inventory lock decorator
+ * (NeoForge {@code IItemDecorator}, Fabric {@code ItemDecorationsMixin}) and the EMI ingredient-panel mixin, so the
  * icon selection and drawing stay identical across surfaces.
  */
 public final class LockIconRenderer {

@@ -1,7 +1,8 @@
-package net.bananemdnsa.historystages.client;
+package net.bananemdnsa.historystages.neoforge.client;
 
+import net.bananemdnsa.historystages.client.LockIconRenderer;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.client.IItemDecorator;
@@ -11,12 +12,13 @@ import net.neoforged.neoforge.client.IItemDecorator;
  * containers). Icon selection/drawing is shared with the EMI ingredient-panel
  * mixin via {@link LockIconRenderer}. Runs regardless of whether EMI is installed —
  * EMI's own panel is covered separately by the ItemEmiStack mixin (it does not use
- * vanilla item decorations), so there is no double-draw.
+ * vanilla item decorations), so there is no double-draw. Fabric has no decorator registry and
+ * draws the same icon from {@code ItemDecorationsMixin}.
  */
 public class LockDecorator implements IItemDecorator {
 
     @Override
-    public boolean render(GuiGraphics guiGraphics, Font font, ItemStack stack, int xOffset, int yOffset) {
+    public boolean render(GuiGraphicsExtractor guiGraphics, Font font, ItemStack stack, int xOffset, int yOffset) {
         Identifier icon = LockIconRenderer.iconFor(stack);
         if (icon != null) {
             LockIconRenderer.draw(guiGraphics, icon, xOffset, yOffset);

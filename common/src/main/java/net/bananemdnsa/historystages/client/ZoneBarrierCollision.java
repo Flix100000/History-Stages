@@ -64,8 +64,8 @@ public final class ZoneBarrierCollision {
         // look at it must not be stopped by it.
         if (player.isCreative() || player.isSpectator()) return found;
 
-        int minY = level.getMinBuildHeight();
-        int maxY = level.getMaxBuildHeight();
+        int minY = level.getMinY();
+        int maxY = level.getMaxY() + 1;
 
         List<VoxelShape> walls = null;
         for (ClientZoneShapes.Visible zone : ClientZoneShapes.get()) {

@@ -1,13 +1,7 @@
 package net.bananemdnsa.historystages.client;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.BufferBuilder;
-import com.mojang.blaze3d.vertex.BufferUploader;
-import com.mojang.blaze3d.vertex.DefaultVertexFormat;
-import com.mojang.blaze3d.vertex.MeshData;
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.Tesselator;
-import com.mojang.blaze3d.vertex.VertexFormat;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.client.cache.ClientZoneShapes;
@@ -15,16 +9,14 @@ import net.bananemdnsa.historystages.data.graph.GraphColors;
 import net.bananemdnsa.historystages.data.lock.ZoneShape;
 import net.bananemdnsa.historystages.data.lock.ZoneShapeType;
 import net.bananemdnsa.historystages.data.lock.ZoneSurfaceRuns;
-import net.minecraft.Util;
+import net.minecraft.util.Util;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.GameRenderer;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
-import org.joml.Matrix4f;
+import net.bananemdnsa.historystages.platform.Dist;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
+import net.bananemdnsa.historystages.platform.event.client.SubmitCustomGeometryEvent;
+import net.minecraft.client.renderer.SubmitNodeCollector;
 
 /**
  * Draws the wall of a locked zone the player is close to, in two parts.
@@ -56,9 +48,6 @@ import org.joml.Matrix4f;
  */
 @EventBusSubscriber(modid = HistoryStages.MOD_ID, value = Dist.CLIENT)
 public final class ZoneBorderRenderer {
-
-    private static final ResourceLocation FORCEFIELD =
-            ResourceLocation.parse("minecraft:textures/misc/forcefield.png");
 
     /** Distance at which the outline starts to appear, in blocks. */
     private static final double FADE_START = 48.0;
@@ -123,8 +112,7 @@ public final class ZoneBorderRenderer {
     }
 
     @SubscribeEvent
-    public static void onRenderLevel(RenderLevelStageEvent event) {
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS) return;
+    public static void onSubmitGeometry(SubmitCustomGeometryEvent event) {
         if (ClientZoneShapes.isEmpty()) return;
 
         // Whether a zone has a border at all is the zone's own business; this only says how
@@ -140,20 +128,19 @@ public final class ZoneBorderRenderer {
 
         borderRgb = GraphColors.parse(Config.VISUAL.zoneBorderColor.get(), DEFAULT_RGB);
 
-        Vec3 cam = event.getCamera().getPosition();
-        int minY = mc.level.getMinBuildHeight();
-        int maxY = mc.level.getMaxBuildHeight();
+        Vec3 cam = event.getCameraPosition();
+        int minY = mc.level.getMinY();
+        int maxY = mc.level.getMaxY() + 1;
 
         PoseStack pose = event.getPoseStack();
         pose.pushPose();
         pose.translate(-cam.x, -cam.y, -cam.z);
-        Matrix4f matrix = pose.last().pose();
+        SubmitNodeCollector collector = event.getSubmitNodeCollector();
 
         if (reach > 0) {
-            drawWall(matrix, cam, new Vec3(event.getCamera().getLookVector()), reach,
-                    reach > distance, minY, maxY);
+            drawWall(collector, pose, cam, event.getLookVector(), reach, reach > distance, minY, maxY);
         }
-        if (outline) drawOutlines(matrix, cam, minY, maxY);
+        if (outline) drawOutlines(collector, pose, cam, minY, maxY);
 
         pose.popPose();
     }
@@ -179,43 +166,26 @@ public final class ZoneBorderRenderer {
      */
     private static final double CULL_FROM = 2.0 * ZoneSurfaceRuns.CAP;
 
-    private static void drawWall(Matrix4f matrix, Vec3 cam, Vec3 look, double reach,
-                                 boolean full, int minY, int maxY) {
+    private static void drawWall(SubmitNodeCollector collector, PoseStack pose, Vec3 cam, Vec3 look,
+                                 double reach, boolean full, int minY, int maxY) {
         WALL.refresh(ClientZoneShapes.get(),
                 (int) Math.floor(cam.x), (int) Math.floor(cam.y), (int) Math.floor(cam.z),
                 (int) Math.ceil(reach), minY, maxY);
         if (WALL.count() == 0) return;
 
-        RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
-        RenderSystem.depthMask(false);
-        RenderSystem.enableDepthTest();
-        RenderSystem.disableCull();
-        RenderSystem.setShader(GameRenderer::getPositionTexColorShader);
-        RenderSystem.setShaderTexture(0, FORCEFIELD);
-
         // The drift is part of what makes the close-up patch read as a force field. Across a
         // whole wall it reads as the wall sliding sideways instead, so there it stands still.
         float scroll = full ? 0f : (float) ((Util.getMillis() % 3000L) / 3000.0);
 
-        BufferBuilder buffer = Tesselator.getInstance().begin(
-                VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
-
-        boolean any = false;
-        for (int i = 0; i < WALL.count(); i++) {
-            any |= quad(buffer, matrix, cam, look, reach, full, scroll,
-                    WALL.face(i, 0), WALL.face(i, 1), WALL.face(i, 2), WALL.face(i, 3),
-                    WALL.face(i, 5), WALL.projector(i));
-        }
-
-        MeshData mesh = buffer.build();
-        if (any && mesh != null) {
-            BufferUploader.drawWithShader(mesh);
-        }
-
-        RenderSystem.enableCull();
-        RenderSystem.depthMask(true);
-        RenderSystem.disableBlend();
+        // Blend, depth test without depth write and no culling live in the render type now. The
+        // faces are written later in the frame, still before anything can refresh WALL again.
+        collector.submitCustomGeometry(pose, WorldOverlayRenderTypes.forcefield(), (m, buffer) -> {
+            for (int i = 0; i < WALL.count(); i++) {
+                quad(buffer, m, cam, look, reach, full, scroll,
+                        WALL.face(i, 0), WALL.face(i, 1), WALL.face(i, 2), WALL.face(i, 3),
+                        WALL.face(i, 5), WALL.projector(i));
+            }
+        });
     }
 
     /** Scratch for the face being written: four corners as x, y, z plus the texture u and v. */
@@ -239,7 +209,7 @@ public final class ZoneBorderRenderer {
      * <p>The side test matters more than it looks: without it a sphere is drawn twice over, front
      * and back, and comes out at double strength against everything else.
      */
-    private static boolean quad(BufferBuilder buf, Matrix4f m, Vec3 cam, Vec3 look,
+    private static boolean quad(VertexConsumer buf, PoseStack.Pose m, Vec3 cam, Vec3 look,
                                 double reach, boolean full, float scroll,
                                 int x, int y, int z, int dir, int run, ZoneWallMesh.Round on) {
         corners(x, y, z, dir, run);
@@ -396,34 +366,18 @@ public final class ZoneBorderRenderer {
 
     // --- The outline further out ---
 
-    private static void drawOutlines(Matrix4f matrix, Vec3 cam, int minY, int maxY) {
-        RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
-        RenderSystem.depthMask(false);
-        RenderSystem.enableDepthTest();
-        RenderSystem.setShader(GameRenderer::getPositionColorShader);
-
-        BufferBuilder buffer = Tesselator.getInstance().begin(
-                VertexFormat.Mode.DEBUG_LINES, DefaultVertexFormat.POSITION_COLOR);
-
-        boolean drewAnything = false;
-        for (ClientZoneShapes.Visible zone : ClientZoneShapes.get()) {
-            if (!zone.border()) continue;
-            for (ZoneShape shape : zone.shapes()) {
-                float alpha = alphaFor(shape, cam, minY, maxY);
-                if (alpha <= 0.01f) continue;
-                drawShape(buffer, matrix, shape, alpha, minY, maxY);
-                drewAnything = true;
+    private static void drawOutlines(SubmitNodeCollector collector, PoseStack pose, Vec3 cam, int minY, int maxY) {
+        float width = WorldOverlayRenderTypes.lineWidth();
+        collector.submitCustomGeometry(pose, WorldOverlayRenderTypes.lines(), (m, buffer) -> {
+            for (ClientZoneShapes.Visible zone : ClientZoneShapes.get()) {
+                if (!zone.border()) continue;
+                for (ZoneShape shape : zone.shapes()) {
+                    float alpha = alphaFor(shape, cam, minY, maxY);
+                    if (alpha <= 0.01f) continue;
+                    drawShape(buffer, m, width, shape, alpha, minY, maxY);
+                }
             }
-        }
-
-        MeshData mesh = buffer.build();
-        if (drewAnything && mesh != null) {
-            BufferUploader.drawWithShader(mesh);
-        }
-
-        RenderSystem.depthMask(true);
-        RenderSystem.disableBlend();
+        });
     }
 
     /**
@@ -481,7 +435,7 @@ public final class ZoneBorderRenderer {
         };
     }
 
-    private static void drawShape(BufferBuilder buf, Matrix4f m, ZoneShape shape, float a,
+    private static void drawShape(VertexConsumer buf, PoseStack.Pose m, float w, ZoneShape shape, float a,
                                   int minY, int maxY) {
         switch (shape.type()) {
             case CUBE -> {
@@ -491,7 +445,7 @@ public final class ZoneBorderRenderer {
                 float z1 = Math.max(shape.fromZ(), shape.toZ()) + 1;
                 float y0 = shape.fullHeight() ? minY : Math.min(shape.fromY(), shape.toY());
                 float y1 = shape.fullHeight() ? maxY : Math.max(shape.fromY(), shape.toY()) + 1;
-                box(buf, m, x0, y0, z0, x1, y1, z1, a);
+                box(buf, m, w, x0, y0, z0, x1, y1, z1, a);
             }
             case SPHERE -> {
                 float cx = shape.fromX() + 0.5f;
@@ -499,9 +453,9 @@ public final class ZoneBorderRenderer {
                 float cz = shape.fromZ() + 0.5f;
                 float r = shape.radius() + 0.5f;
                 // Three great circles read as a sphere without a surface to shade.
-                circleXZ(buf, m, cx, cy, cz, r, a);
-                circleXY(buf, m, cx, cy, cz, r, a);
-                circleYZ(buf, m, cx, cy, cz, r, a);
+                circleXZ(buf, m, w, cx, cy, cz, r, a);
+                circleXY(buf, m, w, cx, cy, cz, r, a);
+                circleYZ(buf, m, w, cx, cy, cz, r, a);
             }
             case CYLINDER -> {
                 float cx = shape.fromX() + 0.5f;
@@ -509,68 +463,68 @@ public final class ZoneBorderRenderer {
                 float r = shape.radius() + 0.5f;
                 float y0 = shape.fullHeight() ? minY : shape.fromY();
                 float y1 = shape.fullHeight() ? maxY : shape.fromY() + shape.height() + 1;
-                circleXZ(buf, m, cx, y0, cz, r, a);
-                circleXZ(buf, m, cx, y1, cz, r, a);
+                circleXZ(buf, m, w, cx, y0, cz, r, a);
+                circleXZ(buf, m, w, cx, y1, cz, r, a);
                 // A few uprights, so the two rings read as one solid rather than two hoops.
                 for (int i = 0; i < 8; i++) {
                     double angle = i * Math.PI / 4;
                     float x = cx + (float) (Math.cos(angle) * r);
                     float z = cz + (float) (Math.sin(angle) * r);
-                    line(buf, m, x, y0, z, x, y1, z, a);
+                    line(buf, m, w, x, y0, z, x, y1, z, a);
                 }
             }
         }
     }
 
-    private static void box(BufferBuilder buf, Matrix4f m,
+    private static void box(VertexConsumer buf, PoseStack.Pose m, float w,
                             float x0, float y0, float z0, float x1, float y1, float z1, float a) {
-        line(buf, m, x0, y0, z0, x1, y0, z0, a);
-        line(buf, m, x1, y0, z0, x1, y0, z1, a);
-        line(buf, m, x1, y0, z1, x0, y0, z1, a);
-        line(buf, m, x0, y0, z1, x0, y0, z0, a);
+        line(buf, m, w, x0, y0, z0, x1, y0, z0, a);
+        line(buf, m, w, x1, y0, z0, x1, y0, z1, a);
+        line(buf, m, w, x1, y0, z1, x0, y0, z1, a);
+        line(buf, m, w, x0, y0, z1, x0, y0, z0, a);
 
-        line(buf, m, x0, y1, z0, x1, y1, z0, a);
-        line(buf, m, x1, y1, z0, x1, y1, z1, a);
-        line(buf, m, x1, y1, z1, x0, y1, z1, a);
-        line(buf, m, x0, y1, z1, x0, y1, z0, a);
+        line(buf, m, w, x0, y1, z0, x1, y1, z0, a);
+        line(buf, m, w, x1, y1, z0, x1, y1, z1, a);
+        line(buf, m, w, x1, y1, z1, x0, y1, z1, a);
+        line(buf, m, w, x0, y1, z1, x0, y1, z0, a);
 
-        line(buf, m, x0, y0, z0, x0, y1, z0, a);
-        line(buf, m, x1, y0, z0, x1, y1, z0, a);
-        line(buf, m, x1, y0, z1, x1, y1, z1, a);
-        line(buf, m, x0, y0, z1, x0, y1, z1, a);
+        line(buf, m, w, x0, y0, z0, x0, y1, z0, a);
+        line(buf, m, w, x1, y0, z0, x1, y1, z0, a);
+        line(buf, m, w, x1, y0, z1, x1, y1, z1, a);
+        line(buf, m, w, x0, y0, z1, x0, y1, z1, a);
     }
 
-    private static void circleXZ(BufferBuilder buf, Matrix4f m,
+    private static void circleXZ(VertexConsumer buf, PoseStack.Pose m, float w,
                                  float cx, float cy, float cz, float r, float a) {
         int segments = segmentsFor(r);
         for (int i = 0; i < segments; i++) {
             double t0 = i * 2 * Math.PI / segments;
             double t1 = (i + 1) * 2 * Math.PI / segments;
-            line(buf, m,
+            line(buf, m, w,
                     cx + (float) (Math.cos(t0) * r), cy, cz + (float) (Math.sin(t0) * r),
                     cx + (float) (Math.cos(t1) * r), cy, cz + (float) (Math.sin(t1) * r), a);
         }
     }
 
-    private static void circleXY(BufferBuilder buf, Matrix4f m,
+    private static void circleXY(VertexConsumer buf, PoseStack.Pose m, float w,
                                  float cx, float cy, float cz, float r, float a) {
         int segments = segmentsFor(r);
         for (int i = 0; i < segments; i++) {
             double t0 = i * 2 * Math.PI / segments;
             double t1 = (i + 1) * 2 * Math.PI / segments;
-            line(buf, m,
+            line(buf, m, w,
                     cx + (float) (Math.cos(t0) * r), cy + (float) (Math.sin(t0) * r), cz,
                     cx + (float) (Math.cos(t1) * r), cy + (float) (Math.sin(t1) * r), cz, a);
         }
     }
 
-    private static void circleYZ(BufferBuilder buf, Matrix4f m,
+    private static void circleYZ(VertexConsumer buf, PoseStack.Pose m, float w,
                                  float cx, float cy, float cz, float r, float a) {
         int segments = segmentsFor(r);
         for (int i = 0; i < segments; i++) {
             double t0 = i * 2 * Math.PI / segments;
             double t1 = (i + 1) * 2 * Math.PI / segments;
-            line(buf, m,
+            line(buf, m, w,
                     cx, cy + (float) (Math.cos(t0) * r), cz + (float) (Math.sin(t0) * r),
                     cx, cy + (float) (Math.cos(t1) * r), cz + (float) (Math.sin(t1) * r), a);
         }
@@ -581,12 +535,11 @@ public final class ZoneBorderRenderer {
         return (int) Math.max(12, Math.min(256, Math.round(2 * Math.PI * r / SEGMENT_BLOCKS)));
     }
 
-    private static void line(BufferBuilder buf, Matrix4f m,
+    private static void line(VertexConsumer buf, PoseStack.Pose m, float w,
                              float ax, float ay, float az, float bx, float by, float bz, float a) {
         float r = ((borderRgb >> 16) & 0xFF) / 255f;
         float g = ((borderRgb >> 8) & 0xFF) / 255f;
         float b = (borderRgb & 0xFF) / 255f;
-        buf.addVertex(m, ax, ay, az).setColor(r, g, b, a);
-        buf.addVertex(m, bx, by, bz).setColor(r, g, b, a);
+        WorldOverlayRenderTypes.line(buf, m, w, ax, ay, az, bx, by, bz, r, g, b, a);
     }
 }

@@ -5,10 +5,10 @@ import net.bananemdnsa.historystages.compat.ScrollVariants;
 import net.bananemdnsa.historystages.init.ModItems;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
+import net.bananemdnsa.historystages.platform.Dist;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
+import net.bananemdnsa.historystages.platform.event.entity.player.PlayerInteractEvent;
 
 /**
  * Opens the open scroll document on right-click.
@@ -30,7 +30,7 @@ public final class OpenScrollHandler {
         // inside BufferUploader.reset() *after* Minecraft has already stored the new screen but
         // *before* it calls init() on it, leaving a screen with a null font that kills the very
         // next frame. The guard has to come first, before anything touches a client class.
-        if (!event.getLevel().isClientSide()) return;
+        if (!event.getEntity().level().isClientSide()) return;
 
         ItemStack stack = event.getItemStack();
         if (!stack.is(ModItems.RESEARCH_SCROLL_OPEN.get())) return;
@@ -43,7 +43,7 @@ public final class OpenScrollHandler {
         OpenScrollScreen.playPageTurn();
         // An untagged scroll still opens: the screen says the stage is unknown, which beats an
         // item that silently does nothing when you click it.
-        Minecraft.getInstance().setScreen(new OpenScrollScreen(stageId == null ? "" : stageId));
+        Minecraft.getInstance().gui.setScreen(new OpenScrollScreen(stageId == null ? "" : stageId));
         event.setCanceled(true);
     }
 }

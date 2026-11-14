@@ -1,16 +1,14 @@
 package net.bananemdnsa.historystages.neoforge.events;
 
-import com.mojang.blaze3d.vertex.PoseStack;
 import net.bananemdnsa.historystages.platform.bus.EventBus;
 import net.bananemdnsa.historystages.platform.bus.EventPriority;
-import net.minecraft.client.Minecraft;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.RecipesReceivedEvent;
 import net.neoforged.neoforge.client.event.RegisterClientCommandsEvent;
 import net.neoforged.neoforge.client.event.RenderGuiEvent;
-import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+import net.neoforged.neoforge.client.event.SubmitCustomGeometryEvent;
 import net.neoforged.neoforge.client.event.ScreenEvent;
 
 /**
@@ -27,7 +25,7 @@ public final class ClientBridge {
         Bridges.listen(bus, RecipesReceivedEvent.class, ClientBridge::recipesReceived);
         Bridges.listen(bus, RegisterClientCommandsEvent.class, ClientBridge::registerClientCommands);
         Bridges.listen(bus, RenderGuiEvent.Post.class, ClientBridge::renderGuiPost);
-        Bridges.listen(bus, RenderLevelStageEvent.AfterTranslucentBlocks.class, ClientBridge::afterTranslucentBlocks);
+        Bridges.listen(bus, SubmitCustomGeometryEvent.class, ClientBridge::submitCustomGeometry);
         Bridges.listen(bus, ScreenEvent.Init.Post.class, ClientBridge::screenInitPost);
         Bridges.listen(bus, ScreenEvent.Render.Post.class, ClientBridge::screenRenderPost);
         Bridges.listenCancellable(bus, ScreenEvent.MouseButtonPressed.Pre.class, ClientBridge::mousePressedPre);
@@ -69,23 +67,16 @@ public final class ClientBridge {
     }
 
     /**
-     * NeoForge 26.2 turned the stage enum into one subclass per stage and passes no PoseStack here
-     * (it is null for this stage), only the view matrix. The handlers were written against a
-     * PoseStack that already carries the camera rotation, so one is built from that matrix. The
-     * camera is no longer on the event either.
+     * 26.2 draws level geometry from submissions, not from code that runs mid-pass. NeoForge's own
+     * advice for custom geometry is this event rather than a {@code RenderLevelStageEvent} stage.
      */
-    private static void afterTranslucentBlocks(RenderLevelStageEvent.AfterTranslucentBlocks event, EventPriority priority) {
-        if (!Bridges.wanted(net.bananemdnsa.historystages.platform.event.client.RenderLevelStageEvent.class, priority)) {
+    private static void submitCustomGeometry(SubmitCustomGeometryEvent event, EventPriority priority) {
+        if (!Bridges.wanted(net.bananemdnsa.historystages.platform.event.client.SubmitCustomGeometryEvent.class, priority)) {
             return;
         }
-        PoseStack poseStack = event.getPoseStack();
-        if (poseStack == null) {
-            poseStack = new PoseStack();
-            poseStack.mulPose(event.getModelViewMatrix());
-        }
-        EventBus.post(new net.bananemdnsa.historystages.platform.event.client.RenderLevelStageEvent(
-                net.bananemdnsa.historystages.platform.event.client.RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS,
-                poseStack, Minecraft.getInstance().gameRenderer.mainCamera()), priority);
+        var camera = event.getLevelRenderState().cameraRenderState;
+        EventBus.post(new net.bananemdnsa.historystages.platform.event.client.SubmitCustomGeometryEvent(
+                event.getSubmitNodeCollector(), event.getPoseStack(), camera.pos, camera.orientation), priority);
     }
 
     private static void screenInitPost(ScreenEvent.Init.Post event, EventPriority priority) {

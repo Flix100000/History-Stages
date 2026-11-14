@@ -5,12 +5,12 @@ import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.client.cache.ClientZoneShapes;
 import net.bananemdnsa.historystages.data.lock.ZoneGeometry;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.player.LocalPlayer;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.RenderGuiEvent;
+import net.bananemdnsa.historystages.platform.Dist;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
+import net.bananemdnsa.historystages.platform.event.client.RenderGuiEvent;
 
 /**
  * Tints the screen while the player stands inside a locked zone that asked for it.
@@ -35,20 +35,20 @@ public final class ZoneOverlayRenderer {
         Minecraft mc = Minecraft.getInstance();
         LocalPlayer player = mc.player;
         if (player == null || player.isSpectator()) return;
-        if (mc.options.hideGui || mc.level == null) return;
+        if (mc.gui.hud.isHidden() || mc.level == null) return;
 
         double opacity = Config.VISUAL.zoneLockOverlayOpacity.get();
         if (opacity <= 0.0) return;
 
-        if (!insideAnOverlayZone(player, mc.level.getMinBuildHeight(), mc.level.getMaxBuildHeight())) {
+        if (!insideAnOverlayZone(player, mc.level.getMinY(), mc.level.getMaxY() + 1)) {
             return;
         }
 
         int alpha = (int) Math.round(Math.min(1.0, opacity) * 255.0);
-        // ARGB: GuiGraphics#fill takes 0xAARRGGBB.
+        // ARGB: GuiGraphicsExtractor#fill takes 0xAARRGGBB.
         int colour = (alpha << 24) | 0x00C00000;
 
-        GuiGraphics gg = event.getGuiGraphics();
+        GuiGraphicsExtractor gg = event.getGuiGraphics();
         gg.fill(0, 0, gg.guiWidth(), gg.guiHeight(), colour);
     }
 

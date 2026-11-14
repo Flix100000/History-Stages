@@ -37,7 +37,8 @@
   ],
   "client": [
     "client.ClientCommandTreeMixin",
-    "client.ClientUseItemOnMixin"
+    "client.ClientUseItemOnMixin",
+    "client.ItemDecorationsMixin"
   ],
   "injectors": {
     "defaultRequire": 1

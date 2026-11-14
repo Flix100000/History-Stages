@@ -57,6 +57,13 @@ public final class ClientRecipes {
         PacketHandler.sendToServer(new RequestRecipeListPacket());
     }
 
+    /** Forgets the server's list when the client leaves; the next world starts without one. */
+    public static void clear() {
+        serverList = List.of();
+        listFor = null;
+        version++;
+    }
+
     public static void acceptServerList(byte[] gzippedJson) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null || mc.getConnection() == null) return;

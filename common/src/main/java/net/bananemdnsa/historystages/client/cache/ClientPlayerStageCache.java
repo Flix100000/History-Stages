@@ -16,7 +16,8 @@ public class ClientPlayerStageCache {
     private static Map<UUID, Set<String>> playerStages = new HashMap<>();
 
     public static void set(Map<UUID, Set<String>> stages) {
-        playerStages = stages != null ? stages : new HashMap<>();
+        // A copy: in singleplayer the payload is the server's own map, never encoded, and clear() empties it.
+        playerStages = stages != null ? new HashMap<>(stages) : new HashMap<>();
     }
 
     /** False for unknown players, so a not-yet-synced player reads as "does not have it". */

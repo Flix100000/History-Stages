@@ -1,23 +1,15 @@
 package net.bananemdnsa.historystages.client;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.BufferBuilder;
-import com.mojang.blaze3d.vertex.BufferUploader;
-import com.mojang.blaze3d.vertex.DefaultVertexFormat;
-import com.mojang.blaze3d.vertex.MeshData;
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.Tesselator;
-import com.mojang.blaze3d.vertex.VertexFormat;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.client.cache.ClientZoneSelection;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
-import org.joml.Matrix4f;
+import net.bananemdnsa.historystages.platform.Dist;
+import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
+import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
+import net.bananemdnsa.historystages.platform.event.client.SubmitCustomGeometryEvent;
 
 /**
  * Draws the two corners the player has marked out, as a wireframe box.
@@ -43,14 +35,13 @@ public final class ZoneSelectionRenderer {
     private ZoneSelectionRenderer() {}
 
     @SubscribeEvent
-    public static void onRenderLevel(RenderLevelStageEvent event) {
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS) return;
+    public static void onSubmitGeometry(SubmitCustomGeometryEvent event) {
         if (!ClientZoneSelection.hasFirst() && !ClientZoneSelection.hasSecond()) return;
 
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null) return;
         // Coordinates from another world would land somewhere arbitrary in this one.
-        if (!mc.level.dimension().location().toString().equals(ClientZoneSelection.dimension())) {
+        if (!mc.level.dimension().identifier().toString().equals(ClientZoneSelection.dimension())) {
             return;
         }
 
@@ -84,56 +75,39 @@ public final class ZoneSelectionRenderer {
             z1 = cz + 1 + SINGLE_CORNER_PADDING;
         }
 
-        Vec3 cam = event.getCamera().getPosition();
+        Vec3 cam = event.getCameraPosition();
+        float width = WorldOverlayRenderTypes.lineWidth();
+        float bx0 = x0, by0 = y0, bz0 = z0, bx1 = x1, by1 = y1, bz1 = z1;
 
-        RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
-        RenderSystem.depthMask(false);
-        RenderSystem.disableDepthTest();
-        RenderSystem.setShader(GameRenderer::getPositionColorShader);
-
+        // Drawn over everything, as the old depth-test-off draw was.
         PoseStack pose = event.getPoseStack();
         pose.pushPose();
         pose.translate(-cam.x, -cam.y, -cam.z);
-        Matrix4f matrix = pose.last().pose();
-
-        BufferBuilder buffer = Tesselator.getInstance().begin(
-                VertexFormat.Mode.DEBUG_LINES, DefaultVertexFormat.POSITION_COLOR);
-        edges(buffer, matrix, x0, y0, z0, x1, y1, z1);
-
-        MeshData mesh = buffer.build();
-        if (mesh != null) {
-            BufferUploader.drawWithShader(mesh);
-        }
-
+        event.getSubmitNodeCollector().submitCustomGeometry(pose, WorldOverlayRenderTypes.linesOnTop(),
+                (p, buffer) -> edges(buffer, p, width, bx0, by0, bz0, bx1, by1, bz1));
         pose.popPose();
-
-        RenderSystem.enableDepthTest();
-        RenderSystem.depthMask(true);
-        RenderSystem.disableBlend();
     }
 
-    private static void edges(BufferBuilder buf, Matrix4f m,
+    private static void edges(VertexConsumer buf, PoseStack.Pose m, float w,
                               float x0, float y0, float z0, float x1, float y1, float z1) {
-        line(buf, m, x0, y0, z0, x1, y0, z0);
-        line(buf, m, x1, y0, z0, x1, y0, z1);
-        line(buf, m, x1, y0, z1, x0, y0, z1);
-        line(buf, m, x0, y0, z1, x0, y0, z0);
+        line(buf, m, w, x0, y0, z0, x1, y0, z0);
+        line(buf, m, w, x1, y0, z0, x1, y0, z1);
+        line(buf, m, w, x1, y0, z1, x0, y0, z1);
+        line(buf, m, w, x0, y0, z1, x0, y0, z0);
 
-        line(buf, m, x0, y1, z0, x1, y1, z0);
-        line(buf, m, x1, y1, z0, x1, y1, z1);
-        line(buf, m, x1, y1, z1, x0, y1, z1);
-        line(buf, m, x0, y1, z1, x0, y1, z0);
+        line(buf, m, w, x0, y1, z0, x1, y1, z0);
+        line(buf, m, w, x1, y1, z0, x1, y1, z1);
+        line(buf, m, w, x1, y1, z1, x0, y1, z1);
+        line(buf, m, w, x0, y1, z1, x0, y1, z0);
 
-        line(buf, m, x0, y0, z0, x0, y1, z0);
-        line(buf, m, x1, y0, z0, x1, y1, z0);
-        line(buf, m, x1, y0, z1, x1, y1, z1);
-        line(buf, m, x0, y0, z1, x0, y1, z1);
+        line(buf, m, w, x0, y0, z0, x0, y1, z0);
+        line(buf, m, w, x1, y0, z0, x1, y1, z0);
+        line(buf, m, w, x1, y0, z1, x1, y1, z1);
+        line(buf, m, w, x0, y0, z1, x0, y1, z1);
     }
 
-    private static void line(BufferBuilder buf, Matrix4f m,
+    private static void line(VertexConsumer buf, PoseStack.Pose m, float w,
                              float ax, float ay, float az, float bx, float by, float bz) {
-        buf.addVertex(m, ax, ay, az).setColor(R, G, B, A);
-        buf.addVertex(m, bx, by, bz).setColor(R, G, B, A);
+        WorldOverlayRenderTypes.line(buf, m, w, ax, ay, az, bx, by, bz, R, G, B, A);
     }
 }
