@@ -128,9 +128,9 @@ public class InteractionLockHandler {
      * Best-effort classification of a right-click interaction into one recognised action.
      * Item-driven actions (name tag, lead, shears, bucket, saddle/armor) take precedence, then
      * breeding (feeding the target its food), trading (merchants), mounting (empty-hand on a
-     * rideable), and finally the {@code other} catch-all.
+     * rideable), and finally the {@code other} catch-all. Public for the GameTests.
      */
-    private static String classifyAction(Entity target, ItemStack held) {
+    public static String classifyAction(Entity target, ItemStack held) {
         Item item = held.getItem();
         if (item == Items.NAME_TAG) return "name";
         if (item == Items.LEAD) return "leash";
@@ -152,8 +152,10 @@ public class InteractionLockHandler {
         return equippable != null && equippable.slot() == EquipmentSlot.BODY;
     }
 
-    // 26.2 dropped Saddleable: a saddle is an equipment slot now.
+    // 26.2 dropped Saddleable. Every living entity "can use" the saddle slot by default, so ask
+    // whether a saddle would actually go on (the saddle's allowed-entities list), as Saddleable did.
     private static boolean takesSaddle(Entity target) {
-        return target instanceof LivingEntity living && living.canUseSlot(EquipmentSlot.SADDLE);
+        return target instanceof LivingEntity living
+                && living.isEquippableInSlot(new ItemStack(Items.SADDLE), EquipmentSlot.SADDLE);
     }
 }
