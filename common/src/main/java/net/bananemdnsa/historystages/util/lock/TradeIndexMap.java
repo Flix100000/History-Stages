@@ -30,6 +30,16 @@ public final class TradeIndexMap {
         }
     }
 
+    /** The screen this map entry belongs to closed. */
+    public static void forget(UUID player, int containerId) {
+        SHOWN.computeIfPresent(player, (id, shown) -> shown.containerId() == containerId ? null : shown);
+    }
+
+    /** For tests: whether anything is remembered for this player. */
+    public static boolean remembers(UUID player) {
+        return SHOWN.containsKey(player);
+    }
+
     /** The merchant's index for a row the player clicked in this menu. */
     public static int serverIndex(UUID player, int containerId, int row) {
         Shown shown = SHOWN.get(player);

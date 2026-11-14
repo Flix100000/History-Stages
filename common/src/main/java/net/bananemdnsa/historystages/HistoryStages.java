@@ -456,6 +456,8 @@ public class HistoryStages {
         // work, and keeps it out of the middle of whatever else was ticking.
         if (server != null) {
             net.bananemdnsa.historystages.network.PacketHandler.runRequestedLockReload(server);
+            // After every stage change of the tick: one recipe book / stonecutter send per player.
+            net.bananemdnsa.historystages.util.lock.RecipeBookGate.flush(server);
         }
     }
 

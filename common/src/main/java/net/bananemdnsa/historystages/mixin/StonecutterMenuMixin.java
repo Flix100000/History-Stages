@@ -9,6 +9,9 @@ import net.bananemdnsa.historystages.events.RecipeHandler;
 import net.bananemdnsa.historystages.util.lock.LockFeedback;
 import net.bananemdnsa.historystages.util.lock.LockMessages;
 import net.bananemdnsa.historystages.util.lock.RecipeCraftContext;
+import net.bananemdnsa.historystages.util.lock.StonecutterGate;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.StonecutterRecipe;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -32,9 +35,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * where the chosen entry hands over its recipe: a locked one yields no result, both for the
  * preview and for every refill after a take.
  *
- * <p>Server only: the client's entries carry no recipe at all. The button stays visible; the list
- * the client gets is one packet for every player, and a filtered copy per player would shift the
- * button indices the server reads back (PORT(26.2-gap), see the port notes).
+ * <p>The buttons are filtered too, per crafter: on the server here in {@code setupRecipeList},
+ * on the client through the list each player is sent ({@code RecipePacketMixin}), with the same
+ * rule ({@link StonecutterGate}) so the button indices of both sides match. The result-slot gate
+ * stays as the backstop (a list sent before a lock, a modified client). Server only: the
+ * client's entries carry no recipe at all.
  */
 @Mixin(StonecutterMenu.class)
 public class StonecutterMenuMixin {
@@ -51,6 +56,16 @@ public class StonecutterMenuMixin {
     private void historystages$rememberCrafter(int containerId, Inventory playerInventory,
                                                ContainerLevelAccess access, CallbackInfo ci) {
         this.historystages$crafter = playerInventory.player;
+    }
+
+    @WrapOperation(method = "setupRecipeList", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/world/item/crafting/SelectableRecipe$SingleInputSet;selectByInput(Lnet/minecraft/world/item/ItemStack;)Lnet/minecraft/world/item/crafting/SelectableRecipe$SingleInputSet;"))
+    private SelectableRecipe.SingleInputSet<StonecutterRecipe> historystages$buttonsForCrafter(
+            SelectableRecipe.SingleInputSet<StonecutterRecipe> all, ItemStack input,
+            Operation<SelectableRecipe.SingleInputSet<StonecutterRecipe>> original) {
+        SelectableRecipe.SingleInputSet<StonecutterRecipe> matching = original.call(all, input);
+        return this.historystages$crafter instanceof ServerPlayer player
+                ? StonecutterGate.forPlayer(player, matching) : matching;
     }
 
     @WrapOperation(method = "setupResultSlot", at = @At(value = "INVOKE",

@@ -7,6 +7,7 @@ import java.util.Set;
 
 import net.bananemdnsa.historystages.api.stage.StageStates;
 import net.bananemdnsa.historystages.data.saveddata.IndividualStageData;
+import net.bananemdnsa.historystages.util.lock.RecipeBookGate;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.protocol.Packet;
@@ -57,6 +58,15 @@ public final class RecipeBookTests {
             }
             sent.clear();
             StageStates.unlockIndividual(stageId, player);
+            // A second mark in the same tick (a pedestal syncs stages more than once) must not
+            // send a second book.
+            RecipeBookGate.resend(player);
+            RecipeBookGate.flush(helper.getLevel().getServer());
+            long books = sent.stream().filter(p -> p instanceof ClientboundRecipeBookAddPacket b && b.replace()).count();
+            if (books != 1) {
+                helper.fail("one stage change in one tick sent " + books + " recipe books, expected 1");
+                return;
+            }
             if (!Boolean.TRUE.equals(lastBookShowsIt(helper, sent))) {
                 helper.fail("the player unlocked the stage holding " + LOCKED_RECIPE
                         + ", but no book with it was sent");

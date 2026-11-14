@@ -14,7 +14,8 @@ import org.spongepowered.asm.mixin.injection.At;
 @Mixin(Entity.class)
 public class EntityStepSoundMixin {
 
-    @WrapOperation(method = {"playCombinationStepSounds", "playMuffledStepSound", "playStepSound"},
+    // One call site in each of the three methods; require = 3 so a lost one fails loudly.
+    @WrapOperation(method = {"playCombinationStepSounds", "playMuffledStepSound", "playStepSound"}, require = 3,
             at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/block/state/BlockState;"
                     + "playStepSound(Lnet/minecraft/world/level/Level;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/entity/Entity;FF)V"))
     private void historystages$disguiseStep(BlockState state, Level level, BlockPos pos, Entity entity,

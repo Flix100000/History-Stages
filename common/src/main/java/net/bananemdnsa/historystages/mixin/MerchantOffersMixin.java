@@ -1,7 +1,7 @@
 package net.bananemdnsa.historystages.mixin;
 
+import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.bananemdnsa.historystages.network.PacketHandler;
 import net.bananemdnsa.historystages.network.clientbound.TradeLockedPacket;
 import net.bananemdnsa.historystages.util.DebugLogger;
@@ -9,90 +9,70 @@ import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import net.bananemdnsa.historystages.util.lock.TradeIndexMap;
 import net.bananemdnsa.historystages.util.lock.TradeLockHelper;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.MerchantMenu;
 import net.minecraft.world.item.trading.Merchant;
 import net.minecraft.world.item.trading.MerchantOffers;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.injection.At;
 
 /**
  * The first trade seam: the player is shown only the offers they may see.
  *
- * <p>On the interface rather than on {@code Villager}, and that is the whole point. Neither
- * {@code AbstractVillager}, {@code Villager} nor {@code WanderingTrader} overrides
- * {@link Merchant#openTradingScreen} — all three inherit it — and so does every merchant any
- * other mod writes. One seam therefore covers a modded trader nobody here has ever heard of,
- * without naming its class. A merchant that <em>does</em> override it is past us; the second seam
- * below still refuses the purchase.
+ * <p>On the one method every offer list passes through on its way to a player. 1.21.1 wrapped
+ * the call in {@code Merchant.openTradingScreen}, which covered opening the screen but not
+ * {@code Villager.resendOffersToTradingPlayer} (restock, catching up on demand): that sent the full
+ * list into the open screen, locked offers included. Here both go through the same filter, and
+ * the rows the player was sent are remembered ({@link TradeIndexMap}) so a click selects the
+ * offer that row stands for.
  *
- * <p><strong>Only the one call that hands the list over is wrapped.</strong> Not the method around
- * it. Cancelling {@code openTradingScreen} and running our own version of its body — which is what
- * this did until #130's round of cleanup — takes the method away from everyone else who injected
- * into it, every time a stage happens to gate an offer, and leaves a copy of one Minecraft
- * version's code sitting in the mod for the next port to get wrong.
+ * <p>The merchant comes from the open menu: every caller sends the offers for the menu that is
+ * open. Anything else goes through untouched.
  *
  * <p><strong>The merchant keeps its real list.</strong> Only the copy sent to this player is
- * short. {@code overrideOffers} would change the merchant permanently, and a stage that is later
- * unlocked could not give the offer back — the one-way behaviour this whole category was designed
- * to avoid.
- *
- * <p>Nothing is drawn as locked, because there is no locked trade to draw: it is simply absent.
- * A merchant with one offer instead of two is unremarkable. A merchant with <em>none</em> is not,
- * so that case — and only that case — says why, and it says it inside the window the player is
- * looking at rather than in the actionbar under it. The player is staring at an empty list; the
- * explanation belongs where they are looking.
+ * short; a stage unlocked later gives the offer back. Nothing is drawn as locked: the offer is
+ * simply absent. A merchant with <em>none</em> left says why, inside the trade window.
  *
  * <p>This seam is about what the player sees. It is not the security boundary: a modified client
  * could ask to pay for an offer it was never sent, which is what {@link MerchantContainerMixin}
  * is for.
  */
-@Mixin(Merchant.class)
-public interface MerchantOffersMixin {
+@Mixin(ServerPlayer.class)
+public abstract class MerchantOffersMixin {
 
-    @WrapOperation(
-            method = "openTradingScreen",
-            at = @At(value = "INVOKE",
-                    target = "Lnet/minecraft/world/entity/player/Player;sendMerchantOffers"
-                            + "(ILnet/minecraft/world/item/trading/MerchantOffers;IIZZ)V"))
-    private void historystages$sendOnlyWhatIsUnlocked(Player player, int containerId,
-                                                      MerchantOffers offers, int level, int xp,
+    @WrapMethod(method = "sendMerchantOffers")
+    private void historystages$sendOnlyWhatIsUnlocked(int containerId, MerchantOffers offers, int level, int xp,
                                                       boolean showProgress, boolean canRestock,
                                                       Operation<Void> original) {
-        Merchant merchant = (Merchant) this;
-        if (merchant.isClientSide() || !(player instanceof ServerPlayer serverPlayer)) {
-            original.call(player, containerId, offers, level, xp, showProgress, canRestock);
+        ServerPlayer player = (ServerPlayer) (Object) this;
+        if (!(player.containerMenu instanceof MerchantMenu menu) || menu.containerId != containerId) {
+            original.call(containerId, offers, level, xp, showProgress, canRestock);
             return;
         }
-
-        TradeLockHelper.Filtered filtered =
-                TradeLockHelper.filterForPlayer(offers, merchant, level, serverPlayer);
+        Merchant merchant = ((MerchantMenuAccessor) menu).historystages$trader();
+        TradeLockHelper.Filtered filtered = TradeLockHelper.filterForPlayer(offers, merchant, level, player);
         if (!filtered.removedAnything()) {
-            TradeIndexMap.shown(serverPlayer.getUUID(), containerId, null);
-            original.call(player, containerId, offers, level, xp, showProgress, canRestock);
+            TradeIndexMap.shown(player.getUUID(), containerId, null);
+            original.call(containerId, offers, level, xp, showProgress, canRestock);
             return;
         }
-        TradeIndexMap.shown(serverPlayer.getUUID(), containerId, filtered.keptIndices());
-
+        TradeIndexMap.shown(player.getUUID(), containerId, filtered.keptIndices());
         MerchantOffers shown = new MerchantOffers();
         for (int index : filtered.keptIndices()) {
             shown.add(offers.get(index));
         }
-        original.call(player, containerId, shown, level, xp, showProgress, canRestock);
-
+        original.call(containerId, shown, level, xp, showProgress, canRestock);
         DebugLogger.runtimeThrottled(HsRuntimeCategories.TRADE_LOCK,
-                "trade_" + serverPlayer.getUUID() + "_" + filtered.gatingStages(),
-                "<" + serverPlayer.getName().getString() + "> " + filtered.keptIndices().size()
+                "trade_" + player.getUUID() + "_" + filtered.gatingStages(),
+                "<" + player.getName().getString() + "> " + filtered.keptIndices().size()
                         + " of " + filtered.offeredCount() + " offers shown — held back by: "
                         + filtered.gatingStages());
-
         // Only when nothing at all survived. An empty list is sent rather than no list: the client
         // then knows it has none, instead of sitting on the menu's own empty one waiting.
         if (filtered.removedEverything()) {
             PacketHandler.sendTradeLockedToPlayer(
                     new TradeLockedPacket(containerId,
-                            TradeLockHelper.displayNamesOf(filtered.gatingStages(), serverPlayer.getUUID()),
+                            TradeLockHelper.displayNamesOf(filtered.gatingStages(), player.getUUID()),
                             TradeLockHelper.kindOf(filtered.gatingStages())),
-                    serverPlayer);
+                    player);
         }
     }
 }

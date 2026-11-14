@@ -74,9 +74,9 @@ public final class GameTestPlayers {
         return player;
     }
 
-    /** Gives a player built elsewhere (a test's own subclass) the swallowing connection. */
-    public static void connect(ServerPlayer player) {
-        new SilentListener(player);
+    /** Gives a player built elsewhere (a test's own subclass) a connection that records what it is sent. */
+    public static void connectCapturing(ServerPlayer player, java.util.List<Packet<?>> sink) {
+        new SilentListener(player, sink);
     }
 
     /** A connected player whose vanilla packets land in {@code sink}, for tests about what is sent. */
@@ -99,14 +99,25 @@ public final class GameTestPlayers {
         }
 
         SilentListener(ServerPlayer player, @Nullable java.util.List<Packet<?>> sink) {
-            super(player.level().getServer(), new Connection(PacketFlow.SERVERBOUND), player,
+            super(player.level().getServer(), recordingConnection(sink), player,
                     CommonListenerCookie.createInitial(player.getGameProfile(), false));
             this.sink = sink;
         }
 
+        /** Hands vanilla packets to the sink as they would go on the wire. */
+        private static Connection recordingConnection(@Nullable java.util.List<Packet<?>> sink) {
+            if (sink == null) return new Connection(PacketFlow.SERVERBOUND);
+            return new Connection(PacketFlow.SERVERBOUND) {
+                @Override
+                public void send(Packet<?> packet, @Nullable ChannelFutureListener listener, boolean flush) {
+                    sink.add(packet);
+                }
+            };
+        }
+
         @Override
         public void send(Packet<?> packet) {
-            if (sink != null) sink.add(packet);
+            send(packet, null);
         }
 
         // Interaction packets are dropped until the client reports its world as loaded.
@@ -121,9 +132,19 @@ public final class GameTestPlayers {
             return true;
         }
 
+        /**
+         * A capturing player sends vanilla packets down the real path (so anything hooked into it,
+         * like the per-player recipe packet, applies) into the recording connection. Mod payloads
+         * are recorded here: NeoForge refuses them for a player that negotiated no channels.
+         */
         @Override
         public void send(Packet<?> packet, @Nullable ChannelFutureListener listener) {
-            send(packet);
+            if (sink == null) return;
+            if (packet instanceof net.minecraft.network.protocol.common.ClientboundCustomPayloadPacket) {
+                sink.add(packet);
+            } else {
+                super.send(packet, listener);
+            }
         }
     }
 }

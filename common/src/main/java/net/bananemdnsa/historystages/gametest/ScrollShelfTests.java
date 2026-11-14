@@ -175,7 +175,7 @@ public final class ScrollShelfTests {
         helper.succeedWhen(() -> {
             int light = helper.getLevel().getBrightness(LightLayer.BLOCK, helper.absolutePos(SHELF));
             if (light == 0) {
-                helper.fail("no light gets into the shelf, so its slots would render black");
+                helper.fail("no light gets into the shelf, so its slots would render black " + lightProbe(helper));
             } else if (light > 12) {
                 helper.fail("light " + light + " in the shelf: it shines through the back wall");
             }
@@ -206,6 +206,30 @@ public final class ScrollShelfTests {
         } else {
             helper.succeed();
         }
+    }
+
+    /** What the light engine knows around the shelf, for a failure message. */
+    private static String lightProbe(GameTestHelper helper) {
+        var level = helper.getLevel();
+        var engine = level.getLightEngine();
+        BlockPos shelf = helper.absolutePos(SHELF);
+        BlockPos glow = shelf.south();
+        StringBuilder out = new StringBuilder("[probe");
+        out.append(" glowstone=").append(level.getBlockState(glow).getBlock());
+        for (var entry : java.util.Map.of("glow", glow, "aboveGlow", glow.above(), "aboveShelf", shelf.above(),
+                "front", shelf.north(), "frontAbove", shelf.north().above()).entrySet()) {
+            out.append(' ').append(entry.getKey()).append('=').append(level.getBrightness(LightLayer.BLOCK, entry.getValue()));
+        }
+        for (BlockPos pos : new BlockPos[] {shelf, glow, shelf.north()}) {
+            var section = net.minecraft.core.SectionPos.of(pos);
+            var chunk = net.minecraft.world.level.ChunkPos.containing(pos);
+            out.append(" ").append(pos.toShortString()).append(" section=").append(section)
+                    .append(" chunk=").append(chunk)
+                    .append(" lightOn=").append(engine.lightOnInColumn(net.minecraft.core.SectionPos.getZeroNode(chunk.x(), chunk.z())))
+                    .append(" lightCorrect=").append(level.getChunk(chunk.x(), chunk.z()).isLightCorrect())
+                    .append(" type=").append(engine.getDebugSectionType(LightLayer.BLOCK, section));
+        }
+        return out.append(" hasLightWork=").append(engine.hasLightWork()).append(']').toString();
     }
 
     private static void placeShelf(GameTestHelper helper, Direction facing) {
