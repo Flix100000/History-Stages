@@ -663,12 +663,19 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
         return super.mouseScrolled(pMouseX, pMouseY, pScrollX, pScrollY);
     }
 
+    // The original event goes to the container screen: it carries the shift modifier (quick
+    // move) and the double click (collect all), which a rebuilt event would lose.
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        return mouseClicked(event.x(), event.y(), event.button());
+        if (clickedXpDeposit(event.x(), event.y(), event.button())) return true;
+        return super.mouseClicked(event, doubleClick);
     }
 
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        return mouseClicked(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)), false);
+    }
+
+    private boolean clickedXpDeposit(double mouseX, double mouseY, int button) {
         if (hasDependencies && button == 0) {
             ItemStack scroll = menu.getSlot(36).getItem();
             if (!scroll.isEmpty()) {
@@ -705,7 +712,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
                 }
             }
         }
-        return super.mouseClicked(new MouseButtonEvent(mouseX, mouseY, new MouseButtonInfo(button, 0)), false);
+        return false;
     }
 
     /**
