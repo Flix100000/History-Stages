@@ -51,12 +51,15 @@ import net.bananemdnsa.historystages.network.clientbound.StageUnlockedToastPacke
 import net.bananemdnsa.historystages.network.clientbound.SyncStagesPacket;
 import net.bananemdnsa.historystages.network.clientbound.OpenLecternScrollPacket;
 import dev.architectury.networking.NetworkManager;
+import dev.architectury.networking.transformers.PacketTransformer;
+import dev.architectury.networking.transformers.SplitPacketTransformer;
 import net.bananemdnsa.historystages.platform.IPayloadContext;
 import net.bananemdnsa.historystages.platform.Services;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 
+import java.util.List;
 import java.util.function.BiConsumer;
 
 /**
@@ -66,8 +69,14 @@ import java.util.function.BiConsumer;
  * <p>NeoForge's registrar took a protocol version ("2" since the gzipped definitions sync), so a
  * 5.x client got the "incompatible mod" screen. Architectury has no such version; a mismatched
  * client now fails to decode instead.
+ *
+ * <p>Every payload goes through Architectury's split transformer. NeoForge split large payloads
+ * by itself on 1.21.1; vanilla's limits (32 KiB to the server, 1 MiB to the client) would
+ * otherwise disconnect a Fabric player saving a big stage or receiving a big pack.
  */
 public final class ModPayloads {
+
+    private static final List<PacketTransformer> SPLIT = List.of(new SplitPacketTransformer());
 
     private ModPayloads() {}
 
@@ -132,17 +141,17 @@ public final class ModPayloads {
             CustomPacketPayload.Type<T> type, StreamCodec<? super RegistryFriendlyByteBuf, T> codec,
             BiConsumer<T, IPayloadContext> handler) {
         if (Services.isClient()) {
-            NetworkManager.registerReceiver(NetworkManager.s2c(), type, codec,
+            NetworkManager.registerReceiver(NetworkManager.s2c(), type, codec, SPLIT,
                     (payload, context) -> handler.accept(payload, IPayloadContext.of(context)));
         } else {
-            NetworkManager.registerS2CPayloadType(type, codec);
+            NetworkManager.registerS2CPayloadType(type, codec, SPLIT);
         }
     }
 
     private static <T extends CustomPacketPayload> void serverbound(
             CustomPacketPayload.Type<T> type, StreamCodec<? super RegistryFriendlyByteBuf, T> codec,
             BiConsumer<T, IPayloadContext> handler) {
-        NetworkManager.registerReceiver(NetworkManager.c2s(), type, codec,
+        NetworkManager.registerReceiver(NetworkManager.c2s(), type, codec, SPLIT,
                 (payload, context) -> handler.accept(payload, IPayloadContext.of(context)));
     }
 }

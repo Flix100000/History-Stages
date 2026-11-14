@@ -25,5 +25,7 @@ public final class CommonScenarioTests {
         tests.put("interaction/only_saddleable_mobs_are_mounted", InteractionScenarios::onlySaddleableMobsAreMounted);
         tests.put("recipe/a_recipe_without_display_still_has_its_output",
                 net.bananemdnsa.historystages.gametest.RecipeOutputScenarios::aRecipeWithoutDisplayStillHasItsOutput);
+        tests.put("network/a_big_stage_save_fits_the_serverbound_limit",
+                net.bananemdnsa.historystages.gametest.PayloadSizeScenarios::aBigStageSaveFitsTheServerboundLimit);
     }
 }
