@@ -46,7 +46,7 @@ class SeamGuardTest {
         assertTrue(Files.isDirectory(mainJava), "expected the test to run from the project root");
 
         List<String> offenders = new ArrayList<>();
-        try (Stream<Path> files = Files.walk(mainJava)) {
+        try (Stream<Path> files = net.bananemdnsa.historystages.SourceRoots.walk(mainJava)) {
             for (Path file : files.filter(p -> p.toString().endsWith(".java")).toList()) {
                 String unixPath = file.toString().replace('\\', '/');
                 if (EXEMPT_PATH_PARTS.stream().anyMatch(unixPath::contains)) continue;

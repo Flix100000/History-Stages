@@ -39,7 +39,7 @@ class UnlockGateGuardTest {
         assertTrue(Files.isDirectory(main), "expected the test to run from the project root");
 
         List<String> offenders = new ArrayList<>();
-        try (Stream<Path> files = Files.walk(main)) {
+        try (Stream<Path> files = net.bananemdnsa.historystages.SourceRoots.walk(main)) {
             for (Path file : files.filter(p -> p.toString().endsWith(".java")).toList()) {
                 String name = file.getFileName().toString();
                 if (ALLOWED.containsKey(name)) continue;

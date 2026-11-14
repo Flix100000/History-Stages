@@ -39,13 +39,13 @@ class GameTestCleanupGuardTest {
 
     @Test
     void everyTestThatCreatesAStageAlsoRemovesIt() throws IOException {
-        assertTrue(Files.isDirectory(GAMETESTS),
+        assertTrue(!net.bananemdnsa.historystages.SourceRoots.all(GAMETESTS).isEmpty(),
                 "expected to find " + GAMETESTS + " — if the gametests moved, move this guard with"
                         + " them, because a guard that cannot find its files passes for the wrong"
                         + " reason");
 
         List<String> offenders = new ArrayList<>();
-        try (Stream<Path> files = Files.walk(GAMETESTS)) {
+        try (Stream<Path> files = net.bananemdnsa.historystages.SourceRoots.walk(GAMETESTS)) {
             for (Path file : files.filter(path -> path.toString().endsWith(".java")).toList()) {
                 checkFile(file, Files.readString(file), offenders);
             }

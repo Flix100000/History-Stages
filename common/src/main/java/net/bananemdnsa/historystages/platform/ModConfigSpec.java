@@ -28,9 +28,8 @@ import java.util.function.Supplier;
  * straight out of them, and the files this writes have to stay readable by the other loader. A
  * hand-rolled TOML layer would have broken both.
  *
- * <p>What is deliberately missing is a file watcher. On NeoForge it reloads a config mid-session
- * and has been the cause of test flakes there for exactly that reason. Nothing in this mod needs
- * a config to change without someone asking for it.
+ * <p>There is no file watcher in here. The settings folder is watched by the server alone
+ * ({@code ConfigWatcher}), so tests and clients never see a config change under them.
  */
 public final class ModConfigSpec {
 

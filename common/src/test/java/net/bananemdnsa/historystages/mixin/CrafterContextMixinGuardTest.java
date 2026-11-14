@@ -34,7 +34,7 @@ class CrafterContextMixinGuardTest {
         assertTrue(Files.isDirectory(mixins), "expected the test to run from the project root");
 
         List<String> offenders = new ArrayList<>();
-        try (Stream<Path> files = Files.walk(mixins)) {
+        try (Stream<Path> files = net.bananemdnsa.historystages.SourceRoots.walk(mixins)) {
             for (Path file : files.filter(p -> p.toString().endsWith(".java")).toList()) {
                 String text = Files.readString(file);
                 if (text.contains("RecipeCraftContext") && text.contains("@Redirect")) {
