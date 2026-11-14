@@ -27,6 +27,7 @@ public final class AddonEntrypointsImpl {
 
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final Type SUBSCRIBER = Type.getType(EventBusSubscriber.class);
+    private static final String TEST_PACKAGE = "net.bananemdnsa.historystages.neoforge.gametest.";
 
     private AddonEntrypointsImpl() {}
 
@@ -36,8 +37,28 @@ public final class AddonEntrypointsImpl {
             String fileOwner = firstModId(scan);
             scan.getAnnotations().stream()
                     .filter(data -> SUBSCRIBER.equals(data.annotationType()) && data.targetType() == ElementType.TYPE)
+                    .filter(data -> wantedOn(data.annotationData().get("value"), side))
+                    // The GameTest subscriber lives in the main source set; production leaves it out.
+                    .filter(data -> !net.neoforged.fml.loading.FMLEnvironment.isProduction()
+                            || !data.clazz().getClassName().startsWith(TEST_PACKAGE))
                     .forEach(data -> register(data.clazz().getClassName(), fileOwner, side));
         }
+    }
+
+    /**
+     * The annotation's sides, read from the scan data before the class is touched: a client-only
+     * subscriber may name client classes in its signatures, and loading it on a dedicated server
+     * would fail. No value means both sides, the annotation's default.
+     */
+    private static boolean wantedOn(Object value, Dist side) {
+        if (!(value instanceof List<?> sides)) return true;
+        for (Object entry : sides) {
+            if (entry instanceof net.neoforged.fml.loading.modscan.ModAnnotation.EnumHolder holder
+                    && holder.value().equals(side.name())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static void register(String className, String fileOwner, Dist side) {
@@ -50,7 +71,7 @@ public final class AddonEntrypointsImpl {
             // History Stages' own handlers are on the bus already (Handlers lists); the bus skips
             // a class it has seen, so they are not registered twice.
             EventBus.register(type, owner);
-        } catch (ReflectiveOperationException | LinkageError e) {
+        } catch (ReflectiveOperationException | LinkageError | RuntimeException e) {
             LOGGER.error("[HistoryStages] Could not register event subscriber {}", className, e);
         }
     }

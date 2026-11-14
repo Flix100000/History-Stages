@@ -10,6 +10,9 @@ import java.util.function.BiConsumer;
 /** Fabric side of {@code platform.AddonEntrypoints}: the entrypoints from the 1.21.1 Fabric line. */
 public final class AddonEntrypointsImpl {
 
+    private static final org.slf4j.Logger LOGGER = com.mojang.logging.LogUtils.getLogger();
+    private static final String TEST_PACKAGE = "net.bananemdnsa.historystages.fabric.gametest.";
+
     private AddonEntrypointsImpl() {}
 
     public static void discoverSubscribers() {
@@ -30,8 +33,20 @@ public final class AddonEntrypointsImpl {
     private static <T> void each(String key, Class<T> type, BiConsumer<String, T> body) {
         for (EntrypointContainer<T> container : FabricLoader.getInstance().getEntrypointContainers(key, type)) {
             String modId = container.getProvider().getMetadata().getId();
-            T plugin = container.getEntrypoint();
-            LoaderContextImpl.runAs(modId, () -> body.accept(modId, plugin));
+            // The GameTest plugin ships in the jar with the other test entrypoints; outside a
+            // development run it stays out of the registration.
+            if (!FabricLoader.getInstance().isDevelopmentEnvironment()
+                    && container.getDefinition().startsWith(TEST_PACKAGE)) {
+                continue;
+            }
+            // One broken addon must not cost the others their registration; creating the
+            // entrypoint is where a missing class shows up.
+            try {
+                T plugin = container.getEntrypoint();
+                LoaderContextImpl.runAs(modId, () -> body.accept(modId, plugin));
+            } catch (RuntimeException | LinkageError e) {
+                LOGGER.error("[HistoryStages] {} entrypoint of {} failed", key, modId, e);
+            }
         }
     }
 }
