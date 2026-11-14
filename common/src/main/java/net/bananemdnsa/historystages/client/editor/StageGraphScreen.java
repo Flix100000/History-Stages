@@ -718,7 +718,7 @@ public class StageGraphScreen extends Screen {
 
     @Override
     public boolean charTyped(CharacterEvent event) {
-        return charTyped((char) event.codepoint(), 0);
+        return net.bananemdnsa.historystages.client.editor.widget.LegacyInput.eachChar(event.codepoint(), c -> charTyped((char) c, 0));
     }
 
     public boolean charTyped(char codePoint, int modifiers) {

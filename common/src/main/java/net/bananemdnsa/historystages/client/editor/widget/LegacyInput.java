@@ -37,4 +37,16 @@ public final class LegacyInput {
     public static boolean charTyped(GuiEventListener target, char c, int modifiers) {
         return target.charTyped(new CharacterEvent(c));
     }
+
+    /**
+     * 1.21.1 handed a character outside the BMP to {@code charTyped(char, int)} as its two
+     * surrogates, one call each; a plain {@code (char)} cast would cut it to garbage.
+     */
+    public static boolean eachChar(int codepoint, java.util.function.IntPredicate perChar) {
+        if (Character.isBmpCodePoint(codepoint)) return perChar.test(codepoint);
+        if (!Character.isValidCodePoint(codepoint)) return false;
+        boolean handled = false;
+        for (char c : Character.toChars(codepoint)) handled |= perChar.test(c);
+        return handled;
+    }
 }
