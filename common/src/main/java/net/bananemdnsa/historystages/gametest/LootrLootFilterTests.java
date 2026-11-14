@@ -6,11 +6,9 @@ import java.util.Optional;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.bananemdnsa.historystages.Config;
-import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.compat.lootr.StageLootFilter;
 import net.bananemdnsa.historystages.data.ItemEntry;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Item;
@@ -19,11 +17,9 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.storage.loot.LootContext;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
-import net.neoforged.neoforge.gametest.GameTestHolder;
-import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import noobanidus.mods.lootr.common.api.LootrAPI;
-import noobanidus.mods.lootr.common.api.data.LootFiller;
-import noobanidus.mods.lootr.common.api.filter.ILootrFilter;
+import noobanidus.mods.lootr.common.api.filler.ILootFiller;
+import noobanidus.mods.lootr.common.api.interfaces.filter.ILootrFilter;
 
 /**
  * The stage gate on Lootr loot as it is rolled — issue #120.
@@ -43,13 +39,11 @@ import noobanidus.mods.lootr.common.api.filter.ILootrFilter;
  * useReplacements} is global, and {@link #aReplacementTakesThePlaceOfALockedItem} flips it while
  * they run.
  */
-@GameTestHolder(HistoryStages.MOD_ID)
-@PrefixGameTestTemplate(false)
 public final class LootrLootFilterTests {
 
     private LootrLootFilterTests() {}
 
-    @GameTest(template = "empty")
+    @HsGameTest
     public static void theFilterIsRegisteredWithLootr(GameTestHelper helper) {
         String expected = new StageLootFilter().getName();
 
@@ -64,7 +58,7 @@ public final class LootrLootFilterTests {
                 + "because the other tests build the filter themselves");
     }
 
-    @GameTest(template = "empty")
+    @HsGameTest
     public static void aGloballyLockedItemIsStrippedFromTheRoll(GameTestHelper helper) {
         try {
             lockGlobally("rolled_global", Items.NETHERITE_INGOT);
@@ -84,7 +78,7 @@ public final class LootrLootFilterTests {
         }
     }
 
-    @GameTest(template = "empty")
+    @HsGameTest
     public static void anIndividuallyLockedItemIsStrippedForThatPlayer(GameTestHelper helper) {
         try {
             GameTestStages.individual("rolled_individual", stage -> stage.setItemEntries(
@@ -106,7 +100,7 @@ public final class LootrLootFilterTests {
         }
     }
 
-    @GameTest(template = "empty")
+    @HsGameTest
     public static void anUnstagedItemSurvivesTheRoll(GameTestHelper helper) {
         // The counter-case: without it a filter that empties every list passes the two above.
         // A locked stage is put up all the same, holding a different item, so the scan really
@@ -129,7 +123,7 @@ public final class LootrLootFilterTests {
         }
     }
 
-    @GameTest(template = "empty")
+    @HsGameTest
     public static void aRollWithoutLootrStateIsLeftAlone(GameTestHelper helper) {
         // Lootr's hook sits in LootTable.fill, so the filter also sees every vanilla chest the
         // world generates. A null filler state is the only thing separating those from a player's
@@ -152,7 +146,7 @@ public final class LootrLootFilterTests {
         }
     }
 
-    @GameTest(template = "empty")
+    @HsGameTest
     public static void aReplacementTakesThePlaceOfALockedItem(GameTestHelper helper) {
         boolean wasOn = Config.GAMEPLAY.useReplacements.get();
         try {
@@ -181,8 +175,8 @@ public final class LootrLootFilterTests {
     }
 
     private static void roll(GameTestHelper helper, ObjectArrayList<ItemStack> loot, ServerPlayer player) {
-        LootFiller.LootFillerState state =
-                new LootFiller.LootFillerState(null, player, null, null, null, null, 0L);
+        ILootFiller.LootFillerState state =
+                new ILootFiller.LootFillerState(null, player, null, null, null, null, 0L);
         new StageLootFilter().mutate(loot, state, contextIn(helper), helper.getLevel().getRandom());
     }
 

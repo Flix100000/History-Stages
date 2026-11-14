@@ -13,6 +13,10 @@ dependencies {
     compileOnly "com.electronwill.night-config:core:3.9.0"
     compileOnly "com.electronwill.night-config:toml:3.9.0"
 
+    // Lootr's filter API lives in its loader-neutral package; the Fabric jar is only the
+    // carrier here, the platforms put their own Lootr on the classpath.
+    compileOnly "maven.modrinth:lootr:${rootProject.lootr_fabric_modrinth_id}"
+
     testImplementation platform("org.junit:junit-bom:5.10.2")
     testImplementation "org.junit.jupiter:junit-jupiter"
     testRuntimeOnly "org.junit.platform:junit-platform-launcher"

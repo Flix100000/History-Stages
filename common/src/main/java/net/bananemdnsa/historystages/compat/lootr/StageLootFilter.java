@@ -8,8 +8,8 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.storage.loot.LootContext;
-import noobanidus.mods.lootr.common.api.data.LootFiller;
-import noobanidus.mods.lootr.common.api.filter.ILootrFilter;
+import noobanidus.mods.lootr.common.api.filler.ILootFiller;
+import noobanidus.mods.lootr.common.api.interfaces.filter.ILootrFilter;
 
 import java.util.UUID;
 
@@ -48,7 +48,7 @@ public final class StageLootFilter implements ILootrFilter {
     }
 
     @Override
-    public boolean mutate(ObjectArrayList<ItemStack> loot, LootFiller.LootFillerState state,
+    public boolean mutate(ObjectArrayList<ItemStack> loot, ILootFiller.LootFillerState state,
                           LootContext context, RandomSource random) {
         // Lootr hooks LootTable.fill, so this runs for every loot roll in the game, world
         // generation included. A null state is how a foreign roll announces itself: without this

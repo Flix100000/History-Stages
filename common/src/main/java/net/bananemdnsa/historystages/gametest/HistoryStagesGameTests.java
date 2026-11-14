@@ -28,8 +28,8 @@ public final class HistoryStagesGameTests {
     public record Entry(String name, Consumer<GameTestHelper> test, int maxTicks, boolean required, String batch) {}
 
     /**
-     * Test classes. Not ported yet, because their subject waits for Task 13 or a 26.2 build of the
-     * mod they test: FastSuiteRecipeLockTests, KubeJsRecipeLockTests, LootrLootFilterTests.
+     * Test classes. Not ported, because the mod they test has no 26.2 build yet (port-later/):
+     * FastSuiteRecipeLockTests, KubeJsRecipeLockTests.
      */
     private static final List<Class<?>> CLASSES = List.of(
             HarnessTests.class,
@@ -46,6 +46,7 @@ public final class HistoryStagesGameTests {
             InterchangeableStageTests.class,
             ItemTagDepositTests.class,
             LockTests.class,
+            LootrLootFilterTests.class,
             PacketTests.class,
             PersistenceTests.class,
             ReachTests.class,
