@@ -187,13 +187,23 @@ public class MultiBlockResearchPedestalBlock extends BaseEntityBlock implements 
     @Override
     protected void affectNeighborsAfterRemoval(BlockState oldState, net.minecraft.server.level.ServerLevel level,
                                                BlockPos pos, boolean movedByPiston) {
-        Direction partnerDir = getPartnerDirection(oldState);
-        BlockPos partnerPos = pos.relative(partnerDir);
+        removePartner(level, pos, oldState);
+        super.affectNeighborsAfterRemoval(oldState, level, pos, movedByPiston);
+    }
+
+    /**
+     * Takes the other half with this one. 26.2 only calls affectNeighborsAfterRemoval for a change
+     * with neighbour updates, where 1.21.1's onRemove ran for every change; the foot's block
+     * entity calls this too, so a foot replaced without updates does not leave its head behind.
+     * A head replaced that way still can: it has no block entity to hear about it.
+     */
+    public static void removePartner(Level level, BlockPos pos, BlockState oldState) {
+        if (!(oldState.getBlock() instanceof MultiBlockResearchPedestalBlock block)) return;
+        BlockPos partnerPos = pos.relative(block.getPartnerDirection(oldState));
         BlockState partnerState = level.getBlockState(partnerPos);
-        if (isPartnerValid(partnerState, oldState)) {
+        if (block.isPartnerValid(partnerState, oldState)) {
             level.removeBlock(partnerPos, false);
         }
-        super.affectNeighborsAfterRemoval(oldState, level, pos, movedByPiston);
     }
 
     @Override

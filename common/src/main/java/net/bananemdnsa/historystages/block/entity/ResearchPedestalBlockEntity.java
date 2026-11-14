@@ -197,7 +197,9 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
     /** 26.2 calls this before the block entity goes, where 1.21.1's Block.onRemove dropped the slots. */
     @Override
     public void preRemoveSideEffects(BlockPos pos, BlockState state) {
-        if (level != null) dropContents(level, pos);
+        if (level == null) return;
+        dropContents(level, pos);
+        net.bananemdnsa.historystages.block.MultiBlockResearchPedestalBlock.removePartner(level, pos, state);
     }
 
     /** Drop both inventory slots at the given position. Saves current research progress to the
