@@ -60,6 +60,10 @@ public final class ClientCategoryEditorSetup {
         // what it is called. Client side, because nothing off the client has any use for it.
         fire(new RegisterRecipeTypeMetaEvent(), plugins, HistoryStagesClientPlugin::registerRecipeTypeMeta);
         RecipeTypeMetas.freeze();
+
+        // The client smoke looks for this line: without it no addon editor tab exists.
+        com.mojang.logging.LogUtils.getLogger().info("[HistoryStages] Client editor registries closed: {} category editors",
+                CategoryEditors.all().size());
     }
 
     /** A plugin that throws loses its own tab, not everyone else's — the registry freezes next. */

@@ -9,7 +9,7 @@ import net.minecraft.world.phys.Vec3;
 import net.bananemdnsa.historystages.platform.Dist;
 import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
 import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
-import net.bananemdnsa.historystages.platform.event.client.SubmitCustomGeometryEvent;
+import net.bananemdnsa.historystages.platform.event.client.RenderLevelStageEvent;
 
 /**
  * Draws the two corners the player has marked out, as a wireframe box.
@@ -35,7 +35,7 @@ public final class ZoneSelectionRenderer {
     private ZoneSelectionRenderer() {}
 
     @SubscribeEvent
-    public static void onSubmitGeometry(SubmitCustomGeometryEvent event) {
+    public static void onRenderLevel(RenderLevelStageEvent event) {
         if (!ClientZoneSelection.hasFirst() && !ClientZoneSelection.hasSecond()) return;
 
         Minecraft mc = Minecraft.getInstance();
@@ -80,10 +80,10 @@ public final class ZoneSelectionRenderer {
         float bx0 = x0, by0 = y0, bz0 = z0, bx1 = x1, by1 = y1, bz1 = z1;
 
         // Drawn over everything, as the old depth-test-off draw was.
-        PoseStack pose = event.getPoseStack();
+        PoseStack pose = new PoseStack();
         pose.pushPose();
         pose.translate(-cam.x, -cam.y, -cam.z);
-        event.getSubmitNodeCollector().submitCustomGeometry(pose, WorldOverlayRenderTypes.linesOnTop(),
+        WorldOverlayDraw.draw(WorldOverlayRenderTypes.linesOnTop(), pose.last(),
                 (p, buffer) -> edges(buffer, p, width, bx0, by0, bz0, bx1, by1, bz1));
         pose.popPose();
     }

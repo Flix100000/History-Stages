@@ -15,8 +15,7 @@ import net.minecraft.world.phys.Vec3;
 import net.bananemdnsa.historystages.platform.Dist;
 import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
 import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
-import net.bananemdnsa.historystages.platform.event.client.SubmitCustomGeometryEvent;
-import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.bananemdnsa.historystages.platform.event.client.RenderLevelStageEvent;
 
 /**
  * Draws the wall of a locked zone the player is close to, in two parts.
@@ -112,7 +111,7 @@ public final class ZoneBorderRenderer {
     }
 
     @SubscribeEvent
-    public static void onSubmitGeometry(SubmitCustomGeometryEvent event) {
+    public static void onRenderLevel(RenderLevelStageEvent event) {
         if (ClientZoneShapes.isEmpty()) return;
 
         // Whether a zone has a border at all is the zone's own business; this only says how
@@ -132,15 +131,14 @@ public final class ZoneBorderRenderer {
         int minY = mc.level.getMinY();
         int maxY = mc.level.getMaxY() + 1;
 
-        PoseStack pose = event.getPoseStack();
+        PoseStack pose = new PoseStack();
         pose.pushPose();
         pose.translate(-cam.x, -cam.y, -cam.z);
-        SubmitNodeCollector collector = event.getSubmitNodeCollector();
 
         if (reach > 0) {
-            drawWall(collector, pose, cam, event.getLookVector(), reach, reach > distance, minY, maxY);
+            drawWall(pose, cam, event.getLookVector(), reach, reach > distance, minY, maxY);
         }
-        if (outline) drawOutlines(collector, pose, cam, minY, maxY);
+        if (outline) drawOutlines(pose, cam, minY, maxY);
 
         pose.popPose();
     }
@@ -166,7 +164,7 @@ public final class ZoneBorderRenderer {
      */
     private static final double CULL_FROM = 2.0 * ZoneSurfaceRuns.CAP;
 
-    private static void drawWall(SubmitNodeCollector collector, PoseStack pose, Vec3 cam, Vec3 look,
+    private static void drawWall(PoseStack pose, Vec3 cam, Vec3 look,
                                  double reach, boolean full, int minY, int maxY) {
         WALL.refresh(ClientZoneShapes.get(),
                 (int) Math.floor(cam.x), (int) Math.floor(cam.y), (int) Math.floor(cam.z),
@@ -177,9 +175,8 @@ public final class ZoneBorderRenderer {
         // whole wall it reads as the wall sliding sideways instead, so there it stands still.
         float scroll = full ? 0f : (float) ((Util.getMillis() % 3000L) / 3000.0);
 
-        // Blend, depth test without depth write and no culling live in the render type now. The
-        // faces are written later in the frame, still before anything can refresh WALL again.
-        collector.submitCustomGeometry(pose, WorldOverlayRenderTypes.forcefield(), (m, buffer) -> {
+        // Blend, depth test without depth write and no culling live in the render type now.
+        WorldOverlayDraw.draw(WorldOverlayRenderTypes.forcefield(), pose.last(), (m, buffer) -> {
             for (int i = 0; i < WALL.count(); i++) {
                 quad(buffer, m, cam, look, reach, full, scroll,
                         WALL.face(i, 0), WALL.face(i, 1), WALL.face(i, 2), WALL.face(i, 3),
@@ -366,9 +363,9 @@ public final class ZoneBorderRenderer {
 
     // --- The outline further out ---
 
-    private static void drawOutlines(SubmitNodeCollector collector, PoseStack pose, Vec3 cam, int minY, int maxY) {
+    private static void drawOutlines(PoseStack pose, Vec3 cam, int minY, int maxY) {
         float width = WorldOverlayRenderTypes.lineWidth();
-        collector.submitCustomGeometry(pose, WorldOverlayRenderTypes.lines(), (m, buffer) -> {
+        WorldOverlayDraw.draw(WorldOverlayRenderTypes.lines(), pose.last(), (m, buffer) -> {
             for (ClientZoneShapes.Visible zone : ClientZoneShapes.get()) {
                 if (!zone.border()) continue;
                 for (ZoneShape shape : zone.shapes()) {

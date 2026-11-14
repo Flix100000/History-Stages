@@ -6,6 +6,8 @@ import com.mojang.blaze3d.pipeline.ColorTargetState;
 import com.mojang.blaze3d.pipeline.DepthStencilState;
 import com.mojang.blaze3d.pipeline.RenderPipeline;
 import com.mojang.blaze3d.platform.CompareOp;
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.textures.FilterMode;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
@@ -16,7 +18,8 @@ import net.minecraft.client.renderer.rendertype.LayeringTransform;
 import net.minecraft.client.renderer.rendertype.OutputTarget;
 import net.minecraft.client.renderer.rendertype.RenderSetup;
 import net.minecraft.client.renderer.rendertype.RenderType;
-import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.client.renderer.RenderPipelines;
+import java.util.List;
 import net.minecraft.resources.Identifier;
 
 /**
@@ -33,6 +36,14 @@ public final class WorldOverlayRenderTypes {
     private WorldOverlayRenderTypes() {}
 
     public static final Identifier FORCEFIELD_TEXTURE = Identifier.withDefaultNamespace("textures/misc/forcefield.png");
+
+    /**
+     * Drawn right after the translucent terrain, so into the target that terrain went to. With
+     * Fabulous graphics that is the translucent layer (water and glass in front still cover the
+     * overlay when the layers are combined); otherwise it falls back to the main target.
+     */
+    private static final OutputTarget TRANSLUCENT = new OutputTarget("historystages_translucent",
+            () -> Minecraft.getInstance().levelRenderer.translucentTarget());
 
     private static final class Holder {
         // Same shader and vertex layout as the old GameRenderer::getPositionTexColorShader.
@@ -53,8 +64,11 @@ public final class WorldOverlayRenderTypes {
 
         static final RenderType FORCEFIELD = RenderType.create("historystages_forcefield",
                 RenderSetup.builder(FORCEFIELD_PIPELINE)
-                        .withTexture("Sampler0", FORCEFIELD_TEXTURE)
-                        .sortOnUpload()
+                        // Explicitly repeating: the UVs run over many tiles, and a clamped sampler
+                        // stretches the transparent edge texel across the whole wall.
+                        .withTexture("Sampler0", FORCEFIELD_TEXTURE,
+                                () -> RenderSystem.getSamplerCache().getRepeat(FilterMode.NEAREST))
+                        .setOutputTarget(TRANSLUCENT)
                         .createRenderSetup());
 
         // Vanilla's line pipeline without the depth test: the selection used to be drawn with
@@ -76,7 +90,13 @@ public final class WorldOverlayRenderTypes {
         static final RenderType LINES_ON_TOP = RenderType.create("historystages_lines_on_top",
                 RenderSetup.builder(LINES_ON_TOP_PIPELINE)
                         .setLayeringTransform(LayeringTransform.VIEW_OFFSET_Z_LAYERING)
-                        .setOutputTarget(OutputTarget.ITEM_ENTITY_TARGET)
+                        .setOutputTarget(TRANSLUCENT)
+                        .createRenderSetup());
+
+        static final RenderType LINES = RenderType.create("historystages_lines",
+                RenderSetup.builder(RenderPipelines.LINES_TRANSLUCENT)
+                        .setLayeringTransform(LayeringTransform.VIEW_OFFSET_Z_LAYERING)
+                        .setOutputTarget(TRANSLUCENT)
                         .createRenderSetup());
     }
 
@@ -85,9 +105,14 @@ public final class WorldOverlayRenderTypes {
         return Holder.FORCEFIELD;
     }
 
-    /** Translucent lines hidden behind blocks (the old zone outline). */
+    /** Translucent lines hidden behind blocks (the old zone outline). Vanilla's pipeline, our target. */
     public static RenderType lines() {
-        return RenderTypes.linesTranslucent();
+        return Holder.LINES;
+    }
+
+    /** The pipelines that are ours, for precompiling at client start so a broken one shows in the log. */
+    public static List<RenderPipeline> ownPipelines() {
+        return List.of(Holder.FORCEFIELD_PIPELINE, Holder.LINES_ON_TOP_PIPELINE);
     }
 
     /** Translucent lines in front of everything (the old selection box). */
@@ -110,6 +135,20 @@ public final class WorldOverlayRenderTypes {
         nz /= len;
         buf.addVertex(pose, ax, ay, az).setColor(r, g, b, a).setNormal(pose, nx, ny, nz).setLineWidth(width);
         buf.addVertex(pose, bx, by, bz).setColor(r, g, b, a).setNormal(pose, nx, ny, nz).setLineWidth(width);
+    }
+
+    /**
+     * Compiles our pipelines now instead of at the first draw (Fabric; NeoForge registers them with
+     * RegisterRenderPipelinesEvent and preloads them with vanilla's). A broken one is logged here, so
+     * a client start shows it even when nothing is drawn.
+     */
+    public static void precompile() {
+        for (RenderPipeline pipeline : ownPipelines()) {
+            if (!RenderSystem.getDevice().precompilePipeline(pipeline).isValid()) {
+                com.mojang.logging.LogUtils.getLogger().error("[HistoryStages] Render pipeline {} failed to compile",
+                        pipeline.getLocation());
+            }
+        }
     }
 
     /** The width vanilla gives its own lines for this window. */

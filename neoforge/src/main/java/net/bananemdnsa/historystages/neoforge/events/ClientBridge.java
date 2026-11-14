@@ -8,7 +8,7 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.RecipesReceivedEvent;
 import net.neoforged.neoforge.client.event.RegisterClientCommandsEvent;
 import net.neoforged.neoforge.client.event.RenderGuiEvent;
-import net.neoforged.neoforge.client.event.SubmitCustomGeometryEvent;
+import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import net.neoforged.neoforge.client.event.ScreenEvent;
 
 /**
@@ -25,7 +25,7 @@ public final class ClientBridge {
         Bridges.listen(bus, RecipesReceivedEvent.class, ClientBridge::recipesReceived);
         Bridges.listen(bus, RegisterClientCommandsEvent.class, ClientBridge::registerClientCommands);
         Bridges.listen(bus, RenderGuiEvent.Post.class, ClientBridge::renderGuiPost);
-        Bridges.listen(bus, SubmitCustomGeometryEvent.class, ClientBridge::submitCustomGeometry);
+        Bridges.listen(bus, RenderLevelStageEvent.AfterTranslucentBlocks.class, ClientBridge::afterTranslucentBlocks);
         Bridges.listen(bus, ScreenEvent.Init.Post.class, ClientBridge::screenInitPost);
         Bridges.listen(bus, ScreenEvent.Render.Post.class, ClientBridge::screenRenderPost);
         Bridges.listenCancellable(bus, ScreenEvent.MouseButtonPressed.Pre.class, ClientBridge::mousePressedPre);
@@ -67,16 +67,17 @@ public final class ClientBridge {
     }
 
     /**
-     * 26.2 draws level geometry from submissions, not from code that runs mid-pass. NeoForge's own
-     * advice for custom geometry is this event rather than a {@code RenderLevelStageEvent} stage.
+     * The overlays draw right here, after the translucent terrain, as on 1.21.1. NeoForge's
+     * SubmitCustomGeometryEvent would be the 26.2 way, but submitted geometry is drawn before that
+     * terrain, so water and glass would cover the force field.
      */
-    private static void submitCustomGeometry(SubmitCustomGeometryEvent event, EventPriority priority) {
-        if (!Bridges.wanted(net.bananemdnsa.historystages.platform.event.client.SubmitCustomGeometryEvent.class, priority)) {
+    private static void afterTranslucentBlocks(RenderLevelStageEvent.AfterTranslucentBlocks event, EventPriority priority) {
+        if (!Bridges.wanted(net.bananemdnsa.historystages.platform.event.client.RenderLevelStageEvent.class, priority)) {
             return;
         }
         var camera = event.getLevelRenderState().cameraRenderState;
-        EventBus.post(new net.bananemdnsa.historystages.platform.event.client.SubmitCustomGeometryEvent(
-                event.getSubmitNodeCollector(), event.getPoseStack(), camera.pos, camera.orientation), priority);
+        EventBus.post(new net.bananemdnsa.historystages.platform.event.client.RenderLevelStageEvent(
+                camera.pos, camera.orientation), priority);
     }
 
     private static void screenInitPost(ScreenEvent.Init.Post event, EventPriority priority) {

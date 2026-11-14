@@ -10,7 +10,7 @@ import net.minecraft.world.phys.Vec3;
 import net.bananemdnsa.historystages.platform.Dist;
 import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
 import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
-import net.bananemdnsa.historystages.platform.event.client.SubmitCustomGeometryEvent;
+import net.bananemdnsa.historystages.platform.event.client.RenderLevelStageEvent;
 
 import java.util.List;
 
@@ -36,7 +36,7 @@ public final class LockBorderRenderer {
     private LockBorderRenderer() {}
 
     @SubscribeEvent
-    public static void onSubmitGeometry(SubmitCustomGeometryEvent event) {
+    public static void onRenderLevel(RenderLevelStageEvent event) {
         if (!Config.VISUAL.structureBorderEnabled.get()) return;
 
         List<BoundingBox> boxes = LockBorderClientCache.get();
@@ -48,10 +48,10 @@ public final class LockBorderRenderer {
         float scroll = (float) ((Util.getMillis() % 3000L) / 3000.0);
 
         // Blend, depth test without depth write and no culling live in the render type now.
-        PoseStack pose = event.getPoseStack();
+        PoseStack pose = new PoseStack();
         pose.pushPose();
         pose.translate(-cam.x, -cam.y, -cam.z);
-        event.getSubmitNodeCollector().submitCustomGeometry(pose, WorldOverlayRenderTypes.forcefield(),
+        WorldOverlayDraw.draw(WorldOverlayRenderTypes.forcefield(), pose.last(),
                 (p, buffer) -> {
                     for (int i = 0; i < boxes.size(); i++) {
                         renderBox(buffer, p, boxes, i, boxes.get(i), cam, threshold, scroll);
