@@ -13,6 +13,7 @@ public enum ScrollShelfWood {
     JUNGLE("jungle", () -> Blocks.JUNGLE_PLANKS, true),
     ACACIA("acacia", () -> Blocks.ACACIA_PLANKS, true),
     DARK_OAK("dark_oak", () -> Blocks.DARK_OAK_PLANKS, true),
+    PALE_OAK("pale_oak", () -> Blocks.PALE_OAK_PLANKS, true),
     MANGROVE("mangrove", () -> Blocks.MANGROVE_PLANKS, true),
     CHERRY("cherry", () -> Blocks.CHERRY_PLANKS, true),
     BAMBOO("bamboo", () -> Blocks.BAMBOO_PLANKS, true),

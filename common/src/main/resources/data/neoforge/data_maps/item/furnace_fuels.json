@@ -18,6 +18,9 @@
     "historystages:dark_oak_scroll_shelf": {
       "burn_time": 300
     },
+    "historystages:pale_oak_scroll_shelf": {
+      "burn_time": 300
+    },
     "historystages:mangrove_scroll_shelf": {
       "burn_time": 300
     },
