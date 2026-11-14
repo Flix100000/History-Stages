@@ -393,6 +393,7 @@ public class HistoryStages {
     public void onServerStopping(ServerStoppingEvent event) {
         serverInitialized = false;
         ConfigFiles.stopWatching();
+        net.bananemdnsa.historystages.network.RecipeListSync.clear();
         // Rolled from the trade hooks this server registered; the next one may register others.
         net.bananemdnsa.historystages.data.lock.TradeGoodsScanner.clearCache();
         DebugLogger.runtime(HsRuntimeCategories.SERVER, "Server stopping — flushing runtime log");
@@ -406,6 +407,9 @@ public class HistoryStages {
     @SubscribeEvent
     public void onServerTick(ServerTickEvent.Post event) {
         tickCounter++;
+        if (event.getServer() != null) {
+            net.bananemdnsa.historystages.network.RecipeListSync.onServerTick(event.getServer());
+        }
 
         if (tickCounter % FLUSH_INTERVAL == 0) {
             DebugLogger.flushRuntimeBuffer();

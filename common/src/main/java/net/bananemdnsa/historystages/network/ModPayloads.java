@@ -84,6 +84,9 @@ public final class ModPayloads {
         clientbound(SyncStagesPacket.TYPE, SyncStagesPacket.STREAM_CODEC, SyncStagesPacket::handle);
         clientbound(StageUnlockedToastPacket.TYPE, StageUnlockedToastPacket.STREAM_CODEC, StageUnlockedToastPacket::handle);
         clientbound(EditorSyncPacket.TYPE, EditorSyncPacket.STREAM_CODEC, EditorSyncPacket::handle);
+        clientbound(net.bananemdnsa.historystages.network.clientbound.SyncRecipeListPacket.TYPE,
+                net.bananemdnsa.historystages.network.clientbound.SyncRecipeListPacket.STREAM_CODEC,
+                net.bananemdnsa.historystages.network.clientbound.SyncRecipeListPacket::handle);
         clientbound(SyncStageDefinitionsPacket.TYPE, SyncStageDefinitionsPacket.STREAM_CODEC, SyncStageDefinitionsPacket::handle);
         clientbound(SyncConfigPacket.TYPE, SyncConfigPacket.STREAM_CODEC, SyncConfigPacket::handle);
         clientbound(SyncGraphConfigPacket.TYPE, SyncGraphConfigPacket.STREAM_CODEC, SyncGraphConfigPacket::handle);
@@ -94,6 +97,9 @@ public final class ModPayloads {
         clientbound(SyncLostStagesPacket.TYPE, SyncLostStagesPacket.STREAM_CODEC, SyncLostStagesPacket::handle);
         clientbound(OpenLecternScrollPacket.TYPE, OpenLecternScrollPacket.STREAM_CODEC, OpenLecternScrollPacket::handle);
         serverbound(RequestEditorDataPacket.TYPE, RequestEditorDataPacket.STREAM_CODEC, RequestEditorDataPacket::handle);
+        serverbound(net.bananemdnsa.historystages.network.serverbound.RequestRecipeListPacket.TYPE,
+                net.bananemdnsa.historystages.network.serverbound.RequestRecipeListPacket.STREAM_CODEC,
+                net.bananemdnsa.historystages.network.serverbound.RequestRecipeListPacket::handle);
         serverbound(RequestTradeGoodsPacket.TYPE, RequestTradeGoodsPacket.STREAM_CODEC, RequestTradeGoodsPacket::handle);
         serverbound(RequestTemporaryCountsPacket.TYPE, RequestTemporaryCountsPacket.STREAM_CODEC, RequestTemporaryCountsPacket::handle);
         serverbound(RequestIndividualStatesPacket.TYPE, RequestIndividualStatesPacket.STREAM_CODEC, RequestIndividualStatesPacket::handle);

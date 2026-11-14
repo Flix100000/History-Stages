@@ -27,5 +27,9 @@ public final class CommonScenarioTests {
                 net.bananemdnsa.historystages.gametest.RecipeOutputScenarios::aRecipeWithoutDisplayStillHasItsOutput);
         tests.put("network/a_big_stage_save_fits_the_serverbound_limit",
                 net.bananemdnsa.historystages.gametest.PayloadSizeScenarios::aBigStageSaveFitsTheServerboundLimit);
+        tests.put("network/the_recipe_list_reads_back_whole",
+                net.bananemdnsa.historystages.gametest.RecipeListSyncScenarios::theRecipeListReadsBackWhole);
+        tests.put("network/only_editors_get_the_recipe_list", helper ->
+                net.bananemdnsa.historystages.gametest.RecipeListSyncScenarios.onlyEditorsGetTheList(helper, TestPlayers::createConnected));
     }
 }

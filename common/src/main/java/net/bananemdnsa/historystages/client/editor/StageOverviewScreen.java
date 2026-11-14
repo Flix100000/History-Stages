@@ -252,6 +252,8 @@ public class StageOverviewScreen extends Screen {
             tempCountRefreshTimer = 0;
             requestTemporaryCounts();
             PacketHandler.sendToServer(new RequestIndividualStatesPacket());
+        // A dedicated server sends no recipes to clients since 1.21.2; the recipe pickers need them.
+        net.bananemdnsa.historystages.client.ClientRecipes.requestIfNeeded();
         }
     }
 
