@@ -14,6 +14,8 @@ Stages can unlock **server-wide** (global), **per player** (individual), or use 
 
 | Minecraft | Loader   | Status                         |
 | --------- | -------- | ------------------------------ |
+| 26.2      | NeoForge | Actively maintained            |
+| 26.2      | Fabric   | Actively maintained            |
 | 1.21      | Fabric   | Actively maintained            |
 | 1.21      | NeoForge | Actively maintained            |
 | 1.20      | Forge    | Actively maintained            |

@@ -56,9 +56,9 @@ If yes, describe what breaks and how users should migrate. If no, write "None".
 <!-- How did you actually test this? Be specific. -->
 
 **Environment:**
-- Minecraft version: <!-- e.g. 1.20.1, 1.21.1 -->
-- Mod loader + version: <!-- e.g. Forge 47.4.18, NeoForge 21.1.222, Fabric 0.16.x -->
-- Branch this PR targets: <!-- e.g. main, neoforge-1.21, fabric-1.21 -->
+- Minecraft version: <!-- e.g. 1.20.1, 1.21.1, 26.2 -->
+- Mod loader + version: <!-- e.g. Forge 47.4.18, NeoForge 21.1.222, NeoForge 26.2.0.x, Fabric 0.20.x -->
+- Branch this PR targets: <!-- e.g. neoforge-1.21.X, fabric-1.21.X, 26.2 -->
 - Environment: <!-- Singleplayer / Dedicated Server + Client / both -->
 - Other mods loaded during test: <!-- e.g. JEI, KubeJS, Curios, or "none" -->
 

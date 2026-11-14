@@ -4,6 +4,7 @@
 
 | Version                    | Supported |
 | -------------------------- | --------- |
+| 26.2 (NeoForge and Fabric) | Yes       |
 | 1.21 (NeoForge and Fabric) | Yes       |
 | 1.20 (Forge)               | Yes       |
 | 1.19 (Forge)               | No        |
