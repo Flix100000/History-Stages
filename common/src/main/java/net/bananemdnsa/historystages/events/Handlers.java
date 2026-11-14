@@ -58,7 +58,14 @@ public final class Handlers {
             ZoneBarrierHandler.class,
             ZoneLockHandler.class,
             ZoneSpawnHandler.class,
-            TeamStageSharing.class);
+            TeamStageSharing.class,
+            // The demo addon (off unless -Dhistorystages.demoCategory=true; each handler checks).
+            net.bananemdnsa.historystages.demo.DemoAddonCategory.class,
+            net.bananemdnsa.historystages.demo.DemoConfigSections.class,
+            net.bananemdnsa.historystages.demo.DemoDiagnostics.Registration.class,
+            net.bananemdnsa.historystages.demo.DemoDiagnostics.Game.class,
+            net.bananemdnsa.historystages.demo.DemoRequirement.class,
+            net.bananemdnsa.historystages.demo.DemoSettingsGroup.class);
 
     public static void registerCommon() {
         for (Class<?> handler : COMMON) {

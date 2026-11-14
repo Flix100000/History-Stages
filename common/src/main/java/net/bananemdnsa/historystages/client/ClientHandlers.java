@@ -34,7 +34,10 @@ public final class ClientHandlers {
             ClientDebugCommand.class,
             ClientScreenCommand.class,
             ToastClickHandler.class,
-            TooltipEventHandler.class);
+            TooltipEventHandler.class,
+            net.bananemdnsa.historystages.demo.DemoAddonCategoryEditor.class,
+            net.bananemdnsa.historystages.demo.DemoRelicSetEditor.class,
+            net.bananemdnsa.historystages.demo.DemoRequirementEditor.class);
 
     public static void register() {
         for (Class<?> handler : CLIENT) {

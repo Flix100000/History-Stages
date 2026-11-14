@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 import net.bananemdnsa.historystages.HistoryStages;
+import net.bananemdnsa.historystages.gametest.HistoryStagesGameTests;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.FunctionGameTestInstance;
@@ -44,18 +45,32 @@ public final class NeoForgeGameTests {
     private NeoForgeGameTests() {}
 
     public static void register(IEventBus modBus) {
-        modBus.addListener(RegisterEvent.class, event -> event.register(Registries.TEST_FUNCTION, helper ->
-                TESTS.forEach((name, test) -> helper.register(id(name), test))));
+        modBus.addListener(RegisterEvent.class, event -> event.register(Registries.TEST_FUNCTION, helper -> {
+            TESTS.forEach((name, test) -> helper.register(id(name), test));
+            HistoryStagesGameTests.all().forEach(entry -> helper.register(id(entry.name()), entry.test()));
+        }));
         modBus.addListener(RegisterGameTestsEvent.class, NeoForgeGameTests::registerInstances);
     }
 
     private static void registerInstances(RegisterGameTestsEvent event) {
         Holder<TestEnvironmentDefinition<?>> environment = event.registerEnvironment(id("default"));
-        TESTS.keySet().forEach(name -> event.registerTest(id(name), new FunctionGameTestInstance(
-                ResourceKey.create(Registries.TEST_FUNCTION, id(name)),
-                // Sky access, because the default barrier ceiling sits right on top of a 1x1x1
-                // structure, and a chest under a solid block does not open.
-                new TestData<>(environment, EMPTY, MAX_TICKS, 0, true, Rotation.NONE, false, 1, 1, true, 0))));
+        TESTS.keySet().forEach(name -> event.registerTest(id(name), instance(name, environment, EMPTY, MAX_TICKS, true)));
+        // A test with its own batch gets its own environment: 26.2 batches tests by environment.
+        Map<String, Holder<TestEnvironmentDefinition<?>>> batches = new LinkedHashMap<>();
+        for (HistoryStagesGameTests.Entry entry : HistoryStagesGameTests.all()) {
+            Holder<TestEnvironmentDefinition<?>> env = entry.batch().isEmpty() ? environment
+                    : batches.computeIfAbsent(entry.batch(), batch -> event.registerEnvironment(id("batch/" + batch)));
+            event.registerTest(id(entry.name()), instance(entry.name(), env, HistoryStagesGameTests.STRUCTURE,
+                    entry.maxTicks(), entry.required()));
+        }
+    }
+
+    private static FunctionGameTestInstance instance(String name, Holder<TestEnvironmentDefinition<?>> environment,
+                                                     Identifier structure, int maxTicks, boolean required) {
+        // Sky access, because the default barrier ceiling sits right on top of a 1x1x1
+        // structure, and a chest under a solid block does not open.
+        return new FunctionGameTestInstance(ResourceKey.create(Registries.TEST_FUNCTION, id(name)),
+                new TestData<>(environment, structure, maxTicks, 0, required, Rotation.NONE, false, 1, 1, true, 0));
     }
 
     private static Identifier id(String path) {

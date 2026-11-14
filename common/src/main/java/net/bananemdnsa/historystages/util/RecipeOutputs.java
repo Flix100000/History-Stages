@@ -75,6 +75,13 @@ public final class RecipeOutputs {
                 if (!m.getName().equals(name) || m.getReturnType() != ItemStack.class) continue;
                 Class<?>[] params = m.getParameterTypes();
                 if (params.length == 0 || (params.length == 1 && params[0] == HolderLookup.Provider.class)) {
+                    // A public method on a non-public recipe class is not callable by reflection
+                    // until opened; 1.21.1 called it through the interface and never noticed.
+                    try {
+                        m.setAccessible(true);
+                    } catch (RuntimeException closed) {
+                        // a module that does not open the package; invoke may still work
+                    }
                     return Optional.of(m);
                 }
             }
