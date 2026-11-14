@@ -15,10 +15,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Java 21
+      - name: Set up Java 25
         uses: actions/setup-java@v4
         with:
-          java-version: '21'
+          java-version: '25'
           distribution: 'temurin'
           # Every compat dependency (Jade, Lootr, the FTB mods, Architectury) comes from
           # cursemaven.com, which rate-limits the shared runner IPs — an uncached run asks for
@@ -34,7 +34,26 @@ jobs:
           # failure would otherwise mean re-running the release by hand.
           ./gradlew build || { echo "Build failed, retrying once after 60s"; sleep 60; ./gradlew build; }
 
-      - name: Publish to CurseForge & Modrinth
+      # Picks each jar by name and fails unless exactly one matches. The build leaves a -raw jar
+      # (before shadowing) next to the real one in each loader's libs folder, and a glob that
+      # takes both would upload the unshaded one as a second file.
+      - name: Select jars
+        id: jars
+        run: |
+          pick() {
+            local found
+            found=$(find "$1/build/libs" -maxdepth 1 -name '*.jar' ! -name '*-raw.jar' ! -name '*-sources.jar' ! -name '*-dev-shadow.jar')
+            if [ "$(echo "$found" | grep -c .)" -ne 1 ]; then
+              echo "Expected exactly one jar in $1/build/libs, found:" >&2
+              echo "$found" >&2
+              exit 1
+            fi
+            echo "$found"
+          }
+          echo "neoforge=$(pick neoforge)" >> "$GITHUB_OUTPUT"
+          echo "fabric=$(pick fabric)" >> "$GITHUB_OUTPUT"
+
+      - name: Publish NeoForge jar to CurseForge & Modrinth
         uses: Kir-Antipov/mc-publish@v3.3
         with:
           # CurseForge
@@ -50,26 +69,51 @@ jobs:
           version: ${{ github.event.release.tag_name }}
           changelog: ${{ github.event.release.body }}
           game-versions: |
-            1.21
-            1.21.1
+            26.2
           loaders: neoforge
           # Taken from the release rather than fixed here: a release marked as a prerelease on
           # GitHub was still landing on the Release channel on both platforms, so a beta reached
           # everyone who tracks the mod as if it were finished.
           version-type: ${{ github.event.release.prerelease && 'beta' || 'release' }}
           dependencies: |
+            architectury-api(required)
             lootr(required)
             jei(optional)
-            emi(optional)
             jade(optional)
-            ftb-quests(optional)
-          java: 21
-          files: build/libs/!(*-sources).jar
+          java: 25
+          files: ${{ steps.jars.outputs.neoforge }}
 
-      - name: Upload jar to GitHub Release
+      - name: Publish Fabric jar to CurseForge & Modrinth
+        uses: Kir-Antipov/mc-publish@v3.3
+        with:
+          curseforge-id: ${{ secrets.CURSEFORGE_PROJECT_ID }}
+          curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
+
+          modrinth-id: ${{ secrets.MODRINTH_PROJECT_ID }}
+          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
+
+          name: History Stages ${{ github.event.release.tag_name }}
+          version: ${{ github.event.release.tag_name }}
+          changelog: ${{ github.event.release.body }}
+          game-versions: |
+            26.2
+          loaders: fabric
+          version-type: ${{ github.event.release.prerelease && 'beta' || 'release' }}
+          dependencies: |
+            fabric-api(required)
+            architectury-api(required)
+            lootr(required)
+            jei(optional)
+            jade(optional)
+          java: 25
+          files: ${{ steps.jars.outputs.fabric }}
+
+      - name: Upload jars to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: build/libs/!(*-sources).jar
+          files: |
+            ${{ steps.jars.outputs.neoforge }}
+            ${{ steps.jars.outputs.fabric }}
 
   # Announce on Discord only after the build + publish succeeded
   notify:

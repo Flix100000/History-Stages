@@ -14,10 +14,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Java 21
+      - name: Set up Java 25
         uses: actions/setup-java@v4
         with:
-          java-version: '21'
+          java-version: '25'
           distribution: 'temurin'
           # Every compat dependency (Jade, Lootr, the FTB mods, Architectury) comes from
           # cursemaven.com, which rate-limits the shared runner IPs — an uncached run asks for
@@ -29,6 +29,7 @@ jobs:
 
       - name: Build with Gradle
         run: |
+          # ./gradlew build also runs :common:test.
           # Retries because the cache cannot bootstrap itself: actions/cache only saves on a
           # successful job, so while CurseMaven is throttling every run, a failing run never
           # populates the cache that would have stopped it needing CurseMaven at all.
@@ -44,12 +45,19 @@ jobs:
 
       - name: Compute artifact name
         id: artifact
+        env:
+          REF: ${{ github.head_ref || github.ref_name }}
         run: |
-          REF="${{ github.head_ref || github.ref_name }}"
           echo "name=History-Stages-${REF//\//-}" >> "$GITHUB_OUTPUT"
 
-      - name: Upload build artifact
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.artifact.outputs.name }}
-          path: build/libs/*.jar
+          path: |
+            neoforge/build/libs/*.jar
+            fabric/build/libs/*.jar
+            !**/*-raw.jar
+            !**/*-sources.jar
+            !**/*-dev-shadow.jar
+          if-no-files-found: error

@@ -31,7 +31,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # Derive loader + Minecraft version from the ref
-      # (e.g. neoforge-1.21.X -> loader "NeoForge", mc "1.21").
+      # (e.g. neoforge-1.21.X -> loader "NeoForge", mc "1.21"). The 26.2 branch
+      # builds both loaders from one tree, so its releases carry both.
       - name: Determine loader and Minecraft version
         id: mcver
         env:
@@ -39,6 +40,7 @@ jobs:
         run: |
           MC=$(echo "$REF" | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -1)
           case "$REF" in
+            26.*)      LOADER="NeoForge, Fabric" ;;
             neoforge*) LOADER="NeoForge" ;;
             forge*)    LOADER="Forge" ;;
             fabric*)   LOADER="Fabric" ;;
@@ -58,7 +60,7 @@ jobs:
           RELEASE_BODY: ${{ inputs.release_body }}
           RELEASE_URL: ${{ inputs.release_url }}
           PUBLISHED_AT: ${{ inputs.published_at }}
-          ICON_URL: https://raw.githubusercontent.com/${{ github.repository }}/${{ inputs.ref }}/src/main/resources/assets/historystages/icon.png
+          ICON_URL: https://raw.githubusercontent.com/${{ github.repository }}/${{ inputs.ref }}/common/src/main/resources/assets/historystages/icon.png
           LOADER: ${{ steps.mcver.outputs.loader }}
           MC: ${{ steps.mcver.outputs.mc }}
           FOOTER: ${{ steps.mcver.outputs.footer }}
@@ -81,13 +83,15 @@ jobs:
           # Ping the general Updates role plus the role of this release's loader, no
           # @everyone. A role only pings as <@&id>, so the ids come from repo variables;
           # an unset variable just drops that role.
+          EXTRA_ROLE_ID=""
           case "$LOADER" in
             Forge)    LOADER_ROLE_ID="${FORGE_ROLE_ID:-}" ;;
             NeoForge) LOADER_ROLE_ID="${NEOFORGE_ROLE_ID:-}" ;;
             Fabric)   LOADER_ROLE_ID="${FABRIC_ROLE_ID:-}" ;;
+            "NeoForge, Fabric") LOADER_ROLE_ID="${NEOFORGE_ROLE_ID:-}"; EXTRA_ROLE_ID="${FABRIC_ROLE_ID:-}" ;;
             *)        LOADER_ROLE_ID="" ;;
           esac
-          ROLES=$(printf '%s\n' "$LOADER_ROLE_ID" "${UPDATES_ROLE_ID:-}" | jq -R . | jq -sc 'map(select(. != ""))')
+          ROLES=$(printf '%s\n' "$LOADER_ROLE_ID" "$EXTRA_ROLE_ID" "${UPDATES_ROLE_ID:-}" | jq -R . | jq -sc 'map(select(. != ""))')
           MENTIONS=$(jq -r 'map("<@&" + . + ">") | join(" ")' <<< "$ROLES")
 
           payload=$(jq -n \

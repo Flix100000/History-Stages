@@ -36,6 +36,7 @@ is self-contained.
 
 | Branch            | Minecraft | Loader             | JDK | Status                       |
 | ----------------- | --------- | ------------------ | --- | ---------------------------- |
+| `26.2`            | 26.2      | NeoForge 26.2.x and Fabric Loader 0.20 | 25 | Actively maintained, Architectury multi-project |
 | `neoforge-1.21.X` | 1.21.1    | NeoForge 21.1.x    | 21  | Actively maintained, leading |
 | `fabric-1.21.X`   | 1.21.1    | Fabric Loader 0.18 | 21  | Actively maintained          |
 | `forge-1.20.X`    | 1.20.1    | Forge 47.4.x       | 17  | Actively maintained          |
@@ -67,6 +68,35 @@ git checkout neoforge-1.21.X   # or the branch you're targeting
 
 Use the Gradle wrapper (`./gradlew`, `gradlew.bat` on Windows) instead of a locally installed Gradle so everyone
 builds with the same version.
+
+### The `26.2` branch
+
+`26.2` is an [Architectury](https://docs.architectury.dev/) multi-project that builds both loaders from one tree.
+It needs **JDK 25** and Gradle 9.5.1 (the wrapper downloads Gradle; the build fetches a JDK 25 toolchain if none
+is installed).
+
+| Project     | Contains                                                                              |
+| ----------- | ------------------------------------------------------------------------------------- |
+| `common`    | Almost all of the mod: logic, GUI, network, assets, lang files, API, JUnit tests      |
+| `neoforge`  | NeoForge entrypoint and the pieces that only exist there                              |
+| `fabric`    | Fabric entrypoint and the pieces that only exist there                                |
+
+Architectury API and Lootr are required at runtime on both loaders, Fabric API additionally on Fabric. Put new
+code in `common` unless it touches loader API directly. Assets and lang files live in
+`common/src/main/resources/`, so the lang path under [Code style](#code-style) is
+`common/src/main/resources/assets/historystages/lang/en_us.json` on this branch.
+
+| Task                                      | What it does                                            |
+| ----------------------------------------- | ------------------------------------------------------- |
+| `./gradlew build`                         | Builds both jars and runs the `:common:test` unit tests |
+| `./gradlew :neoforge:runClient`           | Development client on NeoForge                          |
+| `./gradlew :fabric:runClient`             | Development client on Fabric                            |
+| `./gradlew :neoforge:runGameTestServer`   | Runs the GameTests on NeoForge and exits                |
+| `./gradlew :fabric:runGametest`           | Runs the GameTests on Fabric and exits                  |
+
+The jars end up in `neoforge/build/libs/` and `fabric/build/libs/` (ignore the `-raw` jars, those are the
+unshaded intermediate step). Fixes and features usually land on `neoforge-1.21.X` first; `26.2` is ported from
+there, so if you are unsure where a change belongs, ask in the Contribution Offer issue.
 
 Common tasks:
 

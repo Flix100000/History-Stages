@@ -14,10 +14,23 @@ Stages can unlock **server-wide** (global), **per player** (individual), or use 
 
 | Minecraft | Loader   | Status                         |
 | --------- | -------- | ------------------------------ |
+| 26.2      | NeoForge | Actively maintained            |
+| 26.2      | Fabric   | Actively maintained            |
 | 1.21      | Fabric   | Actively maintained            |
 | 1.21      | NeoForge | Actively maintained            |
 | 1.20      | Forge    | Actively maintained            |
 | 1.19      | Forge    | Legacy — no further updates    |
+
+### Requirements on 26.2
+
+The 26.2 jars are built from one multi-project, one jar per loader.
+
+- **Required on both loaders:** [Architectury API](https://modrinth.com/mod/architectury-api) and [Lootr](https://modrinth.com/mod/lootr)
+- **Required on Fabric:** [Fabric API](https://modrinth.com/mod/fabric-api)
+- **Optional:** JEI, Jade
+- Java 25
+
+The 1.21 and 1.20 branches do not need Architectury API.
 
 ## Downloads
 
