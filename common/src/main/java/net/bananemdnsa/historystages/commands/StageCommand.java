@@ -156,6 +156,14 @@ public class StageCommand {
                 // --- RELOAD ---
                 .then(Commands.literal("reload")
                         .executes(ctx -> {
+                            // The settings files too: on 1.21.1 NeoForge's watcher had already
+                            // reloaded them, here a reload is also the way to be sure. Not for the
+                            // silent reloads every pedestal unlock runs (see below).
+                            if (!ctx.getSource().isSilent()) {
+                                net.bananemdnsa.historystages.data.config.ConfigFiles.loadAll();
+                                PacketHandler.sendConfigToAll(
+                                        net.bananemdnsa.historystages.network.clientbound.SyncConfigPacket.fromServerConfig());
+                            }
                             StageManager.reloadStages();
                             // Someone fixing a hand-edited file reloads and looks at the report
                             // again, so it has to describe the files as they are now. Not for the

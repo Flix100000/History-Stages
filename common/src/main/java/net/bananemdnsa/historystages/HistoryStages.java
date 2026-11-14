@@ -372,6 +372,10 @@ public class HistoryStages {
             if (!serverInitialized) {
                 serverInitialized = true;
                 LOGGER.info("[HistoryStages] Server cache initialized.");
+                // Hand edits to settings/*.toml apply without a restart, as on 1.21.1. Clients get
+                // the new values the way an editor save hands them out.
+                ConfigFiles.startWatching(sl.getServer(),
+                        () -> PacketHandler.sendConfigToAll(SyncConfigPacket.fromServerConfig()));
 
                 // Registry validation (registries are now fully loaded)
                 StageManager.validateAgainstRegistries();
@@ -388,6 +392,7 @@ public class HistoryStages {
     @SubscribeEvent
     public void onServerStopping(ServerStoppingEvent event) {
         serverInitialized = false;
+        ConfigFiles.stopWatching();
         // Rolled from the trade hooks this server registered; the next one may register others.
         net.bananemdnsa.historystages.data.lock.TradeGoodsScanner.clearCache();
         DebugLogger.runtime(HsRuntimeCategories.SERVER, "Server stopping — flushing runtime log");
