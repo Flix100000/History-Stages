@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.widget.dropdown;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.bananemdnsa.historystages.client.editor.anim.Anim;
 import net.bananemdnsa.historystages.client.editor.anim.Ease;
 import net.bananemdnsa.historystages.client.editor.anim.Fade;
@@ -129,7 +130,7 @@ public class PedestalTierDropdown {
         }
         String name = tierName(tier);
         int textColor = selected ? 0xFFFFCC00 : 0xFFEEEEEE;
-        g.text(font, name, x + 20, y + 5, textColor, false);
+        g.text(font, name, x + 20, y + 5, TextColors.legacy(textColor), false);
     }
 
     private static String tierName(int tier) {

@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.graph;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.bananemdnsa.historystages.GraphConfig;
 import net.bananemdnsa.historystages.client.editor.anim.Anim;
 import net.bananemdnsa.historystages.client.editor.anim.Ease;
@@ -504,7 +505,7 @@ public final class GraphSidebar {
                 font.split(Component.literal(dropHint), Math.max(10, x2 - x1 - 12));
         int textY = (y1 + y2) / 2 - lines.size() * font.lineHeight / 2;
         for (FormattedCharSequence line : lines) {
-            g.text(font, line, (x1 + x2 - font.width(line)) / 2, textY, DROP_EDGE, false);
+            g.text(font, line, (x1 + x2 - font.width(line)) / 2, textY, TextColors.legacy(DROP_EDGE), false);
             textY += font.lineHeight;
         }
         g.pose().popMatrix();
@@ -521,7 +522,7 @@ public final class GraphSidebar {
         if (positioned.isEmpty()) {
             String text = tr("editor.historystages.graph.sidebar.empty");
             g.text(font, MarqueeText.truncate(font, text, width - PADDING * 2),
-                    x + PADDING, top + 6, EMPTY_TEXT_COLOR, false);
+                    x + PADDING, top + 6, TextColors.legacy(EMPTY_TEXT_COLOR), false);
             return;
         }
 
@@ -579,7 +580,7 @@ public final class GraphSidebar {
         drawCount(g, font, row.count(), textY);
         int available = textRight() - font.width(String.valueOf(row.count())) - 6 - (x + ROW_LEFT_PAD);
         g.text(font, MarqueeText.truncate(font, row.text(), available),
-                x + ROW_LEFT_PAD, textY, SECTION_TEXT_COLOR, false);
+                x + ROW_LEFT_PAD, textY, TextColors.legacy(SECTION_TEXT_COLOR), false);
         g.fill(x + ROW_LEFT_PAD, top + SECTION_HEADER_HEIGHT - 1,
                 textRight(), top + SECTION_HEADER_HEIGHT, SEPARATOR_COLOR);
     }
@@ -595,13 +596,13 @@ public final class GraphSidebar {
         int left = x + ROW_LEFT_PAD + row.depth() * INDENT_W;
         String chevron = isExpanded(row.key()) ? "▼ " : "▶ ";
         int textY = top + 4;
-        g.text(font, chevron, left, textY, COUNT_TEXT_COLOR, false);
+        g.text(font, chevron, left, textY, TextColors.legacy(COUNT_TEXT_COLOR), false);
 
         drawCount(g, font, row.count(), textY);
         int nameLeft = left + font.width(chevron);
         int available = textRight() - font.width(String.valueOf(row.count())) - 6 - nameLeft;
         g.text(font, MarqueeText.truncate(font, row.text(), available), nameLeft, textY,
-                Fade.mix(FOLDER_TEXT_COLOR, ROW_TEXT_COLOR_HOVER, hover), false);
+                TextColors.legacy(Fade.mix(FOLDER_TEXT_COLOR, ROW_TEXT_COLOR_HOVER, hover)), false);
     }
 
     private void drawStage(GuiGraphicsExtractor g, Font font, PositionedRow row, int top, boolean hovered,
@@ -646,7 +647,7 @@ public final class GraphSidebar {
 
     private void drawCount(GuiGraphicsExtractor g, Font font, int count, int textY) {
         String text = String.valueOf(count);
-        g.text(font, text, textRight() - font.width(text), textY, COUNT_TEXT_COLOR, false);
+        g.text(font, text, textRight() - font.width(text), textY, TextColors.legacy(COUNT_TEXT_COLOR), false);
     }
 
     private float hoverProgress(String key, boolean hovered, boolean animate) {
@@ -670,7 +671,7 @@ public final class GraphSidebar {
         g.fill(hx, hy, hx + HANDLE_W, hy + HANDLE_H, hovered ? HANDLE_BG_HOVER : HANDLE_BG);
         String glyph = open ? "◀" : "▶";
         g.text(font, glyph, hx + (HANDLE_W - font.width(glyph)) / 2,
-                hy + (HANDLE_H - font.lineHeight) / 2, HANDLE_GLYPH_COLOR, false);
+                hy + (HANDLE_H - font.lineHeight) / 2, TextColors.legacy(HANDLE_GLYPH_COLOR), false);
     }
 
     private boolean overHandle(double mx, double my) {

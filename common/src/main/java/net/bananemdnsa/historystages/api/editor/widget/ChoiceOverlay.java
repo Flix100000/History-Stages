@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.api.editor.widget;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.bananemdnsa.historystages.client.editor.anim.Anim;
 import net.bananemdnsa.historystages.client.editor.anim.Ease;
 import net.bananemdnsa.historystages.client.editor.anim.Fade;
@@ -147,7 +148,7 @@ public final class ChoiceOverlay implements PickerOverlay {
         g.fill(x - 1, y - 1, x + w + 1, y + h + 1, Fade.alpha(PANEL_BORDER, t));
         g.fill(x, y, x + w, y + h, Fade.alpha(PANEL_BG, t));
         g.fill(x, y, x + w, y + 1, Fade.rgba(ACCENT_GOLD, t));
-        g.text(font, title, x + (w - font.width(title)) / 2, y + 8, Fade.rgba(TITLE, t), false);
+        g.text(font, title, x + (w - font.width(title)) / 2, y + 8, TextColors.legacy(Fade.rgba(TITLE, t)), false);
         g.fill(x + PAD, y + HEADER_H - 5, x + w - PAD, y + HEADER_H - 4, Fade.alpha(SEPARATOR, t));
 
         for (int i = 0; i < options.size(); i++) {
@@ -159,7 +160,7 @@ public final class ChoiceOverlay implements PickerOverlay {
 
             Option option = options.get(i);
             g.text(font, option.label(), x + PAD + Math.round(hp * 2.0f),
-                    rowY + (ROW_H - 8) / 2, Fade.rgba(LABEL, t), false);
+                    rowY + (ROW_H - 8) / 2, TextColors.legacy(Fade.rgba(LABEL, t)), false);
             if (option.opensMore()) {
                 drawChevron(g, x + w - PAD, rowY + ROW_H / 2 - 2,
                         Fade.rgba(Fade.mix(0xFF777777, 0xFFDDDDDD, hp) & 0xFFFFFF, t));

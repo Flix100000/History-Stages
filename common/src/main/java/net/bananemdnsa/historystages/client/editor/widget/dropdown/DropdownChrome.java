@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.widget.dropdown;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import com.mojang.math.Axis;
 import net.bananemdnsa.historystages.client.editor.anim.Ease;
 import net.bananemdnsa.historystages.client.editor.anim.Fade;
@@ -88,7 +89,7 @@ public final class DropdownChrome {
 
         // Clipped to the space left of the caret, so a long value cannot run into it.
         String text = font.plainSubstrByWidth(label, Math.max(0, w - 16));
-        g.text(font, text, x + 5, y + (h - 8) / 2 + 1, textColor, false);
+        g.text(font, text, x + 5, y + (h - 8) / 2 + 1, TextColors.legacy(textColor), false);
 
         drawCaret(g, x + w - 7, y + h / 2 - 1, Fade.mix(0xFF999999, 0xFFDDDDDD, hover), flip);
     }

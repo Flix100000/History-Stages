@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.widget.popup;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -103,7 +104,7 @@ public class DimensionFilterPopup {
         g.fill(accentX, panelY + 17, accentX + accentW, panelY + 18, 0xFFFFCC00);
 
         g.centeredText(font, Component.translatable("editor.historystages.dimension_filter.hint"),
-                panelX + panelW / 2, panelY + HEADER_H, 0x888888);
+                panelX + panelW / 2, panelY + HEADER_H, 0xFF888888);
 
         int listY = panelY + HEADER_H + HINT_H + 3;
         int maxScroll = Math.max(0, allDims.size() - visibleRows);
@@ -125,7 +126,7 @@ public class DimensionFilterPopup {
             g.fill(boxX + 1, boxY + 1, boxX + boxS - 1, boxY + boxS - 1, 0xFF1A1A1A);
             if (blk) g.fill(boxX + 3, boxY + 3, boxX + boxS - 3, boxY + boxS - 3, 0xFFFFCC00);
             g.text(font, dim, boxX + boxS + 6, ry + (ROW_H - font.lineHeight) / 2 + 1,
-                    blk ? 0xFFFFFFFF : 0xFF888888, false);
+                    TextColors.legacy(blk ? 0xFFFFFFFF : 0xFF888888), false);
         }
 
         // Scrollbar indicator
@@ -147,20 +148,20 @@ public class DimensionFilterPopup {
         g.fill(allX, btnY, allX + qBtnW, btnY + btnH, allHov ? 0x25FFFFFF : 0x10FFFFFF);
         g.fill(allX, btnY + btnH - 1, allX + qBtnW, btnY + btnH, allHov ? 0x80FFFFFF : 0x40FFFFFF);
         g.centeredText(font, Component.translatable("editor.historystages.lock_actions.btn_all"),
-                allX + qBtnW / 2, btnY + 4, allHov ? 0xFFFFFF : 0xCCCCCC);
+                allX + qBtnW / 2, btnY + 4, TextColors.legacy(allHov ? 0xFFFFFFFF : 0xFFCCCCCC));
         int noneX = allX + qBtnW + 3;
         boolean noneHov = mouseX >= noneX && mouseX < noneX + qBtnW && mouseY >= btnY && mouseY < btnY + btnH;
         g.fill(noneX, btnY, noneX + qBtnW, btnY + btnH, noneHov ? 0x25FFFFFF : 0x10FFFFFF);
         g.fill(noneX, btnY + btnH - 1, noneX + qBtnW, btnY + btnH, noneHov ? 0x80FFFFFF : 0x40FFFFFF);
         g.centeredText(font, Component.translatable("editor.historystages.lock_actions.btn_none"),
-                noneX + qBtnW / 2, btnY + 4, noneHov ? 0xFFFFFF : 0xCCCCCC);
+                noneX + qBtnW / 2, btnY + 4, TextColors.legacy(noneHov ? 0xFFFFFFFF : 0xFFCCCCCC));
         int doneW = 52;
         int doneX = panelX + panelW - doneW - PAD;
         boolean doneHov = mouseX >= doneX && mouseX < doneX + doneW && mouseY >= btnY && mouseY < btnY + btnH;
         g.fill(doneX, btnY, doneX + doneW, btnY + btnH, doneHov ? 0x50FFCC00 : 0x25FFCC00);
         g.fill(doneX, btnY + btnH - 1, doneX + doneW, btnY + btnH, doneHov ? 0xFFFFCC00 : 0x80FFCC00);
         g.centeredText(font, Component.translatable("editor.historystages.lock_actions.btn_done"),
-                doneX + doneW / 2, btnY + 4, doneHov ? 0xFFFFFF : 0xEEEEEE);
+                doneX + doneW / 2, btnY + 4, TextColors.legacy(doneHov ? 0xFFFFFFFF : 0xFFEEEEEE));
     }
 
     public boolean mouseClicked(double mouseX, double mouseY) {

@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.dialog;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.client.editor.widget.StyledButton;
 import net.bananemdnsa.historystages.api.editor.widget.AbstractModalScreen;
@@ -118,9 +119,9 @@ public class CreditsScreen extends AbstractModalScreen {
         net.bananemdnsa.historystages.client.LegacyGui.blit(g, LOGO, centerX - LOGO_SIZE / 2, y, 0f, 0f, LOGO_SIZE, LOGO_SIZE, LOGO_SIZE, LOGO_SIZE);
         int textY = y + LOGO_SIZE + LOGO_GAP;
         g.centeredText(this.font, Component.translatable("editor.historystages.credits.made_by"),
-                centerX, textY, SUBTITLE_GREY);
+                centerX, textY, TextColors.legacy(SUBTITLE_GREY));
         g.centeredText(this.font, Component.translatable("editor.historystages.credits.authors"),
-                centerX, textY + LINE_H, AUTHORS_COLOR);
+                centerX, textY + LINE_H, TextColors.legacy(AUTHORS_COLOR));
         // The links themselves are widgets and are drawn by super.render().
     }
 }

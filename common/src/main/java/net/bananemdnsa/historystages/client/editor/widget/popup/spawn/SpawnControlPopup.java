@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.widget.popup.spawn;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.bananemdnsa.historystages.api.editor.widget.NumberStepper;
 import net.bananemdnsa.historystages.api.editor.widget.PickerOverlay;
 import net.bananemdnsa.historystages.client.editor.widget.EditorTooltip;
@@ -526,7 +527,7 @@ public class SpawnControlPopup {
                 g.fill(panelX, ty, panelX + TAB_W, ty + TAB_H, 0xFF202020);
             }
             g.text(font, Component.translatable(tabs.get(i).key()), panelX + 8, ty + 5,
-                    on ? 0xFFFFFFFF : 0xFF888888, false);
+                    TextColors.legacy(on ? 0xFFFFFFFF : 0xFF888888), false);
             String badge = tabs.get(i).badge().get();
             if (badge != null) {
                 g.text(font, badge, panelX + TAB_W - 6 - font.width(badge), ty + 5, 0xFFFFCC00, false);
@@ -598,7 +599,7 @@ public class SpawnControlPopup {
         int edge = primary ? (hov ? 0xFFFFCC00 : 0x80FFCC00) : (hov ? 0xFF888888 : 0xFF555555);
         g.fill(x, y, x + w, y + BTN_H, face);
         g.fill(x, y + BTN_H - 1, x + w, y + BTN_H, edge);
-        g.centeredText(font, Component.translatable(key), x + w / 2, y + 4, hov ? 0xFFFFFF : 0xDDDDDD);
+        g.centeredText(font, Component.translatable(key), x + w / 2, y + 4, TextColors.legacy(hov ? 0xFFFFFFFF : 0xFFDDDDDD));
     }
 
     public boolean mouseClicked(double mouseX, double mouseY) {

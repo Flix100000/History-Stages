@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.widget.popup;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import com.mojang.blaze3d.platform.Lighting;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -212,7 +213,7 @@ public class ModEntitySelectionPopup {
         if (font.width(title) > panelW - PADDING * 2 - 150) {
             title = font.plainSubstrByWidth(title, panelW - PADDING * 2 - 156) + "...";
         }
-        guiGraphics.text(font, title, panelX + PADDING, panelY + 7, 0xFFFFFF, false);
+        guiGraphics.text(font, title, panelX + PADDING, panelY + 7, 0xFFFFFFFF, false);
 
         // Column headers with hover tooltips
         int cbSpawnX = getCbSpawnX();
@@ -236,11 +237,11 @@ public class ModEntitySelectionPopup {
                 && mouseY >= panelY + 4 && mouseY < panelY + 16;
 
         guiGraphics.text(font, spawnLabel, spawnLabelX, panelY + 7,
-                spawnHeaderHovered ? 0xDDDDDD : 0x999999, false);
+                TextColors.legacy(spawnHeaderHovered ? 0xFFDDDDDD : 0xFF999999), false);
         guiGraphics.text(font, attackLabel, attackLabelX, panelY + 7,
-                attackHeaderHovered ? 0xDDDDDD : 0x999999, false);
+                TextColors.legacy(attackHeaderHovered ? 0xFFDDDDDD : 0xFF999999), false);
         guiGraphics.text(font, interactLabel, interactLabelX, panelY + 7,
-                interactHeaderHovered ? 0xDDDDDD : 0x999999, false);
+                TextColors.legacy(interactHeaderHovered ? 0xFFDDDDDD : 0xFF999999), false);
 
         // Select-all checkboxes below labels
         int selectAllY = panelY + 20;
@@ -312,17 +313,17 @@ public class ModEntitySelectionPopup {
                     float pos = scrollProg % cycle;
                     int scrollOff = pos <= maxMarquee ? (int) pos : (int) (cycle - pos);
                     guiGraphics.enableScissor(textStartX, rowY, textStartX + textAvailW, rowY + ROW_HEIGHT);
-                    guiGraphics.text(font, text, textStartX - scrollOff, rowY + 7, textColor, false);
+                    guiGraphics.text(font, text, textStartX - scrollOff, rowY + 7, TextColors.legacy(textColor), false);
                     guiGraphics.disableScissor();
                 } else {
                     String truncated = font.plainSubstrByWidth(text, textAvailW - 8) + "...";
-                    guiGraphics.text(font, truncated, textStartX, rowY + 7, textColor, false);
+                    guiGraphics.text(font, truncated, textStartX, rowY + 7, TextColors.legacy(textColor), false);
                 }
             } else if (textW > textAvailW) {
                 String truncated = font.plainSubstrByWidth(text, textAvailW - 8) + "...";
-                guiGraphics.text(font, truncated, textStartX, rowY + 7, textColor, false);
+                guiGraphics.text(font, truncated, textStartX, rowY + 7, TextColors.legacy(textColor), false);
             } else {
-                guiGraphics.text(font, text, textStartX, rowY + 7, textColor, false);
+                guiGraphics.text(font, text, textStartX, rowY + 7, TextColors.legacy(textColor), false);
             }
 
             // Spawnlock checkbox
@@ -406,7 +407,7 @@ public class ModEntitySelectionPopup {
 
         guiGraphics.fill(tooltipX - 2, tooltipY - 2, tooltipX + tooltipW + 2, tooltipY + tooltipH + 2, 0xFF3D3D3D);
         guiGraphics.fill(tooltipX, tooltipY, tooltipX + tooltipW, tooltipY + tooltipH, 0xFF0D0D0D);
-        guiGraphics.text(font, text, tooltipX + 4, tooltipY + 4, 0xCCCCCC, false);
+        guiGraphics.text(font, text, tooltipX + 4, tooltipY + 4, 0xFFCCCCCC, false);
 
         guiGraphics.pose().popMatrix();
     }
@@ -431,7 +432,7 @@ public class ModEntitySelectionPopup {
         // Text
         int textGray = (int) (0xCC + hoverProgress * 0x33);
         int textColor = (0xFF << 24) | (textGray << 16) | (textGray << 8) | textGray;
-        guiGraphics.text(font, text, x + (w - font.width(text)) / 2, y + (h - 8) / 2, textColor, false);
+        guiGraphics.text(font, text, x + (w - font.width(text)) / 2, y + (h - 8) / 2, TextColors.legacy(textColor), false);
     }
 
     private void renderCheckbox(GuiGraphicsExtractor guiGraphics, int x, int y, boolean checked, int mouseX, int mouseY, String hoverKey) {

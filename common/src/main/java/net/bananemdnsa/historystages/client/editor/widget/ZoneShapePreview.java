@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.widget;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import java.util.List;
 
 import net.bananemdnsa.historystages.client.editor.zone.ZoneMapRenderer;
@@ -51,7 +52,7 @@ public final class ZoneShapePreview {
         if (shapes.isEmpty()) {
             g.disableScissor();
             g.centeredText(font, Component.translatable("editor.historystages.zone.preview.empty"),
-                    x + w / 2, y + h / 2 - 4, HINT);
+                    x + w / 2, y + h / 2 - 4, TextColors.legacy(HINT));
             return;
         }
 

@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.tab;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.bananemdnsa.historystages.api.editor.AbstractCategoryTab;
 
 import java.util.ArrayList;
@@ -100,7 +101,7 @@ public final class TradeLevelTab extends AbstractCategoryTab {
         GuiGraphicsExtractor g = ctx.graphics();
         g.text(ctx.font(), Component.translatable(
                         "editor.historystages.trades.levels.caption").getString(),
-                ctx.x() + 6, ctx.y() + 4, 0xAAAAAA, false);
+                ctx.x() + 6, ctx.y() + 4, 0xFFAAAAAA, false);
 
         int right = ctx.x() + ctx.width();
         font = ctx.font();
@@ -162,7 +163,7 @@ public final class TradeLevelTab extends AbstractCategoryTab {
 
         g.text(ctx.font(), Component.translatable("merchant.level." + level).getString()
                         + " §8(" + level + ")",
-                ctx.x() + 6, y + 7, hovered ? 0xFFFFFF : 0xBBBBBB, false);
+                ctx.x() + 6, y + 7, TextColors.legacy(hovered ? 0xFFFFFFFF : 0xFFBBBBBB), false);
 
         int toggleY = y + (EditorRowList.CARD_HEIGHT - ToggleControl.height()) / 2;
         Boolean segment = ctx.inputBlocked() ? null

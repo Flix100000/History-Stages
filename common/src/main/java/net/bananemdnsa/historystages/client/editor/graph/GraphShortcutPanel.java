@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.graph;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
@@ -92,18 +93,18 @@ public final class GraphShortcutPanel {
         g.fill(x - 1, y - 1, x + width + 1, y + 1, GOLD);
 
         int ty = y + PAD;
-        g.text(font, Component.translatable("editor.historystages.graph.keys.title"), x + PAD, ty, GOLD, false);
+        g.text(font, Component.translatable("editor.historystages.graph.keys.title"), x + PAD, ty, TextColors.legacy(GOLD), false);
         ty += 12;
         for (Section section : sections) {
-            g.text(font, section.title(), x + PAD, ty + 2, SECTION_TEXT, false);
+            g.text(font, section.title(), x + PAD, ty + 2, TextColors.legacy(SECTION_TEXT), false);
             g.fill(x + PAD, ty + 11, x + width - PAD, ty + 12, SECTION_RULE);
             ty += SECTION_H;
             for (Row row : section.rows()) {
                 int kx = x + PAD;
                 g.fill(kx, ty, kx + font.width(row.key()) + KEY_PAD * 2, ty + 11, KEY_FRAME);
                 g.fill(kx + 1, ty + 1, kx + font.width(row.key()) + KEY_PAD * 2 - 1, ty + 10, KEY_BG);
-                g.text(font, row.key(), kx + KEY_PAD, ty + 2, KEY_TEXT, false);
-                g.text(font, row.action(), x + PAD + keyColumnW + COLUMN_GAP, ty + 2, ACTION_TEXT, false);
+                g.text(font, row.key(), kx + KEY_PAD, ty + 2, TextColors.legacy(KEY_TEXT), false);
+                g.text(font, row.action(), x + PAD + keyColumnW + COLUMN_GAP, ty + 2, TextColors.legacy(ACTION_TEXT), false);
                 ty += ROW_H;
             }
         }

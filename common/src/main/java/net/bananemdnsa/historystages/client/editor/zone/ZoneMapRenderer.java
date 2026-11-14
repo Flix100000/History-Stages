@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.zone;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import java.util.List;
 
 import net.bananemdnsa.historystages.data.lock.ZoneMapView;
@@ -86,7 +87,7 @@ public final class ZoneMapRenderer {
             boolean big = Math.floorMod(wx, major) == 0;
             g.fill(px, y + 1, px + 1, y + h - 1, big ? GRID_MAJOR : GRID_MINOR);
             if (labels && big) {
-                g.text(font, Long.toString(wx), px + 2, y + 3, GRID_LABEL, false);
+                g.text(font, Long.toString(wx), px + 2, y + 3, TextColors.legacy(GRID_LABEL), false);
             }
         }
 
@@ -96,7 +97,7 @@ public final class ZoneMapRenderer {
             boolean big = Math.floorMod(wz, major) == 0;
             g.fill(x + 1, pz, x + w - 1, pz + 1, big ? GRID_MAJOR : GRID_MINOR);
             if (labels && big) {
-                g.text(font, Long.toString(wz), x + 3, pz + 2, GRID_LABEL, false);
+                g.text(font, Long.toString(wz), x + 3, pz + 2, TextColors.legacy(GRID_LABEL), false);
             }
         }
     }
@@ -128,7 +129,7 @@ public final class ZoneMapRenderer {
             String label = Integer.toString(index + 1);
             int cx = Math.round(ox + r.x() + r.w() / 2f) - font.width(label) / 2;
             int cy = Math.round(oy + r.y() + r.h() / 2f) - 4;
-            g.text(font, label, cx, cy, line, true);
+            g.text(font, label, cx, cy, TextColors.legacy(line), true);
         }
     }
 
@@ -223,6 +224,6 @@ public final class ZoneMapRenderer {
         int by = y + h - 10;
 
         g.fill(bx, by, bx + px, by + 2, SCALE_BAR);
-        g.text(font, Integer.toString(blocks), bx, by - 10, GRID_LABEL, true);
+        g.text(font, Integer.toString(blocks), bx, by - 10, TextColors.legacy(GRID_LABEL), true);
     }
 }

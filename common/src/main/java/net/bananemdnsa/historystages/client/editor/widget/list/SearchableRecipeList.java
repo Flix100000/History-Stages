@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.widget.list;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.bananemdnsa.historystages.api.editor.widget.PickerOverlay;
 import net.bananemdnsa.historystages.api.editor.widget.SearchBar;
 import net.bananemdnsa.historystages.client.editor.anim.Anim;
@@ -652,7 +653,7 @@ public class SearchableRecipeList implements PickerOverlay {
             int bg = active ? 0x40FFCC00 : (hovered ? 0x25FFFFFF : 0x15FFFFFF);
             guiGraphics.fill(tabXs[i], tabY, tabXs[i] + tabWs[i], tabY + TAB_HEIGHT, bg);
             int textColor = active ? 0xFFFFFF : (hovered ? 0xDDDDDD : 0x999999);
-            guiGraphics.text(font, labels.get(i), tabXs[i] + TAB_PAD, tabY + 3, textColor, false);
+            guiGraphics.text(font, labels.get(i), tabXs[i] + TAB_PAD, tabY + 3, TextColors.legacy(textColor), false);
         }
 
         guiGraphics.fill(Math.round(tabIndicatorX.value()), tabY + TAB_HEIGHT - 2,
@@ -703,7 +704,7 @@ public class SearchableRecipeList implements PickerOverlay {
         }
         g.fill(x, y, x + w, y + SELECTALL_BTN_H, border);
         g.fill(x + 1, y + 1, x + w - 1, y + SELECTALL_BTN_H - 1, bg);
-        g.text(font, label, x + (w - font.width(label)) / 2, y + (SELECTALL_BTN_H - 8) / 2, text, false);
+        g.text(font, label, x + (w - font.width(label)) / 2, y + (SELECTALL_BTN_H - 8) / 2, TextColors.legacy(text), false);
     }
 
     private void renderDetail(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
@@ -904,7 +905,7 @@ public class SearchableRecipeList implements PickerOverlay {
         int lineY = y;
         for (FormattedText line : font.getSplitter().splitLines(
                 Component.literal(text), w, net.minecraft.network.chat.Style.EMPTY)) {
-            g.text(font, line.getString(), x, lineY, color, false);
+            g.text(font, line.getString(), x, lineY, TextColors.legacy(color), false);
             lineY += HINT_LINE_H;
         }
     }

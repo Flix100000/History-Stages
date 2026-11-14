@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.nbt;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.bananemdnsa.historystages.api.editor.widget.Badge;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -293,17 +294,17 @@ public final class CriterionCard {
                 // A pixel taller than the header line, centred on it so the text stays put.
                 case BADGE -> Badge.draw(g, font, piece.text(), px, py - 1, piece.w(), piece.color() & 0xFFFFFF);
                 case TITLE, SUBTITLE, TEXT ->
-                        g.text(font, piece.text(), px, py, piece.color());
+                        g.text(font, piece.text(), px, py, TextColors.legacy(piece.color()));
                 case LINK -> g.text(font, piece.text(), px, py,
-                        hovered ? 0xFFFFE066 : piece.color());
+                        TextColors.legacy(hovered ? 0xFFFFE066 : piece.color()));
                 case FIELD -> renderField(g, piece, px, py, hovered);
                 case REMOVE -> g.text(font, piece.text(), px + 2, py + 1,
-                        hovered ? REMOVE_HOVER : piece.color());
+                        TextColors.legacy(hovered ? REMOVE_HOVER : piece.color()));
                 case ADD -> {
                     g.fill(px, py, px + piece.w(), py + piece.h(),
                             hovered ? 0x40FFCC00 : 0x20FFFFFF);
                     g.text(font, piece.text(), px + 6, py + 2,
-                            hovered ? LINK_COLOR : piece.color());
+                            TextColors.legacy(hovered ? LINK_COLOR : piece.color()));
                 }
             }
         }
@@ -318,7 +319,7 @@ public final class CriterionCard {
         String shown = fit(empty ? (piece.hint() == null ? "" : piece.hint()) : piece.text(),
                 piece.w() - 8);
         g.text(font, shown, px + 4, py + (piece.h() - 8) / 2,
-                empty ? FIELD_HINT : piece.color());
+                TextColors.legacy(empty ? FIELD_HINT : piece.color()));
     }
 
     // =============================================

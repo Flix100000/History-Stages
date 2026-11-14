@@ -164,10 +164,10 @@ public class StageLogicScreen extends Screen {
         smoothScroll.settle((float) scrollOffset, 0.5f);
 
         String title = Component.translatable("editor.historystages.logic.title_for", stageName).getString();
-        g.centeredText(this.font, title, this.width / 2, 8, 0xFFCC00);
+        g.centeredText(this.font, title, this.width / 2, 8, 0xFFFFCC00);
         String hint = Component.translatable("editor.historystages.logic.hint").getString();
         g.text(this.font, this.font.plainSubstrByWidth(hint, this.width - PADDING * 2 - addButton.getWidth() - 12),
-                PADDING + addButton.getWidth() + 10, TOOLBAR_Y + 5, 0x888888, false);
+                PADDING + addButton.getWidth() + 10, TOOLBAR_Y + 5, 0xFF888888, false);
         g.fill(PADDING, HEADER_HEIGHT - 6, this.width - PADDING, HEADER_HEIGHT - 5, 0x40FFCC00);
 
         int top = listTop();
@@ -175,7 +175,7 @@ public class StageLogicScreen extends Screen {
         g.enableScissor(0, top, this.width, bottom);
         if (draft.blocks.isEmpty()) {
             String empty = Component.translatable("editor.historystages.logic.empty").getString();
-            g.text(this.font, empty, (this.width - this.font.width(empty)) / 2, (top + bottom) / 2 - 4, 0x7A7A7A, false);
+            g.text(this.font, empty, (this.width - this.font.width(empty)) / 2, (top + bottom) / 2 - 4, 0xFF7A7A7A, false);
         } else {
             boolean pickerOpen = pickerOverlay != null || (addMenu != null && addMenu.isVisible());
             int hoverX = pickerOpen ? -1 : mouseX;
@@ -218,7 +218,7 @@ public class StageLogicScreen extends Screen {
         int labelX = this.width - PADDING - 100 - 8 - this.font.width(label);
         int y = this.height - 24;
         g.fill(labelX - 10, y + 1, labelX - 4, y + 7, (alpha << 24) | 0xFFCC00);
-        g.text(this.font, label, labelX, y, 0xFFCC00, false);
+        g.text(this.font, label, labelX, y, 0xFFFFCC00, false);
     }
 
     // ---- input ------------------------------------------------------------------------

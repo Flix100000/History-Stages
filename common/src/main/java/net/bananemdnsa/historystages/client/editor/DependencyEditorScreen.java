@@ -1,4 +1,5 @@
 package net.bananemdnsa.historystages.client.editor;
+import net.bananemdnsa.historystages.util.TextColors;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonInfo;
@@ -427,7 +428,7 @@ public class DependencyEditorScreen extends Screen {
         g.pose().pushMatrix();
         g.pose().translate(x, y);
         g.pose().scale(SMALL_SCALE, SMALL_SCALE);
-        g.text(this.font, text, 0, 0, color, false);
+        g.text(this.font, text, 0, 0, TextColors.legacy(color), false);
         g.pose().popMatrix();
     }
 
@@ -459,7 +460,7 @@ public class DependencyEditorScreen extends Screen {
         String currentTooltipKey = null;
         String currentTooltipText = null;
 
-        g.centeredText(this.font, t("editor.historystages.dep.title"), this.width / 2, 8, 0xFFCC00);
+        g.centeredText(this.font, t("editor.historystages.dep.title"), this.width / 2, 8, 0xFFFFCC00);
         g.fill(10, HEADER_HEIGHT - 4, this.width - 10, HEADER_HEIGHT - 3, 0xFF555555);
 
         // Left panel
@@ -483,7 +484,7 @@ public class DependencyEditorScreen extends Screen {
             renderTabContent(g, mouseX, mouseY);
         } else {
             g.centeredText(this.font, t("editor.historystages.dep.no_groups"), this.width / 2, this.height / 2,
-                    0x888888);
+                    0xFF888888);
         }
 
         // Unsaved indicator (pulsing dot), right-aligned against the Save button like StageDetailScreen
@@ -564,7 +565,7 @@ public class DependencyEditorScreen extends Screen {
             }
 
             g.text(this.font, t("editor.historystages.dep.group", i + 1), 14, y + 3,
-                    selected ? 0xFFFFFF : 0xCCCCCC, false);
+                    TextColors.legacy(selected ? 0xFFFFFFFF : 0xFFCCCCCC), false);
 
             // AND/OR picker
             String logic = group.getLogic();
@@ -578,7 +579,7 @@ public class DependencyEditorScreen extends Screen {
             int badgeColor = group.isOr() ? (badgeHovered ? 0xFF77CCFF : 0xFF55AAFF)
                     : (badgeHovered ? 0xFF77FF77 : 0xFF55FF55);
             g.fill(badgeX, y + 2, badgeX + badgeW, y + LOGIC_BADGE_H + 2, badgeBg);
-            g.text(this.font, logic, badgeX + 3, y + 3, badgeColor, false);
+            g.text(this.font, logic, badgeX + 3, y + 3, TextColors.legacy(badgeColor), false);
             DropdownChrome.drawCaret(g, badgeX + badgeW - 7, y + LOGIC_BADGE_H / 2 + 1,
                     badgeHovered ? 0xFFDDDDDD : 0xFF999999,
                     logicPickerGroup == i && logicPicker != null && logicPicker.isVisible()
@@ -762,7 +763,7 @@ public class DependencyEditorScreen extends Screen {
 
             int addG = (int) (0x88 + addProgress * 0x77);
             int addRB = (int) (0x33 + addProgress * 0x22);
-            g.text(this.font, addText, rightX + 6, addY + 7, (0xFF << 24) | (addRB << 16) | (addG << 8) | addRB,
+            g.text(this.font, addText, rightX + 6, addY + 7, TextColors.legacy((0xFF << 24) | (addRB << 16) | (addG << 8) | addRB),
                     false);
         }
 
@@ -917,7 +918,7 @@ public class DependencyEditorScreen extends Screen {
 
         int tyy = ty2 + 3;
         for (String l : lines) {
-            g.text(this.font, l, tx + 4, tyy, 0xCCCCCC, false);
+            g.text(this.font, l, tx + 4, tyy, 0xFFCCCCCC, false);
             tyy += 10;
         }
         g.pose().popMatrix();

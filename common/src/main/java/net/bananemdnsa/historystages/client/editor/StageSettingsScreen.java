@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.MouseButtonInfo;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -1000,7 +1001,7 @@ public class StageSettingsScreen extends Screen {
             g.pose().pushMatrix();
             g.pose().translate(x, y + i * SMALL_LINE_H);
             g.pose().scale(SMALL_SCALE, SMALL_SCALE);
-            g.text(this.font, lines.get(i), 0, 0, color, false);
+            g.text(this.font, lines.get(i), 0, 0, TextColors.legacy(color), false);
             g.pose().popMatrix();
         }
     }
@@ -1719,7 +1720,7 @@ public class StageSettingsScreen extends Screen {
         // --- Fixed title bar (above the viewport) ---
         guiGraphics.centeredText(this.font,
                 Component.translatable("editor.historystages.stage_settings.title"),
-                this.width / 2, 8, 0xFFFFFF);
+                this.width / 2, 8, 0xFFFFFFFF);
         guiGraphics.fill(10, 18, this.width - 10, 19, 0xFF555555);
 
         // --- Scrolled content, clipped to the viewport ---
@@ -1728,16 +1729,16 @@ public class StageSettingsScreen extends Screen {
         int labelX = 30;
         guiGraphics.text(this.font,
                 Component.translatable("editor.historystages.field.stage_id").getString(),
-                labelX, 27 - renderScroll, 0xAAAAAA, false);
+                labelX, 27 - renderScroll, 0xFFAAAAAA, false);
         guiGraphics.text(this.font,
                 Component.translatable("editor.historystages.field.display_name").getString(),
-                labelX, 49 - renderScroll, 0xAAAAAA, false);
+                labelX, 49 - renderScroll, 0xFFAAAAAA, false);
         guiGraphics.text(this.font,
                 Component.translatable("editor.historystages.mode.label").getString(),
-                labelX, 71 - renderScroll, 0xAAAAAA, false);
+                labelX, 71 - renderScroll, 0xFFAAAAAA, false);
         guiGraphics.text(this.font,
                 Component.translatable("editor.historystages.field.description"),
-                labelX, 93 - renderScroll, 0xAAAAAA, false);
+                labelX, 93 - renderScroll, 0xFFAAAAAA, false);
 
         // Card chrome (before widgets so they sit on top)
         int cardH = computeCardHeight();
@@ -1775,30 +1776,30 @@ public class StageSettingsScreen extends Screen {
             int cardLabelX = cardX + 12;
             guiGraphics.text(this.font,
                     Component.translatable("editor.historystages.field.research_time").getString(),
-                    cardLabelX, bodyY + 5, 0xAAAAAA, false);
+                    cardLabelX, bodyY + 5, 0xFFAAAAAA, false);
             guiGraphics.text(this.font,
                     Component.translatable("editor.historystages.field.min_pedestal_tier").getString(),
-                    cardLabelX, bodyY + 27, 0xAAAAAA, false);
+                    cardLabelX, bodyY + 27, 0xFFAAAAAA, false);
             guiGraphics.text(this.font,
                     Component.translatable("editor.historystages.field.pedestal_tier_mode").getString(),
-                    cardLabelX, bodyY + 49, 0xAAAAAA, false);
+                    cardLabelX, bodyY + 49, 0xFFAAAAAA, false);
             guiGraphics.text(this.font,
                     Component.translatable("editor.historystages.field.scroll_completion").getString(),
-                    cardLabelX, bodyY + 71, 0xAAAAAA, false);
+                    cardLabelX, bodyY + 71, 0xFFAAAAAA, false);
             tierDropdown.renderButton(guiGraphics, this.font, mouseX, mouseY);
             scrollCompletionDropdown.renderButton(guiGraphics, this.font, mouseX, mouseY);
         } else if (editMode == StageMode.AUTO) {
             int count = editAutoTrigger == null ? 0 : editAutoTrigger.getTriggers().size();
             if (count == 0) {
                 String warn = Component.translatable("editor.historystages.auto_trigger.no_triggers_warn").getString();
-                guiGraphics.text(this.font, warn, cardX + 12, bodyY + FIELD_HEIGHT + 8, 0xFFAA55, false);
+                guiGraphics.text(this.font, warn, cardX + 12, bodyY + FIELD_HEIGHT + 8, 0xFFFFAA55, false);
             }
         } else if (editMode == StageMode.CONDITIONAL) {
             int rowY = conditionalNotifyRowY();
             int toggleX = conditionalNotifyToggleX();
             guiGraphics.text(this.font,
                     Component.translatable("editor.historystages.relock.notify").getString(),
-                    cardX + 12, rowY + 3, 0xAAAAAA, false);
+                    cardX + 12, rowY + 3, 0xFFAAAAAA, false);
             boolean notify = shownNotify();
             notifyToggle.update(notify, ToggleControl.segmentAt(this.font, toggleX, rowY, mouseX, mouseY));
             ToggleControl.draw(guiGraphics, this.font, toggleX, rowY, notify, notifyToggle, false);
@@ -1806,16 +1807,16 @@ public class StageSettingsScreen extends Screen {
                     rowY + INDIV_TOGGLE_H + INDIV_HINT_GAP, cardW - 24, 0x888888);
         } else if (editMode == StageMode.EXTERNAL) {
             String help = Component.translatable("editor.historystages.mode.external.help").getString();
-            guiGraphics.text(this.font, help, cardX + 12, bodyY + 6, 0xAAAAAA, false);
+            guiGraphics.text(this.font, help, cardX + 12, bodyY + 6, 0xFFAAAAAA, false);
         } else if (editMode == StageMode.TEMPORARY) {
             int cardLabelX = cardX + 12;
             guiGraphics.text(this.font,
                     Component.translatable("editor.historystages.temporary.duration").getString(),
-                    cardLabelX, bodyY + 22 + 5, 0xAAAAAA, false);
+                    cardLabelX, bodyY + 22 + 5, 0xFFAAAAAA, false);
             durationUnitDropdown.renderButton(guiGraphics, this.font, mouseX, mouseY);
             guiGraphics.text(this.font,
                     Component.translatable("editor.historystages.temporary.max_triggers").getString(),
-                    cardLabelX, bodyY + 44 + 5, 0xAAAAAA, false);
+                    cardLabelX, bodyY + 44 + 5, 0xFFAAAAAA, false);
             String maxHint = editTemporary != null && editTemporary.isUnlimited()
                     ? Component.translatable("editor.historystages.temporary.max_triggers.unlimited").getString()
                     : Component.translatable("editor.historystages.temporary.max_triggers.hint").getString();
@@ -1823,7 +1824,7 @@ public class StageSettingsScreen extends Screen {
             if (editTemporary != null && editTemporary.allowsMultiple()) {
                 guiGraphics.text(this.font,
                         Component.translatable("editor.historystages.temporary.cooldown").getString(),
-                        cardLabelX, bodyY + 66 + 5, 0xAAAAAA, false);
+                        cardLabelX, bodyY + 66 + 5, 0xFFAAAAAA, false);
                 cooldownUnitDropdown.renderButton(guiGraphics, this.font, mouseX, mouseY);
             }
         }
@@ -1882,7 +1883,7 @@ public class StageSettingsScreen extends Screen {
         }
 
         if (!saveError.isEmpty()) {
-            guiGraphics.centeredText(this.font, saveError, this.width / 2, this.height - 38, 0xFF5555);
+            guiGraphics.centeredText(this.font, saveError, this.width / 2, this.height - 38, 0xFFFF5555);
         }
 
         // Popups (must be last so they overlay everything; drawn unclipped)
@@ -1974,7 +1975,7 @@ public class StageSettingsScreen extends Screen {
         if (accentEdge != null) g.fill(x, y, x + w, y + 2, accentEdge);
         // Header text
         g.text(this.font, Component.translatable(headerKey).getString(),
-                x + 8, y + 7, headerColor, false);
+                x + 8, y + 7, TextColors.legacy(headerColor), false);
     }
 
     private void renderRelockCardContent(GuiGraphicsExtractor g, int mouseX, int mouseY) {
@@ -1984,7 +1985,7 @@ public class StageSettingsScreen extends Screen {
         boolean hasLocks = lockTriggerCount() > 0;
 
         g.text(this.font, Component.translatable("editor.historystages.relock.re_unlockable").getString(),
-                labelX, reUnlockRowY + 3, hasLocks ? 0xAAAAAA : 0x666666, false);
+                labelX, reUnlockRowY + 3, TextColors.legacy(hasLocks ? 0xFFAAAAAA : 0xFF666666), false);
         boolean reUnlockable = editLockTrigger != null && editLockTrigger.isReUnlockable();
         reUnlockToggle.update(reUnlockable, hasLocks
                 ? ToggleControl.segmentAt(this.font, relockToggleX, reUnlockRowY, mouseX, mouseY) : null);
@@ -1993,7 +1994,7 @@ public class StageSettingsScreen extends Screen {
 
         // Unlock messages follow this switch too, so it stays live without lock triggers.
         g.text(this.font, Component.translatable("editor.historystages.relock.notify").getString(),
-                labelX, relockNotifyRowY + 3, 0xAAAAAA, false);
+                labelX, relockNotifyRowY + 3, 0xFFAAAAAA, false);
         boolean notify = shownNotify();
         notifyToggle.update(notify,
                 ToggleControl.segmentAt(this.font, relockToggleX, relockNotifyRowY, mouseX, mouseY));
@@ -2010,16 +2011,16 @@ public class StageSettingsScreen extends Screen {
         int labelX = displayCardX + 12;
 
         g.text(this.font, Component.translatable("editor.historystages.display.name").getString(),
-                labelX, displayNameRowY + 5, 0xAAAAAA, false);
+                labelX, displayNameRowY + 5, 0xFFAAAAAA, false);
         g.text(this.font, Component.translatable("editor.historystages.display.tooltip").getString(),
-                labelX, displayTooltipRowY + 5, 0xAAAAAA, false);
+                labelX, displayTooltipRowY + 5, 0xFFAAAAAA, false);
 
         nameModeDropdown.renderButton(g, this.font, mouseX, mouseY);
         tooltipModeDropdown.renderButton(g, this.font, mouseX, mouseY);
 
         // Show-lock-hints toggle button (DependencyEditorScreen style)
         g.text(this.font, Component.translatable("editor.historystages.display.show_lock_hints").getString(),
-                labelX, lockHintsRowY + 3, 0xAAAAAA, false);
+                labelX, lockHintsRowY + 3, 0xFFAAAAAA, false);
         boolean showLockHints = editHiddenDisplay.isShowLockHints();
         lockHintsToggle.update(showLockHints, ToggleControl.segmentAt(
                 this.font, lockHintsToggleX, lockHintsRowY, mouseX, mouseY));
@@ -2033,7 +2034,7 @@ public class StageSettingsScreen extends Screen {
 
         g.text(this.font,
                 Component.translatable("editor.historystages.locks.interchangeable").getString(),
-                labelX, interchangeableRowY + 3, 0xAAAAAA, false);
+                labelX, interchangeableRowY + 3, 0xFFAAAAAA, false);
 
         interchangeableToggle.update(editInterchangeable, ToggleControl.segmentAt(
                 this.font, interchangeableToggleX, interchangeableRowY, mouseX, mouseY));
@@ -2055,7 +2056,7 @@ public class StageSettingsScreen extends Screen {
     /** Label and hint; the button itself is a content widget. */
     private void renderFixedActionsRow(GuiGraphicsExtractor g, int rowY, String labelKey) {
         int labelX = lockCardX + 12;
-        g.text(this.font, Component.translatable(labelKey).getString(), labelX, rowY + 3, 0xAAAAAA, false);
+        g.text(this.font, Component.translatable(labelKey).getString(), labelX, rowY + 3, 0xFFAAAAAA, false);
         drawSmallText(g, Component.translatable(labelKey + ".hint").getString(),
                 labelX, rowY + INDIV_TOGGLE_H + INDIV_HINT_GAP, 0x888888);
     }
@@ -2066,7 +2067,7 @@ public class StageSettingsScreen extends Screen {
 
         g.text(this.font,
                 Component.translatable("editor.historystages.individual.lose_on_death").getString(),
-                labelX, loseRowY + 3, 0xAAAAAA, false);
+                labelX, loseRowY + 3, 0xFFAAAAAA, false);
 
         loseToggle.update(editLoseOnDeath,
                 ToggleControl.segmentAt(this.font, loseToggleX, loseRowY, mouseX, mouseY));
@@ -2082,7 +2083,7 @@ public class StageSettingsScreen extends Screen {
         boolean canShare = editMode.allowsTeamSharing();
         g.text(this.font,
                 Component.translatable("editor.historystages.individual.share_with_team").getString(),
-                labelX, shareRowY + 3, canShare ? 0xAAAAAA : 0x666666, false);
+                labelX, shareRowY + 3, TextColors.legacy(canShare ? 0xFFAAAAAA : 0xFF666666), false);
         shareToggle.update(editShareWithTeam, canShare
                 ? ToggleControl.segmentAt(this.font, loseToggleX, shareRowY, mouseX, mouseY) : null);
         ToggleControl.draw(g, this.font, loseToggleX, shareRowY, editShareWithTeam, shareToggle, !canShare);
@@ -2106,7 +2107,7 @@ public class StageSettingsScreen extends Screen {
                 boolean isToggle = row.field.kind() == SettingKind.BOOL;
                 int labelY = isToggle ? row.rowY + 3 : row.rowY + 5;
                 g.text(this.font, Component.translatable(row.field.langKey()).getString(),
-                        labelX, labelY, 0xAAAAAA, false);
+                        labelX, labelY, 0xFFAAAAAA, false);
 
                 if (isToggle) {
                     renderAddonToggle(g, card, row, mouseX, mouseY);
@@ -2286,7 +2287,7 @@ public class StageSettingsScreen extends Screen {
                 Fade.mix(0x60FFCC00, 0xFFFFCC00, hp));
 
         String label = Component.translatable(modeLabelKey(editMode)).getString();
-        g.text(this.font, label, modeDropdownX + 6, modeDropdownY + 5, 0xFFFFFF, false);
+        g.text(this.font, label, modeDropdownX + 6, modeDropdownY + 5, 0xFFFFFFFF, false);
 
         // Turned by the same progress that reveals the popup, replacing the two static
         // glyphs that used to swap in a single frame.
@@ -2324,8 +2325,8 @@ public class StageSettingsScreen extends Screen {
                     ? Fade.mix(0xFFFFCC00, 0xFFFFFFFF, rh)
                     : Fade.mix(0xFFDDDDDD, 0xFFFFFFFF, rh);
             int textX = px + 8 + Math.round(rh * 2.0f);
-            g.text(this.font, name, textX, rowY + 3, nameColor, false);
-            g.text(this.font, desc, textX, rowY + 13, 0x888888, false);
+            g.text(this.font, name, textX, rowY + 3, TextColors.legacy(nameColor), false);
+            g.text(this.font, desc, textX, rowY + 13, 0xFF888888, false);
         }
 
         DropdownChrome.end(g);
@@ -2426,7 +2427,7 @@ public class StageSettingsScreen extends Screen {
         g.pose().pushMatrix();
         g.pose().translate(x, y);
         g.pose().scale(SMALL_SCALE, SMALL_SCALE);
-        g.text(this.font, text, 0, 0, color, false);
+        g.text(this.font, text, 0, 0, TextColors.legacy(color), false);
         g.pose().popMatrix();
     }
 

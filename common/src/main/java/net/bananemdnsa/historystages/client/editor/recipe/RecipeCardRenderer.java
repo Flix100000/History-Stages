@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.recipe;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import java.util.List;
 
 import net.bananemdnsa.historystages.api.editor.RecipeTypeMeta;
@@ -129,7 +130,7 @@ public final class RecipeCardRenderer {
             }
         }
 
-        g.text(font, "→", inputLeft + layout.contentWidth() + GAP, midY - 4, TEXT_DIM, false);
+        g.text(font, "→", inputLeft + layout.contentWidth() + GAP, midY - 4, TextColors.legacy(TEXT_DIM), false);
 
         int resultLeft = resultLeft(x, layout);
         g.fill(resultLeft, midY - RecipeCardLayout.RESULT_SIZE / 2,
@@ -145,21 +146,21 @@ public final class RecipeCardRenderer {
             // Nothing here is known to be the output. An empty slot would read as a fault in the
             // recipe; this says the honest thing, which is that we could not tell.
             g.text(font, "?", resultLeft + RecipeCardLayout.RESULT_SIZE / 2 - 2, midY - 4,
-                    UNKNOWN_SIDE, false);
+                    TextColors.legacy(UNKNOWN_SIDE), false);
         }
 
         String typeName = meta.nameLangKey().isEmpty()
                 ? meta.displayFallback()
                 : Component.translatable(meta.nameLangKey()).getString();
         g.text(font, typeName, x + width - font.width(typeName) - SIDE_PADDING,
-                y + 2, TEXT_DIM, false);
+                y + 2, TextColors.legacy(TEXT_DIM), false);
 
         String namespace = recipeId != null && recipeId.contains(":")
                 ? recipeId.substring(0, recipeId.indexOf(':'))
                 : "";
         if (!namespace.isEmpty()) {
             g.text(font, namespace, x + width - font.width(namespace) - SIDE_PADDING,
-                    y + height - 10, TEXT_DIMMER, false);
+                    y + height - 10, TextColors.legacy(TEXT_DIMMER), false);
         }
     }
 

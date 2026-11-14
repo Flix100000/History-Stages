@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.api.editor.widget;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.bananemdnsa.historystages.api.editor.widget.PickerOverlay;
 import net.bananemdnsa.historystages.client.editor.anim.Anim;
 import net.bananemdnsa.historystages.client.editor.anim.Ease;
@@ -324,7 +325,7 @@ public abstract class AbstractSearchableList<T> implements PickerOverlay {
         if (font.width(text) > w - 4) {
             text = font.plainSubstrByWidth(text, w - 10) + "...";
         }
-        g.text(font, text, x + 3, y + 4, hovered ? 0xFFFFFF : 0xBBBBBB, false);
+        g.text(font, text, x + 3, y + 4, TextColors.legacy(hovered ? 0xFFFFFFFF : 0xFFBBBBBB), false);
     }
 
     /**
@@ -728,7 +729,7 @@ public abstract class AbstractSearchableList<T> implements PickerOverlay {
             int bg = active ? 0x40FFCC00 : Fade.mix(0x15FFFFFF, 0x25FFFFFF, hp);
             g.fill(tabXs[i], tabY, tabXs[i] + tabWs[i], tabY + TAB_HEIGHT, bg);
             int textColor = active ? 0xFFFFFF : Fade.mix(0xFF999999, 0xFFDDDDDD, hp);
-            g.text(font, labels.get(i), tabXs[i] + TAB_PAD, tabY + 3, textColor, false);
+            g.text(font, labels.get(i), tabXs[i] + TAB_PAD, tabY + 3, TextColors.legacy(textColor), false);
         }
 
         g.fill(Math.round(indicatorX), tabY + TAB_HEIGHT - 2,
@@ -927,7 +928,7 @@ public abstract class AbstractSearchableList<T> implements PickerOverlay {
         }
         g.fill(x, y, x + w, y + SELECTALL_BTN_H, border);
         g.fill(x + 1, y + 1, x + w - 1, y + SELECTALL_BTN_H - 1, bg);
-        g.text(font, label, x + (w - font.width(label)) / 2, y + (SELECTALL_BTN_H - 8) / 2, text, false);
+        g.text(font, label, x + (w - font.width(label)) / 2, y + (SELECTALL_BTN_H - 8) / 2, TextColors.legacy(text), false);
     }
 
     private boolean confirmAndAdd() {

@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.widget.popup;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiConsumer;
@@ -97,7 +98,7 @@ public class TradeLevelsPopup {
                 popupX + (popupW + accentW) / 2, popupY + 16, 0xFFFFCC00);
 
         g.centeredText(font, Component.translatable("editor.historystages.trade_levels.hint"),
-                popupX + popupW / 2, popupY + HEADER_H, 0x888888);
+                popupX + popupW / 2, popupY + HEADER_H, 0xFF888888);
 
         int rowW = popupW - 2 * PAD;
         int y = popupY + HEADER_H + HINT_H + 3;
@@ -115,7 +116,7 @@ public class TradeLevelsPopup {
             g.fill(x + 4, y + 6, x + 7, y + 9, gated ? 0xFFFFCC00 : 0xFF555555);
             g.text(font, Component.translatable("merchant.level." + level).getString()
                             + " §8(" + level + ")",
-                    x + 10, y + 3, gated ? 0xFFFFFF : 0x999999, false);
+                    x + 10, y + 3, TextColors.legacy(gated ? 0xFFFFFFFF : 0xFF999999), false);
             y += ROW_H + ROW_GAP;
         }
 
@@ -202,7 +203,7 @@ public class TradeLevelsPopup {
                 ? (hovered ? 0xFFFFCC00 : 0x80FFCC00)
                 : (hovered ? 0x80FFFFFF : 0x40FFFFFF));
         g.centeredText(font, Component.translatable(langKey), x + w / 2, y + 3,
-                hovered ? 0xFFFFFF : (primary ? 0xEEEEEE : 0xCCCCCC));
+                TextColors.legacy(hovered ? 0xFFFFFFFF : (primary ? 0xFFEEEEEE : 0xFFCCCCCC)));
     }
 
     private boolean inButton(double mouseX, double mouseY, int x, int y, int w) {

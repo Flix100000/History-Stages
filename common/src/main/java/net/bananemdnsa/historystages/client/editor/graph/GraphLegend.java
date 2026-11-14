@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.graph;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.bananemdnsa.historystages.GraphConfig;
 import net.bananemdnsa.historystages.client.editor.anim.Anim;
 import net.bananemdnsa.historystages.client.editor.anim.Ease;
@@ -114,7 +115,7 @@ public final class GraphLegend {
         boolean hoverHeader = mouseX >= lx && mouseX <= lx + curW && mouseY >= hy && mouseY <= hy + HEADER_H;
         g.fill(lx, hy, lx + curW, hy + HEADER_H, hoverHeader ? HEADER_BG_HOVER : HEADER_BG);
         g.fill(lx, hy + HEADER_H - 1, lx + curW, hy + HEADER_H, ACCENT_COLOR);
-        g.text(font, (expanded ? "▼ " : "▶ ") + tr("title"), lx + 5, hy + 4, ACCENT_COLOR, false);
+        g.text(font, (expanded ? "▼ " : "▶ ") + tr("title"), lx + 5, hy + 4, TextColors.legacy(ACCENT_COLOR), false);
 
         g.pose().popMatrix();
 
@@ -130,7 +131,7 @@ public final class GraphLegend {
         int tx = lx + LABEL_DX;
         int y = by + PAD;
 
-        g.text(font, tr("nodes"), lx + 6, y, SECTION_TEXT_COLOR, false);
+        g.text(font, tr("nodes"), lx + 6, y, TextColors.legacy(SECTION_TEXT_COLOR), false);
         y += SUB_H;
         y = stateRow(g, font, sx1, sx2, tx, y, NodeState.UNLOCKED);
         y = stateRow(g, font, sx1, sx2, tx, y, NodeState.REACHABLE);
@@ -139,7 +140,7 @@ public final class GraphLegend {
 
         g.fill(lx + 6, y + 1, lx + curW - 6, y + 2, SEPARATOR_COLOR);
         y += 4;
-        g.text(font, tr("connections"), lx + 6, y, SECTION_TEXT_COLOR, false);
+        g.text(font, tr("connections"), lx + 6, y, TextColors.legacy(SECTION_TEXT_COLOR), false);
         y += SUB_H;
         int esx = lx + EDGE_SAMPLE_DX;
         int etx = lx + EDGE_LABEL_DX;
@@ -158,7 +159,7 @@ public final class GraphLegend {
         ResolvedStyle individual = StageGraphConfig.styleFor(PLACEHOLDER_STAGE_ID, true, state);
         drawSwatch(g, sx1, cy, global);
         drawSwatch(g, sx2, cy, individual);
-        g.text(font, stateLabel(state), tx, y + 1, ROW_TEXT_COLOR, false);
+        g.text(font, stateLabel(state), tx, y + 1, TextColors.legacy(ROW_TEXT_COLOR), false);
         return y + ROW_H;
     }
 
@@ -207,7 +208,7 @@ public final class GraphLegend {
         } else {
             g.fill(sx - 6, y + 5, sx + 7, y + 7, color);
         }
-        g.text(font, tr(orGroup ? "or" : "and"), tx, y + 1, ROW_TEXT_COLOR, false);
+        g.text(font, tr(orGroup ? "or" : "and"), tx, y + 1, TextColors.legacy(ROW_TEXT_COLOR), false);
         return y + ROW_H;
     }
 

@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.widget;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.bananemdnsa.historystages.api.editor.widget.SearchBar;
 
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -87,7 +88,7 @@ public final class SearchPanelChrome {
 
         int textGray = (int) (0xCC + hoverProgress * 0x33);
         int textColor = (0xFF << 24) | (textGray << 16) | (textGray << 8) | textGray;
-        g.text(font, text, x + (w - font.width(text)) / 2, y + (h - 8) / 2, textColor, false);
+        g.text(font, text, x + (w - font.width(text)) / 2, y + (h - 8) / 2, TextColors.legacy(textColor), false);
     }
 
     /**

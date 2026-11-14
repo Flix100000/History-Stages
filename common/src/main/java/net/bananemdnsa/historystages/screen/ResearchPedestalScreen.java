@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.screen;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.minecraft.client.input.MouseButtonInfo;
 import net.minecraft.client.input.MouseButtonEvent;
 import dev.architectury.networking.NetworkManager;
@@ -222,19 +223,19 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
 
     /** Draws {@code text} at the left margin. Shadowed — see the palette comment. */
     private void drawLeft(GuiGraphicsExtractor guiGraphics, Component text, int y, int colour) {
-        guiGraphics.text(this.font, text, PedestalLayout.TEXT_X, y, colour, true);
+        guiGraphics.text(this.font, text, PedestalLayout.TEXT_X, y, TextColors.legacy(colour), true);
     }
 
     /** Draws {@code text} so its right edge lands on {@link PedestalLayout#TEXT_RIGHT}. */
     private void drawRightAligned(GuiGraphicsExtractor guiGraphics, Component text, int y, int colour) {
         guiGraphics.text(this.font, text,
-                PedestalLayout.TEXT_RIGHT - this.font.width(text), y, colour, true);
+                PedestalLayout.TEXT_RIGHT - this.font.width(text), y, TextColors.legacy(colour), true);
     }
 
     /** Draws {@code text} centred across the panel body. */
     private void drawCentred(GuiGraphicsExtractor guiGraphics, Component text, int y, int colour) {
         guiGraphics.text(this.font, text,
-                (PedestalLayout.WIDTH / 2) - (this.font.width(text) / 2), y, colour, true);
+                (PedestalLayout.WIDTH / 2) - (this.font.width(text) / 2), y, TextColors.legacy(colour), true);
     }
 
     /**
@@ -265,7 +266,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
     private void drawBarPercent(GuiGraphicsExtractor guiGraphics, int percent) {
         guiGraphics.text(this.font,
                 Component.translatable("gui.historystages.pedestal.progress", percent),
-                PedestalLayout.BAR_TEXT_X, PedestalLayout.BAR_TEXT_Y, SLAB_PRIMARY, true);
+                PedestalLayout.BAR_TEXT_X, PedestalLayout.BAR_TEXT_Y, TextColors.legacy(SLAB_PRIMARY), true);
     }
 
     // --- dependency cards ---
@@ -372,7 +373,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
     /** Draws {@code text} cut to {@code maxWidth}, without a shadow — this is on parchment. */
     private void drawTrimmed(GuiGraphicsExtractor guiGraphics, Component text, int x, int y, int maxWidth,
                              int colour) {
-        guiGraphics.text(this.font, trimToWidth(text, maxWidth), x, y, colour, false);
+        guiGraphics.text(this.font, trimToWidth(text, maxWidth), x, y, TextColors.legacy(colour), false);
     }
 
     /** The live booster multiplier, or null when no booster is under the pedestal. */
@@ -867,7 +868,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
             Component text = Component.translatable("screen.historystages.already_learned");
             int tw = this.font.width(text);
             guiGraphics.text(this.font, text, x + (PedestalLayout.DEP_W / 2) - (tw / 2), y + 70,
-                    PANEL_ERROR, false);
+                    TextColors.legacy(PANEL_ERROR), false);
             guiGraphics.pose().popMatrix();
             return;
         }
@@ -876,7 +877,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
             guiGraphics.pose().pushMatrix();
             guiGraphics.pose().translate(0, 0);
             guiGraphics.text(this.font,
-                    Component.translatable("gui.historystages.pedestal.loading"), x + 10, y + 20, PANEL_SECONDARY, false);
+                    Component.translatable("gui.historystages.pedestal.loading"), x + 10, y + 20, TextColors.legacy(PANEL_SECONDARY), false);
             guiGraphics.pose().popMatrix();
             return;
         }
@@ -887,7 +888,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
         Component panelTitle = Component.translatable("gui.historystages.pedestal.requirements");
         guiGraphics.text(this.font, panelTitle,
                 x + (PedestalLayout.DEP_W / 2) - (font.width(panelTitle) / 2),
-                y + PedestalLayout.DEP_TITLE_Y, PANEL_PRIMARY, false);
+                y + PedestalLayout.DEP_TITLE_Y, TextColors.legacy(PANEL_PRIMARY), false);
 
         // No "Deposit:" caption — the slot and the flask button say what they are, and the
         // XP button explains itself through its tooltip.
@@ -897,7 +898,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
         // shows only when a cost block changed it.
         String costLabel = costLabel(tag);
         if (!costLabel.isEmpty()) {
-            guiGraphics.text(this.font, costLabel, x + 5, y + 154, PANEL_SECONDARY, false);
+            guiGraphics.text(this.font, costLabel, x + 5, y + 154, TextColors.legacy(PANEL_SECONDARY), false);
         }
 
         // Deposit progress bar (shows while an item is being processed)
@@ -943,7 +944,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
             if (result.getGroups().size() > 1) {
                 guiGraphics.text(this.font,
                         Component.translatable("gui.historystages.pedestal.group", groupIdx + 1),
-                        CARD_PAD, currentY, 0x606060, false);
+                        CARD_PAD, currentY, 0xFF606060, false);
                 currentY += 12;
             }
 

@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonInfo;
@@ -118,7 +119,7 @@ public class DisguiseListScreen extends Screen {
 
     public void render(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
         g.fill(0, 0, this.width, this.height, 0xE0101010);
-        g.centeredText(this.font, this.title, this.width / 2, 6, 0xFFFFFF);
+        g.centeredText(this.font, this.title, this.width / 2, 6, 0xFFFFFFFF);
         g.fill(MARGIN, 19, this.width - MARGIN, 20, 0x40FFFFFF);
 
         lines = buildLines();
@@ -128,7 +129,7 @@ public class DisguiseListScreen extends Screen {
 
         if (lines.isEmpty()) {
             g.centeredText(this.font, Component.translatable("editor.historystages.disguise.list.empty"),
-                    this.width / 2, LIST_TOP + 20, GREY_TEXT);
+                    this.width / 2, LIST_TOP + 20, TextColors.legacy(GREY_TEXT));
         } else {
             boolean menuOpen = contextMenu.isVisible();
             g.enableScissor(0, LIST_TOP, this.width, listBottom);

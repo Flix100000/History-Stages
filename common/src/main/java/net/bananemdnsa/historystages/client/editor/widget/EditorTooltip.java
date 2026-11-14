@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.widget;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.bananemdnsa.historystages.client.editor.anim.Timing;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -93,7 +94,7 @@ public final class EditorTooltip {
 
         int ty = y + PAD_Y;
         for (String line : lines) {
-            g.text(font, line, x + PAD_X, ty, TEXT, false);
+            g.text(font, line, x + PAD_X, ty, TextColors.legacy(TEXT), false);
             ty += LINE_H;
         }
 

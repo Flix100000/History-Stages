@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.minecraft.client.input.MouseButtonInfo;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.bananemdnsa.historystages.api.editor.TabInputContext;
@@ -74,7 +75,7 @@ public class StylePresetsScreen extends Screen {
 
     public void render(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
         g.fill(0, 0, this.width, this.height, 0xE0101010);
-        g.centeredText(this.font, this.title, this.width / 2, 6, 0xFFFFFF);
+        g.centeredText(this.font, this.title, this.width / 2, 6, 0xFFFFFFFF);
         g.fill(MARGIN, 19, this.width - MARGIN, 20, 0x40FFFFFF);
 
         presets = GraphStageData.get().presetsByName();
@@ -90,7 +91,7 @@ public class StylePresetsScreen extends Screen {
             int y = LIST_TOP + 20;
             for (var line : this.font.split(Component.translatable("editor.historystages.graph.preset.manage.empty"),
                     Math.min(360, this.width - MARGIN * 4))) {
-                g.centeredText(this.font, line, this.width / 2, y, GREY_TEXT);
+                g.centeredText(this.font, line, this.width / 2, y, TextColors.legacy(GREY_TEXT));
                 y += 11;
             }
         } else {

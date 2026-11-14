@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.widget.dropdown;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.bananemdnsa.historystages.client.editor.anim.Anim;
 import net.bananemdnsa.historystages.client.editor.anim.Ease;
 import net.bananemdnsa.historystages.client.editor.anim.Fade;
@@ -118,7 +119,7 @@ public class DisplayModeDropdown {
             DropdownChrome.drawRowHighlight(g, px + 1, rowY, pw - 2, ROW_HEIGHT, rh);
             int textColor = options[i] == current ? 0xFFFFCC00 : 0xFFEEEEEE;
             g.text(font, label(options[i]), px + 5 + Math.round(rh * 2.0f), rowY + 5,
-                    textColor, false);
+                    TextColors.legacy(textColor), false);
         }
         DropdownChrome.end(g);
     }

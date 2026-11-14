@@ -157,6 +157,6 @@ public final class ItemSlotGrid {
         if (y < 4) y = 4;
         g.fill(x - 2, y - 2, x + w + 2, y + h, 0xFF1A1A1A);
         g.fill(x - 1, y - 1, x + w + 1, y + h - 1, 0xFF0D0D1A);
-        g.text(font, text, x + 2, y + 2, 0xFFFFFF, false);
+        g.text(font, text, x + 2, y + 2, 0xFFFFFFFF, false);
     }
 }

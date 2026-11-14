@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.minecraft.client.input.MouseButtonInfo;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.bananemdnsa.historystages.client.editor.anim.Anim;
@@ -171,7 +172,7 @@ public class GraphStyleScreen extends Screen {
         smoothScroll.settle((float) scrollOffset, 0.5f);
 
         g.fill(0, 0, this.width, this.height, 0xE0101010);
-        g.centeredText(this.font, this.title, this.width / 2, 10, 0xFFFFFF);
+        g.centeredText(this.font, this.title, this.width / 2, 10, 0xFFFFFFFF);
 
         renderSwitches(g, COLLECTIONS, "c:", mouseX, mouseY);
         renderSwitches(g, STATES, "s:", mouseX, mouseY);
@@ -288,7 +289,7 @@ public class GraphStyleScreen extends Screen {
                     "editor.historystages.config.graph.style."
                             + ("c:".equals(prefix) ? "collection." : "state.") + option).getString();
             g.centeredText(this.font, label, r[0] + r[2] / 2, r[1] + 4,
-                    active ? 0xFFFFFF : Fade.mix(0xFF999999, 0xFFDDDDDD, hp));
+                    TextColors.legacy(active ? 0xFFFFFF : Fade.mix(0xFF999999, 0xFFDDDDDD, hp)));
         }
     }
 
@@ -342,7 +343,7 @@ public class GraphStyleScreen extends Screen {
             String sample = Component.translatable("ID".equals(style.label())
                     ? "editor.historystages.config.graph.style.sample_id"
                     : "editor.historystages.config.graph.style.sample_name").getString();
-            g.centeredText(this.font, sample, cx, cy + r + 4, style.labelColor());
+            g.centeredText(this.font, sample, cx, cy + r + 4, TextColors.legacy(style.labelColor()));
         }
     }
 

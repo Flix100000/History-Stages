@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.api.editor.widget;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -512,7 +513,7 @@ public final class EditorRowList {
                 // Centred: the same as the old 3px inset for a button sized to its label.
                 int labelX = slot.caret() ? slotX + 3 : slotX + (slotW - font.width(slot.text())) / 2;
                 g.text(font, slot.text(), labelX, textY,
-                        slotHovered ? 0xFFCC00 : 0xCCCCCC, false);
+                        TextColors.legacy(slotHovered ? 0xFFFFCC00 : 0xFFCCCCCC), false);
                 if (slot.caret()) {
                     float flip = caretAnim.computeIfAbsent(index, k -> new Anim())
                             .ramp(row.caretUp ? 1.0f : 0.0f, Timing.POPUP_MS);
@@ -536,7 +537,7 @@ public final class EditorRowList {
         // the subtitle is a summary — losing its tail costs less than the movement.
         if (twoLine && available > 0) {
             g.text(font, font.plainSubstrByWidth(row.subtitle, available),
-                    textX, cardY + 16, row.subtitleColour, false);
+                    textX, cardY + 16, TextColors.legacy(row.subtitleColour), false);
         }
     }
 
@@ -545,7 +546,7 @@ public final class EditorRowList {
         int colour = hovered ? 0xFFFFFF : 0xBBBBBB;
         int textWidth = font.width(text);
         if (textWidth <= available) {
-            g.text(font, text, x, textY, colour, false);
+            g.text(font, text, x, textY, TextColors.legacy(colour), false);
             return;
         }
         if (hovered && index == hoveredRow) {
@@ -557,11 +558,11 @@ public final class EditorRowList {
                 float position = progress % cycle;
                 int offset = position <= span ? (int) position : (int) (cycle - position);
                 g.enableScissor(x, cardY, x + available, cardY + rowHeight);
-                g.text(font, text, x - offset, textY, colour, false);
+                g.text(font, text, x - offset, textY, TextColors.legacy(colour), false);
                 g.disableScissor();
                 return;
             }
         }
-        g.text(font, font.plainSubstrByWidth(text, available - 8) + "...", x, textY, colour, false);
+        g.text(font, font.plainSubstrByWidth(text, available - 8) + "...", x, textY, TextColors.legacy(colour), false);
     }
 }

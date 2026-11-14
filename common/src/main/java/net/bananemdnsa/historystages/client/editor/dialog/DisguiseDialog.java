@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.dialog;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.minecraft.client.input.CharacterEvent;
 import net.bananemdnsa.historystages.api.editor.widget.AbstractInputScreen;
 import net.bananemdnsa.historystages.api.editor.widget.InputField;
@@ -182,7 +183,7 @@ public class DisguiseDialog extends AbstractInputScreen {
 
         for (Component line : infoLines()) {
             g.text(this.font, this.font.plainSubstrByWidth(line.getString(), w), x, row,
-                    line.getStyle().getColor() != null ? line.getStyle().getColor().getValue() : LABEL_GREY, false);
+                    TextColors.legacy(line.getStyle().getColor() != null ? line.getStyle().getColor().getValue() : LABEL_GREY), false);
             row += LINE_H;
         }
         row = y + extraContentHeight() - LINE_H * 2 - 4;
@@ -190,7 +191,7 @@ public class DisguiseDialog extends AbstractInputScreen {
         Warning warning = warning();
         if (warning != Warning.NONE) {
             g.text(this.font, this.font.plainSubstrByWidth("⚠ " + warningText(warning).getString(), w),
-                    x, row, WARN, false);
+                    x, row, TextColors.legacy(WARN), false);
         }
         row += LINE_H + 4;
 
@@ -202,7 +203,7 @@ public class DisguiseDialog extends AbstractInputScreen {
             removeY = row;
             boolean hover = inside(mouseX, mouseY, removeX, removeY, removeW, 9);
             g.text(this.font, hover ? remove.copy().withStyle(s -> s.withUnderlined(true)) : remove,
-                    removeX, removeY, REMOVE_RED, false);
+                    removeX, removeY, TextColors.legacy(REMOVE_RED), false);
         }
     }
 
@@ -217,7 +218,7 @@ public class DisguiseDialog extends AbstractInputScreen {
         g.fill(sx + 1, sy + 1, sx + sw - 1, sy + SLOT_H - 1, hover ? 0xFF252525 : FIELD_BG);
         if (id == null) {
             g.text(this.font, Component.translatable("editor.historystages.disguise.choose"),
-                    sx + 6, sy + 5, LABEL_GREY, false);
+                    sx + 6, sy + 5, TextColors.legacy(LABEL_GREY), false);
             return;
         }
         int textX = sx + 4;

@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.zone;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -60,12 +61,12 @@ public final class ZoneSectionRail {
             }
 
             g.text(font, section.title(), x + 8, top + (ENTRY_H - 8) / 2,
-                    i == active || hovered ? TEXT_ACTIVE : TEXT, false);
+                    TextColors.legacy(i == active || hovered ? TEXT_ACTIVE : TEXT), false);
 
             if (section.count() >= 0) {
                 String number = section.count() == 0 ? "–" : String.valueOf(section.count());
                 g.text(font, number, x + WIDTH - 8 - font.width(number),
-                        top + (ENTRY_H - 8) / 2, COUNT, false);
+                        top + (ENTRY_H - 8) / 2, TextColors.legacy(COUNT), false);
             }
         }
 

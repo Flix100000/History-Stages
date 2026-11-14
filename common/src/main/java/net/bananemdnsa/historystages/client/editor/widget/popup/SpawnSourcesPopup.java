@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.widget.popup;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.bananemdnsa.historystages.data.lock.EntitySpawnLockEntry;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -101,7 +102,7 @@ public class SpawnSourcesPopup {
 
         g.centeredText(font,
                 Component.translatable("editor.historystages.spawn_sources.hint"),
-                popupX + popupW / 2, popupY + HEADER_H, 0x888888);
+                popupX + popupW / 2, popupY + HEADER_H, 0xFF888888);
 
         int curY = popupY + HEADER_H + HINT_H + 3;
         int toggleW = (popupW - 2 * PAD - (COLS - 1) * 3) / COLS;
@@ -133,7 +134,7 @@ public class SpawnSourcesPopup {
             g.fill(tx + 4, ty + 6, tx + 7, ty + 9, dotColor);
             g.text(font,
                     Component.translatable("editor.historystages.spawn_sources.source." + src),
-                    tx + 10, ty + 3, textColor, false);
+                    tx + 10, ty + 3, TextColors.legacy(textColor), false);
         }
 
         int descY = popupY + popupH - FOOTER_H - descBlockH + 1;
@@ -154,7 +155,7 @@ public class SpawnSourcesPopup {
         int lineY = descY + 2;
         for (FormattedCharSequence line : descLines) {
             int lineW = font.width(line);
-            g.text(font, line, popupX + (popupW - lineW) / 2, lineY, descColor, false);
+            g.text(font, line, popupX + (popupW - lineW) / 2, lineY, TextColors.legacy(descColor), false);
             lineY += font.lineHeight + 1;
         }
 
@@ -168,7 +169,7 @@ public class SpawnSourcesPopup {
         g.fill(allX, btnY + btnH - 1, allX + qBtnW, btnY + btnH, allHov ? 0x80FFFFFF : 0x40FFFFFF);
         g.centeredText(font,
                 Component.translatable("editor.historystages.lock_actions.btn_all"),
-                allX + qBtnW / 2, btnY + 3, allHov ? 0xFFFFFF : 0xCCCCCC);
+                allX + qBtnW / 2, btnY + 3, TextColors.legacy(allHov ? 0xFFFFFFFF : 0xFFCCCCCC));
 
         int noneX = allX + qBtnW + 3;
         boolean noneHov = mouseX >= noneX && mouseX < noneX + qBtnW && mouseY >= btnY && mouseY < btnY + btnH;
@@ -176,7 +177,7 @@ public class SpawnSourcesPopup {
         g.fill(noneX, btnY + btnH - 1, noneX + qBtnW, btnY + btnH, noneHov ? 0x80FFFFFF : 0x40FFFFFF);
         g.centeredText(font,
                 Component.translatable("editor.historystages.lock_actions.btn_none"),
-                noneX + qBtnW / 2, btnY + 3, noneHov ? 0xFFFFFF : 0xCCCCCC);
+                noneX + qBtnW / 2, btnY + 3, TextColors.legacy(noneHov ? 0xFFFFFFFF : 0xFFCCCCCC));
 
         int doneW = 48;
         int doneX = popupX + popupW - doneW - PAD;
@@ -185,7 +186,7 @@ public class SpawnSourcesPopup {
         g.fill(doneX, btnY + btnH - 1, doneX + doneW, btnY + btnH, doneHov ? 0xFFFFCC00 : 0x80FFCC00);
         g.centeredText(font,
                 Component.translatable("editor.historystages.lock_actions.btn_done"),
-                doneX + doneW / 2, btnY + 3, doneHov ? 0xFFFFFF : 0xEEEEEE);
+                doneX + doneW / 2, btnY + 3, TextColors.legacy(doneHov ? 0xFFFFFFFF : 0xFFEEEEEE));
     }
 
     public boolean mouseClicked(double mouseX, double mouseY) {

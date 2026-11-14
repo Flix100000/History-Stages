@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.api.editor.widget;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.minecraft.client.input.MouseButtonInfo;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.Minecraft;
@@ -316,7 +317,7 @@ public abstract class AbstractInputScreen extends AbstractModalScreen {
                 int fw = rect[2];
 
                 if (f.label() != null) {
-                    g.text(this.font, f.label(), fx, fy - LABEL_H, LABEL_GREY, false);
+                    g.text(this.font, f.label(), fx, fy - LABEL_H, TextColors.legacy(LABEL_GREY), false);
                 }
 
                 int border = boxes.get(k).isFocused() ? ACCENT_GOLD : FIELD_BORDER;
@@ -335,7 +336,7 @@ public abstract class AbstractInputScreen extends AbstractModalScreen {
         cy += extraContentHeight();
 
         if (currentError != null) {
-            g.centeredText(this.font, currentError, x + w / 2, cy + 2, ERROR_RED);
+            g.centeredText(this.font, currentError, x + w / 2, cy + 2, TextColors.legacy(ERROR_RED));
         }
     }
 

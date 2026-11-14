@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonInfo;
@@ -436,7 +437,7 @@ public class ScrollTooltipScreen extends Screen {
 
         String clipped = this.font.plainSubstrByWidth(shown, fw - 8);
         if (!clipped.equals(shown)) clipped = clipped + "…";
-        g.text(this.font, clipped, fx + 4, fy + 4, colour, false);
+        g.text(this.font, clipped, fx + 4, fy + 4, TextColors.legacy(colour), false);
     }
 
     private void openTextEditorFor(String id) {
@@ -644,7 +645,7 @@ public class ScrollTooltipScreen extends Screen {
         advanceRowAnims();
 
         g.fill(0, 0, this.width, this.height, 0xE0101010);
-        g.centeredText(this.font, this.title, this.width / 2, 10, 0xFFFFFF);
+        g.centeredText(this.font, this.title, this.width / 2, 10, 0xFFFFFFFF);
 
         List<PositionedRow> rows = layoutRows();
 
@@ -798,7 +799,7 @@ public class ScrollTooltipScreen extends Screen {
         TooltipRenderUtil.extractTooltipBackground(g, 0, 0, boxW, boxH, null);
         int ly = 0;
         for (Component component : components) {
-            g.text(this.font, component, 0, ly, 0xFFFFFF, true);
+            g.text(this.font, component, 0, ly, 0xFFFFFFFF, true);
             ly += this.font.lineHeight + 1;
         }
 
@@ -871,7 +872,7 @@ public class ScrollTooltipScreen extends Screen {
             boolean resetHovered = mouseX >= left + 2 && mouseX < left + 2 + RESET_W
                     && mouseY >= y && mouseY < y + ROW_H;
             g.text(this.font, "✕", left + 2, y + (ROW_H - 8) / 2,
-                    resetHovered ? 0xFFFF6666 : 0xFF888888, false);
+                    TextColors.legacy(resetHovered ? 0xFFFF6666 : 0xFF888888), false);
         }
 
         ScrollTooltipLine line = getLine(id);
@@ -895,7 +896,7 @@ public class ScrollTooltipScreen extends Screen {
 
         String label = Component.translatable("editor.historystages.scrolltip.line." + id).getString();
         String shown = this.font.plainSubstrByWidth(label, Math.max(0, LABEL_W - 6));
-        g.text(this.font, shown, cx, y + (ROW_H - 8) / 2, hp > 0.001f ? 0xFFFFFF : 0xDDDDDD, false);
+        g.text(this.font, shown, cx, y + (ROW_H - 8) / 2, TextColors.legacy(hp > 0.001f ? 0xFFFFFF : 0xDDDDDD), false);
 
         if (spec.colorSwatch()) {
             StyleState state = readStyleState(styleSource(line, id));
@@ -965,7 +966,7 @@ public class ScrollTooltipScreen extends Screen {
         g.pose().translate(0, 0);
         g.fill(gx, gy, gx + gw, gy + 16, 0xE0101010);
         g.fill(gx, gy + 15, gx + gw, gy + 16, 0xFFFFCC00);
-        g.text(this.font, label, gx + 5, gy + 4, 0xFFFFFF, false);
+        g.text(this.font, label, gx + 5, gy + 4, 0xFFFFFFFF, false);
         g.pose().popMatrix();
     }
 

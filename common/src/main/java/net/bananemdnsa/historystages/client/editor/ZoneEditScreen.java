@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonInfo;
@@ -554,7 +555,7 @@ public class ZoneEditScreen extends Screen {
         nameBox.visible = active == Section.GENERAL;
 
         g.fill(0, 0, this.width, this.height, BACKDROP);
-        g.centeredText(this.font, title(), this.width / 2, TITLE_Y, 0xFFFFFF);
+        g.centeredText(this.font, title(), this.width / 2, TITLE_Y, 0xFFFFFFFF);
         g.fill(MARGIN, HAIRLINE_Y, this.width - MARGIN, HAIRLINE_Y + 1, HAIRLINE);
         g.fill(MARGIN, contentBottom() + 4, this.width - MARGIN, contentBottom() + 5, SEPARATOR);
 
@@ -592,7 +593,7 @@ public class ZoneEditScreen extends Screen {
         int w = Math.min(240, contentWidth());
         int fy = TOP + LABEL_H;
 
-        g.text(this.font, label("field.name"), x, TOP, LABEL_GREY, false);
+        g.text(this.font, label("field.name"), x, TOP, TextColors.legacy(LABEL_GREY), false);
         g.fill(x - 1, fy - 1, x + w + 1, fy + FIELD_H + 1,
                 nameBox.isFocused() ? ACCENT : FIELD_BORDER);
         g.fill(x, fy, x + w, fy + FIELD_H, FIELD_BG);

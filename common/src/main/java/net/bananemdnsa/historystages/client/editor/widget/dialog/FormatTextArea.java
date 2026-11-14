@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.widget.dialog;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.Minecraft;
@@ -153,7 +154,7 @@ public final class FormatTextArea {
         g.enableScissor(x, y, x + width, y + height);
 
         if (value.isEmpty() && !hint.isEmpty()) {
-            g.text(font, hint, x + 3, y + 3, HINT_COLOUR, false);
+            g.text(font, hint, x + 3, y + 3, TextColors.legacy(HINT_COLOUR), false);
         }
 
         for (int line = scrollLine; line < lineStarts.size(); line++) {
@@ -163,7 +164,7 @@ public final class FormatTextArea {
             if (ly + lineH > y + height) break;
 
             drawSelection(g, line, start, end, ly, lineH);
-            g.text(font, value.substring(start, end), x + 3, ly, TEXT_COLOUR, false);
+            g.text(font, value.substring(start, end), x + 3, ly, TextColors.legacy(TEXT_COLOUR), false);
         }
 
         if (focused && ((System.currentTimeMillis() - focusedAt) / CURSOR_BLINK_MS) % 2 == 0) {

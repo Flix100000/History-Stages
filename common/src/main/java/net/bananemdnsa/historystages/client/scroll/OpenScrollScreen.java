@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.scroll;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonInfo;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -758,7 +759,7 @@ public class OpenScrollScreen extends Screen {
                 }
                 continue;
             }
-            g.text(this.font, tab.label(), x + tab.x(), y, ink, false);
+            g.text(this.font, tab.label(), x + tab.x(), y, TextColors.legacy(ink), false);
             // The underline is what marks the active chapter — no coloured box, no second heading.
             if (active) {
                 g.fill(x + tab.x(), y + OpenScrollGeometry.TABS_HEIGHT,
@@ -807,7 +808,7 @@ public class OpenScrollScreen extends Screen {
         int x = leftPos + OpenScrollGeometry.CONTENT_X;
         int y = topPos + OpenScrollGeometry.SEARCH_Y;
         boolean focused = search != null && search.isFocused();
-        g.text(this.font, "»", x, y, focused ? inkHeading : inkFaint, false);
+        g.text(this.font, "»", x, y, TextColors.legacy(focused ? inkHeading : inkFaint), false);
         g.fill(x + 9, y + 9, x + OpenScrollGeometry.CONTENT_WIDTH, y + 10,
                 withAlpha(inkFaint, focused ? 0xB0 : 0x73));
     }
@@ -824,7 +825,7 @@ public class OpenScrollScreen extends Screen {
                 sheet + 1, sheetCount);
         g.text(this.font, line,
                 x + (OpenScrollGeometry.CONTENT_WIDTH - this.font.width(line)) / 2,
-                topPos + OpenScrollGeometry.FOOT_Y, inkFaint, false);
+                topPos + OpenScrollGeometry.FOOT_Y, TextColors.legacy(inkFaint), false);
     }
 
     // --- the overview page ---
@@ -864,7 +865,7 @@ public class OpenScrollScreen extends Screen {
 
     private int drawOverviewTitle(GuiGraphicsExtractor g, int x, int y, int width) {
         Component title = formatted(document.displayName());
-        g.text(this.font, title, x + (width - this.font.width(title)) / 2, y, inkHeading, false);
+        g.text(this.font, title, x + (width - this.font.width(title)) / 2, y, TextColors.legacy(inkHeading), false);
         return y + LINE_ADVANCE + 1;
     }
 
@@ -873,7 +874,7 @@ public class OpenScrollScreen extends Screen {
         int last = sheet + 1 < overviewStarts.size()
                 ? overviewStarts.get(sheet + 1) : descriptionLines.size();
         for (int i = first; i < last; i++) {
-            g.text(this.font, descriptionLines.get(i), x, y, inkBody, false);
+            g.text(this.font, descriptionLines.get(i), x, y, TextColors.legacy(inkBody), false);
             y += LINE_ADVANCE;
         }
         return y + 1;
@@ -890,7 +891,7 @@ public class OpenScrollScreen extends Screen {
         for (int i = 0; i < keys.length; i++) {
             Component line = Component.translatable(
                     "gui.historystages.open_scroll.counts." + keys[i], values[i]);
-            g.text(this.font, line, x + (width - this.font.width(line)) / 2, y, inkFaint, false);
+            g.text(this.font, line, x + (width - this.font.width(line)) / 2, y, TextColors.legacy(inkFaint), false);
             y += LINE_ADVANCE;
         }
         return y + 1;
@@ -898,7 +899,7 @@ public class OpenScrollScreen extends Screen {
 
     private void drawCentredWrapped(GuiGraphicsExtractor g, Component text, int x, int y, int width) {
         for (FormattedCharSequence line : this.font.split(text, width)) {
-            g.text(this.font, line, x + (width - this.font.width(line)) / 2, y, inkBody, false);
+            g.text(this.font, line, x + (width - this.font.width(line)) / 2, y, TextColors.legacy(inkBody), false);
             y += LINE_ADVANCE;
         }
     }
@@ -1004,7 +1005,7 @@ public class OpenScrollScreen extends Screen {
                         withAlpha(inkFaint, 0x12));
             }
             g.text(this.font, row.text(), row.heading() ? x : x + 2, y,
-                    row.heading() ? inkFaint : inkBody, false);
+                    TextColors.legacy(row.heading() ? inkFaint : inkBody), false);
             if (!row.heading() && !row.tooltip().isEmpty()
                     && mouseX >= x && mouseX < x + OpenScrollGeometry.CONTENT_WIDTH
                     && mouseY >= y && mouseY < y + height) {
@@ -1021,7 +1022,7 @@ public class OpenScrollScreen extends Screen {
         if (filter.isEmpty() || !cells.isEmpty() || !rows.isEmpty()) return;
         g.text(this.font, Component.translatable("gui.historystages.open_scroll.no_results"),
                 leftPos + OpenScrollGeometry.CONTENT_X,
-                topPos + OpenScrollGeometry.contentY(searchShown()), inkFaint, false);
+                topPos + OpenScrollGeometry.contentY(searchShown()), TextColors.legacy(inkFaint), false);
     }
 
     // --- turning sheets ---
@@ -1168,7 +1169,7 @@ public class OpenScrollScreen extends Screen {
             int y = getY() + (getHeight() - 8) / 2;
 
             if (value.isEmpty() && !isFocused()) {
-                g.text(font, hint, x, y, inkFaint, false);
+                g.text(font, hint, x, y, TextColors.legacy(inkFaint), false);
                 return;
             }
 
@@ -1191,7 +1192,7 @@ public class OpenScrollScreen extends Screen {
                 }
             }
 
-            g.text(font, shown, x, y, inkBody, false);
+            g.text(font, shown, x, y, TextColors.legacy(inkBody), false);
 
             if (isFocused() && (System.currentTimeMillis() / 500) % 2 == 0) {
                 int cx = x + font.width(value.substring(start, cursor));

@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.graph;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.minecraft.client.input.MouseButtonInfo;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.bananemdnsa.historystages.GraphConfig;
@@ -629,7 +630,7 @@ public final class GraphDetailScreen extends AbstractModalScreen {
         if (idRoom > 12) {
             String id = MarqueeText.truncate(this.font, node.stageId(), idRoom);
             g.text(this.font, id, x + w - 3 - this.font.width(id), pillY + 2,
-                    STAGE_ID_COLOR, false);
+                    TextColors.legacy(STAGE_ID_COLOR), false);
         }
     }
 
@@ -641,7 +642,7 @@ public final class GraphDetailScreen extends AbstractModalScreen {
     private void drawRow(GuiGraphicsExtractor g, Row row, int left, int right, int top) {
         switch (row) {
             case SectionRow r -> {
-                g.text(this.font, r.title(), left, top + 2, SECTION_TEXT_COLOR, false);
+                g.text(this.font, r.title(), left, top + 2, TextColors.legacy(SECTION_TEXT_COLOR), false);
                 // Rule sits below the text with air on both sides, not flush against the entry
                 // that follows it.
                 g.fill(left, top + 13, right, top + 14, SECTION_RULE_COLOR);
@@ -652,11 +653,11 @@ public final class GraphDetailScreen extends AbstractModalScreen {
                 g.fill(left, top + blockH, right, top + blockH + 1, LEAD_RULE_COLOR);
                 for (int i = 0; i < r.lines().size(); i++) {
                     g.text(this.font, r.lines().get(i), left + ENTRY_INDENT,
-                            top + LEAD_PAD_TOP + i * LINE_H, TEXT_COLOR, false);
+                            top + LEAD_PAD_TOP + i * LINE_H, TextColors.legacy(TEXT_COLOR), false);
                 }
             }
             case LineRow r -> g.text(this.font, r.text(), left + ENTRY_INDENT, top,
-                    r.color(), false);
+                    TextColors.legacy(r.color()), false);
             case EntryRow r -> {
                 g.fill(left, top, left + STRIPE_W, top + r.height(), r.stripeColor());
 
@@ -674,7 +675,7 @@ public final class GraphDetailScreen extends AbstractModalScreen {
                 }
                 for (int i = 0; i < r.lines().size(); i++) {
                     g.text(this.font, r.lines().get(i), textLeft, textTop + i * LINE_H,
-                            TEXT_COLOR, false);
+                            TextColors.legacy(TEXT_COLOR), false);
                 }
                 drawAmount(g, r.amount(), right, textTop);
             }
@@ -685,7 +686,7 @@ public final class GraphDetailScreen extends AbstractModalScreen {
 
     private void drawAmount(GuiGraphicsExtractor g, String amount, int right, int top) {
         if (amount.isEmpty()) return;
-        g.text(this.font, amount, right - this.font.width(amount), top, AMOUNT_TEXT_COLOR, false);
+        g.text(this.font, amount, right - this.font.width(amount), top, TextColors.legacy(AMOUNT_TEXT_COLOR), false);
     }
 
     // --- Input --------------------------------------------------------------------------------

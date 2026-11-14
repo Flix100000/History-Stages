@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
@@ -98,7 +99,7 @@ public class ZoneShapeEditScreen extends AbstractInputScreen {
         if (!offersFullHeight()) return;
 
         Component label = Component.translatable("editor.historystages.zone.field.full_height");
-        g.text(this.font, label, x, y + 3, LABEL_GREY, false);
+        g.text(this.font, label, x, y + 3, TextColors.legacy(LABEL_GREY), false);
 
         toggleX = x + w - ToggleControl.width(this.font);
         toggleY = y;

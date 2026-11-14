@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.widget.list;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.bananemdnsa.historystages.api.editor.widget.AbstractSearchableList;
 import net.bananemdnsa.historystages.client.editor.nbt.CriterionCard;
 import net.bananemdnsa.historystages.client.editor.nbt.NbtCriterion;
@@ -77,7 +78,7 @@ public class SearchableItemPropertyList extends AbstractSearchableList<NbtCriter
     protected void renderRow(GuiGraphicsExtractor g, Font font, NbtCriterion entry,
                              int x, int y, int w, int h, boolean hovered, int rowIndex) {
         String title = CriterionCard.titleOf(entry);
-        g.text(font, title, x + 3, y + 4, hovered ? 0xFFFFFF : 0xBBBBBB, false);
+        g.text(font, title, x + 3, y + 4, TextColors.legacy(hovered ? 0xFFFFFFFF : 0xFFBBBBBB), false);
 
         String preview = CriterionCard.previewOf(entry);
         if (preview.isEmpty()) return;
@@ -88,6 +89,6 @@ public class SearchableItemPropertyList extends AbstractSearchableList<NbtCriter
         if (font.width(preview) > room) {
             preview = font.plainSubstrByWidth(preview, room - font.width("...")) + "...";
         }
-        g.text(font, preview, x + w - 6 - font.width(preview), y + 4, 0x777777, false);
+        g.text(font, preview, x + w - 6 - font.width(preview), y + 4, 0xFF777777, false);
     }
 }

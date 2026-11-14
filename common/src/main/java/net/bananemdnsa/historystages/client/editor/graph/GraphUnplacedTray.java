@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.graph;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.bananemdnsa.historystages.client.editor.widget.MarqueeText;
 import net.bananemdnsa.historystages.client.editor.widget.Scrollbar;
 import net.minecraft.client.gui.Font;
@@ -100,10 +101,10 @@ final class GraphUnplacedTray {
         String count = String.valueOf(rows.size());
         int textY = y + 4;
         int countX = x + w - Scrollbar.WIDTH - 2 - font.width(count);
-        g.text(font, count, countX, textY, COUNT_TEXT, false);
+        g.text(font, count, countX, textY, TextColors.legacy(COUNT_TEXT), false);
         String title = chevron + Component.translatable("editor.historystages.graph.unplaced").getString();
         g.text(font, MarqueeText.truncate(font, title, countX - 6 - (x + ROW_LEFT_PAD)),
-                x + ROW_LEFT_PAD, textY, HEADER_TEXT, false);
+                x + ROW_LEFT_PAD, textY, TextColors.legacy(HEADER_TEXT), false);
 
         if (!expanded || rows.isEmpty()) return;
 
@@ -129,11 +130,11 @@ final class GraphUnplacedTray {
             int textRight = x + w - Scrollbar.WIDTH - 2;
             if (node.individual()) {
                 int tagX = textRight - font.width(tag);
-                g.text(font, tag, tagX, rowTop + 4, TAG_TEXT, false);
+                g.text(font, tag, tagX, rowTop + 4, TextColors.legacy(TAG_TEXT), false);
                 textRight = tagX - 4;
             }
             g.text(font, MarqueeText.truncate(font, label(node), Math.max(0, textRight - textLeft)),
-                    textLeft, rowTop + 4, hovered ? ACCENT : ROW_TEXT, false);
+                    textLeft, rowTop + 4, TextColors.legacy(hovered ? ACCENT : ROW_TEXT), false);
         }
         g.disableScissor();
 

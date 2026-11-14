@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.widget.list;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.bananemdnsa.historystages.api.editor.widget.AbstractSearchableList;
 import net.bananemdnsa.historystages.client.editor.nbt.NbtPresets;
 import net.bananemdnsa.historystages.client.editor.widget.EditorTooltip;
@@ -183,11 +184,11 @@ public class SearchableNbtCriterionList extends AbstractSearchableList<Searchabl
         int detailX = x + 3 + Math.round((w - 9) * DETAIL_COLUMN);
 
         String label = fit(font, entry.label(), detailX - 6 - labelX);
-        g.text(font, label, labelX, y + 4, hovered ? 0xFFFFFF : 0xBBBBBB, false);
+        g.text(font, label, labelX, y + 4, TextColors.legacy(hovered ? 0xFFFFFFFF : 0xFFBBBBBB), false);
 
         if (!entry.detail().isEmpty()) {
             String detail = fit(font, entry.detail(), x + w - 6 - detailX);
-            g.text(font, detail, detailX, y + 4, 0x777777, false);
+            g.text(font, detail, detailX, y + 4, 0xFF777777, false);
         }
 
         if (hovered) hoveredEntry = entry;

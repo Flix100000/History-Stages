@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.widget;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.bananemdnsa.historystages.client.editor.anim.Timing;
 import net.minecraft.util.Util;
 import net.minecraft.client.gui.Font;
@@ -37,7 +38,7 @@ public final class MarqueeText {
 
         int textWidth = font.width(text);
         if (textWidth <= available) {
-            g.text(font, text, x, y, color, false);
+            g.text(font, text, x, y, TextColors.legacy(color), false);
             return;
         }
 
@@ -56,7 +57,7 @@ public final class MarqueeText {
                 float pos = travelled % cycle;
                 int offset = Math.round(pos <= span ? pos : cycle - pos);
                 g.enableScissor(x, clipTop, x + available, clipBottom);
-                g.text(font, text, x - offset, y, color, false);
+                g.text(font, text, x - offset, y, TextColors.legacy(color), false);
                 g.disableScissor();
                 return;
             }
@@ -64,7 +65,7 @@ public final class MarqueeText {
             activeKey = null;
         }
 
-        g.text(font, truncate(font, text, available), x, y, color, false);
+        g.text(font, truncate(font, text, available), x, y, TextColors.legacy(color), false);
     }
 
     /** The truncated form on its own, for callers that only need the string. */

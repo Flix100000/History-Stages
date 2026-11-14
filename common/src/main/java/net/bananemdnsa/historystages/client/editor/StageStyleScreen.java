@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonInfo;
@@ -759,7 +760,7 @@ public class StageStyleScreen extends Screen {
         smoothScroll.settle((float) scrollOffset, 0.5f);
 
         g.fill(0, 0, this.width, this.height, 0xE0101010);
-        g.centeredText(this.font, this.title, this.width / 2, 10, 0xFFFFFF);
+        g.centeredText(this.font, this.title, this.width / 2, 10, 0xFFFFFFFF);
         if (stageId != null) {
             ConfigEditorScreen.drawSmallText(g, stageId, this.width / 2 - this.font.width(stageId) / 4,
                     24, 0xFF999999);
@@ -865,7 +866,7 @@ public class StageStyleScreen extends Screen {
                     ? "editor.historystages.graph.style.tab." + option
                     : "editor.historystages.config.graph.style.state." + option).getString();
             g.centeredText(this.font, label, r[0] + r[2] / 2, r[1] + 4,
-                    active ? 0xFFFFFF : Fade.mix(0xFF999999, 0xFFDDDDDD, hp));
+                    TextColors.legacy(active ? 0xFFFFFF : Fade.mix(0xFF999999, 0xFFDDDDDD, hp)));
         }
     }
 
@@ -969,7 +970,7 @@ public class StageStyleScreen extends Screen {
             String sample = Component.translatable("ID".equals(style.label())
                     ? "editor.historystages.config.graph.style.sample_id"
                     : "editor.historystages.config.graph.style.sample_name").getString();
-            g.centeredText(this.font, sample, cx, cy + r + 4, style.labelColor());
+            g.centeredText(this.font, sample, cx, cy + r + 4, TextColors.legacy(style.labelColor()));
         }
 
         if (TAB_ALL.equals(tab)) {

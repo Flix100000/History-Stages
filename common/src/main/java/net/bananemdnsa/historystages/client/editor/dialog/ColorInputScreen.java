@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.dialog;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.bananemdnsa.historystages.client.editor.ConfigEditorScreen;
 import net.bananemdnsa.historystages.client.editor.anim.Anim;
 import net.bananemdnsa.historystages.client.editor.anim.Ease;
@@ -378,7 +379,7 @@ public class ColorInputScreen extends AbstractInputScreen {
         int textX = x + PALETTE_H + FIXED_LABEL_GAP;
         // The label brightens with its swatch, so the pair reads as one control.
         g.text(this.font, label, textX, py + 3,
-                Fade.mix(0xFF000000 | LABEL_GREY, 0xFFFFFFFF, h), false);
+                TextColors.legacy(Fade.mix(0xFF000000 | LABEL_GREY, 0xFFFFFFFF, h)), false);
         return textX + this.font.width(label) + FIXED_PAIR_GAP;
     }
 

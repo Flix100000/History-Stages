@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.minecraft.client.input.MouseButtonInfo;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.bananemdnsa.historystages.Config;
@@ -259,7 +260,7 @@ public class OpenScrollDocumentScreen extends Screen {
         if (dragStarted) dragTarget = computeDragTarget(mouseY);
 
         g.fill(0, 0, this.width, this.height, 0xE0101010);
-        g.centeredText(this.font, this.title, this.width / 2, 10, 0xFFFFFF);
+        g.centeredText(this.font, this.title, this.width / 2, 10, 0xFFFFFFFF);
 
         int left = contentLeft();
         int right = contentRight();
@@ -375,7 +376,7 @@ public class OpenScrollDocumentScreen extends Screen {
                 ? "gui.historystages.open_scroll." + row.id()
                 : "editor.historystages.open_scroll." + row.id()).getString();
         g.text(this.font, label, cx, y + (ROW_H - 8) / 2,
-                enabled ? (hp > 0.001f ? 0xFFFFFF : 0xDDDDDD) : 0xFF777777, false);
+                TextColors.legacy(enabled ? (hp > 0.001f ? 0xFFFFFF : 0xDDDDDD) : 0xFF777777), false);
 
         if (row.section() == SEC_CHAPTERS) {
             OpenScrollChapterEntry entry = chapters.get(row.index());
@@ -395,7 +396,7 @@ public class OpenScrollDocumentScreen extends Screen {
             String mode = Component.translatable("editor.historystages.open_scroll.mode."
                     + entry.mode().serialize()).getString();
             g.text(this.font, this.font.plainSubstrByWidth(mode, MODE_W - 8),
-                    mx + 4, my + 3, fixed ? 0xFF777777 : 0xFFDDDDDD, false);
+                    mx + 4, my + 3, TextColors.legacy(fixed ? 0xFF777777 : 0xFFDDDDDD), false);
         }
     }
 
@@ -443,7 +444,7 @@ public class OpenScrollDocumentScreen extends Screen {
         g.pose().translate(0, 0);
         g.fill(gx, gy, gx + gw, gy + 16, 0xE0101010);
         g.fill(gx, gy + 15, gx + gw, gy + 16, 0xFFFFCC00);
-        g.text(this.font, label, gx + 5, gy + 4, 0xFFFFFF, false);
+        g.text(this.font, label, gx + 5, gy + 4, 0xFFFFFFFF, false);
         g.pose().popMatrix();
     }
 
@@ -512,7 +513,7 @@ public class OpenScrollDocumentScreen extends Screen {
                 if (i == 0) OpenScrollScreen.drawIconUnderline(g, ix, sy, inkHeading);
                 continue;
             }
-            g.text(this.font, tab.label(), x + tab.x(), ty, 0xFF000000 | ink, false);
+            g.text(this.font, tab.label(), x + tab.x(), ty, TextColors.legacy(0xFF000000 | ink), false);
             if (i == 0) {
                 g.fill(x + tab.x(), ty + OpenScrollGeometry.TABS_HEIGHT,
                         x + tab.x() + tab.width(), ty + OpenScrollGeometry.TABS_HEIGHT + 1,
@@ -528,7 +529,7 @@ public class OpenScrollDocumentScreen extends Screen {
                 parent.findEntry("open_scroll.showSearch").value);
         if (searchShown) {
             int qy = sy + OpenScrollGeometry.SEARCH_Y;
-            g.text(this.font, "»", x, qy, 0xFF000000 | inkFaint, false);
+            g.text(this.font, "»", x, qy, TextColors.legacy(0xFF000000 | inkFaint), false);
             g.fill(x + 9, qy + 9, x + width, qy + 10, (0x73 << 24) | inkFaint);
         }
 
@@ -549,7 +550,7 @@ public class OpenScrollDocumentScreen extends Screen {
                 case TITLE -> {
                     Component t = Component.translatable("editor.historystages.open_scroll.sample_stage");
                     g.text(this.font, t, x + (width - this.font.width(t)) / 2, y,
-                            0xFF000000 | inkHeading, false);
+                            TextColors.legacy(0xFF000000 | inkHeading), false);
                     yield y + 11;
                 }
                 case DESCRIPTION -> {
@@ -557,7 +558,7 @@ public class OpenScrollDocumentScreen extends Screen {
                     // draw showed the block's position but nothing about how it actually reads.
                     Component text = Component.translatable("editor.historystages.open_scroll.sample_description");
                     for (FormattedCharSequence line : this.font.split(text, width)) {
-                        g.text(this.font, line, x, y, 0xFF000000 | inkBody, false);
+                        g.text(this.font, line, x, y, TextColors.legacy(0xFF000000 | inkBody), false);
                         y += 10;
                     }
                     yield y + 1;
@@ -570,7 +571,7 @@ public class OpenScrollDocumentScreen extends Screen {
                         Component line = Component.translatable(
                                 "gui.historystages.open_scroll.counts." + keys[i], values[i]);
                         g.text(this.font, line, x + (width - this.font.width(line)) / 2, y,
-                                0xFF000000 | inkFaint, false);
+                                TextColors.legacy(0xFF000000 | inkFaint), false);
                         y += 10;
                     }
                     yield y + 1;

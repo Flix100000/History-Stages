@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.widget.list;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -218,7 +219,7 @@ public class SearchableTradeList extends AbstractSearchableList<TradeRow> {
                              int x, int y, int w, int h, boolean hovered, int rowIndex) {
         TradePreview offer = row.offer();
         g.text(font, String.valueOf(offer.level()), x + 3, y + 4,
-                hovered ? 0xFFAAAAAA : 0xFF6A6A6A, false);
+                TextColors.legacy(hovered ? 0xFFAAAAAA : 0xFF6A6A6A), false);
 
         int zone = x + 12;
         drawPrice(g, font, offer.costAId(), offer.costACount(), 0, zone, y, hovered);
@@ -239,7 +240,7 @@ public class SearchableTradeList extends AbstractSearchableList<TradeRow> {
         if (count > 1) {
             g.text(font, String.valueOf(count),
                     zoneX + TradeRowGeometry.priceCountX(slot), y + 4,
-                    hovered ? 0xFFFFFFFF : 0xFFBBBBBB, false);
+                    TextColors.legacy(hovered ? 0xFFFFFFFF : 0xFFBBBBBB), false);
         }
     }
 

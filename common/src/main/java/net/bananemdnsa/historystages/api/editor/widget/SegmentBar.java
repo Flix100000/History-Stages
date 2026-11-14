@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.api.editor.widget;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -158,7 +159,7 @@ public final class SegmentBar {
                     ? TEXT_DISABLED
                     : Fade.mix(TEXT_IDLE, TEXT_HOVER, state.hoverAt(i));
             int colour = Fade.mix(idle, TEXT_ON_FILL, covered);
-            g.text(font, labels.get(i), segX + (segW - widths[i]) / 2, textY, colour, false);
+            g.text(font, labels.get(i), segX + (segW - widths[i]) / 2, textY, TextColors.legacy(colour), false);
         }
     }
 

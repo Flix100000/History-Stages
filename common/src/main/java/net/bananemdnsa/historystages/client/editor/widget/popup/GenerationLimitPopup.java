@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.widget.popup;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.bananemdnsa.historystages.api.editor.widget.NumberStepper;
 import net.bananemdnsa.historystages.client.editor.widget.dropdown.EnumDropdown;
 import net.bananemdnsa.historystages.data.lock.GenerationPhase;
@@ -143,7 +144,7 @@ public class GenerationLimitPopup {
         int hintY = rowY(ROWS) + 4;
         List<FormattedCharSequence> hintText = font.split(Component.translatable(hintKey()), hintMaxW);
         for (FormattedCharSequence line : hintText) {
-            g.text(font, line, panelX + (panelW - font.width(line)) / 2, hintY, 0x888888, false);
+            g.text(font, line, panelX + (panelW - font.width(line)) / 2, hintY, 0xFF888888, false);
             hintY += font.lineHeight + 1;
         }
 
@@ -155,7 +156,7 @@ public class GenerationLimitPopup {
         g.fill(doneX, btnY, doneX + doneW, btnY + btnH, doneHov ? 0x50FFCC00 : 0x25FFCC00);
         g.fill(doneX, btnY + btnH - 1, doneX + doneW, btnY + btnH, doneHov ? 0xFFFFCC00 : 0x80FFCC00);
         g.centeredText(font, Component.translatable("editor.historystages.lock_actions.btn_done"),
-                doneX + doneW / 2, btnY + 4, doneHov ? 0xFFFFFF : 0xEEEEEE);
+                doneX + doneW / 2, btnY + 4, TextColors.legacy(doneHov ? 0xFFFFFFFF : 0xFFEEEEEE));
 
         // Last, so the open list covers the rows below it instead of being covered by them.
         if (enabled) modeDropdown.renderPopup(g, font, mouseX, mouseY);
@@ -175,13 +176,13 @@ public class GenerationLimitPopup {
         if (checked) g.fill(boxX + 3, boxY + 3, boxX + BOX_S - 3, boxY + BOX_S - 3, fg);
 
         g.text(font, Component.translatable(labelKey), boxX + BOX_S + 6,
-                ry + (ROW_H - font.lineHeight) / 2 + 1, labelColor(active, hovered), false);
+                ry + (ROW_H - font.lineHeight) / 2 + 1, TextColors.legacy(labelColor(active, hovered)), false);
     }
 
     private void renderModeRow(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         int ry = rowY(ROW_MODE);
         g.text(font, Component.translatable("editor.historystages.generation.mode"),
-                panelX + PAD, ry + (ROW_H - font.lineHeight) / 2 + 1, labelColor(enabled, false), false);
+                panelX + PAD, ry + (ROW_H - font.lineHeight) / 2 + 1, TextColors.legacy(labelColor(enabled, false)), false);
 
         modeDropdown.setPosition(panelX + panelW - PAD - modeDropdown.getWidth(),
                 ry + (ROW_H - EnumDropdown.BUTTON_HEIGHT) / 2);
@@ -204,7 +205,7 @@ public class GenerationLimitPopup {
     private void renderLimitRow(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         int ry = rowY(ROW_LIMIT);
         g.text(font, Component.translatable("editor.historystages.generation.limit"),
-                panelX + PAD, ry + (ROW_H - font.lineHeight) / 2 + 1, labelColor(enabled, false), false);
+                panelX + PAD, ry + (ROW_H - font.lineHeight) / 2 + 1, TextColors.legacy(labelColor(enabled, false)), false);
 
         limitStepper.setPosition(panelX + panelW - PAD - NumberStepper.width(),
                 ry + (ROW_H - NumberStepper.HEIGHT) / 2);

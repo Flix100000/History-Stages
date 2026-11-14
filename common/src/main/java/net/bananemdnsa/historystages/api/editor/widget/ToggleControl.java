@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.api.editor.widget;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.bananemdnsa.historystages.client.editor.anim.Anim;
 import net.bananemdnsa.historystages.client.editor.anim.Ease;
 import net.bananemdnsa.historystages.client.editor.anim.Fade;
@@ -148,9 +149,9 @@ public final class ToggleControl {
 
         int textY = y + (ToggleGeometry.HEIGHT - 8) / 2;
         g.text(font, on, onX + (segW - onW) / 2, textY,
-                labelColor(dimmed, value, slide, onHover, TEXT_ON_FILL_ON), false);
+                TextColors.legacy(labelColor(dimmed, value, slide, onHover, TEXT_ON_FILL_ON)), false);
         g.text(font, off, offX + (segW - offW) / 2, textY,
-                labelColor(dimmed, !value, 1.0f - slide, offHover, TEXT_ON_FILL_OFF), false);
+                TextColors.legacy(labelColor(dimmed, !value, 1.0f - slide, offHover, TEXT_ON_FILL_OFF)), false);
     }
 
     /**

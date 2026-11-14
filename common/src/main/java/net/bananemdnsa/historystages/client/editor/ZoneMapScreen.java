@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonInfo;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -333,7 +334,7 @@ public final class ZoneMapScreen extends Screen {
         double dz = this.minecraft.player.getZ() - view.centreZ();
         Component text = Component.translatable("editor.historystages.zone.map.player_away",
                 (int) Math.round(Math.sqrt(dx * dx + dz * dz)));
-        g.text(this.font, text, mapX() + 5, mapY() + mapH() - 12, LABEL_GREY, true);
+        g.text(this.font, text, mapX() + 5, mapY() + mapH() - 12, TextColors.legacy(LABEL_GREY), true);
     }
 
     private void renderList(GuiGraphicsExtractor g, int mouseX, int mouseY) {
@@ -345,7 +346,7 @@ public final class ZoneMapScreen extends Screen {
         g.fill(x, y, x + LIST_W, y + listH(), PANEL_BG);
         g.fill(x, y, x + LIST_W, y + 1, PANEL_EDGE);
         g.text(this.font, Component.translatable("editor.historystages.zone.section.shapes"),
-                x + 5, y + 3, LABEL_GREY, false);
+                x + 5, y + 3, TextColors.legacy(LABEL_GREY), false);
 
         for (int i = 0; i < shapes.size(); i++) {
             int rowY = y + ROW_H + i * ROW_H;
@@ -353,7 +354,7 @@ public final class ZoneMapScreen extends Screen {
             boolean hover = mouseX >= x && mouseX < x + LIST_W && mouseY >= rowY && mouseY < rowY + ROW_H;
             if (hot || hover) g.fill(x + 1, rowY, x + LIST_W - 1, rowY + ROW_H, ROW_HOT);
             g.text(this.font, (i + 1) + " · " + ZoneRowText.describeShape(shapes.get(i)),
-                    x + 5, rowY + 2, hot ? ACCENT : TEXT, false);
+                    x + 5, rowY + 2, TextColors.legacy(hot ? ACCENT : TEXT), false);
         }
     }
 
@@ -368,7 +369,7 @@ public final class ZoneMapScreen extends Screen {
         Component readout = readout(mouseX, mouseY);
         int left = controlsRight() + 12;
         if (left + this.font.width(readout) <= this.width - MARGIN) {
-            g.text(this.font, readout, left, y + 9, LABEL_GREY, false);
+            g.text(this.font, readout, left, y + 9, TextColors.legacy(LABEL_GREY), false);
         }
     }
 

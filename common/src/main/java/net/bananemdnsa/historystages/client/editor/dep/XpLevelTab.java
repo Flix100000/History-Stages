@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.dep;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.bananemdnsa.historystages.api.editor.AbstractDependencyTab;
 
 import java.util.List;
@@ -119,7 +120,7 @@ public final class XpLevelTab extends AbstractDependencyTab {
     public boolean renderContent(TabRenderContext ctx) {
         int y = ctx.y();
         ctx.graphics().text(ctx.font(), t("editor.historystages.dep.required_xp"),
-                ctx.x() + 6, y + 4, 0xAAAAAA, false);
+                ctx.x() + 6, y + 4, 0xFFAAAAAA, false);
         y += CAPTION_HEIGHT;
 
         if (xp != null && xp.getLevel() > 0) renderValue(ctx, y);
@@ -175,7 +176,7 @@ public final class XpLevelTab extends AbstractDependencyTab {
         String consumed = t(xp.isConsume()
                 ? "editor.historystages.dep.consumed" : "editor.historystages.dep.checked_only");
         g.text(ctx.font(), Component.translatable("editor.historystages.dep.level",
-                xp.getLevel(), consumed).getString(), ctx.x() + 6, y + 7, 0xDDDDDD, false);
+                xp.getLevel(), consumed).getString(), ctx.x() + 6, y + 7, 0xFFDDDDDD, false);
 
         String label = modeLabel(currentMode()).getString();
         toggleW = ctx.font().width(label) + 8 + DropdownChrome.CARET_WIDTH;
@@ -186,7 +187,7 @@ public final class XpLevelTab extends AbstractDependencyTab {
         g.fill(toggleX, y + 3, toggleX + toggleW, bottom - 3,
                 toggleHovered ? 0xFF3D3520 : 0xFF2A2A2A);
         g.text(ctx.font(), label, toggleX + 4, y + 7,
-                toggleHovered ? 0xFFCC00 : 0xCCCCCC, false);
+                TextColors.legacy(toggleHovered ? 0xFFFFCC00 : 0xFFCCCCCC), false);
         DropdownChrome.drawCaret(g, toggleX + toggleW - 8, y + EditorRowList.CARD_HEIGHT / 2 - 2,
                 toggleHovered ? 0xFFDDDDDD : 0xFF999999,
                 consumeOverlay != null && consumeOverlay.isVisible() ? 1.0f : 0.0f);
@@ -205,7 +206,7 @@ public final class XpLevelTab extends AbstractDependencyTab {
                 && ctx.mouseY() >= y && ctx.mouseY() < bottom;
         g.fill(ctx.x(), y, right, bottom, hovered ? 0x40FFCC00 : 0x20FFFFFF);
         g.centeredText(ctx.font(), t("editor.historystages.dep.set_xp_level"),
-                ctx.x() + ctx.width() / 2, y + 7, hovered ? 0xFFCC00 : 0x888888);
+                ctx.x() + ctx.width() / 2, y + 7, TextColors.legacy(hovered ? 0xFFFFCC00 : 0xFF888888));
     }
 
     /** Opens the consume picker under the control that was clicked. */

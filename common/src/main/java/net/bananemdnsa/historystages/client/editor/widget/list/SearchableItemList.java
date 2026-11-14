@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.widget.list;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.bananemdnsa.historystages.api.editor.widget.PickerOverlay;
 import net.bananemdnsa.historystages.client.editor.widget.GridGeometry;
 import net.bananemdnsa.historystages.client.editor.widget.ItemSlotGrid;
@@ -582,7 +583,7 @@ public class SearchableItemList implements PickerOverlay {
             guiGraphics.fill(tabXs[i], tabY, tabXs[i] + tabWs[i], tabY + TAB_HEIGHT, bg);
 
             int textColor = active ? 0xFFFFFF : (hovered ? 0xDDDDDD : 0x999999);
-            guiGraphics.text(font, labels.get(i), tabXs[i] + TAB_PAD, tabY + 3, textColor, false);
+            guiGraphics.text(font, labels.get(i), tabXs[i] + TAB_PAD, tabY + 3, TextColors.legacy(textColor), false);
         }
 
         guiGraphics.fill(Math.round(tabIndicatorXAnim.value()), tabY + TAB_HEIGHT - 2,
@@ -721,7 +722,7 @@ public class SearchableItemList implements PickerOverlay {
         }
         g.fill(x, y, x + w, y + SELECTALL_BTN_H, border);
         g.fill(x + 1, y + 1, x + w - 1, y + SELECTALL_BTN_H - 1, bg);
-        g.text(font, label, x + (w - font.width(label)) / 2, y + (SELECTALL_BTN_H - 8) / 2, text, false);
+        g.text(font, label, x + (w - font.width(label)) / 2, y + (SELECTALL_BTN_H - 8) / 2, TextColors.legacy(text), false);
     }
 
     private void renderAddButton(GuiGraphicsExtractor guiGraphics, Font font, int mouseX, int mouseY) {
@@ -993,7 +994,7 @@ public class SearchableItemList implements PickerOverlay {
                 guiGraphics.pose().pushMatrix();
                 guiGraphics.pose().translate(0, 0);
                 String count = String.valueOf(stack.getCount());
-                guiGraphics.text(font, count, x + SLOT_SIZE - 1 - font.width(count), y + SLOT_SIZE - 9, 0xFFFFFF,
+                guiGraphics.text(font, count, x + SLOT_SIZE - 1 - font.width(count), y + SLOT_SIZE - 9, 0xFFFFFFFF,
                         true);
                 guiGraphics.pose().popMatrix();
             }
@@ -1027,7 +1028,7 @@ public class SearchableItemList implements PickerOverlay {
 
         int textGray = (int) (0xCC + hoverProgress * 0x33);
         int textColor = (0xFF << 24) | (textGray << 16) | (textGray << 8) | textGray;
-        guiGraphics.text(font, text, x + (w - font.width(text)) / 2, y + (h - 8) / 2, textColor, false);
+        guiGraphics.text(font, text, x + (w - font.width(text)) / 2, y + (h - 8) / 2, TextColors.legacy(textColor), false);
     }
 
     private void renderTooltip(GuiGraphicsExtractor guiGraphics, Font font, int mouseX, int mouseY, String text) {

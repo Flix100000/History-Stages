@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonInfo;
@@ -360,7 +361,7 @@ public class AutoTriggerEditorScreen extends Screen {
         smoothScroll.settle(scrollOffset, 0.5f);
 
         // Header
-        g.centeredText(this.font, this.title, this.width / 2, 8, 0xFFFFFF);
+        g.centeredText(this.font, this.title, this.width / 2, 8, 0xFFFFFFFF);
         g.fill(10, 18, this.width - 10, 19, 0xFF555555);
 
         renderUnsavedMarker(g);
@@ -437,7 +438,7 @@ public class AutoTriggerEditorScreen extends Screen {
         g.fill(x, y, x + pillAnyW, y + h, anyBg);
         g.text(this.font, combineLabel(CombineMode.ANY),
                 x + (pillAnyW - this.font.width(combineLabel(CombineMode.ANY))) / 2,
-                y + 3, anyActive ? 0xFFFFFFFF : 0xFFCCCCCC, false);
+                y + 3, TextColors.legacy(anyActive ? 0xFFFFFFFF : 0xFFCCCCCC), false);
 
         // ALL half
         boolean allActive = active == CombineMode.ALL;
@@ -445,7 +446,7 @@ public class AutoTriggerEditorScreen extends Screen {
         g.fill(x + pillAnyW, y, x + pillAnyW + pillAllW, y + h, allBg);
         g.text(this.font, combineLabel(CombineMode.ALL),
                 x + pillAnyW + (pillAllW - this.font.width(combineLabel(CombineMode.ALL))) / 2,
-                y + 3, allActive ? 0xFFFFFFFF : 0xFFCCCCCC, false);
+                y + 3, TextColors.legacy(allActive ? 0xFFFFFFFF : 0xFFCCCCCC), false);
 
         // Bottom accent
         g.fill(x, y + h, x + pillAnyW + pillAllW, y + h + 1, accentFill());
@@ -484,7 +485,7 @@ public class AutoTriggerEditorScreen extends Screen {
                     ? "editor.historystages.auto_trigger.empty"
                     : "editor.historystages.auto_trigger.no_matches";
             g.centeredText(this.font, Component.translatable(key).getString(),
-                    listX + listW / 2, listY + listH / 2 - 4, 0x888888);
+                    listX + listW / 2, listY + listH / 2 - 4, 0xFF888888);
             return;
         }
 
@@ -611,9 +612,9 @@ public class AutoTriggerEditorScreen extends Screen {
         boolean negated = t instanceof NegatedTrigger;
 
         g.fill(x, y, x + leftW, y + h, negated ? 0x25FFFFFF : accentFill());
-        g.text(this.font, reached, x + 7, y + 3, negated ? 0xFFCCCCCC : 0xFFFFFFFF, false);
+        g.text(this.font, reached, x + 7, y + 3, TextColors.legacy(negated ? 0xFFCCCCCC : 0xFFFFFFFF), false);
         g.fill(x + leftW, y, x + leftW + rightW, y + h, negated ? accentFill() : 0x25FFFFFF);
-        g.text(this.font, noLonger, x + leftW + 7, y + 3, negated ? 0xFFFFFFFF : 0xFFCCCCCC, false);
+        g.text(this.font, noLonger, x + leftW + 7, y + 3, TextColors.legacy(negated ? 0xFFFFFFFF : 0xFFCCCCCC), false);
         g.fill(x, y + h, x + leftW + rightW, y + h + 1, accentFill());
 
         segmentRects.put(idx, new int[] { x, y, leftW, rightW });
@@ -1360,7 +1361,7 @@ public class AutoTriggerEditorScreen extends Screen {
         int labelX = saveBtnX - 8 - labelW;
         g.fill(labelX - 8, this.height - 17, labelX - 2, this.height - 11,
                 (dotAlpha << 24) | 0xFFCC00);
-        g.text(this.font, label, labelX, this.height - 18, 0xFFCC00, false);
+        g.text(this.font, label, labelX, this.height - 18, 0xFFFFCC00, false);
     }
 
     private void notifyChanged() {

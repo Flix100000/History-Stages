@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.widget.popup.spawn;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.bananemdnsa.historystages.api.editor.widget.NumberStepper;
 import net.bananemdnsa.historystages.api.editor.widget.SegmentBar;
 import net.minecraft.client.Minecraft;
@@ -274,7 +275,7 @@ final class SpawnPageRows {
     private void label(String key, boolean active) {
         rowTip(key);
         g.text(font, Component.translatable(key), left, cursorY + (ROW_H - font.lineHeight) / 2 + 1,
-                active ? 0xFFCCCCCC : 0xFF666666, false);
+                TextColors.legacy(active ? 0xFFCCCCCC : 0xFF666666), false);
     }
 
     /** A label with nothing beside it, introducing the rows below. */
@@ -318,7 +319,7 @@ final class SpawnPageRows {
         if (checked) g.fill(boxX + 3, boxY + 3, boxX + BOX_S - 3, boxY + BOX_S - 3, fg);
         g.text(font, Component.translatable(labelKey), boxX + BOX_S + 6,
                 cursorY + (ROW_H - font.lineHeight) / 2 + 1,
-                !active ? 0xFF555555 : hovered ? 0xFFFFFFFF : 0xFFCCCCCC, false);
+                TextColors.legacy(!active ? 0xFF555555 : hovered ? 0xFFFFFFFF : 0xFFCCCCCC), false);
 
         if (active) {
             hits.add(new Hit(left, cursorY, right - left, ROW_H, (mx, my) -> {
@@ -344,7 +345,7 @@ final class SpawnPageRows {
             boolean hovered = inside(x, y, w, 12);
             g.fill(x, y, x + w, y + 12, hovered ? 0xFF3A2626 : 0xFF262626);
             g.fill(x, y + 11, x + w, y + 12, hovered ? 0xFFAA5555 : 0xFF3A3A3A);
-            g.text(font, text, x + 4, y + 2, id.startsWith("#") ? 0xFF8FD0FF : 0xFFCCCCCC, false);
+            g.text(font, text, x + 4, y + 2, TextColors.legacy(id.startsWith("#") ? 0xFF8FD0FF : 0xFFCCCCCC), false);
             if (hovered) tooltip = id + "\n" + Component.translatable(TIP + "chip").getString();
             hits.add(new Hit(x, y, w, 12, (mx, my) -> {
                 playClick();
@@ -419,7 +420,7 @@ final class SpawnPageRows {
         g.fill(x + 1, y + 1, x + CELL_S - 1, y + CELL_S - 1, 0xFF1A1A1A);
         if (checked) g.fill(x + 2, y + 2, x + CELL_S - 2, y + CELL_S - 2, 0xFFFFCC00);
         String text = Component.translatable(labelKey).getString();
-        g.text(font, text, x + CELL_S + 3, y + 1, checked ? 0xFFFFFFFF : 0xFF999999, false);
+        g.text(font, text, x + CELL_S + 3, y + 1, TextColors.legacy(checked ? 0xFFFFFFFF : 0xFF999999), false);
         int w = CELL_S + 3 + font.width(text);
         if (tipText != null && inside(x, y - 2, w, CELL_S + 4)) tooltip = tipText;
         hits.add(new Hit(x, y - 2, w, CELL_S + 4, (mx, my) -> {

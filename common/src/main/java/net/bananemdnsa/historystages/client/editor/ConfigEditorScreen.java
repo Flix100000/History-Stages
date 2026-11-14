@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonInfo;
@@ -1099,7 +1100,7 @@ public class ConfigEditorScreen extends Screen {
         guiGraphics.fill(0, 0, this.width, this.height, 0xE0101010);
 
         // Title
-        guiGraphics.centeredText(this.font, this.title, this.width / 2, 10, 0xFFFFFF);
+        guiGraphics.centeredText(this.font, this.title, this.width / 2, 10, 0xFFFFFFFF);
 
         // Separator above tabs
         guiGraphics.fill(10, tabY - 2, this.width - 10, tabY - 1, 0xFF555555);
@@ -1163,7 +1164,7 @@ public class ConfigEditorScreen extends Screen {
             guiGraphics.fill(contentLeft, y, contentRight, y + ConfigRowList.SECTION_HEADER_HEIGHT, 0x30FFFFFF);
             guiGraphics.text(this.font,
                     Component.translatable(section.titleKey).getString(),
-                    contentLeft + 5, y + 7, 0xFFCC00, false);
+                    contentLeft + 5, y + 7, 0xFFFFCC00, false);
             y += ConfigRowList.SECTION_HEADER_HEIGHT;
 
             // Entries
@@ -1264,7 +1265,7 @@ public class ConfigEditorScreen extends Screen {
         guiGraphics.pose().pushMatrix();
         guiGraphics.pose().translate(x, y);
         guiGraphics.pose().scale(SMALL_SCALE, SMALL_SCALE);
-        guiGraphics.text(Minecraft.getInstance().font, text, 0, 0, color, false);
+        guiGraphics.text(Minecraft.getInstance().font, text, 0, 0, TextColors.legacy(color), false);
         guiGraphics.pose().popMatrix();
     }
 
@@ -2114,10 +2115,10 @@ public class ConfigEditorScreen extends Screen {
             if (addButton != null) addButton.visible = !overlayOpen;
             if (!overlayOpen) {
                 // Title
-                guiGraphics.centeredText(this.font, this.title, this.width / 2, 10, 0xFFFFFF);
+                guiGraphics.centeredText(this.font, this.title, this.width / 2, 10, 0xFFFFFFFF);
 
                 // Subtitle
-                guiGraphics.centeredText(this.font, items.size() + " items", this.width / 2, 25, 0x999999);
+                guiGraphics.centeredText(this.font, items.size() + " items", this.width / 2, 25, 0xFF999999);
 
                 // Separator
                 guiGraphics.fill(30, LIST_TOP - 4, this.width - 30, LIST_TOP - 3, 0xFF555555);
@@ -2154,7 +2155,7 @@ public class ConfigEditorScreen extends Screen {
                     }
 
                     // Item ID text
-                    guiGraphics.text(this.font, itemId, contentLeft + 22, y + 7, 0xCCCCCC, false);
+                    guiGraphics.text(this.font, itemId, contentLeft + 22, y + 7, 0xFFCCCCCC, false);
 
                     // Remove × button
                     int removeX = contentRight - 14;
@@ -2162,7 +2163,7 @@ public class ConfigEditorScreen extends Screen {
                             && mouseY >= y + 2 && mouseY < y + ITEM_ROW_HEIGHT - 2
                             && mouseY >= LIST_TOP && mouseY <= listBottom;
                     guiGraphics.text(this.font, "×", removeX + 2, y + 6,
-                            removeHovered ? 0xFF5555 : 0x888888, false);
+                            TextColors.legacy(removeHovered ? 0xFFFF5555 : 0xFF888888), false);
                 }
                 y += ITEM_ROW_HEIGHT;
             }
@@ -2436,10 +2437,10 @@ public class ConfigEditorScreen extends Screen {
             if (addButton != null) addButton.visible = !overlayOpen;
             if (!overlayOpen) {
                 // Title
-                guiGraphics.centeredText(this.font, this.title, this.width / 2, 10, 0xFFFFFF);
+                guiGraphics.centeredText(this.font, this.title, this.width / 2, 10, 0xFFFFFFFF);
 
                 // Subtitle
-                guiGraphics.centeredText(this.font, tags.size() + " tags", this.width / 2, 25, 0x999999);
+                guiGraphics.centeredText(this.font, tags.size() + " tags", this.width / 2, 25, 0xFF999999);
 
                 // Separator
                 guiGraphics.fill(30, LIST_TOP - 4, this.width - 30, LIST_TOP - 3, 0xFF555555);
@@ -2467,10 +2468,10 @@ public class ConfigEditorScreen extends Screen {
                     }
 
                     // Tag icon (#)
-                    guiGraphics.text(this.font, "\u00A7e#", contentLeft + 4, y + 7, 0xFFCC00, false);
+                    guiGraphics.text(this.font, "\u00A7e#", contentLeft + 4, y + 7, 0xFFFFCC00, false);
 
                     // Tag ID text
-                    guiGraphics.text(this.font, tagId, contentLeft + 16, y + 7, 0xCCCCCC, false);
+                    guiGraphics.text(this.font, tagId, contentLeft + 16, y + 7, 0xFFCCCCCC, false);
 
                     // Remove × button
                     int removeX = contentRight - 14;
@@ -2478,7 +2479,7 @@ public class ConfigEditorScreen extends Screen {
                             && mouseY >= y + 2 && mouseY < y + TAG_ROW_HEIGHT - 2
                             && mouseY >= LIST_TOP && mouseY <= listBottom;
                     guiGraphics.text(this.font, "×", removeX + 2, y + 6,
-                            removeHovered ? 0xFF5555 : 0x888888, false);
+                            TextColors.legacy(removeHovered ? 0xFFFF5555 : 0xFF888888), false);
                 }
                 y += TAG_ROW_HEIGHT;
             }
@@ -2836,10 +2837,10 @@ public class ConfigEditorScreen extends Screen {
             if (backButton != null) backButton.visible = !overlayOpen;
             if (addButton != null) addButton.visible = !overlayOpen;
             if (!overlayOpen) {
-                guiGraphics.centeredText(this.font, this.title, this.width / 2, 10, 0xFFFFFF);
+                guiGraphics.centeredText(this.font, this.title, this.width / 2, 10, 0xFFFFFFFF);
                 guiGraphics.centeredText(this.font, Component.translatable(
                         "editor.historystages.config.effects_count", rows.size()).getString(),
-                        this.width / 2, 25, 0x999999);
+                        this.width / 2, 25, 0xFF999999);
                 guiGraphics.fill(30, LIST_TOP - 4, this.width - 30, LIST_TOP - 3, 0xFF555555);
             }
 
@@ -2871,7 +2872,7 @@ public class ConfigEditorScreen extends Screen {
                     String summary = Component.translatable("editor.historystages.config.effect_summary",
                             r.seconds, r.amplifier + 1).getString();
                     int summaryX = summaryRightX - this.font.width(summary);
-                    guiGraphics.text(this.font, summary, summaryX, y + 9, 0xAACCFF, false);
+                    guiGraphics.text(this.font, summary, summaryX, y + 9, 0xFFAACCFF, false);
 
                     String name = net.bananemdnsa.historystages.client.editor.widget.list
                             .SearchableEffectList.displayName(r.effectId);
@@ -2882,7 +2883,7 @@ public class ConfigEditorScreen extends Screen {
                         label = this.font.plainSubstrByWidth(label, maxIdWidth - 6) + "...";
                     }
                     guiGraphics.text(this.font, label, idX, y + 9,
-                            hovered ? 0xFFFFFF : 0xCCCCCC, false);
+                            TextColors.legacy(hovered ? 0xFFFFFFFF : 0xFFCCCCCC), false);
 
                     r.editButton.setX(editButtonX);
                     r.editButton.setY(y + 4);
@@ -2891,7 +2892,7 @@ public class ConfigEditorScreen extends Screen {
                             && mouseY >= y + 2 && mouseY < y + ROW_HEIGHT - 2
                             && mouseY >= LIST_TOP && mouseY <= listBottom;
                     guiGraphics.text(this.font, "×", removeX + 2, y + 8,
-                            removeHovered ? 0xFF5555 : 0x888888, false);
+                            TextColors.legacy(removeHovered ? 0xFFFF5555 : 0xFF888888), false);
                 }
                 y += ROW_HEIGHT;
             }
@@ -3190,7 +3191,7 @@ public class ConfigEditorScreen extends Screen {
                 }
             }
             if (textW <= w) {
-                g.text(this.font, text, x, y, textColor, false);
+                g.text(this.font, text, x, y, TextColors.legacy(textColor), false);
                 return;
             }
             if (hovered && hoveredRow == rowIndex) {
@@ -3202,13 +3203,13 @@ public class ConfigEditorScreen extends Screen {
                     float pos = scrollProg % cycle;
                     int scrollOff = pos <= maxMarquee ? (int) pos : (int) (cycle - pos);
                     g.enableScissor(x, y - 4, x + w, y + h);
-                    g.text(this.font, text, x - scrollOff, y, textColor, false);
+                    g.text(this.font, text, x - scrollOff, y, TextColors.legacy(textColor), false);
                     g.disableScissor();
                     return;
                 }
             }
             g.text(this.font, this.font.plainSubstrByWidth(text, w - 6) + "...",
-                    x, y, textColor, false);
+                    x, y, TextColors.legacy(textColor), false);
         }
 
         /** "Speed +5% · Cost +0% · Tier II+" */
@@ -3265,8 +3266,8 @@ public class ConfigEditorScreen extends Screen {
             if (backButton != null) backButton.visible = !overlayOpen;
             if (addButton != null) addButton.visible = !overlayOpen;
             if (!overlayOpen) {
-                guiGraphics.centeredText(this.font, this.title, this.width / 2, 10, 0xFFFFFF);
-                guiGraphics.centeredText(this.font, rows.size() + " boosters", this.width / 2, 25, 0x999999);
+                guiGraphics.centeredText(this.font, this.title, this.width / 2, 10, 0xFFFFFFFF);
+                guiGraphics.centeredText(this.font, rows.size() + " boosters", this.width / 2, 25, 0xFF999999);
                 guiGraphics.fill(30, LIST_TOP - 4, this.width - 30, LIST_TOP - 3, 0xFF555555);
             }
 
@@ -3316,7 +3317,7 @@ public class ConfigEditorScreen extends Screen {
                     String summary = formatSummary(r);
                     int summaryW = this.font.width(summary);
                     int summaryX = summaryRightX - summaryW;
-                    guiGraphics.text(this.font, summary, summaryX, y + 9, 0xAACCFF, false);
+                    guiGraphics.text(this.font, summary, summaryX, y + 9, 0xFFAACCFF, false);
 
                     int idX = contentLeft + 22;
                     int maxIdWidth = summaryX - idX - 8;
@@ -3331,7 +3332,7 @@ public class ConfigEditorScreen extends Screen {
                             && mouseY >= y + 2 && mouseY < y + ROW_HEIGHT - 2
                             && mouseY >= LIST_TOP && mouseY <= listBottom;
                     guiGraphics.text(this.font, "×", removeX + 2, y + 8,
-                            removeHovered ? 0xFF5555 : 0x888888, false);
+                            TextColors.legacy(removeHovered ? 0xFFFF5555 : 0xFF888888), false);
                 }
                 y += ROW_HEIGHT;
             }
@@ -3611,7 +3612,7 @@ public class ConfigEditorScreen extends Screen {
 
             g.centeredText(this.font,
                     Component.translatable("editor.historystages.booster.edit_title"),
-                    this.width / 2, 8, 0xFFFFFF);
+                    this.width / 2, 8, 0xFFFFFFFF);
 
             // Block icon + ID header
             Identifier rl = Identifier.tryParse(row.blockId);
@@ -3619,17 +3620,17 @@ public class ConfigEditorScreen extends Screen {
                 Item item = BuiltInRegistries.ITEM.getValue(rl);
                 if (item != null) g.item(new ItemStack(item), 30, 22);
             }
-            g.text(this.font, row.blockId, 52, 26, 0xCCCCCC, false);
+            g.text(this.font, row.blockId, 52, 26, 0xFFCCCCCC, false);
 
             int labelX = 30;
-            g.text(this.font, "Speed %", labelX, 49, 0xAAAAAA, false);
-            g.text(this.font, "Cost %",  labelX, 71, 0xAAAAAA, false);
+            g.text(this.font, "Speed %", labelX, 49, 0xFFAAAAAA, false);
+            g.text(this.font, "Cost %",  labelX, 71, 0xFFAAAAAA, false);
             g.text(this.font,
                     Component.translatable("editor.historystages.field.min_pedestal_tier").getString(),
-                    labelX, 93, 0xAAAAAA, false);
+                    labelX, 93, 0xFFAAAAAA, false);
             g.text(this.font,
                     Component.translatable("editor.historystages.field.pedestal_tier_mode").getString(),
-                    labelX, 115, 0xAAAAAA, false);
+                    labelX, 115, 0xFFAAAAAA, false);
 
             tierDropdown.renderButton(g, this.font, mouseX, mouseY);
             tierDropdown.renderPopup(g, this.font, mouseX, mouseY);

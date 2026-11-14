@@ -358,14 +358,14 @@ public class NbtItemEditScreen extends Screen {
 
     private void renderHeader(GuiGraphicsExtractor g) {
         if (tagMode) {
-            g.text(this.font, "#" + itemId, PADDING, 16, 0xFFFFFF);
+            g.text(this.font, "#" + itemId, PADDING, 16, 0xFFFFFFFF);
         } else {
             Item item = BuiltInRegistries.ITEM.getValue(Identifier.parse(itemId));
             if (item != null) {
                 g.item(new ItemStack(item), PADDING, 12);
-                g.text(this.font, item.getName(item.getDefaultInstance()), PADDING + 22, 14, 0xFFFFFF);
+                g.text(this.font, item.getName(item.getDefaultInstance()), PADDING + 22, 14, 0xFFFFFFFF);
             }
-            g.text(this.font, itemId, PADDING + 22, 28, 0x888888);
+            g.text(this.font, itemId, PADDING + 22, 28, 0xFF888888);
         }
 
         String count = criteria.isEmpty()
@@ -374,7 +374,7 @@ public class NbtItemEditScreen extends Screen {
                         ? Component.translatable("editor.historystages.nbt.count.one").getString()
                         : Component.translatable("editor.historystages.nbt.count", criteria.size()).getString();
         g.text(this.font, count, this.width - PADDING - this.font.width(count),
-                TOOLBAR_Y + (TOOLBAR_H - 8) / 2, 0x888888);
+                TOOLBAR_Y + (TOOLBAR_H - 8) / 2, 0xFF888888);
 
         g.fill(PADDING, HEADER_HEIGHT - 6, this.width - PADDING, HEADER_HEIGHT - 5, 0x40FFCC00);
     }
@@ -398,7 +398,7 @@ public class NbtItemEditScreen extends Screen {
         g.fill(panelX + 1, panelY + 1, panelX + panelW - 1, panelY + panelH - 1, 0xFF0D0D0D);
 
         String title = Component.translatable("editor.historystages.nbt.show_json").getString();
-        g.text(this.font, title, panelX + 8, panelY + 6, 0xFFCC00);
+        g.text(this.font, title, panelX + 8, panelY + 6, 0xFFFFCC00);
         g.fill(panelX + 8, panelY + 17, panelX + panelW - 8, panelY + 18, 0x40FFCC00);
 
         int textTop = panelY + 22;
@@ -406,7 +406,7 @@ public class NbtItemEditScreen extends Screen {
         g.enableScissor(panelX + 1, textTop, panelX + panelW - 1, textBottom);
         int y = textTop - jsonScroll;
         for (FormattedCharSequence line : jsonLines) {
-            g.text(this.font, line, panelX + 8, y, 0xCCCCCC);
+            g.text(this.font, line, panelX + 8, y, 0xFFCCCCCC);
             y += 10;
         }
         g.disableScissor();
@@ -432,8 +432,8 @@ public class NbtItemEditScreen extends Screen {
         String hint = Component.translatable("editor.historystages.nbt.empty.hint").getString();
 
         int centerY = (listTop + listBottom) / 2;
-        g.text(this.font, title, (this.width - this.font.width(title)) / 2, centerY - 10, 0x7A7A7A);
-        g.text(this.font, hint, (this.width - this.font.width(hint)) / 2, centerY + 4, 0x5F5F5F);
+        g.text(this.font, title, (this.width - this.font.width(title)) / 2, centerY - 10, 0xFF7A7A7A);
+        g.text(this.font, hint, (this.width - this.font.width(hint)) / 2, centerY + 4, 0xFF5F5F5F);
     }
 
     /**
@@ -450,7 +450,7 @@ public class NbtItemEditScreen extends Screen {
         int y = this.height - 24;
 
         g.fill(labelX - 10, y + 1, labelX - 4, y + 7, (alpha << 24) | 0xFFCC00);
-        g.text(this.font, label, labelX, y, 0xFFCC00);
+        g.text(this.font, label, labelX, y, 0xFFFFCC00);
     }
 
     private String itemDisplayName() {
@@ -1078,13 +1078,13 @@ public class NbtItemEditScreen extends Screen {
                     String match = suggestion.substring(matchIdx, matchIdx + input.length());
                     String after = suggestion.substring(matchIdx + input.length());
                     int tx = listX + 4;
-                    g.text(this.font, before, tx, itemY + 3, 0x999999);
+                    g.text(this.font, before, tx, itemY + 3, 0xFF999999);
                     tx += this.font.width(before);
-                    g.text(this.font, match, tx, itemY + 3, 0xFFCC00);
+                    g.text(this.font, match, tx, itemY + 3, 0xFFFFCC00);
                     tx += this.font.width(match);
-                    g.text(this.font, after, tx, itemY + 3, 0x999999);
+                    g.text(this.font, after, tx, itemY + 3, 0xFF999999);
                 } else {
-                    g.text(this.font, suggestion, listX + 4, itemY + 3, 0x999999);
+                    g.text(this.font, suggestion, listX + 4, itemY + 3, 0xFF999999);
                 }
             }
 

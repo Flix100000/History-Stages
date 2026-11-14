@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.widget.popup;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.bananemdnsa.historystages.api.editor.widget.Badge;
 import net.bananemdnsa.historystages.data.ItemEntry;
 import net.bananemdnsa.historystages.client.editor.anim.Timing;
@@ -190,7 +191,7 @@ public class InteractionItemsPopup {
         Component hint = entryCount() == 0
                 ? Component.translatable("editor.historystages.interaction_items.hint_empty")
                 : Component.translatable("editor.historystages.interaction_items.hint");
-        g.centeredText(font, hint, popupX + popupW / 2, popupY + HEADER_H, 0x888888);
+        g.centeredText(font, hint, popupX + popupW / 2, popupY + HEADER_H, 0xFF888888);
 
         int listY = popupY + HEADER_H + HINT_H + 4;
         int rowX = popupX + PAD;
@@ -246,17 +247,17 @@ public class InteractionItemsPopup {
                     float pos = scrollProg % cycle;
                     int scrollOff = pos <= maxMarquee ? (int) pos : (int) (cycle - pos);
                     g.enableScissor(textStartX, ry, textStartX + textAvailW, ry + ROW_H);
-                    g.text(font, text, textStartX - scrollOff, ry + 5, textColor, false);
+                    g.text(font, text, textStartX - scrollOff, ry + 5, TextColors.legacy(textColor), false);
                     g.disableScissor();
                 } else {
                     g.text(font, font.plainSubstrByWidth(text, textAvailW - 8) + "...",
-                            textStartX, ry + 5, textColor, false);
+                            textStartX, ry + 5, TextColors.legacy(textColor), false);
                 }
             } else if (textW > textAvailW) {
                 g.text(font, font.plainSubstrByWidth(text, textAvailW - 8) + "...",
-                        textStartX, ry + 5, textColor, false);
+                        textStartX, ry + 5, TextColors.legacy(textColor), false);
             } else {
-                g.text(font, text, textStartX, ry + 5, textColor, false);
+                g.text(font, text, textStartX, ry + 5, TextColors.legacy(textColor), false);
             }
         }
 
@@ -306,7 +307,7 @@ public class InteractionItemsPopup {
                 : (hovered ? 0x80FFFFFF : 0x40FFFFFF);
         g.fill(x, y, x + w, y + BTN_H, bg);
         g.fill(x, y + BTN_H - 1, x + w, y + BTN_H, line);
-        g.centeredText(font, label, x + w / 2, y + 3, hovered ? 0xFFFFFF : 0xCCCCCC);
+        g.centeredText(font, label, x + w / 2, y + 3, TextColors.legacy(hovered ? 0xFFFFFFFF : 0xFFCCCCCC));
     }
 
     private boolean isIn(double mouseX, double mouseY, int x, int y, int w) {

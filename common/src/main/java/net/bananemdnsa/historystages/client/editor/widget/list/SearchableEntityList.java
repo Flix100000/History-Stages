@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.widget.list;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.bananemdnsa.historystages.api.editor.widget.PickerOverlay;
 import net.bananemdnsa.historystages.client.editor.widget.SearchPanelChrome;
 import net.bananemdnsa.historystages.api.editor.widget.SearchBar;
@@ -475,7 +476,7 @@ public class SearchableEntityList implements PickerOverlay {
             guiGraphics.fill(tabXs[i], tabY, tabXs[i] + tabWs[i], tabY + TAB_HEIGHT, bg);
 
             int textColor = active ? 0xFFFFFF : (hovered ? 0xDDDDDD : 0x999999);
-            guiGraphics.text(font, labels.get(i), tabXs[i] + TAB_PAD, tabY + 3, textColor, false);
+            guiGraphics.text(font, labels.get(i), tabXs[i] + TAB_PAD, tabY + 3, TextColors.legacy(textColor), false);
         }
 
         guiGraphics.fill(Math.round(tabIndicatorXAnim.value()), tabY + TAB_HEIGHT - 2,
@@ -614,7 +615,7 @@ public class SearchableEntityList implements PickerOverlay {
         int textColor = state == RowState.DESELECTED
                 ? (rowHovered ? 0xFFCC8888 : 0xFF885555)
                 : (rowHovered ? 0xFFFFFF : 0xBBBBBB);
-        guiGraphics.text(font, text, listX + 20, rowY + 6, textColor, false);
+        guiGraphics.text(font, text, listX + 20, rowY + 6, TextColors.legacy(textColor), false);
     }
 
     private void renderScrollbar(GuiGraphicsExtractor guiGraphics, int listX, int listW, int listY) {
@@ -779,7 +780,7 @@ public class SearchableEntityList implements PickerOverlay {
                     nameX = previewX + 2;
                 }
                 guiGraphics.text(font, entityName, nameX, previewY + previewH - 11,
-                        Fade.rgba(0xFFCC00, intro), false);
+                        TextColors.legacy(Fade.rgba(0xFFCC00, intro)), false);
                 guiGraphics.pose().popMatrix();
             }
         } else {
@@ -815,7 +816,7 @@ public class SearchableEntityList implements PickerOverlay {
             String addText = hasNonEggSelection ? "Not a Spawn Egg!" : "Select a Spawn Egg";
             int textColor = hasNonEggSelection ? 0xFFFF6666 : 0xFF666666;
             guiGraphics.text(font, addText, addBtnX + (addBtnW - font.width(addText)) / 2,
-                    addBtnY + (ADD_BTN_H - 8) / 2, textColor, false);
+                    addBtnY + (ADD_BTN_H - 8) / 2, TextColors.legacy(textColor), false);
         }
 
         guiGraphics.pose().pushMatrix();
@@ -873,7 +874,7 @@ public class SearchableEntityList implements PickerOverlay {
                 guiGraphics.pose().pushMatrix();
                 guiGraphics.pose().translate(0, 0);
                 String count = String.valueOf(stack.getCount());
-                guiGraphics.text(font, count, x + SLOT_SIZE - 1 - font.width(count), y + SLOT_SIZE - 9, 0xFFFFFF,
+                guiGraphics.text(font, count, x + SLOT_SIZE - 1 - font.width(count), y + SLOT_SIZE - 9, 0xFFFFFFFF,
                         true);
                 guiGraphics.pose().popMatrix();
             }
@@ -907,7 +908,7 @@ public class SearchableEntityList implements PickerOverlay {
 
         int textGray = (int) (0xCC + hoverProgress * 0x33);
         int textColor = (0xFF << 24) | (textGray << 16) | (textGray << 8) | textGray;
-        guiGraphics.text(font, text, x + (w - font.width(text)) / 2, y + (h - 8) / 2, textColor, false);
+        guiGraphics.text(font, text, x + (w - font.width(text)) / 2, y + (h - 8) / 2, TextColors.legacy(textColor), false);
     }
 
     private void renderTooltip(GuiGraphicsExtractor guiGraphics, Font font, int mouseX, int mouseY, String text) {
@@ -927,7 +928,7 @@ public class SearchableEntityList implements PickerOverlay {
             tooltipY = 4;
         guiGraphics.fill(tooltipX - 2, tooltipY - 2, tooltipX + tooltipW + 2, tooltipY + tooltipH, 0xFF1A1A1A);
         guiGraphics.fill(tooltipX - 1, tooltipY - 1, tooltipX + tooltipW + 1, tooltipY + tooltipH - 1, 0xFF0D0D1A);
-        guiGraphics.text(font, text, tooltipX + 2, tooltipY + 2, 0xFFFFFF, false);
+        guiGraphics.text(font, text, tooltipX + 2, tooltipY + 2, 0xFFFFFFFF, false);
     }
 
     private int[] getInvLayout() {
@@ -1395,7 +1396,7 @@ public class SearchableEntityList implements PickerOverlay {
         }
         g.fill(x, y, x + w, y + SELECTALL_BTN_H, border);
         g.fill(x + 1, y + 1, x + w - 1, y + SELECTALL_BTN_H - 1, bg);
-        g.text(font, label, x + (w - font.width(label)) / 2, y + (SELECTALL_BTN_H - 8) / 2, text, false);
+        g.text(font, label, x + (w - font.width(label)) / 2, y + (SELECTALL_BTN_H - 8) / 2, TextColors.legacy(text), false);
     }
 
     public boolean mouseDragged(double mouseX, double mouseY) {

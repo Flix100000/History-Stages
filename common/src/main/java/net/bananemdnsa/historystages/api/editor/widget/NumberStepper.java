@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.api.editor.widget;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.bananemdnsa.historystages.client.editor.anim.Anim;
 import net.bananemdnsa.historystages.client.editor.anim.Ease;
 import net.bananemdnsa.historystages.client.editor.anim.Fade;
@@ -116,7 +117,7 @@ public class NumberStepper {
             boolean valueHovered = enabled && inBox(mouseX, mouseY, valueX, y, VALUE_W, HEIGHT);
             g.fill(valueX, y, valueX + VALUE_W, y + HEIGHT, valueHovered ? 0x20FFFFFF : 0x10FFFFFF);
             g.centeredText(font, String.valueOf(value), valueX + VALUE_W / 2, y + 3,
-                    Fade.grey(enabled ? (valueHovered ? 0xFF : 0xCC) : 0x66));
+                    TextColors.legacy(Fade.grey(enabled ? (valueHovered ? 0xFF : 0xCC) : 0x66)));
         }
 
         drawStep(g, font, plusX, "+", canIncrease,
@@ -137,7 +138,7 @@ public class NumberStepper {
         g.fill(bx, y + HEIGHT - 1, bx + STEP_W, y + HEIGHT, (accentAlpha << 24) | 0xFFFFFF);
 
         int textGray = active ? (int) (0xCC + hp * 0x33) : 0x55;
-        g.centeredText(font, glyph, bx + STEP_W / 2, y + 3, Fade.grey(textGray));
+        g.centeredText(font, glyph, bx + STEP_W / 2, y + 3, TextColors.legacy(Fade.grey(textGray)));
     }
 
     /**

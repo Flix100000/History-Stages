@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.widget.dropdown;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.bananemdnsa.historystages.client.editor.anim.Anim;
 import net.bananemdnsa.historystages.client.editor.anim.Ease;
 import net.bananemdnsa.historystages.client.editor.anim.Fade;
@@ -213,7 +214,7 @@ public class PlayerPickerDropdown {
         if (allSelected && !search.isEmpty()) {
             g.fill(px + 4, py + 3, px + 6 + font.width(search), py + SEARCH_HEIGHT - 3, 0xFF4A6A9A);
         }
-        g.text(font, shown, px + 5, py + 4, search.isEmpty() ? 0xFF666666 : 0xFFEEEEEE, false);
+        g.text(font, shown, px + 5, py + 4, TextColors.legacy(search.isEmpty() ? 0xFF666666 : 0xFFEEEEEE), false);
         // The search row is always the keyboard target while the popup is open, so the
         // caret blinks unconditionally — there is no separate focus to win first. It is
         // hidden while everything is selected, matching SearchBar.
@@ -244,7 +245,7 @@ public class PlayerPickerDropdown {
             int textRight = px + pw - SCROLLBAR_W - 4;
             g.enableScissor(textX, rowY, textRight, rowY + ROW_HEIGHT);
             g.text(font, label, textX, rowY + 5,
-                    Objects.equals(entry.uuid(), selected) ? 0xFFFFCC00 : 0xFFEEEEEE, false);
+                    TextColors.legacy(Objects.equals(entry.uuid(), selected) ? 0xFFFFCC00 : 0xFFEEEEEE), false);
             g.disableScissor();
         }
 

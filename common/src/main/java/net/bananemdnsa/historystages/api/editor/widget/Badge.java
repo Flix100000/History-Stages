@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.api.editor.widget;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 
@@ -52,7 +53,7 @@ public final class Badge {
         String label = label(text);
         g.fill(x, y, x + width, y + HEIGHT, frame);
         g.fill(x + 1, y + 1, x + width - 1, y + HEIGHT - 1, fill);
-        g.text(font, label, x + (width - font.width(label)) / 2, y + 2, 0xFF000000 | colour, false);
+        g.text(font, label, x + (width - font.width(label)) / 2, y + 2, TextColors.legacy(0xFF000000 | colour), false);
     }
 
     /** True when (mx, my) is on a badge of {@code width} drawn at (x, y). */

@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.dialog;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.bananemdnsa.historystages.api.editor.widget.AbstractInputScreen;
 import net.bananemdnsa.historystages.api.editor.widget.InputField;
 import net.bananemdnsa.historystages.api.editor.widget.InputValues;
@@ -119,7 +120,7 @@ public class ScoreboardDepScreen extends AbstractInputScreen {
         dropdownW = w;
 
         g.text(this.font, Component.translatable("editor.historystages.dep.dialog.operator"),
-                x, y, LABEL_GREY, false);
+                x, y, TextColors.legacy(LABEL_GREY), false);
 
         // A dropdown has no isFocused() of its own, so the gold ring is driven by the slot the
         // base reports — otherwise tabbing onto the operator would give no visible feedback.
@@ -164,7 +165,7 @@ public class ScoreboardDepScreen extends AbstractInputScreen {
             boolean optHover = mouseX >= px && mouseX < px + pw && mouseY >= iy && mouseY < iy + OPTION_H;
             if (optHover) g.fill(px + 1, iy, px + pw - 1, iy + OPTION_H, 0x25FFFFFF);
             g.text(this.font, operators[i], px + 6, iy + (OPTION_H - 8) / 2,
-                    i == opIndex ? ACCENT_GOLD : 0xFFEEEEEE, false);
+                    TextColors.legacy(i == opIndex ? ACCENT_GOLD : 0xFFEEEEEE), false);
         }
         g.pose().popMatrix();
     }

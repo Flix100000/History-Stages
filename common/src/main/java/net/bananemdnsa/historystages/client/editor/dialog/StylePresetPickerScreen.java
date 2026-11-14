@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.dialog;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.bananemdnsa.historystages.api.editor.widget.AbstractModalScreen;
 import net.bananemdnsa.historystages.client.editor.graph.PresetSwatch;
 import net.bananemdnsa.historystages.data.graph.GraphStageData;
@@ -109,7 +110,7 @@ public class StylePresetPickerScreen extends AbstractModalScreen {
             } else {
                 PresetSwatch.draw(g, id, x + 10, rowY + ROW_H / 2, 6);
                 g.text(this.font, GraphStageData.get().presets().get(id).name,
-                        x + 22, rowY + 5, hovered ? 0xFFFFCC00 : 0xFFEEEEEE, false);
+                        x + 22, rowY + 5, TextColors.legacy(hovered ? 0xFFFFCC00 : 0xFFEEEEEE), false);
             }
         }
     }

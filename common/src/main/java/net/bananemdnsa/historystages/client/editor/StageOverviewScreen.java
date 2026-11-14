@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonInfo;
@@ -507,13 +508,13 @@ public class StageOverviewScreen extends Screen {
 
         drawFolderIcon(g, contentLeft + 5, entryTop + 7, accentColor);
         g.text(this.font, folder.name(), contentLeft + 16, entryTop + 4,
-                progress > 0.01f ? 0xFFFFFF : 0xEEEEEE, false);
+                TextColors.legacy(progress > 0.01f ? 0xFFFFFF : 0xEEEEEE), false);
 
         String info = Component.translatable("editor.historystages.folder.stage_count",
                 folder.stageCount()).getString();
         int infoColor = (int) (0x88 + progress * 0x33);
         g.text(this.font, info, contentLeft + 22, entryTop + 15,
-                (0xFF << 24) | (infoColor << 16) | (infoColor << 8) | infoColor, false);
+                TextColors.legacy((0xFF << 24) | (infoColor << 16) | (infoColor << 8) | infoColor), false);
     }
 
     /** Blends white towards {@code accent} by {@code progress}, returning an RGB triple. */
@@ -571,11 +572,11 @@ public class StageOverviewScreen extends Screen {
             int w = this.font.width(label);
             boolean last = i == parts.size() - 1;
             boolean hovered = !last && mouseX >= cx && mouseX <= cx + w && mouseY >= y && mouseY <= y + 10;
-            g.text(this.font, label, cx, y, last ? 0xFFFFFF : (hovered ? 0xFFCC00 : 0x888888), false);
+            g.text(this.font, label, cx, y, TextColors.legacy(last ? 0xFFFFFFFF : (hovered ? 0xFFFFCC00 : 0xFF888888)), false);
             if (!last) breadcrumbHits.add(new BreadcrumbHit(cx, cx + w, path));
             cx += w;
             if (!last) {
-                g.text(this.font, BREADCRUMB_SEPARATOR, cx, y, 0x555555, false);
+                g.text(this.font, BREADCRUMB_SEPARATOR, cx, y, 0xFF555555, false);
                 cx += this.font.width(BREADCRUMB_SEPARATOR);
             }
         }
@@ -651,7 +652,7 @@ public class StageOverviewScreen extends Screen {
         organizeReveal.ramp(organizeMode, Timing.REVEAL_MS, Timing.REVEAL_MS);
 
         guiGraphics.fill(0, 0, this.width, this.height, 0xE0101010);
-        guiGraphics.centeredText(this.font, this.title, this.width / 2, 10, 0xFFFFFF);
+        guiGraphics.centeredText(this.font, this.title, this.width / 2, 10, 0xFFFFFFFF);
 
         net.bananemdnsa.historystages.client.LegacyGui.blit(guiGraphics, LOGO, LOGO_X, LOGO_Y, LOGO_SIZE, LOGO_SIZE, 0f, 0f,
                 LOGO_TEX, LOGO_TEX, LOGO_TEX, LOGO_TEX);
@@ -737,7 +738,7 @@ public class StageOverviewScreen extends Screen {
                 int glLabelW = this.font.width(globalLabel);
                 int glLabelX = listLeft + 5;
                 guiGraphics.fill(glLabelX - 2, globalHeaderY + 3, glLabelX + glLabelW + 2, globalHeaderY + 15, 0xE0101010);
-                guiGraphics.text(this.font, globalLabel, glLabelX, globalHeaderY + 4, 0x888888, false);
+                guiGraphics.text(this.font, globalLabel, glLabelX, globalHeaderY + 4, 0xFF888888, false);
             }
         }
 
@@ -806,7 +807,7 @@ public class StageOverviewScreen extends Screen {
             // Lock/unlock icon
             String icon = unlocked ? "\u2714" : "\uD83D\uDD12";
             int iconColor = unlocked ? 0xFFCC00 : 0x888888;
-            guiGraphics.text(this.font, icon, contentLeft + 5, entryTop + 6, iconColor, false);
+            guiGraphics.text(this.font, icon, contentLeft + 5, entryTop + 6, TextColors.legacy(iconColor), false);
 
             // Mode badge (placed to the LEFT of the lock button, vertically centered)
             long remainingTicks = EditorDataCache.getTemporaryActiveTicks(stageId);
@@ -846,20 +847,20 @@ public class StageOverviewScreen extends Screen {
                     float pos = scrollProg % cycle;
                     int scrollOff = pos <= maxMarquee ? (int) pos : (int) (cycle - pos);
                     guiGraphics.enableScissor(nameX, entryTop, nameX + nameAvailW, entryBottom);
-                    guiGraphics.text(this.font, displayText, nameX - scrollOff, entryTop + 4, nameColor, false);
+                    guiGraphics.text(this.font, displayText, nameX - scrollOff, entryTop + 4, TextColors.legacy(nameColor), false);
                     guiGraphics.disableScissor();
                 } else {
-                    guiGraphics.text(this.font, displayText, nameX, entryTop + 4, nameColor, false);
+                    guiGraphics.text(this.font, displayText, nameX, entryTop + 4, TextColors.legacy(nameColor), false);
                 }
             } else {
-                guiGraphics.text(this.font, displayText, nameX, entryTop + 4, nameColor, false);
+                guiGraphics.text(this.font, displayText, nameX, entryTop + 4, TextColors.legacy(nameColor), false);
             }
 
             // Item count info
             int itemCount = CategoryEntryCounter.totalEntries(entry);
             String info = Component.translatable("editor.historystages.entries", itemCount).getString();
             int infoColor = (int) (0x88 + progress * 0x33);
-            guiGraphics.text(this.font, info, contentLeft + 22, entryTop + 15, (0xFF << 24) | (infoColor << 16) | (infoColor << 8) | infoColor, false);
+            guiGraphics.text(this.font, info, contentLeft + 22, entryTop + 15, TextColors.legacy((0xFF << 24) | (infoColor << 16) | (infoColor << 8) | infoColor), false);
             drawInfoBadges(guiGraphics, entry, info, contentLeft, entryTop + 15,
                     ClientLostStages.isLost(stageId, false));
 
@@ -875,7 +876,7 @@ public class StageOverviewScreen extends Screen {
 
                 int lockTextColor = lockBtnHovered ? 0xFFFFFF : 0xCCCCCC;
                 int textW = this.font.width(lockLabel);
-                guiGraphics.text(this.font, lockLabel, lockBtnX + (lockBtnW - textW) / 2, lockBtnY + 4, lockTextColor, false);
+                guiGraphics.text(this.font, lockLabel, lockBtnX + (lockBtnW - textW) / 2, lockBtnY + 4, TextColors.legacy(lockTextColor), false);
             }
         }
 
@@ -917,7 +918,7 @@ public class StageOverviewScreen extends Screen {
                     int labelW = this.font.width(sectionLabel);
                     int labelX = listLeft + 5;
                     guiGraphics.fill(labelX - 2, sectionY + 3, labelX + labelW + 2, sectionY + 15, 0xE0101010);
-                    guiGraphics.text(this.font, sectionLabel, labelX, sectionY + 4, 0x888888, false);
+                    guiGraphics.text(this.font, sectionLabel, labelX, sectionY + 4, 0xFF888888, false);
                 }
             }
 
@@ -988,7 +989,7 @@ public class StageOverviewScreen extends Screen {
                     drawCheckbox(guiGraphics, listLeft + 4, entryTop + 8,
                             isSelected(stageId, true), 0xBBBBBB, cbReveal);
                 }
-                guiGraphics.text(this.font, stateIcon, contentLeft + 5, entryTop + 6, stateColor, false);
+                guiGraphics.text(this.font, stateIcon, contentLeft + 5, entryTop + 6, TextColors.legacy(stateColor), false);
 
                 // Mode badge sits left of the lock button, same as on global rows. The
                 // countdown follows the picked player; under "@a" there is none to show.
@@ -1043,20 +1044,20 @@ public class StageOverviewScreen extends Screen {
                         float pos = scrollProg % cycle;
                         int scrollOff = pos <= maxMarquee ? (int) pos : (int) (cycle - pos);
                         guiGraphics.enableScissor(nameX, entryTop, nameX + nameAvailW, entryBottom);
-                        guiGraphics.text(this.font, displayText, nameX - scrollOff, entryTop + 4, nameColor, false);
+                        guiGraphics.text(this.font, displayText, nameX - scrollOff, entryTop + 4, TextColors.legacy(nameColor), false);
                         guiGraphics.disableScissor();
                     } else {
-                        guiGraphics.text(this.font, displayText, nameX, entryTop + 4, nameColor, false);
+                        guiGraphics.text(this.font, displayText, nameX, entryTop + 4, TextColors.legacy(nameColor), false);
                     }
                 } else {
-                    guiGraphics.text(this.font, displayText, nameX, entryTop + 4, nameColor, false);
+                    guiGraphics.text(this.font, displayText, nameX, entryTop + 4, TextColors.legacy(nameColor), false);
                 }
 
                 // Item count info
                 int itemCount = CategoryEntryCounter.totalEntries(entry);
                 String info = Component.translatable("editor.historystages.entries", itemCount).getString();
                 int infoColor = (int) (0x88 + progress * 0x33);
-                guiGraphics.text(this.font, info, contentLeft + 22, entryTop + 15, (0xFF << 24) | (infoColor << 16) | (infoColor << 8) | infoColor, false);
+                guiGraphics.text(this.font, info, contentLeft + 22, entryTop + 15, TextColors.legacy((0xFF << 24) | (infoColor << 16) | (infoColor << 8) | infoColor), false);
                 // Individual stages carry dependencies just like global ones, so the marker
                 // belongs on these rows too. No lost badge: these rows show the picked target's
                 // state, while the client only knows the local player's lost marks.
@@ -1072,7 +1073,7 @@ public class StageOverviewScreen extends Screen {
                     int lockTextColor = lockBtnHovered ? 0xFFFFFF : 0xCCCCCC;
                     int lockTextW = this.font.width(lockLabel);
                     guiGraphics.text(this.font, lockLabel, lockBtnX + (lockBtnW - lockTextW) / 2,
-                            lockBtnY + 4, lockTextColor, false);
+                            lockBtnY + 4, TextColors.legacy(lockTextColor), false);
                 }
             }
         }
@@ -1134,8 +1135,8 @@ public class StageOverviewScreen extends Screen {
             // long translation would otherwise run off the right edge.
             int statusW = Math.max(this.font.width(selectedText), this.font.width(hintText));
             int statusX = Math.min(BOTTOM_BAR_END + 10, Math.max(10, this.width - 10 - statusW));
-            guiGraphics.text(this.font, selectedText, statusX, this.height - 29, 0xFFCC00, false);
-            guiGraphics.text(this.font, hintText, statusX, this.height - 18, 0x888888, false);
+            guiGraphics.text(this.font, selectedText, statusX, this.height - 29, 0xFFFFCC00, false);
+            guiGraphics.text(this.font, hintText, statusX, this.height - 18, 0xFF888888, false);
         }
 
         super.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
@@ -1169,7 +1170,7 @@ public class StageOverviewScreen extends Screen {
                 guiGraphics.pose().translate(0, 0);
                 guiGraphics.fill(ghostX, ghostY, ghostX + ghostW, ghostY + 14, 0xE0101010);
                 guiGraphics.fill(ghostX, ghostY + 13, ghostX + ghostW, ghostY + 14, 0xFFFFCC00);
-                guiGraphics.text(this.font, ghost, ghostX + 4, ghostY + 3, 0xFFFFFF, false);
+                guiGraphics.text(this.font, ghost, ghostX + 4, ghostY + 3, 0xFFFFFFFF, false);
                 guiGraphics.pose().popMatrix();
             }
         }
@@ -1454,7 +1455,7 @@ public class StageOverviewScreen extends Screen {
         int startX = menuButtonX() + (MENU_BUTTON_W - pairW) / 2;
         int textY = MENU_BUTTON_Y + (MENU_BUTTON_H - 8) / 2;
 
-        g.text(this.font, gear, startX, textY, 0xCCCCCC, false);
+        g.text(this.font, gear, startX, textY, 0xFFCCCCCC, false);
         drawMenuCaret(g, startX + gearW + MENU_ICON_GAP, textY);
     }
 
@@ -1470,7 +1471,7 @@ public class StageOverviewScreen extends Screen {
         g.pose().rotate((float) Math.toRadians(
                 Ease.outCubic(menuCaret.value()) * 180.0f));
         g.pose().translate(-halfW, -4.0f);
-        g.text(this.font, caret, 0, 0, 0xFFCC00, false);
+        g.text(this.font, caret, 0, 0, 0xFFFFCC00, false);
         g.pose().popMatrix();
     }
 
@@ -2064,7 +2065,7 @@ public class StageOverviewScreen extends Screen {
         if (mode == StageMode.DEFAULT) return;
         int right = Badge.draw(g, this.font, modeBadgeLabel(entry, remainingTicks), x, y, 0xAAAAAA);
         if (mode.usesAutoTrigger() && isAutoEmpty(entry)) {
-            g.text(this.font, MODE_BADGE_WARN, right + 3, y + 2, 0xFFAA55, false);
+            g.text(this.font, MODE_BADGE_WARN, right + 3, y + 2, 0xFFFFAA55, false);
         }
     }
 
@@ -2375,9 +2376,9 @@ public class StageOverviewScreen extends Screen {
             g.fill(x, dropdownY, x + DROPDOWN_W, dropdownY + DROPDOWN_H, hovered ? 0x40FFFFFF : 0x25FFFFFF);
             g.fill(x, dropdownY + DROPDOWN_H - 2, x + DROPDOWN_W, dropdownY + DROPDOWN_H,
                     hovered ? (color | 0xFF000000) : 0x60FFFFFF);
-            g.text(this.font, labels[selected], x + 4, dropdownY + 4, color, false);
+            g.text(this.font, labels[selected], x + 4, dropdownY + 4, TextColors.legacy(color), false);
             // Arrow indicator
-            g.text(this.font, open ? "▲" : "▼", x + DROPDOWN_W - 10, dropdownY + 4, 0x999999, false);
+            g.text(this.font, open ? "▲" : "▼", x + DROPDOWN_W - 10, dropdownY + 4, 0xFF999999, false);
 
             if (!open) return;
 
@@ -2398,7 +2399,7 @@ public class StageOverviewScreen extends Screen {
                 if (optHovered) g.fill(x, oy, x + DROPDOWN_W, oy + OPTION_H, 0x30000000 | colors[i]);
                 if (i == selected) g.fill(x, oy, x + 2, oy + OPTION_H, 0xFF000000 | colors[i]);
                 g.text(this.font, labels[i], x + 6, oy + 4,
-                        optHovered ? 0xFFFFFF : (i == selected ? colors[i] : 0xAAAAAA), false);
+                        TextColors.legacy(optHovered ? 0xFFFFFF : (i == selected ? colors[i] : 0xAAAAAA)), false);
             }
 
             g.pose().popMatrix();

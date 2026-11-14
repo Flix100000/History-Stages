@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.api.editor.widget;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonInfo;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -245,13 +246,13 @@ public abstract class AbstractModalScreen extends Screen {
         g.fill(boxX, boxY, boxX + boxW, boxY + 2, Fade.alpha(ACCENT_GOLD, t));
 
         if (titleCentered()) {
-            g.centeredText(this.font, titleText(), boxX + boxW / 2, boxY + 8, TITLE_GOLD);
+            g.centeredText(this.font, titleText(), boxX + boxW / 2, boxY + 8, TextColors.legacy(TITLE_GOLD));
         } else {
-            g.text(this.font, titleText(), boxX + PAD, boxY + 8, TITLE_GOLD, false);
+            g.text(this.font, titleText(), boxX + PAD, boxY + 8, TextColors.legacy(TITLE_GOLD), false);
         }
 
         if (hasSubtitle()) {
-            g.centeredText(this.font, subtitle(), boxX + boxW / 2, boxY + TITLE_H, SUBTITLE_GREY);
+            g.centeredText(this.font, subtitle(), boxX + boxW / 2, boxY + TITLE_H, TextColors.legacy(SUBTITLE_GREY));
         }
 
         renderContent(g, boxX + PAD, contentY, boxW - PAD * 2, mouseX, mouseY);

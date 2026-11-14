@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.widget;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.bananemdnsa.historystages.client.editor.anim.Anim;
 import net.bananemdnsa.historystages.client.editor.anim.Ease;
 import net.bananemdnsa.historystages.client.editor.anim.Fade;
@@ -118,7 +119,7 @@ public class ContextMenu {
             int textX = x + PADDING + 2 + Math.round(hp * 2.0f);
             int textGrey = Math.round(0xCC + hp * 0x33);
             guiGraphics.text(font, entries.get(i).label, textX, entryY + 4,
-                    Fade.alpha(Fade.grey(textGrey), fade), false);
+                    TextColors.legacy(Fade.alpha(Fade.grey(textGrey), fade)), false);
         }
 
         guiGraphics.pose().popMatrix();

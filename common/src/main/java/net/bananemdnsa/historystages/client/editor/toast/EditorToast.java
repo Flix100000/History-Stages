@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.toast;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.bananemdnsa.historystages.client.editor.anim.Ease;
 import net.bananemdnsa.historystages.client.editor.anim.Fade;
 import net.bananemdnsa.historystages.client.editor.anim.Timing;
@@ -193,12 +194,12 @@ public class EditorToast implements Toast, DismissibleToast {
         }
 
         // Title
-        g.text(font, title, textX, 6, Fade.alpha(level.titleColor, fade), false);
+        g.text(font, title, textX, 6, TextColors.legacy(Fade.alpha(level.titleColor, fade)), false);
 
         // Message body (wrapped)
         int y = 18;
         for (FormattedCharSequence line : wrappedMessage) {
-            g.text(font, line, textX, y, Fade.alpha(0xFFDDDDDD, fade), false);
+            g.text(font, line, textX, y, TextColors.legacy(Fade.alpha(0xFFDDDDDD, fade)), false);
             y += 10;
         }
 

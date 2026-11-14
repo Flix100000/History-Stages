@@ -1,4 +1,5 @@
 package net.bananemdnsa.historystages.client.editor;
+import net.bananemdnsa.historystages.util.TextColors;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonInfo;
@@ -1845,7 +1846,7 @@ public class StageDetailScreen extends Screen {
         String titleText = isNewStage
                 ? Component.translatable("editor.historystages.new_stage").getString()
                 : editDisplayName + " (" + originalStageId + ")";
-        guiGraphics.centeredText(this.font, titleText, this.width / 2, 6, 0xFFFFFF);
+        guiGraphics.centeredText(this.font, titleText, this.width / 2, 6, 0xFFFFFFFF);
 
         // Thin separator between title and button row
         guiGraphics.fill(10, 19, this.width - 10, 20, 0x40FFFFFF);
@@ -2003,7 +2004,7 @@ public class StageDetailScreen extends Screen {
             String emptyText = Component.translatable("editor.historystages.empty").getString();
             int centerX = (contentLeft + contentRight) / 2;
             int centerY = (listTop + listBottom) / 2;
-            guiGraphics.centeredText(this.font, emptyText, centerX, centerY - 4, 0x888888);
+            guiGraphics.centeredText(this.font, emptyText, centerX, centerY - 4, 0xFF888888);
         }
 
         guiGraphics.disableScissor();
@@ -2036,7 +2037,7 @@ public class StageDetailScreen extends Screen {
         }
 
         if (!saveError.isEmpty()) {
-            guiGraphics.centeredText(this.font, saveError, this.width / 2, this.height - 38, 0xFF5555);
+            guiGraphics.centeredText(this.font, saveError, this.width / 2, this.height - 38, 0xFFFF5555);
         }
 
         // SearchBar lifts its text to z=300, while the pickers draw at z=0 — it would show
@@ -2271,11 +2272,11 @@ public class StageDetailScreen extends Screen {
             guiGraphics.pose().popMatrix();
             hdrX += 14;
         }
-        guiGraphics.text(this.font, typeName, hdrX, hdrY + 1, 0xFFFFFF, false);
+        guiGraphics.text(this.font, typeName, hdrX, hdrY + 1, 0xFFFFFFFF, false);
 
         // ESC hint
         String escText = "[ESC]";
-        guiGraphics.text(this.font, escText, popupX + popupW - pad - this.font.width(escText), hdrY + 1, 0x444444, false);
+        guiGraphics.text(this.font, escText, popupX + popupW - pad - this.font.width(escText), hdrY + 1, 0xFF444444, false);
 
         // Recipe ID (with marquee scroll on hover if too wide)
         int idMaxW = popupW - pad * 2;
@@ -2310,7 +2311,7 @@ public class StageDetailScreen extends Screen {
             guiGraphics.pose().pushMatrix();
             guiGraphics.pose().translate(idX - scrollOff, idY);
             guiGraphics.pose().scale(SMALL_SCALE, SMALL_SCALE);
-            guiGraphics.text(this.font, recipePopupId, 0, 0, 0x666666, false);
+            guiGraphics.text(this.font, recipePopupId, 0, 0, 0xFF666666, false);
             guiGraphics.pose().popMatrix();
             guiGraphics.disableScissor();
         }
@@ -2512,7 +2513,7 @@ public class StageDetailScreen extends Screen {
         guiGraphics.pose().pushMatrix();
         guiGraphics.pose().translate(x, y);
         guiGraphics.pose().scale(SMALL_SCALE, SMALL_SCALE);
-        guiGraphics.text(this.font, text, 0, 0, color, false);
+        guiGraphics.text(this.font, text, 0, 0, TextColors.legacy(color), false);
         guiGraphics.pose().popMatrix();
     }
 
@@ -3448,18 +3449,18 @@ public class StageDetailScreen extends Screen {
         g.fill(x + 1, y + 1, x + w - 1, y + 20, 0xFF2D2D2D);
         g.fill(x + 1, y + 20, x + w - 1, y + 21, 0xFF555555);
         g.text(this.font, Component.translatable("editor.historystages.text_override.title").getString(),
-                x + 8, y + 7, 0xFFCC00, false);
+                x + 8, y + 7, 0xFFFFCC00, false);
 
         int cy = y + 30;
         if (overrideShowName) {
             g.text(this.font, Component.translatable("editor.historystages.text_override.name").getString(),
-                    x + 12, cy, 0xAAAAAA, false);
+                    x + 12, cy, 0xFFAAAAAA, false);
             overrideNameField.extractRenderState(g, mouseX, mouseY, 0f);
             cy += 44;
         }
         if (overrideShowTooltip) {
             g.text(this.font, Component.translatable("editor.historystages.text_override.tooltip").getString(),
-                    x + 12, cy, 0xAAAAAA, false);
+                    x + 12, cy, 0xFFAAAAAA, false);
             overrideTooltipField.extractRenderState(g, mouseX, mouseY, 0f);
         }
         overrideResetBtn.extractRenderState(g, mouseX, mouseY, 0f);

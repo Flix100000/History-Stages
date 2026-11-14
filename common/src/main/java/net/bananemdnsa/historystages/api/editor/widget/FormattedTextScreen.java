@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.api.editor.widget;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.minecraft.client.input.CharacterEvent;
 import net.bananemdnsa.historystages.client.editor.widget.dialog.FormatTextArea;
 
@@ -301,7 +302,7 @@ public class FormattedTextScreen extends AbstractInputScreen {
     }
 
     private int drawLabel(GuiGraphicsExtractor g, String key, int x, int y) {
-        g.text(this.font, Component.translatable(key).getString(), x, y, LABEL_GREY, false);
+        g.text(this.font, Component.translatable(key).getString(), x, y, TextColors.legacy(LABEL_GREY), false);
         return y + BLOCK_LABEL_H;
     }
 
@@ -393,7 +394,7 @@ public class FormattedTextScreen extends AbstractInputScreen {
                 .ramp(hovered, Timing.HOVER_IN_MS, Timing.HOVER_OUT_MS));
         g.fill(x, y, x + w, y + CHIP_H, Fade.mix(0x18FFFFFF, 0x35FFFFFF, hp));
         g.centeredText(this.font, label, x + w / 2, y + 3,
-                Fade.mix(0xFFAAAAAA, 0xFFFFFFFF, hp));
+                TextColors.legacy(Fade.mix(0xFFAAAAAA, 0xFFFFFFFF, hp)));
     }
 
     // --- input ---

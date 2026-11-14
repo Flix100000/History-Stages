@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.widget.popup;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -187,8 +188,8 @@ public class ItemTypesPopup implements PickerOverlay {
         int cbX = allCbX();
         int titleMax = cbX - font.width(allLabel) - 12 - (panelX + PADDING);
         if (font.width(title) > titleMax) title = font.plainSubstrByWidth(title, titleMax - 8) + "...";
-        g.text(font, title, panelX + PADDING, panelY + 7, 0xFFFFFF, false);
-        g.text(font, allLabel, cbX - font.width(allLabel) - 5, panelY + 7, 0x999999, false);
+        g.text(font, title, panelX + PADDING, panelY + 7, 0xFFFFFFFF, false);
+        g.text(font, allLabel, cbX - font.width(allLabel) - 5, panelY + 7, 0xFF999999, false);
         renderCheckbox(g, cbX, panelY + 5, allVisibleTicked(), mouseX, mouseY, "all");
     }
 
@@ -197,7 +198,7 @@ public class ItemTypesPopup implements PickerOverlay {
         int y = listY();
         if (visibleRows.isEmpty()) {
             String text = Component.translatable("editor.historystages.ingredient_usage.no_match").getString();
-            g.text(font, text, x + (LIST_W - font.width(text)) / 2, y + listH() / 2 - 4, 0x777777, false);
+            g.text(font, text, x + (LIST_W - font.width(text)) / 2, y + listH() / 2 - 4, 0xFF777777, false);
             return;
         }
 
@@ -220,8 +221,8 @@ public class ItemTypesPopup implements PickerOverlay {
             int textMax = rowCbX() - 6 - nsW - 6 - textX;
             String name = e.name();
             if (font.width(name) > textMax) name = font.plainSubstrByWidth(name, textMax - 6) + "...";
-            g.text(font, name, textX, rowY + 5, locked ? 0xDDDDDD : 0x888888, false);
-            g.text(font, e.namespace(), rowCbX() - 6 - nsW, rowY + 5, 0x666666, false);
+            g.text(font, name, textX, rowY + 5, TextColors.legacy(locked ? 0xFFDDDDDD : 0xFF888888), false);
+            g.text(font, e.namespace(), rowCbX() - 6 - nsW, rowY + 5, 0xFF666666, false);
             renderCheckbox(g, rowCbX(), rowY + (ROW_HEIGHT - CHECKBOX_SIZE) / 2, locked, mouseX, mouseY, e.id());
         }
         g.disableScissor();
@@ -240,7 +241,7 @@ public class ItemTypesPopup implements PickerOverlay {
         int fy = footerY() + 5;
         String note = Component.translatable("editor.historystages.item_types.count",
                 ticked.size(), entries.size()).getString();
-        g.text(font, note, panelX + PADDING, fy + 6, 0x888888, false);
+        g.text(font, note, panelX + PADDING, fy + 6, 0xFF888888, false);
 
         boolean overCancel = isIn(mouseX, mouseY, cancelX(), fy, CANCEL_W, BTN_H);
         boolean overDone = isIn(mouseX, mouseY, doneX(), fy, DONE_W, BTN_H);
@@ -288,7 +289,7 @@ public class ItemTypesPopup implements PickerOverlay {
         g.fill(x + w - 1, y, x + w, y + BTN_H, 0x15FFFFFF);
         int gray = (int) (0xCC + hp * 0x33);
         g.text(font, text, x + (w - font.width(text)) / 2, y + (BTN_H - 8) / 2,
-                (0xFF << 24) | (gray << 16) | (gray << 8) | gray, false);
+                TextColors.legacy((0xFF << 24) | (gray << 16) | (gray << 8) | gray), false);
     }
 
     private static boolean isIn(double mx, double my, int x, int y, int w, int h) {

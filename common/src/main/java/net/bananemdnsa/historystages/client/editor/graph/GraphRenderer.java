@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.graph;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import com.mojang.math.Axis;
 import net.bananemdnsa.historystages.GraphConfig;
 import net.bananemdnsa.historystages.client.editor.anim.Anim;
@@ -315,7 +316,7 @@ final class GraphRenderer {
         g.pose().translate(cx, topY);
         g.pose().scale(camera.zoom(), camera.zoom());
         int tw = font.width(text);
-        g.text(font, text, -tw / 2, 0, style.labelColor(), false);
+        g.text(font, text, -tw / 2, 0, TextColors.legacy(style.labelColor()), false);
         g.pose().popMatrix();
     }
 

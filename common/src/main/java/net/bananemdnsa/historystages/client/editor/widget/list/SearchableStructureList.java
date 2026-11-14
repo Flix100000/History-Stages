@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.widget.list;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.bananemdnsa.historystages.api.editor.widget.AbstractSearchableList;
 
 import net.bananemdnsa.historystages.client.ClientStructureRegistry;
@@ -115,7 +116,7 @@ public class SearchableStructureList extends AbstractSearchableList<String> {
         int textW = font.width(text);
 
         if (textW <= textAvailW) {
-            g.text(font, text, textX, textY, textColor, false);
+            g.text(font, text, textX, textY, TextColors.legacy(textColor), false);
             return;
         }
 
@@ -132,15 +133,15 @@ public class SearchableStructureList extends AbstractSearchableList<String> {
                 float pos = scrollProg % cycle;
                 int scrollOff = pos <= maxMarquee ? (int) pos : (int) (cycle - pos);
                 g.enableScissor(textX, y, textX + textAvailW, y + h);
-                g.text(font, text, textX - scrollOff, textY, textColor, false);
+                g.text(font, text, textX - scrollOff, textY, TextColors.legacy(textColor), false);
                 g.disableScissor();
             } else {
                 g.enableScissor(textX, y, textX + textAvailW, y + h);
-                g.text(font, text, textX, textY, textColor, false);
+                g.text(font, text, textX, textY, TextColors.legacy(textColor), false);
                 g.disableScissor();
             }
         } else {
-            g.text(font, font.plainSubstrByWidth(text, textAvailW - 6) + "...", textX, textY, textColor, false);
+            g.text(font, font.plainSubstrByWidth(text, textAvailW - 6) + "...", textX, textY, TextColors.legacy(textColor), false);
         }
     }
 

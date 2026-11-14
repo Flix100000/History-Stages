@@ -1,4 +1,5 @@
 package net.bananemdnsa.historystages.api.editor.widget;
+import net.bananemdnsa.historystages.util.TextColors;
 import net.bananemdnsa.historystages.api.editor.widget.FilterDropdown;
 
 import net.bananemdnsa.historystages.client.editor.anim.Anim;
@@ -203,7 +204,7 @@ public class SearchBar {
             g.fill(textX - 1, sy + 3, textX + 1 + textW, sy + HEIGHT - 3, 0xFF4A6A9A);
         }
         int textColor = text.isEmpty() ? (lightStyle ? 0x999999 : 0x666666) : 0xFFFFFF;
-        g.text(font, displayText, textX, sy + 6, textColor, false);
+        g.text(font, displayText, textX, sy + 6, TextColors.legacy(textColor), false);
         if (focused && !allSelected && (System.currentTimeMillis() / 500) % 2 == 0) {
             int cursorX = textX + (text.isEmpty() ? 0 : textW);
             g.fill(cursorX, sy + 4, cursorX + 1, sy + HEIGHT - 4, 0xFFFFFFFF);

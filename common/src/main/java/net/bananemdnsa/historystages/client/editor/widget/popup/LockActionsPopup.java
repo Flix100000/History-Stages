@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.widget.popup;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.bananemdnsa.historystages.client.editor.tab.LockActionGroups;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -234,12 +235,12 @@ public class LockActionsPopup {
         g.fill(accentX, popupY + 15, accentX + accentW, popupY + 16, 0xFFFFCC00);
 
         g.centeredText(font, Component.translatable(hintKey()),
-                popupX + popupW / 2, popupY + HEADER_H, 0x888888);
+                popupX + popupW / 2, popupY + HEADER_H, 0xFF888888);
         if (fixing) {
             // Right click is invisible until someone tries it, so the second line says what the
             // padlock means instead of leaving it to be discovered.
             g.centeredText(font, Component.translatable("editor.historystages.lock_actions.hint_fixing_effect"),
-                    popupX + popupW / 2, popupY + HEADER_H + HINT_H, 0x888888);
+                    popupX + popupW / 2, popupY + HEADER_H + HINT_H, 0xFF888888);
         }
 
         int curY = popupY + HEADER_H + hintHeight() + 3;
@@ -249,7 +250,7 @@ public class LockActionsPopup {
         for (String[] group : groups) {
             // Group header — subtle label with thin separator line
             Component groupLabel = Component.translatable("editor.historystages.lock_actions.group." + group[0]);
-            g.text(font, groupLabel, popupX + PAD, curY + 1, 0xCCCCCC, false);
+            g.text(font, groupLabel, popupX + PAD, curY + 1, 0xFFCCCCCC, false);
             int sepX = popupX + PAD + font.width(groupLabel) + 5;
             int sepY = curY + 4;
             g.fill(sepX, sepY, popupX + popupW - PAD, sepY + 1, 0xFF2E2E2E);
@@ -279,7 +280,7 @@ public class LockActionsPopup {
             descText = statusLine();
             descColor = 0x888888;
         }
-        g.centeredText(font, descText, popupX + popupW / 2, descY + 2, descColor);
+        g.centeredText(font, descText, popupX + popupW / 2, descY + 2, TextColors.legacy(descColor));
 
         int btnY = popupY + popupH - BTN_H - 6;
         int qBtnW = quickBtnWidth(font);
@@ -295,7 +296,7 @@ public class LockActionsPopup {
         g.fill(doneX, btnY, doneX + doneW, btnY + BTN_H, doneHov ? 0x50FFCC00 : 0x25FFCC00);
         g.fill(doneX, btnY + BTN_H - 1, doneX + doneW, btnY + BTN_H, doneHov ? 0xFFFFCC00 : 0x80FFCC00);
         g.centeredText(font, Component.translatable("editor.historystages.lock_actions.btn_done"),
-                doneX + doneW / 2, btnY + 3, doneHov ? 0xFFFFFF : 0xEEEEEE);
+                doneX + doneW / 2, btnY + 3, TextColors.legacy(doneHov ? 0xFFFFFFFF : 0xFFEEEEEE));
     }
 
     private void renderToggle(GuiGraphicsExtractor g, Font font, String action, int tx, int ty, int toggleW,
@@ -324,7 +325,7 @@ public class LockActionsPopup {
 
         int textColor = locked ? (blocked ? 0xBBBBBB : 0x777777) : (blocked ? 0xFFFFFF : 0x999999);
         g.text(font, Component.translatable("editor.historystages.lock_actions.action." + action),
-                tx + 10, ty + 3, textColor, false);
+                tx + 10, ty + 3, TextColors.legacy(textColor), false);
     }
 
     private Component describe(String action) {
@@ -373,7 +374,7 @@ public class LockActionsPopup {
         boolean hov = inside(mouseX, mouseY, x, y, w, BTN_H);
         g.fill(x, y, x + w, y + BTN_H, hov ? 0x25FFFFFF : 0x10FFFFFF);
         g.fill(x, y + BTN_H - 1, x + w, y + BTN_H, hov ? 0x80FFFFFF : 0x40FFFFFF);
-        g.centeredText(font, Component.translatable(key), x + w / 2, y + 3, hov ? 0xFFFFFF : 0xCCCCCC);
+        g.centeredText(font, Component.translatable(key), x + w / 2, y + 3, TextColors.legacy(hov ? 0xFFFFFFFF : 0xFFCCCCCC));
     }
 
     private static int toggleWidth(int popupW) {

@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.widget.dropdown;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.bananemdnsa.historystages.client.editor.anim.Anim;
 import net.bananemdnsa.historystages.client.editor.anim.Ease;
 import net.bananemdnsa.historystages.client.editor.anim.Fade;
@@ -156,7 +157,7 @@ public class EnumDropdown {
             String option = options.get(i);
             int textColor = option.equals(current) ? 0xFFFFCC00 : 0xFFEEEEEE;
             g.text(font, labelFn.apply(option), px + 5 + Math.round(rh * 2.0f), rowY + 5,
-                    textColor, false);
+                    TextColors.legacy(textColor), false);
         }
         DropdownChrome.end(g);
     }

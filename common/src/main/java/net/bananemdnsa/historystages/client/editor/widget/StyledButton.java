@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.widget;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.bananemdnsa.historystages.client.editor.anim.Anim;
 import net.bananemdnsa.historystages.client.editor.anim.Ease;
 import net.bananemdnsa.historystages.client.editor.anim.Fade;
@@ -129,7 +130,7 @@ public class StyledButton extends Button {
         // Text — brightens with hover, greyed out while inactive.
         int textGray = this.active ? (int) (0xCC + hp * 0x33) : 0x66;
         guiGraphics.centeredText(Minecraft.getInstance().font, this.getMessage(),
-                x + w / 2, y + (h - 8) / 2, Fade.grey(textGray));
+                x + w / 2, y + (h - 8) / 2, TextColors.legacy(Fade.grey(textGray)));
     }
 
     public static StyledButton of(Component text, OnPress onPress, int x, int y, int w, int h) {

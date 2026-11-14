@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.MouseButtonInfo;
@@ -403,7 +404,7 @@ public class StageGraphScreen extends Screen {
             legend.render(g, this.font, mouseX, mouseY);
         }
 
-        g.centeredText(this.font, this.title, this.width / 2, 8, TITLE_COLOR);
+        g.centeredText(this.font, this.title, this.width / 2, 8, TextColors.legacy(TITLE_COLOR));
 
         if (undoButton != null) undoButton.active = history.canUndo();
         if (redoButton != null) redoButton.active = history.canRedo();

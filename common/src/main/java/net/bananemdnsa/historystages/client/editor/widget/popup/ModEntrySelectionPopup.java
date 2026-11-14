@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.widget.popup;
 
+import net.bananemdnsa.historystages.util.TextColors;
 import net.bananemdnsa.historystages.client.editor.anim.Anim;
 import net.bananemdnsa.historystages.client.editor.anim.Ease;
 import net.bananemdnsa.historystages.client.editor.anim.Timing;
@@ -138,12 +139,12 @@ public class ModEntrySelectionPopup {
         if (font.width(title) > panelW - PADDING * 2 - 60) {
             title = font.plainSubstrByWidth(title, panelW - PADDING * 2 - 66) + "...";
         }
-        guiGraphics.text(font, title, panelX + PADDING, panelY + 7, 0xFFFFFF, false);
+        guiGraphics.text(font, title, panelX + PADDING, panelY + 7, 0xFFFFFFFF, false);
 
         int cbX = getCbX();
         String addLabel = Component.translatable("editor.historystages.popup.add").getString();
         int addLabelX = cbX + (CHECKBOX_SIZE - font.width(addLabel)) / 2;
-        guiGraphics.text(font, addLabel, addLabelX, panelY + 7, 0x999999, false);
+        guiGraphics.text(font, addLabel, addLabelX, panelY + 7, 0xFF999999, false);
 
         // Select-all checkbox below the label (same row as entity popup's select-all)
         int selectAllY = panelY + 20;
@@ -185,18 +186,18 @@ public class ModEntrySelectionPopup {
                     float pos = scrollProg % cycle;
                     int scrollOff = pos <= maxMarquee ? (int) pos : (int) (cycle - pos);
                     guiGraphics.enableScissor(textStartX, rowY, textStartX + textAvailW, rowY + ROW_HEIGHT);
-                    guiGraphics.text(font, text, textStartX - scrollOff, textY, textColor, false);
+                    guiGraphics.text(font, text, textStartX - scrollOff, textY, TextColors.legacy(textColor), false);
                     guiGraphics.disableScissor();
                 } else {
                     guiGraphics.enableScissor(textStartX, rowY, textStartX + textAvailW, rowY + ROW_HEIGHT);
-                    guiGraphics.text(font, text, textStartX, textY, textColor, false);
+                    guiGraphics.text(font, text, textStartX, textY, TextColors.legacy(textColor), false);
                     guiGraphics.disableScissor();
                 }
             } else if (textW > textAvailW) {
                 String truncated = font.plainSubstrByWidth(text, textAvailW - 8) + "...";
-                guiGraphics.text(font, truncated, textStartX, textY, textColor, false);
+                guiGraphics.text(font, truncated, textStartX, textY, TextColors.legacy(textColor), false);
             } else {
-                guiGraphics.text(font, text, textStartX, textY, textColor, false);
+                guiGraphics.text(font, text, textStartX, textY, TextColors.legacy(textColor), false);
             }
 
             // Checkbox
@@ -284,7 +285,7 @@ public class ModEntrySelectionPopup {
         g.fill(x + w - 1, y, x + w, y + h, 0x15FFFFFF);
         int textGray = (int) (0xCC + hp * 0x33);
         g.text(font, text, x + (w - font.width(text)) / 2, y + (h - 8) / 2,
-                (0xFF << 24) | (textGray << 16) | (textGray << 8) | textGray, false);
+                TextColors.legacy((0xFF << 24) | (textGray << 16) | (textGray << 8) | textGray), false);
     }
 
     public boolean mouseClicked(double mouseX, double mouseY) {
