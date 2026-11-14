@@ -36,6 +36,7 @@ class ModConfigSpecTest {
         final ModConfigSpec.EnumValue<Mode> mode;
         final ModConfigSpec.ConfigValue<String> text;
         final ModConfigSpec.ConfigValue<List<? extends String>> names;
+        final ModConfigSpec.ConfigValue<List<? extends String>> extras;
 
         Holder(ModConfigSpec.Builder builder) {
             builder.comment("The visible section").push("section");
@@ -45,6 +46,7 @@ class ModConfigSpecTest {
             mode = builder.defineEnum("mode", Mode.STRICT);
             text = builder.define("text", "#E61414");
             names = builder.defineList("names", List.of("alpha", "beta"), o -> o instanceof String);
+            extras = builder.defineListAllowEmpty("extras", List.of("x"), o -> o instanceof String);
             builder.pop();
         }
     }
@@ -130,6 +132,32 @@ class ModConfigSpecTest {
         Pair<Holder, ModConfigSpec> reopened = build();
         reopened.getRight().load(file);
         assertEquals(List.of("gamma"), reopened.getLeft().names.get());
+    }
+
+    @Test
+    void onlyTheInvalidElementsOfAListAreDropped(@TempDir Path dir) throws IOException {
+        Path file = dir.resolve("test.toml");
+        Files.createDirectories(dir);
+        Files.writeString(file, "[section]\nnames = [\"gamma\", 1, \"delta\"]\n");
+
+        Pair<Holder, ModConfigSpec> pair = build();
+        pair.getRight().load(file);
+
+        assertEquals(List.of("gamma", "delta"), pair.getLeft().names.get(),
+                "NeoForge's correct() keeps the valid elements; resetting the whole list loses them");
+    }
+
+    @Test
+    void anEmptyListFallsBackUnlessEmptyIsAllowed(@TempDir Path dir) throws IOException {
+        Path file = dir.resolve("test.toml");
+        Files.createDirectories(dir);
+        Files.writeString(file, "[section]\nnames = []\nextras = []\n");
+
+        Pair<Holder, ModConfigSpec> pair = build();
+        pair.getRight().load(file);
+
+        assertEquals(List.of("alpha", "beta"), pair.getLeft().names.get(), "defineList rejects an empty list");
+        assertEquals(List.of(), pair.getLeft().extras.get(), "defineListAllowEmpty keeps it");
     }
 
     @Test

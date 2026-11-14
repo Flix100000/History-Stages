@@ -111,8 +111,13 @@ public final class ModConfigSpec {
                 Object current = file.getRaw(path);
                 Object usable = spec.fromStored(current);
                 if (usable == null || !spec.test(usable)) {
-                    file.set(path, spec.toStored(spec.getDefault()));
-                    changed = true;
+                    Object fixed = spec.corrected(usable);
+                    // An empty list whose default is empty too (replacementTags) is left alone
+                    // rather than rewritten to the same thing on every load.
+                    if (!java.util.Objects.equals(fixed, usable)) {
+                        file.set(path, spec.toStored(fixed));
+                        changed = true;
+                    }
                 }
                 if (spec.getComment() != null) {
                     // In memory only: it reaches the file with the next save, so a valid file is
@@ -229,14 +234,26 @@ public final class ModConfigSpec {
         private final Range<?> range;
         private final Predicate<Object> validator;
         private final Class<?> enumClass;
+        private final java.util.function.UnaryOperator<Object> corrector;
 
         ValueSpec(Object defaultValue, List<String> comment, Range<?> range,
                   Predicate<Object> validator, Class<?> enumClass) {
+            this(defaultValue, comment, range, validator, enumClass, null);
+        }
+
+        ValueSpec(Object defaultValue, List<String> comment, Range<?> range,
+                  Predicate<Object> validator, Class<?> enumClass, java.util.function.UnaryOperator<Object> corrector) {
             this.defaultValue = defaultValue;
             this.comment = comment;
             this.range = range;
             this.validator = validator;
             this.enumClass = enumClass;
+            this.corrector = corrector;
+        }
+
+        /** What replaces a rejected value: NeoForge's correct(), the default unless the key knows better. */
+        Object corrected(Object rejected) {
+            return rejected != null && corrector != null ? corrector.apply(rejected) : defaultValue;
         }
 
         public Object getDefault() {
@@ -401,13 +418,19 @@ public final class ModConfigSpec {
          */
         public <T> ConfigValue<List<? extends T>> defineListAllowEmpty(
                 String key, List<? extends T> defaultValue, Predicate<Object> elementValidator) {
-            return defineList(key, defaultValue, elementValidator);
+            return defineList(key, defaultValue, elementValidator, true);
         }
 
+        /** A list that must not be empty, as NeoForge's defineList: an empty one falls back to the default. */
         public <T> ConfigValue<List<? extends T>> defineList(String key, List<? extends T> defaultValue,
                                                              Predicate<Object> elementValidator) {
+            return defineList(key, defaultValue, elementValidator, false);
+        }
+
+        private <T> ConfigValue<List<? extends T>> defineList(String key, List<? extends T> defaultValue,
+                                                              Predicate<Object> elementValidator, boolean allowEmpty) {
             Predicate<Object> listCheck = o -> {
-                if (!(o instanceof List<?> list)) {
+                if (!(o instanceof List<?> list) || (!allowEmpty && list.isEmpty())) {
                     return false;
                 }
                 for (Object element : list) {
@@ -417,7 +440,17 @@ public final class ModConfigSpec {
                 }
                 return true;
             };
-            return add(key, new ValueSpec(defaultValue, takeComment(), null, listCheck, null),
+            // NeoForge drops only the elements that fail and keeps the rest; a list left empty
+            // where empty is not allowed goes back to the default.
+            java.util.function.UnaryOperator<Object> corrector = o -> {
+                if (!(o instanceof List<?> list)) return defaultValue;
+                List<Object> kept = new ArrayList<>();
+                for (Object element : list) {
+                    if (elementValidator.test(element)) kept.add(element);
+                }
+                return kept.isEmpty() && !allowEmpty ? defaultValue : kept;
+            };
+            return add(key, new ValueSpec(defaultValue, takeComment(), null, listCheck, null, corrector),
                     ConfigValue::new);
         }
 
