@@ -1,6 +1,5 @@
 package net.bananemdnsa.historystages;
 
-import dev.architectury.event.events.common.LifecycleEvent;
 import net.bananemdnsa.historystages.client.ClientHandlers;
 import net.bananemdnsa.historystages.data.config.ConfigFiles;
 import net.bananemdnsa.historystages.events.Handlers;
@@ -92,50 +91,8 @@ public class HistoryStages {
         // Fabric, where addons come in through the historystages entrypoint below.
         net.bananemdnsa.historystages.platform.AddonEntrypoints.discoverSubscribers();
 
-        // Registration window for addon lock categories, at the point main used: once every mod
-        // has been constructed (FMLCommonSetupEvent, here Architectury's SETUP), before anything
-        // plays. Every registry it fills is closed on the way out.
-        LifecycleEvent.SETUP.register(() -> {
-            // Each event goes to the bus (subscribers, owned by the mod that provided them) and to
-            // every historystages entrypoint on Fabric (owned by the entrypoint's mod).
-            fireRegistration(new net.bananemdnsa.historystages.api.lock.RegisterLockCategoriesEvent(), net.bananemdnsa.historystages.api.HistoryStagesPlugin::registerLockCategories);
-            net.bananemdnsa.historystages.data.lock.category.LockCategories.freeze();
-            fireRegistration(new net.bananemdnsa.historystages.api.trigger.RegisterTriggerTypesEvent(), net.bananemdnsa.historystages.api.HistoryStagesPlugin::registerTriggerTypes);
-            net.bananemdnsa.historystages.data.auto.TriggerTypes.freeze();
-            fireRegistration(new net.bananemdnsa.historystages.api.dependency.RegisterRequirementTypesEvent(), net.bananemdnsa.historystages.api.HistoryStagesPlugin::registerRequirementTypes);
-            net.bananemdnsa.historystages.data.dependency.RequirementTypes.freeze();
-            fireRegistration(new net.bananemdnsa.historystages.api.settings.RegisterStageSettingsGroupsEvent(), net.bananemdnsa.historystages.api.HistoryStagesPlugin::registerStageSettingsGroups);
-            net.bananemdnsa.historystages.data.settings.StageSettingsGroups.freeze();
-            fireRegistration(new net.bananemdnsa.historystages.api.config.RegisterConfigSectionsEvent(), net.bananemdnsa.historystages.api.HistoryStagesPlugin::registerConfigSections);
-            // The freeze is what makes the section list safe to read from the config
-            // packets, which now go to AddonConfigSections directly rather than through a
-            // registry the values had to be copied into first.
-            net.bananemdnsa.historystages.data.config.AddonConfigSections.freeze();
-            fireRegistration(new net.bananemdnsa.historystages.api.lock.RegisterIndividualRecipeSupportEvent(), net.bananemdnsa.historystages.api.HistoryStagesPlugin::registerIndividualRecipeSupport);
-            net.bananemdnsa.historystages.data.lock.IndividualRecipeSupport.freeze();
-            fireRegistration(new net.bananemdnsa.historystages.api.team.RegisterTeamProvidersEvent(), net.bananemdnsa.historystages.api.HistoryStagesPlugin::registerTeamProviders);
-            net.bananemdnsa.historystages.data.team.TeamProviders.freeze();
-            fireRegistration(new net.bananemdnsa.historystages.api.diagnostics.RegisterStageChecksEvent(), net.bananemdnsa.historystages.api.HistoryStagesPlugin::registerStageChecks);
-            net.bananemdnsa.historystages.data.diagnostics.StageChecks.freeze();
-            net.bananemdnsa.historystages.util.DebugLogger.registerBuiltInSections();
-            fireRegistration(new net.bananemdnsa.historystages.api.diagnostics.RegisterReportSectionsEvent(), net.bananemdnsa.historystages.api.HistoryStagesPlugin::registerReportSections);
-            net.bananemdnsa.historystages.data.diagnostics.ReportSections.freeze();
-
-            // Logged here rather than inside freeze(): LockCategories is unit-tested, and
-            // the test runtime classpath has no Minecraft or NeoForge on it. This line is
-            // also how an in-game check confirms the event actually fired.
-            var addonCategories =
-                    net.bananemdnsa.historystages.data.lock.category.LockCategories.addonIds();
-            LOGGER.info("[HistoryStages] Lock categories closed: {} total, {} from other mods {}",
-                    net.bananemdnsa.historystages.data.lock.category.LockCategories.all().size(),
-                    addonCategories.size(), addonCategories);
-            LOGGER.info("[HistoryStages] Stage settings groups closed: {} total",
-                    net.bananemdnsa.historystages.data.settings.StageSettingsGroups.all().size());
-            LOGGER.info("[HistoryStages] Config sections closed: {} total",
-                    net.bananemdnsa.historystages.data.config.AddonConfigSections.all().size());
-            LOGGER.info("[HistoryStages] Team providers closed: {}",
-                    net.bananemdnsa.historystages.data.team.TeamProviders.ids());
-        });
+        // Registration window for addon lock categories: see registrationWindow(). The loaders
+        // call it, because NeoForge has to queue it onto the main thread itself.
 
         // PORT(later): FTB Teams/Quests, Accessories, KubeJS and CraftTweaker have no 26.2 build yet,
         // and Curios moves with Task 13 into the NeoForge module. Kept as on main, not compiled.
@@ -205,6 +162,62 @@ public class HistoryStages {
 
         EventBus.register(new HistoryStages());
         EventBus.register(new net.bananemdnsa.historystages.events.AutoTriggerEventBridge());
+    }
+
+    private static volatile String registrationThread;
+
+    /**
+     * Registration window for addon lock categories, at the point main used: once every mod
+     * has been constructed (FMLCommonSetupEvent), before anything plays. Every registry it fills
+     * is closed on the way out. NeoForge runs common setup on parallel workers, so its entry
+     * class queues this with {@code enqueueWork} as main did; Fabric calls it from SETUP.
+     */
+    public static void registrationWindow() {
+        registrationThread = Thread.currentThread().getName();
+        // Each event goes to the bus (subscribers, owned by the mod that provided them) and to
+        // every historystages entrypoint on Fabric (owned by the entrypoint's mod).
+        fireRegistration(new net.bananemdnsa.historystages.api.lock.RegisterLockCategoriesEvent(), net.bananemdnsa.historystages.api.HistoryStagesPlugin::registerLockCategories);
+        net.bananemdnsa.historystages.data.lock.category.LockCategories.freeze();
+        fireRegistration(new net.bananemdnsa.historystages.api.trigger.RegisterTriggerTypesEvent(), net.bananemdnsa.historystages.api.HistoryStagesPlugin::registerTriggerTypes);
+        net.bananemdnsa.historystages.data.auto.TriggerTypes.freeze();
+        fireRegistration(new net.bananemdnsa.historystages.api.dependency.RegisterRequirementTypesEvent(), net.bananemdnsa.historystages.api.HistoryStagesPlugin::registerRequirementTypes);
+        net.bananemdnsa.historystages.data.dependency.RequirementTypes.freeze();
+        fireRegistration(new net.bananemdnsa.historystages.api.settings.RegisterStageSettingsGroupsEvent(), net.bananemdnsa.historystages.api.HistoryStagesPlugin::registerStageSettingsGroups);
+        net.bananemdnsa.historystages.data.settings.StageSettingsGroups.freeze();
+        fireRegistration(new net.bananemdnsa.historystages.api.config.RegisterConfigSectionsEvent(), net.bananemdnsa.historystages.api.HistoryStagesPlugin::registerConfigSections);
+        // The freeze is what makes the section list safe to read from the config
+        // packets, which now go to AddonConfigSections directly rather than through a
+        // registry the values had to be copied into first.
+        net.bananemdnsa.historystages.data.config.AddonConfigSections.freeze();
+        fireRegistration(new net.bananemdnsa.historystages.api.lock.RegisterIndividualRecipeSupportEvent(), net.bananemdnsa.historystages.api.HistoryStagesPlugin::registerIndividualRecipeSupport);
+        net.bananemdnsa.historystages.data.lock.IndividualRecipeSupport.freeze();
+        fireRegistration(new net.bananemdnsa.historystages.api.team.RegisterTeamProvidersEvent(), net.bananemdnsa.historystages.api.HistoryStagesPlugin::registerTeamProviders);
+        net.bananemdnsa.historystages.data.team.TeamProviders.freeze();
+        fireRegistration(new net.bananemdnsa.historystages.api.diagnostics.RegisterStageChecksEvent(), net.bananemdnsa.historystages.api.HistoryStagesPlugin::registerStageChecks);
+        net.bananemdnsa.historystages.data.diagnostics.StageChecks.freeze();
+        net.bananemdnsa.historystages.util.DebugLogger.registerBuiltInSections();
+        fireRegistration(new net.bananemdnsa.historystages.api.diagnostics.RegisterReportSectionsEvent(), net.bananemdnsa.historystages.api.HistoryStagesPlugin::registerReportSections);
+        net.bananemdnsa.historystages.data.diagnostics.ReportSections.freeze();
+
+        // Logged here rather than inside freeze(): LockCategories is unit-tested, and
+        // the test runtime classpath has no Minecraft or NeoForge on it. This line is
+        // also how an in-game check confirms the event actually fired.
+        var addonCategories =
+                net.bananemdnsa.historystages.data.lock.category.LockCategories.addonIds();
+        LOGGER.info("[HistoryStages] Lock categories closed: {} total, {} from other mods {}",
+                net.bananemdnsa.historystages.data.lock.category.LockCategories.all().size(),
+                addonCategories.size(), addonCategories);
+        LOGGER.info("[HistoryStages] Stage settings groups closed: {} total",
+                net.bananemdnsa.historystages.data.settings.StageSettingsGroups.all().size());
+        LOGGER.info("[HistoryStages] Config sections closed: {} total",
+                net.bananemdnsa.historystages.data.config.AddonConfigSections.all().size());
+        LOGGER.info("[HistoryStages] Team providers closed: {}",
+                net.bananemdnsa.historystages.data.team.TeamProviders.ids());
+    }
+
+    /** The thread the registration window ran on, null before it ran. For the GameTests. */
+    public static String registrationThread() {
+        return registrationThread;
     }
 
     @SubscribeEvent

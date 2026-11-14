@@ -11,6 +11,7 @@ public final class HistoryStagesFabric implements ModInitializer {
     @Override
     public void onInitialize() {
         HistoryStages.init();
+        dev.architectury.event.events.common.LifecycleEvent.SETUP.register(HistoryStages::registrationWindow);
         FabricEventSources.register();
         registerFlammability();
         registerFuel();

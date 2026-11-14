@@ -26,6 +26,17 @@ public final class AddonRegistrationTests {
 
     static void collect(Map<String, Consumer<GameTestHelper>> tests) {
         tests.put("addon/subscriber_receives_register_event", AddonRegistrationTests::subscriberReceivesRegisterEvent);
+        tests.put("addon/registration_window_runs_on_the_main_thread", AddonRegistrationTests::registrationWindowOnMainThread);
+    }
+
+    /** Common setup runs on modloading workers; addons' register handlers must not. */
+    public static void registrationWindowOnMainThread(GameTestHelper helper) {
+        String thread = net.bananemdnsa.historystages.HistoryStages.registrationThread();
+        if (thread == null || thread.startsWith("modloading-worker")) {
+            helper.fail(Component.literal("registration window ran on " + thread + ", expected the main thread"));
+            return;
+        }
+        helper.succeed();
     }
 
     public static void subscriberReceivesRegisterEvent(GameTestHelper helper) {
