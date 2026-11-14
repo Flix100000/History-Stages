@@ -31,7 +31,8 @@
 			"net.bananemdnsa.historystages.fabric.gametest.AddonRegistrationTests",
 			"net.bananemdnsa.historystages.fabric.gametest.PedestalTransferTests",
 			"net.bananemdnsa.historystages.fabric.gametest.DisguiseBreakTests",
-			"net.bananemdnsa.historystages.fabric.gametest.InteractionClassifyTests"
+			"net.bananemdnsa.historystages.fabric.gametest.InteractionClassifyTests",
+			"net.bananemdnsa.historystages.fabric.gametest.RecipeOutputTests"
 		],
 		"historystages": [
 			"net.bananemdnsa.historystages.fabric.gametest.TestAddonPlugin"

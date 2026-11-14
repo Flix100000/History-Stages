@@ -23,5 +23,7 @@ public final class CommonScenarioTests {
         tests.put("disguise/ore_breaks_at_the_disguises_speed",
                 helper -> DisguiseBreakScenarios.breaksAtTheDisguisesSpeed(helper, TestPlayers::createConnected));
         tests.put("interaction/only_saddleable_mobs_are_mounted", InteractionScenarios::onlySaddleableMobsAreMounted);
+        tests.put("recipe/a_recipe_without_display_still_has_its_output",
+                net.bananemdnsa.historystages.gametest.RecipeOutputScenarios::aRecipeWithoutDisplayStillHasItsOutput);
     }
 }
