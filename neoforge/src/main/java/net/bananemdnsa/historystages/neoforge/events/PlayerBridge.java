@@ -31,6 +31,7 @@ public final class PlayerBridge {
         Bridges.listen(bus, ItemEntityPickupEvent.Post.class, PlayerBridge::pickupPost);
         Bridges.listen(bus, ItemTooltipEvent.class, PlayerBridge::tooltip);
         Bridges.listen(bus, PlayerEvent.BreakSpeed.class, PlayerBridge::breakSpeed);
+        Bridges.listen(bus, PlayerEvent.HarvestCheck.class, PlayerBridge::harvestCheck);
         Bridges.listen(bus, PlayerEvent.PlayerLoggedInEvent.class, PlayerBridge::loggedIn);
         Bridges.listen(bus, PlayerEvent.PlayerLoggedOutEvent.class, PlayerBridge::loggedOut);
         Bridges.listen(bus, PlayerEvent.PlayerChangedDimensionEvent.class, PlayerBridge::changedDimension);
@@ -189,11 +190,21 @@ public final class PlayerBridge {
             return;
         }
         var platform = new net.bananemdnsa.historystages.platform.event.entity.player.PlayerEvent.BreakSpeed(
-                event.getEntity(), event.getState(), event.getOriginalSpeed());
+                event.getEntity(), event.getState(), event.getOriginalSpeed(), event.getPosition().orElse(null));
         // Another mod may already have changed the speed; the handlers build on that, not on vanilla's.
         platform.setNewSpeed(event.getNewSpeed());
         EventBus.post(platform, priority);
         event.setNewSpeed(platform.getNewSpeed());
+    }
+
+    private static void harvestCheck(PlayerEvent.HarvestCheck event, EventPriority priority) {
+        if (!Bridges.wanted(net.bananemdnsa.historystages.platform.event.entity.player.PlayerEvent.HarvestCheck.class, priority)) {
+            return;
+        }
+        var platform = new net.bananemdnsa.historystages.platform.event.entity.player.PlayerEvent.HarvestCheck(
+                event.getEntity(), event.getTargetBlock(), event.getLevel(), event.getPos(), event.canHarvest());
+        EventBus.post(platform, priority);
+        event.setCanHarvest(platform.canHarvest());
     }
 
     private static void loggedIn(PlayerEvent.PlayerLoggedInEvent event, EventPriority priority) {

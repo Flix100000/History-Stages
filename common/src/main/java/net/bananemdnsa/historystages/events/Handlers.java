@@ -5,6 +5,7 @@ import net.bananemdnsa.historystages.events.lock.AttributeRefreshHandler;
 import net.bananemdnsa.historystages.events.lock.BiomeLockHandler;
 import net.bananemdnsa.historystages.events.lock.BlockLockHandler;
 import net.bananemdnsa.historystages.events.lock.DimensionLockHandler;
+import net.bananemdnsa.historystages.events.lock.DisguiseBreakHandler;
 import net.bananemdnsa.historystages.events.lock.EnchantmentLockHandler;
 import net.bananemdnsa.historystages.events.lock.EntityItemLockHandler;
 import net.bananemdnsa.historystages.events.lock.FluidPickupLockHandler;
@@ -27,7 +28,6 @@ import java.util.List;
  * on the platform bus. A handler missing here fails silently: the rule just never applies.
  *
  * <p>Client handlers are in {@code client.ClientHandlers}, so a dedicated server never loads them.
- * {@code DisguiseBreakHandler} waits in port-pending for the HarvestCheck/BlockDrops facade.
  */
 public final class Handlers {
 
@@ -44,6 +44,7 @@ public final class Handlers {
             BiomeLockHandler.class,
             BlockLockHandler.class,
             DimensionLockHandler.class,
+            DisguiseBreakHandler.class,
             EnchantmentLockHandler.class,
             EntityItemLockHandler.class,
             FluidPickupLockHandler.class,

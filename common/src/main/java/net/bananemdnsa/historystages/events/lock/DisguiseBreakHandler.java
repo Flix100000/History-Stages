@@ -2,21 +2,22 @@ package net.bananemdnsa.historystages.events.lock;
 
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.data.disguise.Disguises;
+import net.bananemdnsa.historystages.platform.BlockHooks;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
-import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.gamerules.GameRules;
 import net.bananemdnsa.historystages.platform.bus.EventPriority;
 import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
 import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
 import net.bananemdnsa.historystages.platform.event.entity.player.PlayerEvent;
-import net.neoforged.neoforge.event.level.BlockDropsEvent;
+import net.bananemdnsa.historystages.platform.event.level.BlockDropsEvent;
 
 import java.util.List;
 
@@ -35,7 +36,7 @@ public final class DisguiseBreakHandler {
 
     /**
      * Lowest priority: other mods' speed changes for the real block are replaced by the speed the
-     * disguise would have, which already went through them once via {@code getDigSpeed}.
+     * disguise would have, which already went through them once via {@code BlockHooks.destroySpeed}.
      */
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void onBreakSpeed(PlayerEvent.BreakSpeed event) {
@@ -50,11 +51,12 @@ public final class DisguiseBreakHandler {
         float realHardness = real.getDestroySpeed(player.level(), pos);
         float fakeHardness = fake.getDestroySpeed(player.level(), pos);
         if (fakeHardness < 0) {
-            // Disguised as something unbreakable, so it is unbreakable.
-            event.setCanceled(true);
+            // Disguised as something unbreakable, so it is unbreakable. Main cancelled the event;
+            // the platform event is not cancellable, and a speed of zero never finishes the break.
+            event.setNewSpeed(0);
             return;
         }
-        float fakeSpeed = player.getDigSpeed(fake, pos);
+        float fakeSpeed = BlockHooks.destroySpeed(player, fake, pos);
         if (fakeHardness == 0 || realHardness <= 0) {
             event.setNewSpeed(Float.MAX_VALUE);
             return;
@@ -88,20 +90,20 @@ public final class DisguiseBreakHandler {
 
         List<ItemEntity> drops = event.getDrops();
         drops.clear();
-        if (level.getGameRules().getBoolean(GameRules.RULE_DOBLOCKDROPS)) {
+        if (level.getGameRules().get(GameRules.BLOCK_DROPS)) {
             for (ItemStack stack : Block.getDrops(fake, level, pos, null, player, tool)) {
                 if (!stack.isEmpty()) drops.add(itemEntity(level, pos, stack));
             }
         }
-        event.setDroppedExperience(fake.getExpDrop(level, pos, null, player, tool));
+        event.setDroppedExperience(BlockHooks.experienceDrop(fake, level, pos, null, player, tool));
     }
 
     /** Placed the way {@code Block.popResource} places its drops. */
     private static ItemEntity itemEntity(ServerLevel level, BlockPos pos, ItemStack stack) {
-        double half = EntityType.ITEM.getHeight() / 2.0;
-        double x = pos.getX() + 0.5 + Mth.nextDouble(level.random, -0.25, 0.25);
-        double y = pos.getY() + 0.5 + Mth.nextDouble(level.random, -0.25, 0.25) - half;
-        double z = pos.getZ() + 0.5 + Mth.nextDouble(level.random, -0.25, 0.25);
+        double half = EntityTypes.ITEM.getHeight() / 2.0;
+        double x = pos.getX() + 0.5 + Mth.nextDouble(level.getRandom(), -0.25, 0.25);
+        double y = pos.getY() + 0.5 + Mth.nextDouble(level.getRandom(), -0.25, 0.25) - half;
+        double z = pos.getZ() + 0.5 + Mth.nextDouble(level.getRandom(), -0.25, 0.25);
         ItemEntity entity = new ItemEntity(level, x, y, z, stack);
         entity.setDefaultPickUpDelay();
         return entity;

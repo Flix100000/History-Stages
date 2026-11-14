@@ -38,6 +38,7 @@ public final class NeoForgeGameTests {
         BridgeCancelTests.collect(TESTS);
         BridgePriorityTests.collect(TESTS);
         AddonRegistrationTests.collect(TESTS);
+        DisguiseBreakTests.collect(TESTS);
     }
 
     private NeoForgeGameTests() {}

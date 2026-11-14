@@ -13,7 +13,8 @@ public final class ItemHooks {
 
     /**
      * NeoForge's {@code IItemStackExtension.doesSneakBypassUse}: whether sneaking with this stack
-     * still uses the block. Vanilla, and so Fabric, knows no such item and answers false.
+     * still uses the block. Vanilla, and so Fabric, has no such hook; there only an empty hand
+     * passes through, so Fabric answers {@code stack.isEmpty()}.
      */
     @ExpectPlatform
     public static boolean doesSneakBypassUse(ItemStack stack, LevelReader level, BlockPos pos, Player player) {

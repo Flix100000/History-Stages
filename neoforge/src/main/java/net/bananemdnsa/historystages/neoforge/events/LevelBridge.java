@@ -10,6 +10,7 @@ import net.minecraft.world.level.biome.MobSpawnSettings;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
+import net.neoforged.neoforge.event.level.BlockDropsEvent;
 import net.neoforged.neoforge.event.level.BlockEvent;
 import net.neoforged.neoforge.event.level.ExplosionEvent;
 import net.neoforged.neoforge.event.level.LevelEvent;
@@ -25,6 +26,7 @@ public final class LevelBridge {
     public static void register(IEventBus bus, IEventBus modBus) {
         Bridges.listenCancellable(bus, BreakBlockEvent.class, LevelBridge::blockBreak);
         Bridges.listenCancellable(bus, BlockEvent.EntityPlaceEvent.class, LevelBridge::entityPlace);
+        Bridges.listenCancellable(bus, BlockDropsEvent.class, LevelBridge::blockDrops);
         Bridges.listen(bus, ExplosionEvent.Detonate.class, LevelBridge::detonate);
         Bridges.listen(bus, LevelEvent.Load.class, LevelBridge::levelLoad);
         Bridges.listen(bus, LevelEvent.PotentialSpawns.class, LevelBridge::potentialSpawns);
@@ -51,6 +53,17 @@ public final class LevelBridge {
         if (event.isCanceled() && !wasCanceled) {
             event.setNotifyClient(true);
         }
+    }
+
+    /** The drop list is NeoForge's own, so handlers edit what actually spawns. */
+    private static void blockDrops(BlockDropsEvent event, EventPriority priority) {
+        if (!Bridges.wanted(net.bananemdnsa.historystages.platform.event.level.BlockDropsEvent.class, priority)) {
+            return;
+        }
+        var platform = Bridges.post(event, new net.bananemdnsa.historystages.platform.event.level.BlockDropsEvent(
+                event.getLevel(), event.getPos(), event.getState(), event.getBlockEntity(), event.getDrops(),
+                event.getBreaker(), event.getTool(), event.getDroppedExperience()), priority);
+        event.setDroppedExperience(platform.getDroppedExperience());
     }
 
     /** Also hears {@code EntityMultiPlaceEvent}, which is a subclass, so a bed or door is covered. */

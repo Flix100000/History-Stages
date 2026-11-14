@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.fabric.mixin.event;
 
+import net.bananemdnsa.historystages.fabric.events.BreakingBlock;
 import net.bananemdnsa.historystages.fabric.events.Phases;
 import net.bananemdnsa.historystages.platform.bus.EventBus;
 import net.bananemdnsa.historystages.platform.event.entity.player.PlayerEvent;
@@ -23,7 +24,7 @@ public abstract class BreakSpeedMixin {
             return;
         }
         PlayerEvent.BreakSpeed event = EventBus.post(
-                new PlayerEvent.BreakSpeed((Player) (Object) this, state, cir.getReturnValue()));
+                new PlayerEvent.BreakSpeed((Player) (Object) this, state, cir.getReturnValue(), BreakingBlock.pos()));
         if (event.getNewSpeed() != event.getOriginalSpeed()) {
             cir.setReturnValue(event.getNewSpeed());
         }

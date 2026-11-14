@@ -29,7 +29,8 @@
 			"net.bananemdnsa.historystages.fabric.gametest.BridgeMixinTests",
 			"net.bananemdnsa.historystages.fabric.gametest.BridgePriorityTests",
 			"net.bananemdnsa.historystages.fabric.gametest.AddonRegistrationTests",
-			"net.bananemdnsa.historystages.fabric.gametest.PedestalTransferTests"
+			"net.bananemdnsa.historystages.fabric.gametest.PedestalTransferTests",
+			"net.bananemdnsa.historystages.fabric.gametest.DisguiseBreakTests"
 		],
 		"historystages": [
 			"net.bananemdnsa.historystages.fabric.gametest.TestAddonPlugin"
