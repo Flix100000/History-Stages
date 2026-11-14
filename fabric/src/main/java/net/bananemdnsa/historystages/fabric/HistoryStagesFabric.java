@@ -16,7 +16,7 @@ public final class HistoryStagesFabric implements ModInitializer {
         registerFuel();
         // What a pipe sees of the pedestal (main: NeoForge item handler capability).
         net.fabricmc.fabric.api.transfer.v1.item.ItemStorage.SIDED.registerForBlockEntity(
-                (pedestal, direction) -> net.fabricmc.fabric.api.transfer.v1.item.ContainerStorage.of(pedestal.getItemHandler(), direction),
+                (pedestal, direction) -> PedestalStorage.of(pedestal.getItemHandler(), direction),
                 net.bananemdnsa.historystages.init.ModBlockEntities.RESEARCH_PEDESTAL_BE.get());
     }
 
@@ -28,12 +28,13 @@ public final class HistoryStagesFabric implements ModInitializer {
         }));
     }
 
-    // Same fire behaviour as the chiseled bookshelf; nether wood shelves never catch. NeoForge
-    // asks the block itself (ScrollShelfBlock.getFlammability), Fabric a table.
+    // NeoForge asks the block itself (ScrollShelfBlock: flammability 30, spread speed 20), Fabric
+    // a table whose arguments are the other way round: add(block, spread speed, flammability).
+    // Nether wood shelves never catch.
     private static void registerFlammability() {
         ModBlocks.SCROLL_SHELVES.forEach((wood, shelf) -> {
             if (wood.flammable()) {
-                FlammableBlockRegistry.getDefaultInstance().add(shelf.get(), 30, 20);
+                FlammableBlockRegistry.getDefaultInstance().add(shelf.get(), 20, 30);
             }
         });
     }
