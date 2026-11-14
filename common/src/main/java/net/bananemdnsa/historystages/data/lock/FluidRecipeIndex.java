@@ -195,7 +195,7 @@ public final class FluidRecipeIndex {
                     FluidRecipeScanner.scan(json, isFluid, isItem);
             if (found.isEmpty()) continue;
 
-            built.put(holder.id().toString(), found);
+            built.put(holder.id().identifier().toString(), found);
             for (String fluidId : found.keySet()) {
                 counts.merge(fluidId, 1, Integer::sum);
             }

@@ -22,13 +22,19 @@ public final class CommonScenarioTests {
                 helper -> DisguiseBreakScenarios.harvestFollowsTheDisguise(helper, TestPlayers::createConnected));
         tests.put("disguise/ore_breaks_at_the_disguises_speed",
                 helper -> DisguiseBreakScenarios.breaksAtTheDisguisesSpeed(helper, TestPlayers::createConnected));
+        tests.put("disguise/side_effects_stay_out",
+                helper -> DisguiseBreakScenarios.disguiseSideEffectsStayOut(helper, TestPlayers::createConnected));
         tests.put("interaction/only_saddleable_mobs_are_mounted", InteractionScenarios::onlySaddleableMobsAreMounted);
         tests.put("recipe/a_recipe_without_display_still_has_its_output",
                 net.bananemdnsa.historystages.gametest.RecipeOutputScenarios::aRecipeWithoutDisplayStillHasItsOutput);
+        tests.put("recipe/a_recipe_locked_by_id_is_locked",
+                net.bananemdnsa.historystages.gametest.RecipeOutputScenarios::aRecipeLockedByIdIsLocked);
         tests.put("network/a_big_stage_save_fits_the_serverbound_limit",
                 net.bananemdnsa.historystages.gametest.PayloadSizeScenarios::aBigStageSaveFitsTheServerboundLimit);
         tests.put("network/the_recipe_list_reads_back_whole",
                 net.bananemdnsa.historystages.gametest.RecipeListSyncScenarios::theRecipeListReadsBackWhole);
+        tests.put("network/the_same_recipes_encode_the_same",
+                net.bananemdnsa.historystages.gametest.RecipeListSyncScenarios::theSameRecipesEncodeTheSame);
         tests.put("network/only_editors_get_the_recipe_list", helper ->
                 net.bananemdnsa.historystages.gametest.RecipeListSyncScenarios.onlyEditorsGetTheList(helper, TestPlayers::createConnected));
     }

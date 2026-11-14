@@ -40,4 +40,21 @@ public final class RecipeListSyncScenarios {
         }
         helper.succeed();
     }
+
+    /** The same recipes in another order make the same bytes, so a reload that changed nothing resends nothing. */
+    public static void theSameRecipesEncodeTheSame(GameTestHelper helper) {
+        MinecraftServer server = helper.getLevel().getServer();
+        java.util.List<RecipeHolder<?>> recipes = new java.util.ArrayList<>(server.getRecipeManager().getRecipes());
+        java.util.List<RecipeHolder<?>> reversed = new java.util.ArrayList<>(recipes);
+        java.util.Collections.reverse(reversed);
+        try {
+            if (!java.util.Arrays.equals(RecipeListSync.encode(server, recipes), RecipeListSync.encode(server, reversed))) {
+                helper.fail(Component.literal("the same recipe set encoded differently in another order"));
+                return;
+            }
+        } catch (java.io.IOException e) {
+            throw new IllegalStateException(e);
+        }
+        helper.succeed();
+    }
 }

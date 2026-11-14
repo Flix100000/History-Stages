@@ -12,7 +12,6 @@ import java.util.Set;
 import net.bananemdnsa.historystages.client.editor.recipe.IngredientUsage.Kind;
 import net.bananemdnsa.historystages.compat.reliableremover.ReliableRemoverCompat;
 import net.bananemdnsa.historystages.data.lock.IndividualRecipeSupport;
-import net.bananemdnsa.historystages.util.AllRecipesCache;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.RegistryAccess;
@@ -66,10 +65,7 @@ public final class IngredientUsageScan {
         lockedIds.add(clickedId);
 
         RegistryAccess registryAccess = mc.level.registryAccess();
-        Collection<RecipeHolder<?>> all = AllRecipesCache.get();
-        Collection<RecipeHolder<?>> recipes = all.isEmpty()
-                ? net.bananemdnsa.historystages.client.ClientRecipes.all()
-                : all;
+        Collection<RecipeHolder<?>> recipes = net.bananemdnsa.historystages.client.ClientRecipes.all();
 
         List<RecipeRow> rows = new ArrayList<>();
         Map<String, List<Boolean>> requiresLockedByResult = new HashMap<>();
@@ -98,7 +94,7 @@ public final class IngredientUsageScan {
                 if (kind == Kind.NONE) continue;
 
                 RecipeShape shape = RecipeShape.of(recipe);
-                String recipeId = holder.id().toString();
+                String recipeId = holder.id().identifier().toString();
                 int[] marks = marksFor(shape, clickedId, lockedIds);
                 RecipeRow row = new RecipeRow(recipeId, result, typeId, shape, kind, marks,
                         alternativesFor(shape, marks, lockedIds),

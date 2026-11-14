@@ -24,27 +24,36 @@ import java.util.List;
 public final class ClientRecipes {
 
     private static List<RecipeHolder<?>> serverList = List.of();
-    // The connection the list and the request belong to; a new one starts over.
+    // The connection the list belongs to; a new one starts without.
     private static ClientPacketListener listFor;
-    private static ClientPacketListener requestedFor;
+    private static int version;
 
     private ClientRecipes() {}
 
     public static Collection<RecipeHolder<?>> all() {
         Minecraft mc = Minecraft.getInstance();
         if (listFor != null && listFor == mc.getConnection()) return serverList;
-        Collection<RecipeHolder<?>> cached = AllRecipesCache.get();
-        if (!cached.isEmpty()) return cached;
         MinecraftServer server = mc.getSingleplayerServer();
-        return server != null ? server.getRecipeManager().getRecipes() : List.of();
+        if (server == null) return List.of();
+        // The unfiltered snapshot is the integrated server's, so it only counts with one.
+        Collection<RecipeHolder<?>> cached = AllRecipesCache.get();
+        return cached.isEmpty() ? server.getRecipeManager().getRecipes() : cached;
     }
 
-    /** Called when the editor opens: asks a dedicated server for its list once per connection. */
+    /** Changes whenever a server list arrives, so a screen that built from an empty one rebuilds. */
+    public static int version() {
+        return version;
+    }
+
+    /**
+     * Called when the editor opens: asks a dedicated server for its list as long as this connection
+     * has none. A player made operator later gets it on the next open; the server checks the
+     * permission every time.
+     */
     public static void requestIfNeeded() {
         Minecraft mc = Minecraft.getInstance();
         ClientPacketListener connection = mc.getConnection();
-        if (connection == null || mc.getSingleplayerServer() != null || requestedFor == connection) return;
-        requestedFor = connection;
+        if (connection == null || mc.getSingleplayerServer() != null || listFor == connection) return;
         PacketHandler.sendToServer(new RequestRecipeListPacket());
     }
 
@@ -65,6 +74,7 @@ public final class ClientRecipes {
         }
         serverList = List.copyOf(recipes);
         listFor = mc.getConnection();
+        version++;
         // The fluid index is built from this list too; it was empty until now.
         FluidRecipeIndex.markDirty();
         ClientFluidRecipeIndex.refresh();

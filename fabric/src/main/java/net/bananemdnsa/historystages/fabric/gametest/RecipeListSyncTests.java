@@ -15,4 +15,9 @@ public class RecipeListSyncTests {
     public void onlyEditorsGetTheList(GameTestHelper helper) {
         RecipeListSyncScenarios.onlyEditorsGetTheList(helper, TestPlayers::createConnected);
     }
+
+    @GameTest(skyAccess = true)
+    public void theSameRecipesEncodeTheSame(GameTestHelper helper) {
+        RecipeListSyncScenarios.theSameRecipesEncodeTheSame(helper);
+    }
 }

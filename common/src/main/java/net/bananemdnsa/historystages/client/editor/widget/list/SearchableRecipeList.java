@@ -39,7 +39,6 @@ import net.bananemdnsa.historystages.client.ClientFluidRecipeIndex;
 import net.bananemdnsa.historystages.data.lock.FluidRecipeIndex;
 import net.bananemdnsa.historystages.data.lock.FluidRecipeScanner;
 import net.bananemdnsa.historystages.data.lock.IndividualRecipeSupport;
-import net.bananemdnsa.historystages.util.AllRecipesCache;
 
 import java.util.*;
 import java.util.function.Consumer;
@@ -177,10 +176,7 @@ public class SearchableRecipeList implements PickerOverlay {
         ClientFluidRecipeIndex.refresh();
 
         RegistryAccess registryAccess = mc.level.registryAccess();
-        Collection<RecipeHolder<?>> allCached = AllRecipesCache.get();
-        Collection<RecipeHolder<?>> recipes = allCached.isEmpty()
-                ? net.bananemdnsa.historystages.client.ClientRecipes.all()
-                : allCached;
+        Collection<RecipeHolder<?>> recipes = net.bananemdnsa.historystages.client.ClientRecipes.all();
 
         for (RecipeHolder<?> holder : recipes) {
             try {

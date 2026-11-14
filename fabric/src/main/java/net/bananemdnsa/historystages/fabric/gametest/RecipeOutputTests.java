@@ -10,4 +10,9 @@ public class RecipeOutputTests {
     public void aRecipeWithoutDisplayStillHasItsOutput(GameTestHelper helper) {
         RecipeOutputScenarios.aRecipeWithoutDisplayStillHasItsOutput(helper);
     }
+
+    @GameTest(skyAccess = true)
+    public void aRecipeLockedByIdIsLocked(GameTestHelper helper) {
+        RecipeOutputScenarios.aRecipeLockedByIdIsLocked(helper);
+    }
 }

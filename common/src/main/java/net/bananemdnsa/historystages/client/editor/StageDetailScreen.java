@@ -113,7 +113,6 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
-import net.bananemdnsa.historystages.util.AllRecipesCache;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.tags.TagKey;
@@ -345,6 +344,7 @@ public class StageDetailScreen extends Screen {
     // Recipe info cache: recipeId -> [workstation, result]
     private final Map<String, ItemStack[]> recipeInfoCache = new HashMap<>();
     private boolean recipeInfoBuilt = false;
+    private int recipeInfoVersion = -1;
 
     // Short tab label keys
     /**
@@ -2170,18 +2170,18 @@ public class StageDetailScreen extends Screen {
      * Returns [workstation, result] for a recipe ID, cached for performance.
      */
     private ItemStack[] getRecipeInfo(String recipeId) {
-        if (!recipeInfoBuilt) {
+        // Rebuilt when the server's list arrives: the screen may open before it does.
+        if (!recipeInfoBuilt || recipeInfoVersion != net.bananemdnsa.historystages.client.ClientRecipes.version()) {
             recipeInfoBuilt = true;
+            recipeInfoVersion = net.bananemdnsa.historystages.client.ClientRecipes.version();
+            recipeInfoCache.clear();
             Minecraft mc = Minecraft.getInstance();
             if (mc.level != null) {
-                Collection<RecipeHolder<?>> allCachedRecipes = AllRecipesCache.get();
-                Collection<RecipeHolder<?>> recipes = allCachedRecipes.isEmpty()
-                        ? net.bananemdnsa.historystages.client.ClientRecipes.all()
-                        : allCachedRecipes;
+                Collection<RecipeHolder<?>> recipes = net.bananemdnsa.historystages.client.ClientRecipes.all();
                 for (RecipeHolder<?> holder : recipes) {
                     try {
                         Recipe<?> recipe = holder.value();
-                        String id = holder.id().toString();
+                        String id = holder.id().identifier().toString();
                         ItemStack result = net.bananemdnsa.historystages.util.RecipeOutputs.resultOf(recipe, mc.level.registryAccess());
                         ItemStack workstation = RecipeCardRenderer.resolveWorkstation(
                                 RecipeTypeMetas.get(String.valueOf(
@@ -2206,12 +2206,9 @@ public class StageDetailScreen extends Screen {
         if (mc.level == null) return;
 
         Recipe<?> recipe = null;
-        Collection<RecipeHolder<?>> allCached = AllRecipesCache.get();
-        Collection<RecipeHolder<?>> allRecipes = allCached.isEmpty()
-                ? net.bananemdnsa.historystages.client.ClientRecipes.all()
-                : allCached;
+        Collection<RecipeHolder<?>> allRecipes = net.bananemdnsa.historystages.client.ClientRecipes.all();
         for (RecipeHolder<?> r : allRecipes) {
-            if (r.id().toString().equals(recipePopupId)) { recipe = r.value(); break; }
+            if (r.id().identifier().toString().equals(recipePopupId)) { recipe = r.value(); break; }
         }
         if (recipe == null) { recipePopupVisible = false; return; }
 

@@ -69,7 +69,12 @@ public final class RecipeListSync {
         }
         if (current == seen) return;
         seen = current;
-        resendToEditors(server);
+        if (EDITORS.isEmpty()) return;
+        // A stage unlock that changes the hidden recipe set reloads the datapacks and so replaces
+        // the manager with the same recipes. Only a list that really changed goes out again.
+        byte[] before = encoded;
+        byte[] now = payload(server);
+        if (now != null && !java.util.Arrays.equals(before, now)) resendToEditors(server);
     }
 
     public static void resendToEditors(MinecraftServer server) {
@@ -96,13 +101,20 @@ public final class RecipeListSync {
         try {
             // The unfiltered snapshot when there is one: the editor lists locked recipes too.
             var all = net.bananemdnsa.historystages.util.AllRecipesCache.get();
-            encoded = GzipJson.compress(toJson(server, all.isEmpty() ? manager.getRecipes() : all));
+            encoded = encode(server, all.isEmpty() ? manager.getRecipes() : all);
             encodedFor = manager;
             return encoded;
         } catch (IOException e) {
             DebugLogger.warn("Editor Recipes", "could not compress the recipe list: " + e);
             return null;
         }
+    }
+
+    /** Sorted by id, so the same recipes always make the same bytes (see onServerTick). */
+    public static byte[] encode(MinecraftServer server, java.util.Collection<RecipeHolder<?>> recipes) throws IOException {
+        java.util.List<RecipeHolder<?>> sorted = new java.util.ArrayList<>(recipes);
+        sorted.sort(java.util.Comparator.comparing(holder -> holder.id().identifier().toString()));
+        return GzipJson.compress(toJson(server, sorted));
     }
 
     public static String toJson(MinecraftServer server, Iterable<RecipeHolder<?>> recipes) {
