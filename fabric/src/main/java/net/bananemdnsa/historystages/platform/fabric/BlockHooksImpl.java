@@ -20,9 +20,9 @@ public final class BlockHooksImpl {
         return BreakingBlock.around(player.level(), pos, () -> player.getDestroySpeed(state));
     }
 
-    /** Side effects other than experience (a silverfish from infested stone) do happen. */
+    /** Quietly: only the amount is wanted, the block's other after-break work stays out of the world. */
     public static int experienceDrop(BlockState state, ServerLevel level, BlockPos pos,
                                      @Nullable BlockEntity blockEntity, @Nullable Entity breaker, ItemStack tool) {
-        return ExperienceCapture.capture(() -> state.spawnAfterBreak(level, pos, tool, true));
+        return ExperienceCapture.capture(() -> state.spawnAfterBreak(level, pos, tool, true), true);
     }
 }

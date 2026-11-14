@@ -23,6 +23,7 @@ public class BlockDropsEvent extends BlockEvent implements ICancellableEvent {
     private final @Nullable Entity breaker;
     private final ItemStack tool;
     private int experience;
+    private boolean experienceChanged;
 
     public BlockDropsEvent(ServerLevel level, BlockPos pos, BlockState state, @Nullable BlockEntity blockEntity,
                            List<ItemEntity> drops, @Nullable Entity breaker, ItemStack tool, int experience) {
@@ -61,5 +62,11 @@ public class BlockDropsEvent extends BlockEvent implements ICancellableEvent {
 
     public void setDroppedExperience(int experience) {
         this.experience = experience;
+        this.experienceChanged = true;
+    }
+
+    /** Whether a handler set the experience; Fabric only knows the block's own amount afterwards. */
+    public boolean experienceChanged() {
+        return experienceChanged;
     }
 }

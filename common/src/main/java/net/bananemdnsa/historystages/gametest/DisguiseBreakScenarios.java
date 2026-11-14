@@ -61,6 +61,42 @@ public final class DisguiseBreakScenarios {
         });
     }
 
+    /**
+     * As infested stone: the disguise's experience is asked for, but its after-break work (a
+     * silverfish) must not happen; only the real ore was broken.
+     */
+    public static void disguiseSideEffectsStayOut(GameTestHelper helper, Function<GameTestHelper, ServerPlayer> players) {
+        run(helper, "minecraft:infested_stone", () -> {
+            BlockPos pos = helper.absolutePos(ORE);
+            AABB area = new AABB(pos).inflate(3);
+            helper.getLevel().getEntitiesOfClass(net.minecraft.world.entity.monster.Silverfish.class, area)
+                    .forEach(net.minecraft.world.entity.Entity::discard);
+            breakOre(helper, players.apply(helper), Items.IRON_PICKAXE);
+            int silverfish = helper.getLevel().getEntitiesOfClass(net.minecraft.world.entity.monster.Silverfish.class, area).size();
+            if (silverfish > 0) {
+                fail(helper, silverfish + " silverfish came out of an emerald ore disguised as infested stone");
+            }
+        });
+    }
+
+    /** A plain block nobody disguised breaks the vanilla way and drops its own loot. */
+    public static List<Item> breakPlainStone(GameTestHelper helper, ServerPlayer player) {
+        helper.setBlock(REFERENCE, Blocks.STONE);
+        BlockPos pos = helper.absolutePos(REFERENCE);
+        player.setGameMode(GameType.SURVIVAL);
+        player.setPos(pos.getX() + 0.5, pos.getY() + 1, pos.getZ() + 0.5);
+        player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.IRON_PICKAXE));
+        AABB area = new AABB(pos).inflate(2);
+        helper.getLevel().getEntitiesOfClass(ItemEntity.class, area).forEach(ItemEntity::discard);
+        player.gameMode.destroyBlock(pos);
+        List<Item> out = new ArrayList<>();
+        for (ItemEntity e : helper.getLevel().getEntitiesOfClass(ItemEntity.class, area)) {
+            out.add(e.getItem().getItem());
+            e.discard();
+        }
+        return out;
+    }
+
     /** As stone, with a pickaxe: the crack grows as fast as on real stone. */
     public static void breaksAtTheDisguisesSpeed(GameTestHelper helper, Function<GameTestHelper, ServerPlayer> players) {
         run(helper, "minecraft:stone", () -> {
