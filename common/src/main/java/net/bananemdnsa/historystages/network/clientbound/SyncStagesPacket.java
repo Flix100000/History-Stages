@@ -78,10 +78,6 @@ public record SyncStagesPacket(List<String> unlockedStages, Map<String, Long> un
                         mc.levelExtractor.allChanged();
                     }
 
-                    // Same for the vanilla recipe book. The global path also triggers a recipe
-                    // resync, which rebuilds it too, but doing it here keeps the book correct
-                    // without depending on that.
-                    net.bananemdnsa.historystages.client.ClientRecipeBookRefresh.rebuild();
                     net.bananemdnsa.historystages.client.ClientFluidRecipeIndex.refresh();
 
                     // JEI hiding (Issue #64): refresh visibility after stage cache updated.

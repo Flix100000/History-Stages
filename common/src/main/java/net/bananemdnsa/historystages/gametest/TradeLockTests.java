@@ -641,6 +641,43 @@ public final class TradeLockTests {
     }
 
     /**
+     * Clicking a row of the shortened list selects that row's offer on the server, not whatever
+     * sits at the same index in the merchant's full list (new for the port; 1.21.1 had the gap).
+     */
+    @HsGameTest
+    public static void aClickedRowSelectsThatRowsOfferOnTheServer(GameTestHelper helper) {
+        try {
+            GameTestStages.global("trade_seam_row", stage -> stage.setTradeOffers(
+                    new ArrayList<>(List.of(paperForEmeraldEntry()))));
+
+            Villager villager = librarian(helper, 1);
+            setOffers(villager, twoOffers());
+            RecordingPlayer player = new RecordingPlayer(helper);
+            GameTestPlayers.connect(player);
+            villager.setPos(player.position());
+            openScreen(villager, player);
+            player.containerMenu = new net.minecraft.world.inventory.MerchantMenu(
+                    RecordingPlayer.CONTAINER_ID, player.getInventory(), villager);
+            player.getInventory().add(new ItemStack(Items.EMERALD, 5));
+            // What startTrading does before opening; the menu checks it on every click.
+            villager.setTradingPlayer(player);
+
+            // Row 0 of what the player sees is the book trade (5 emeralds); index 0 of the
+            // merchant's list is the paper one the stage holds back.
+            player.connection.handleSelectTrade(new net.minecraft.network.protocol.game.ServerboundSelectTradePacket(0));
+
+            if (!player.containerMenu.getSlot(0).getItem().is(Items.EMERALD)) {
+                helper.fail("clicking the only visible trade (emeralds for a book) did not move the "
+                        + "emeralds into the payment slot, so the server picked a different offer");
+                return;
+            }
+            helper.succeed();
+        } finally {
+            GameTestStages.removeAll();
+        }
+    }
+
+    /**
      * A merchant whose every offer is gated still sends a list, an empty one.
      *
      * <p>It used to send nothing at all, which left the client sitting on the menu's own empty

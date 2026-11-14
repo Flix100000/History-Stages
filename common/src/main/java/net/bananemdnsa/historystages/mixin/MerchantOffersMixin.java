@@ -6,6 +6,7 @@ import net.bananemdnsa.historystages.network.PacketHandler;
 import net.bananemdnsa.historystages.network.clientbound.TradeLockedPacket;
 import net.bananemdnsa.historystages.util.DebugLogger;
 import net.bananemdnsa.historystages.util.HsRuntimeCategories;
+import net.bananemdnsa.historystages.util.lock.TradeIndexMap;
 import net.bananemdnsa.historystages.util.lock.TradeLockHelper;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
@@ -66,9 +67,11 @@ public interface MerchantOffersMixin {
         TradeLockHelper.Filtered filtered =
                 TradeLockHelper.filterForPlayer(offers, merchant, level, serverPlayer);
         if (!filtered.removedAnything()) {
+            TradeIndexMap.shown(serverPlayer.getUUID(), containerId, null);
             original.call(player, containerId, offers, level, xp, showProgress, canRestock);
             return;
         }
+        TradeIndexMap.shown(serverPlayer.getUUID(), containerId, filtered.keptIndices());
 
         MerchantOffers shown = new MerchantOffers();
         for (int index : filtered.keptIndices()) {

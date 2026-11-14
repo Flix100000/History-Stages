@@ -39,10 +39,12 @@ public final class HistoryStagesMixinPlugin implements IMixinConfigPlugin {
         int dot = relative.indexOf('.');
         if (dot < 0) return true;
         String modId = COMPAT_PACKAGES.get(relative.substring(0, dot));
-        return modId == null || isModLoaded(modId);
+        return modId == null || LOADED.computeIfAbsent(modId, HistoryStagesMixinPlugin::isModLoaded);
     }
 
-    static boolean isModLoaded(String modId) {
+    private static final Map<String, Boolean> LOADED = new java.util.concurrent.ConcurrentHashMap<>();
+
+    private static boolean isModLoaded(String modId) {
         try {
             Class<?> fabric = Class.forName("net.fabricmc.loader.api.FabricLoader");
             Object loader = fabric.getMethod("getInstance").invoke(null);

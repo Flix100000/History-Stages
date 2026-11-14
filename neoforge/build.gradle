@@ -43,8 +43,19 @@ dependencies {
     // The only hard dependency besides Architectury, see neoforge.mods.toml.
     implementation "maven.modrinth:lootr:${rootProject.lootr_neoforge_modrinth_id}"
 
+    testImplementation platform("org.junit:junit-bom:5.10.2")
+    testImplementation "org.junit.jupiter:junit-jupiter"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+
     common(project(path: ":common")) { transitive false }
     shadowCommon(project(path: ":common", configuration: "transformProductionNeoForge")) { transitive false }
+}
+
+tasks.named("test", Test) {
+    useJUnitPlatform()
+    testLogging {
+        events "passed", "skipped", "failed"
+    }
 }
 
 processResources {

@@ -46,8 +46,10 @@ public final class GameTestPlayers {
     /**
      * 26.2 gives a new player the server's default mode, and the GameTest server's is creative
      * (1.21.1: survival). A creative player keeps what it places and skips most locks, so every
-     * test here would ask the wrong player. Set directly: the public setter tells a connection
-     * this player may not have.
+     * test here would ask the wrong player.
+     *
+     * <p>Not {@code changeGameModeForPlayer}: it broadcasts a player-info packet built from the
+     * player's connection, which {@link #create} players do not have.
      */
     static void survival(ServerPlayer player) {
         try {
@@ -72,19 +74,40 @@ public final class GameTestPlayers {
         return player;
     }
 
+    /** Gives a player built elsewhere (a test's own subclass) the swallowing connection. */
+    public static void connect(ServerPlayer player) {
+        new SilentListener(player);
+    }
+
+    /** A connected player whose vanilla packets land in {@code sink}, for tests about what is sent. */
+    public static ServerPlayer createCapturing(GameTestHelper helper, java.util.List<Packet<?>> sink) {
+        ServerPlayer player = create(helper);
+        new SilentListener(player, sink);
+        return player;
+    }
+
     /**
      * Overridden on the listener, not only the connection: NeoForge checks a mod payload against
      * the channels the client negotiated before it ever reaches the connection, and a player
      * built without a login negotiated none.
      */
     private static final class SilentListener extends ServerGamePacketListenerImpl {
+        private final @Nullable java.util.List<Packet<?>> sink;
+
         SilentListener(ServerPlayer player) {
+            this(player, null);
+        }
+
+        SilentListener(ServerPlayer player, @Nullable java.util.List<Packet<?>> sink) {
             super(player.level().getServer(), new Connection(PacketFlow.SERVERBOUND), player,
                     CommonListenerCookie.createInitial(player.getGameProfile(), false));
+            this.sink = sink;
         }
 
         @Override
-        public void send(Packet<?> packet) {}
+        public void send(Packet<?> packet) {
+            if (sink != null) sink.add(packet);
+        }
 
         // Interaction packets are dropped until the client reports its world as loaded.
         @Override
@@ -99,6 +122,8 @@ public final class GameTestPlayers {
         }
 
         @Override
-        public void send(Packet<?> packet, @Nullable ChannelFutureListener listener) {}
+        public void send(Packet<?> packet, @Nullable ChannelFutureListener listener) {
+            send(packet);
+        }
     }
 }

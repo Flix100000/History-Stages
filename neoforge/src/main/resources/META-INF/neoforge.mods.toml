@@ -16,6 +16,9 @@ logoBlur=false
 [[mixins]]
 config="historystages.mixins.json"
 
+[[mixins]]
+config="historystages-neoforge.mixins.json"
+
 [[dependencies.${mod_id}]]
 modId="neoforge"
 type="required"

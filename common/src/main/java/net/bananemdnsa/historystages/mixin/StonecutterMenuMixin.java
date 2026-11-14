@@ -1,15 +1,21 @@
 package net.bananemdnsa.historystages.mixin;
 
-import java.util.UUID;
+import java.util.Optional;
 
-import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 
+import net.bananemdnsa.historystages.events.RecipeHandler;
+import net.bananemdnsa.historystages.util.lock.LockFeedback;
+import net.bananemdnsa.historystages.util.lock.LockMessages;
 import net.bananemdnsa.historystages.util.lock.RecipeCraftContext;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.inventory.StonecutterMenu;
-import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.RecipeHolder;
+import net.minecraft.world.item.crafting.SelectableRecipe;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -18,39 +24,46 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Tells the recipe filter who opened the stonecutter.
+ * The stonecutter's recipe gate.
  *
- * <p>The resolution happens in {@code setupRecipeList}, not in {@code setupResultSlot} — the
- * latter only assembles from the list that was already resolved. Gating at the resolution means a
- * locked recipe never becomes a button in the first place, so preview and taking are both covered
- * without a second hook.
+ * <p>1.21.1 resolved the button list through {@code getRecipesFor}, which the recipe filter
+ * gates. 26.2 takes the list from a precomputed set ({@code stonecutterRecipes().selectByInput})
+ * and the result straight from the chosen entry, so neither lookup is ever asked. The gate sits
+ * where the chosen entry hands over its recipe: a locked one yields no result, both for the
+ * preview and for every refill after a take.
  *
- * <p>The menu carries no player field, so the crafter is remembered at construction. Both public
- * constructors run through the one injected here.
- *
- * <p>Runs on both sides — the menu exists on the client too and resolves its own button list. That
- * symmetry is the point: one side flipping alone would show a button whose result the other side
- * refuses.
- *
- * <p>The method is wrapped rather than the lookup inside it, for the reason spelled out on
- * {@link CraftingMenuMixin}.
+ * <p>Server only: the client's entries carry no recipe at all. The button stays visible; the list
+ * the client gets is one packet for every player, and a filtered copy per player would shift the
+ * button indices the server reads back (PORT(26.2-gap), see the port notes).
  */
 @Mixin(StonecutterMenu.class)
 public class StonecutterMenuMixin {
 
     @Unique
+    private static final String FEEDBACK_CATEGORY = "stonecutter";
+
+    @Unique
     @Nullable
-    private UUID historystages$crafter;
+    private Player historystages$crafter;
 
     @Inject(method = "<init>(ILnet/minecraft/world/entity/player/Inventory;"
             + "Lnet/minecraft/world/inventory/ContainerLevelAccess;)V", at = @At("TAIL"))
     private void historystages$rememberCrafter(int containerId, Inventory playerInventory,
                                                ContainerLevelAccess access, CallbackInfo ci) {
-        this.historystages$crafter = playerInventory.player.getUUID();
+        this.historystages$crafter = playerInventory.player;
     }
 
-    @WrapMethod(method = "setupRecipeList")
-    private void historystages$resolveForCrafter(ItemStack stack, Operation<Void> original) {
-        RecipeCraftContext.with(this.historystages$crafter, () -> original.call(stack));
+    @WrapOperation(method = "setupResultSlot", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/world/item/crafting/SelectableRecipe;recipe()Ljava/util/Optional;"))
+    private Optional<? extends RecipeHolder<?>> historystages$gateChosenRecipe(SelectableRecipe<?> entry,
+                                                                               Operation<Optional<? extends RecipeHolder<?>>> original) {
+        Optional<? extends RecipeHolder<?>> recipe = original.call(entry);
+        if (recipe.isEmpty() || !(this.historystages$crafter instanceof ServerPlayer player)) return recipe;
+        RecipeHolder<?> holder = recipe.get();
+        boolean locked = RecipeCraftContext.with(player.getUUID(),
+                () -> RecipeHandler.isLockedForResolution(holder, false));
+        if (!locked) return recipe;
+        LockFeedback.sendActionbar(player, FEEDBACK_CATEGORY, LockMessages.recipeLocked());
+        return Optional.empty();
     }
 }

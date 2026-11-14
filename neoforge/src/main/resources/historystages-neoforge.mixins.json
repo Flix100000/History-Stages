@@ -1,0 +1,15 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "net.bananemdnsa.historystages.neoforge.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "client": [
+    "client.EntityStepSoundMixin",
+    "client.LevelEventSoundMixin",
+    "client.LivingEntityFallSoundMixin",
+    "client.MultiPlayerGameModeSoundMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

@@ -3,7 +3,7 @@
   "minVersion": "0.8",
   "package": "net.bananemdnsa.historystages.mixin",
   "plugin": "net.bananemdnsa.historystages.mixin.HistoryStagesMixinPlugin",
-  "compatibilityLevel": "JAVA_21",
+  "compatibilityLevel": "JAVA_25",
   "mixins": [
     "AnvilMenuMixin",
     "AttributeLockMixin",
@@ -17,16 +17,16 @@
     "RecipeManagerMixin",
     "RecipeMapAccessor",
     "RecipeMapMixin",
+    "SelectTradeMixin",
+    "ServerRecipeBookMixin",
     "SmithingMenuMixin",
     "StonecutterMenuMixin",
     "StructureGenerationMixin"
   ],
   "client": [
     "ClientAdvancementsAccessor",
-    "ClientRecipeBookMixin",
     "ItemStackMixin",
     "ZoneBarrierMixin",
-    "disguise.BlockSoundMixin",
     "disguise.BlockStateModelSetMixin",
     "disguise.ItemModelResolverMixin",
     "toast.ToastComponentAccessor",

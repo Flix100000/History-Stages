@@ -38,6 +38,10 @@
   "client": [
     "client.ClientCommandTreeMixin",
     "client.ClientUseItemOnMixin",
+    "client.DisguiseFallSoundMixin",
+    "client.DisguiseLevelEventSoundMixin",
+    "client.DisguiseMiningSoundMixin",
+    "client.DisguiseStepSoundMixin",
     "client.ItemDecorationsMixin"
   ],
   "injectors": {

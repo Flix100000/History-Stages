@@ -61,12 +61,15 @@ import net.minecraft.server.level.ServerPlayer;
 
 public class PacketHandler {
 
+    // Each stage sync also re-sends the recipe book: what it hides depends on the stages.
     public static void sendToAll(SyncStagesPacket packet) {
         sendToAllPlayers(packet);
+        net.bananemdnsa.historystages.util.lock.RecipeBookGate.resendAll(Services.currentServer());
     }
 
     public static void sendToPlayer(SyncStagesPacket packet, ServerPlayer player) {
         NetworkManager.sendToPlayer(player, packet);
+        net.bananemdnsa.historystages.util.lock.RecipeBookGate.resend(player);
     }
 
     public static void sendToastToAll(StageUnlockedToastPacket packet) {
@@ -125,6 +128,7 @@ public class PacketHandler {
 
     public static void sendIndividualStagesToPlayer(SyncIndividualStagesPacket packet, ServerPlayer player) {
         NetworkManager.sendToPlayer(player, packet);
+        net.bananemdnsa.historystages.util.lock.RecipeBookGate.resend(player);
     }
 
     public static void sendLostStagesToPlayer(SyncLostStagesPacket packet, ServerPlayer player) {
