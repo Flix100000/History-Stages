@@ -80,7 +80,11 @@ public final class SavedDataTypes {
         Path legacy = dataDir.resolve(legacyName + ".dat");
         if (!Files.exists(legacy)) return;
         Path target = id.withSuffix(".dat").resolveAgainst(dataDir);
-        if (Files.exists(target)) return;
+        if (Files.exists(target)) {
+            // Both there: the new one wins, and the old one is left for whoever wants to look.
+            LOGGER.warn("Left {} in place: {} already exists and is the one that is read", legacy, target);
+            return;
+        }
         try {
             Files.createDirectories(target.getParent());
             Files.move(legacy, target);

@@ -29,7 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * hundred files. The list is short on purpose: when it grows, that shows up in a diff and
  * somebody has to mean it.
  *
- * <p>The event base types under {@code platform.bus} pass too. On 1.21.1 they came from NeoForge
+ * <p>The event base types under {@code platform.bus} pass too ({@link #EVENT_BASE_TYPES}, not the bus). On 1.21.1 they came from NeoForge
  * and so never showed up here; now the mod carries its own bus, and an addon handed one of these
  * events is handed its base class as well. Naming it is honest, not a leak.
  */
@@ -40,6 +40,10 @@ class ApiSurfaceGuardTest {
             "EntityInteractionLockEntry", "DependencyGroup", "AutoTrigger", "CombineMode",
             "StageMode", "TemporaryConfig", "DurationUnit", "TierMode", "HiddenDisplayConfig",
             "DisplayMode", "StructureGenerationRule", "GenerationPhase", "TextOverrideHolder");
+
+    /** The bus's event base types; the rest of platform.bus (EventBus itself) stays internal. */
+    private static final Set<String> EVENT_BASE_TYPES = Set.of(
+            "platform.bus.Event", "platform.bus.ICancellableEvent", "platform.bus.IModBusEvent");
 
     private static final Pattern IMPORT = Pattern.compile(
             "^import (?:static )?net\\.bananemdnsa\\.historystages\\.([\\w.]+);", Pattern.MULTILINE);
@@ -68,7 +72,7 @@ class ApiSurfaceGuardTest {
                 Matcher imports = IMPORT.matcher(text);
                 while (imports.find()) {
                     String path = imports.group(1);
-                    if (path.startsWith("api.") || path.startsWith("platform.bus.")) continue;
+                    if (path.startsWith("api.") || EVENT_BASE_TYPES.contains(path)) continue;
                     String simple = path.substring(path.lastIndexOf('.') + 1);
                     if (simple.isEmpty() || !Character.isUpperCase(simple.charAt(0))) continue;
                     if (DATA_MODEL.contains(simple)) continue;

@@ -11,14 +11,21 @@ public final class Formats {
 
     private Formats() {}
 
-    /** 1.21.1's {@code ChatFormatting.getByName}: the lower-case name, e.g. "gold" or "bold". */
+    /**
+     * 1.21.1's {@code ChatFormatting.getByName}: case and anything but letters are ignored, so
+     * "gold", "dark_aqua", "darkaqua" and "Dark Aqua" all match.
+     */
     public static @Nullable ChatFormatting byName(@Nullable String name) {
         if (name == null) return null;
-        try {
-            return ChatFormatting.valueOf(name.toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException e) {
-            return null;
+        String wanted = clean(name);
+        for (ChatFormatting format : ChatFormatting.values()) {
+            if (clean(format.name()).equals(wanted)) return format;
         }
+        return null;
+    }
+
+    private static String clean(String name) {
+        return name.toLowerCase(Locale.ROOT).replaceAll("[^a-z]", "");
     }
 
     /** 1.21.1's {@code ChatFormatting.getColor}: the RGB of a colour code, null for a style code. */
