@@ -1,8 +1,8 @@
 package net.bananemdnsa.historystages.mixin.toast;
 
 import net.bananemdnsa.historystages.client.toast.ToastLayout;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.toasts.ToastComponent;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.toasts.ToastManager;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -24,15 +24,15 @@ import java.util.List;
  * notifications visible) only need to override {@code slotCount()} to return 1; the offsets here
  * keep them from overlapping.</p>
  */
-@Mixin(ToastComponent.class)
+@Mixin(ToastManager.class)
 public abstract class ToastComponentMixin {
 
-    @Shadow @Final private List<?> visible;
+    @Shadow @Final private List<?> visibleToasts;
 
-    @Inject(method = "render", at = @At("HEAD"))
-    private void historystages$computeOffsets(GuiGraphics guiGraphics, CallbackInfo ci) {
+    @Inject(method = "extractRenderState", at = @At("HEAD"))
+    private void historystages$computeOffsets(GuiGraphicsExtractor guiGraphics, CallbackInfo ci) {
         int[] heightBySlot = new int[ToastLayout.SLOT_COUNT];
-        for (Object instance : visible) {
+        for (Object instance : visibleToasts) {
             if (instance == null) {
                 continue;
             }

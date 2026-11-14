@@ -423,7 +423,7 @@ public class HistoryStages {
         if (event.getServer() != null
                 && net.bananemdnsa.historystages.data.lock.VisibleRecipes.gatedSetNeedsSeeding()) {
             net.bananemdnsa.historystages.data.lock.VisibleRecipes.seedGatedSet(
-                    event.getServer().getRecipeManager().getRecipes());
+                    net.bananemdnsa.historystages.util.lock.RecipeResolutionFilter.allRecipes(event.getServer().getRecipeManager()));
         }
 
         net.bananemdnsa.historystages.events.AutoTriggerEventBridge.pollPlayers(event.getServer(), tickCounter);
@@ -432,15 +432,14 @@ public class HistoryStages {
         // recipes after that call, so an index built there would miss a script pack entirely.
         // A tick has, by definition, waited for all of them. Costs one boolean read when clean.
         //
-        // getOrderedRecipes rather than getRecipes: the latter is gated on the server now, and a
+        // The ungated list rather than getRecipes: the latter is gated on the server now, and a
         // fluid-gated recipe is exactly one of the recipes it leaves out — building the index from
         // it would drop that recipe from the index, which would ungate it, which would put it back
         // in the list. This one has to see every recipe there is.
-        // PORT(Task 12): 26.2 has no getOrderedRecipes. getRecipes is ungated until the recipe
-        // mixin moves; it must then leave getRecipes alone or these callers need their own accessor.
+        // 26.2 has no getOrderedRecipes; RecipeResolutionFilter.allRecipes is the ungated list.
         if (event.getServer() != null) {
             net.bananemdnsa.historystages.data.lock.FluidRecipeIndex.rebuildIfDirty(
-                    event.getServer().getRecipeManager().getRecipes(),
+                    net.bananemdnsa.historystages.util.lock.RecipeResolutionFilter.allRecipes(event.getServer().getRecipeManager()),
                     event.getServer().registryAccess());
         }
 

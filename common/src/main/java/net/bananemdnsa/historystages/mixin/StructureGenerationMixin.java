@@ -47,6 +47,7 @@ public class StructureGenerationMixin {
             net.minecraft.world.level.chunk.ChunkAccess chunk,
             net.minecraft.world.level.ChunkPos chunkPos,
             net.minecraft.core.SectionPos sectionPos,
+            net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> dimension,
             CallbackInfoReturnable<Boolean> cir) {
         if (!StructureGenerationGate.isActive()) return;
         if (!StructureGenerationGate.tryReserve(entry.structure())) {
@@ -71,6 +72,7 @@ public class StructureGenerationMixin {
             net.minecraft.world.level.chunk.ChunkAccess chunk,
             net.minecraft.world.level.ChunkPos chunkPos,
             net.minecraft.core.SectionPos sectionPos,
+            net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> dimension,
             CallbackInfoReturnable<Boolean> cir) {
         if (Boolean.TRUE.equals(cir.getReturnValue())) {
             StructureGenerationGate.commitReservation();

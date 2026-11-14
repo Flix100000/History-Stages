@@ -9,7 +9,7 @@ import net.bananemdnsa.historystages.util.lock.StageLockHelper;
 import net.minecraft.core.Holder;
 import net.minecraft.core.IdMap;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
@@ -44,8 +44,8 @@ public class EnchantmentMenuMixin {
         if (enchantId < 0) return;
 
         // In MC 1.21, enchantments are data-driven. enchantClue stores the id from
-        // registryAccess().registryOrThrow(Registries.ENCHANTMENT).asHolderIdMap()
-        var enchantRegistry = serverPlayer.level().registryAccess().registryOrThrow(Registries.ENCHANTMENT);
+        // registryAccess().lookupOrThrow(Registries.ENCHANTMENT).asHolderIdMap()
+        var enchantRegistry = serverPlayer.level().registryAccess().lookupOrThrow(Registries.ENCHANTMENT);
         IdMap<Holder<Enchantment>> idmap = enchantRegistry.asHolderIdMap();
         Holder<Enchantment> holder = idmap.byId(enchantId);
         if (holder == null) return;
@@ -53,7 +53,7 @@ public class EnchantmentMenuMixin {
         ResourceKey<Enchantment> key = holder.unwrapKey().orElse(null);
         if (key == null) return;
 
-        ResourceLocation enchantRL = key.location();
+        Identifier enchantRL = key.identifier();
 
         // The item on the table, so an entry that spares it lets the enchantment through.
         String itemId = net.minecraft.core.registries.BuiltInRegistries.ITEM

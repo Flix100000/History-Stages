@@ -37,4 +37,18 @@ public interface RecipeResolutionFilter {
     /** {@code resolved} with every gated recipe taken out, or {@code resolved} itself if none is. */
     <T extends Recipe<?>> List<RecipeHolder<T>> historystages$withoutLocked(
             List<RecipeHolder<T>> resolved, boolean isClientSide);
+
+    /** The manager's recipe map, which the list gate in {@code RecipeMapMixin} compares against. */
+    net.minecraft.world.item.crafting.RecipeMap historystages$recipeMap();
+
+    /**
+     * Every loaded recipe, ungated. What 1.21.1's {@code getOrderedRecipes} was for this mod: the
+     * index, the gated-set baseline and the editor's list must see recipes the gate hides.
+     */
+    java.util.Collection<RecipeHolder<?>> historystages$allRecipes();
+
+    /** {@link #historystages$allRecipes()} of a recipe manager. */
+    static java.util.Collection<RecipeHolder<?>> allRecipes(net.minecraft.world.item.crafting.RecipeManager manager) {
+        return ((RecipeResolutionFilter) manager).historystages$allRecipes();
+    }
 }

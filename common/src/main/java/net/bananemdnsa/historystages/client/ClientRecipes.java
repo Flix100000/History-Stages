@@ -37,7 +37,8 @@ public final class ClientRecipes {
         if (server == null) return List.of();
         // The unfiltered snapshot is the integrated server's, so it only counts with one.
         Collection<RecipeHolder<?>> cached = AllRecipesCache.get();
-        return cached.isEmpty() ? server.getRecipeManager().getRecipes() : cached;
+        return cached.isEmpty()
+                ? net.bananemdnsa.historystages.util.lock.RecipeResolutionFilter.allRecipes(server.getRecipeManager()) : cached;
     }
 
     /** Changes whenever a server list arrives, so a screen that built from an empty one rebuilds. */

@@ -41,6 +41,7 @@
 		]
 	},
 	"mixins": [
+		"historystages.mixins.json",
 		"historystages-fabric.mixins.json"
 	],
 	"depends": {

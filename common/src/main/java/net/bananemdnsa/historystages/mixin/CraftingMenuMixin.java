@@ -11,7 +11,7 @@ import net.minecraft.world.inventory.CraftingMenu;
 import net.minecraft.world.inventory.ResultContainer;
 import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
-import net.minecraft.world.level.Level;
+import net.minecraft.server.level.ServerLevel;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 
@@ -37,7 +37,7 @@ public class CraftingMenuMixin {
 
     @WrapMethod(method = "slotChangedCraftingGrid")
     private static void historystages$resolveForCrafter(
-            AbstractContainerMenu menu, Level level, Player player, CraftingContainer craftSlots,
+            AbstractContainerMenu menu, ServerLevel level, Player player, CraftingContainer craftSlots,
             ResultContainer resultSlots, @Nullable RecipeHolder<CraftingRecipe> recipe,
             Operation<Void> original) {
         RecipeCraftContext.with(player.getUUID(),

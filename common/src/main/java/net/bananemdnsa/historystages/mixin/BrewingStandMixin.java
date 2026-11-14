@@ -50,7 +50,7 @@ public abstract class BrewingStandMixin {
         // The result's item type, so an entry that spares splash potions lets them be brewed.
         String itemId = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(potion.getItem()).toString();
         for (MobEffectInstance effect : contents.getAllEffects()) {
-            String id = effect.getEffect().unwrapKey().map(key -> key.location().toString()).orElse(null);
+            String id = effect.getEffect().unwrapKey().map(key -> key.identifier().toString()).orElse(null);
             if (id != null && StageLockHelper.isEffectLockedForServer(id, effect.getAmplifier() + 1, itemId)) {
                 return true;
             }

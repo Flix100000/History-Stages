@@ -1,18 +1,19 @@
 package net.bananemdnsa.historystages.mixin;
 
-import com.google.common.collect.Multimap;
 import net.bananemdnsa.historystages.events.RecipeHandler;
 import net.bananemdnsa.historystages.util.AllRecipesCache;
 import net.bananemdnsa.historystages.util.lock.RecipeResolutionFilter;
 import net.bananemdnsa.historystages.util.lock.ResolutionSide;
 import net.bananemdnsa.historystages.data.saveddata.StageData;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.util.profiling.ProfilerFiller;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeInput;
 import net.minecraft.world.item.crafting.RecipeManager;
+import net.minecraft.world.item.crafting.RecipeMap;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
 import org.spongepowered.asm.mixin.Mixin;
@@ -22,7 +23,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import javax.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 import java.util.*;
 
 /**
@@ -52,9 +53,10 @@ import java.util.*;
  * almost nothing: nothing in vanilla crafts through it, and placing a recipe from the book still
  * has to pass the resolution above.
  *
- * <p>{@code getOrderedRecipes} is left alone for the same reason as the client: it fills the
- * packet every client is sent on join and after a reload, and our own scanners read it when they
- * need every recipe there is.
+ * <p>26.2 dropped {@code getOrderedRecipes}, {@code getRecipesFor} and {@code getAllRecipesFor}.
+ * The two list lookups live on {@link RecipeMap} now and are gated there ({@code RecipeMapMixin}).
+ * Our own scanners need every recipe there is and read {@link #historystages$allRecipes()}, the
+ * ungated list, instead of {@code getRecipes()}.
  *
  * <p>The gate lives inside these method bodies, which means a mod that puts its own subclass of
  * the recipe manager in place and overrides them is not gated at all. That is not hypothetical —
@@ -64,8 +66,7 @@ import java.util.*;
  */
 @Mixin(RecipeManager.class)
 public class RecipeManagerMixin implements RecipeResolutionFilter {
-    @Shadow private Map<ResourceLocation, RecipeHolder<?>> byName;
-    @Shadow private Multimap<RecipeType<?>, RecipeHolder<?>> byType;
+    @Shadow private RecipeMap recipes;
 
     /**
      * Only refresh stage cache and populate AllRecipesCache on apply().
@@ -73,18 +74,17 @@ public class RecipeManagerMixin implements RecipeResolutionFilter {
      * This ensures compatibility with KubeJS/CraftTweaker which modify recipes after apply().
      */
     @Inject(
-            method = "apply(Ljava/util/Map;Lnet/minecraft/server/packs/resources/ResourceManager;Lnet/minecraft/util/profiling/ProfilerFiller;)V",
-            at = @At("TAIL"),
-            remap = true
+            method = "apply(Lnet/minecraft/world/item/crafting/RecipeMap;Lnet/minecraft/server/packs/resources/ResourceManager;Lnet/minecraft/util/profiling/ProfilerFiller;)V",
+            at = @At("TAIL")
     )
-    private void onApplyPost(Map<ResourceLocation, com.google.gson.JsonElement> pObject, ResourceManager pResourceManager, ProfilerFiller pProfiler, CallbackInfo ci) {
-        net.minecraft.server.MinecraftServer server = net.neoforged.neoforge.server.ServerLifecycleHooks.getCurrentServer();
+    private void onApplyPost(RecipeMap loadedRecipes, ResourceManager pResourceManager, ProfilerFiller pProfiler, CallbackInfo ci) {
+        net.minecraft.server.MinecraftServer server = net.bananemdnsa.historystages.platform.Services.currentServer();
         if (server != null) {
             StageData data = StageData.get(server.overworld());
             StageData.refreshCache(data.getUnlockedStages());
         }
 
-        AllRecipesCache.set(new ArrayList<>(this.byName.values()));
+        AllRecipesCache.set(new ArrayList<>(this.recipes.values()));
         net.bananemdnsa.historystages.data.lock.FluidRecipeIndex.markDirty();
         net.bananemdnsa.historystages.data.lock.VisibleRecipes.invalidate();
         // The baseline the next stage change is compared against is taken on the first server
@@ -118,8 +118,8 @@ public class RecipeManagerMixin implements RecipeResolutionFilter {
                 .forEach((stageId, entry) -> byStage.put(stageId, entry.getRecipes()));
 
         Set<String> loaded = new HashSet<>();
-        for (ResourceLocation id : this.byName.keySet()) {
-            loaded.add(id.toString());
+        for (RecipeHolder<?> holder : this.recipes.values()) {
+            loaded.add(holder.id().identifier().toString());
         }
 
         List<net.bananemdnsa.historystages.data.lock.RecipeIdAudit.MissingRecipe> missing =
@@ -150,13 +150,14 @@ public class RecipeManagerMixin implements RecipeResolutionFilter {
                     for (String recipeId : entry.getRecipes()) {
                         if (recipeId == null) continue;
 
-                        ResourceLocation id = ResourceLocation.tryParse(recipeId);
+                        Identifier id = Identifier.tryParse(recipeId);
                         if (id == null) continue;
 
-                        RecipeHolder<?> holder = this.byName.get(id);
+                        RecipeHolder<?> holder = this.recipes.byKey(
+                                ResourceKey.create(net.minecraft.core.registries.Registries.RECIPE, id));
                         if (holder == null) continue; // already reported as not loaded
 
-                        ResourceLocation typeKey = net.minecraft.core.registries.BuiltInRegistries
+                        Identifier typeKey = net.minecraft.core.registries.BuiltInRegistries
                                 .RECIPE_TYPE.getKey(holder.value().getType());
                         if (typeKey == null
                                 || net.bananemdnsa.historystages.data.lock.IndividualRecipeSupport
@@ -178,7 +179,7 @@ public class RecipeManagerMixin implements RecipeResolutionFilter {
      * Filter single recipe lookups (3-arg) - used by crafting table.
      */
     @Inject(method = "getRecipeFor(Lnet/minecraft/world/item/crafting/RecipeType;Lnet/minecraft/world/item/crafting/RecipeInput;Lnet/minecraft/world/level/Level;)Ljava/util/Optional;",
-            at = @At("RETURN"), cancellable = true, remap = true)
+            at = @At("RETURN"), cancellable = true)
     private <I extends RecipeInput, T extends Recipe<I>> void filterGetRecipeFor(
             RecipeType<T> type, I input, @Nullable Level level,
             CallbackInfoReturnable<Optional<RecipeHolder<T>>> cir) {
@@ -189,13 +190,13 @@ public class RecipeManagerMixin implements RecipeResolutionFilter {
     }
 
     /**
-     * Filter cached recipe lookups (4-arg with ResourceLocation) - used by CachedCheck (furnace, smoker, blast furnace).
+     * Filter cached recipe lookups (4-arg with a recipe key) - used by CachedCheck (furnace, smoker, blast furnace).
      */
-    @Inject(method = "getRecipeFor(Lnet/minecraft/world/item/crafting/RecipeType;Lnet/minecraft/world/item/crafting/RecipeInput;Lnet/minecraft/world/level/Level;Lnet/minecraft/resources/ResourceLocation;)Ljava/util/Optional;",
-            at = @At("RETURN"), cancellable = true, remap = true)
+    @Inject(method = "getRecipeFor(Lnet/minecraft/world/item/crafting/RecipeType;Lnet/minecraft/world/item/crafting/RecipeInput;Lnet/minecraft/world/level/Level;Lnet/minecraft/resources/ResourceKey;)Ljava/util/Optional;",
+            at = @At("RETURN"), cancellable = true)
     private <I extends RecipeInput, T extends Recipe<I>> void filterGetRecipeForCached(
             RecipeType<T> type, I input, @Nullable Level level,
-            @Nullable ResourceLocation lastRecipe,
+            @Nullable ResourceKey<Recipe<?>> lastRecipe,
             CallbackInfoReturnable<Optional<RecipeHolder<T>>> cir) {
         Optional<RecipeHolder<T>> result = cir.getReturnValue();
         if (result.isPresent() && isRecipeLocked(result.get(), ResolutionSide.isClient(level))) {
@@ -207,7 +208,7 @@ public class RecipeManagerMixin implements RecipeResolutionFilter {
      * Filter cached recipe lookups (4-arg with RecipeHolder) - the core overload called by CraftingMenu and others.
      */
     @Inject(method = "getRecipeFor(Lnet/minecraft/world/item/crafting/RecipeType;Lnet/minecraft/world/item/crafting/RecipeInput;Lnet/minecraft/world/level/Level;Lnet/minecraft/world/item/crafting/RecipeHolder;)Ljava/util/Optional;",
-            at = @At("RETURN"), cancellable = true, remap = true)
+            at = @At("RETURN"), cancellable = true)
     private <I extends RecipeInput, T extends Recipe<I>> void filterGetRecipeForHolder(
             RecipeType<T> type, I input, @Nullable Level level,
             @Nullable RecipeHolder<T> lastRecipe,
@@ -238,24 +239,12 @@ public class RecipeManagerMixin implements RecipeResolutionFilter {
     public <I extends RecipeInput, T extends Recipe<I>> Optional<RecipeHolder<T>> historystages$firstUnlocked(
             RecipeType<T> type, I input, @Nullable Level level) {
         boolean isClient = ResolutionSide.isClient(level);
-        for (RecipeHolder<?> holder : this.byType.get(type)) {
+        for (RecipeHolder<?> holder : ((RecipeMapAccessor) this.recipes).historystages$byType().get(type)) {
             if (isRecipeLocked(holder, isClient)) continue;
             RecipeHolder<T> candidate = (RecipeHolder<T>) holder;
             if (candidate.value().matches(input, level)) return Optional.of(candidate);
         }
         return Optional.empty();
-    }
-
-    /**
-     * Filter list recipe lookups - prevents crafting locked recipes.
-     */
-    @Inject(method = "getRecipesFor(Lnet/minecraft/world/item/crafting/RecipeType;Lnet/minecraft/world/item/crafting/RecipeInput;Lnet/minecraft/world/level/Level;)Ljava/util/List;",
-            at = @At("RETURN"), cancellable = true, remap = true)
-    private <I extends RecipeInput, T extends Recipe<I>> void filterGetRecipesFor(
-            RecipeType<T> type, I input, @Nullable Level level,
-            CallbackInfoReturnable<List<RecipeHolder<T>>> cir) {
-        cir.setReturnValue(
-                historystages$withoutLocked(cir.getReturnValue(), ResolutionSide.isClient(level)));
     }
 
     @Override
@@ -283,25 +272,21 @@ public class RecipeManagerMixin implements RecipeResolutionFilter {
     }
 
     /** Filter the whole recipe list — see the note on this class for which routes are gated. */
-    @Inject(method = "getRecipes()Ljava/util/Collection;", at = @At("RETURN"), cancellable = true, remap = true)
+    @Inject(method = "getRecipes()Ljava/util/Collection;", at = @At("RETURN"), cancellable = true)
     private void filterGetRecipes(CallbackInfoReturnable<Collection<RecipeHolder<?>>> cir) {
         if (!isServerRecipeManager()) return;
         cir.setReturnValue(net.bananemdnsa.historystages.data.lock.VisibleRecipes
                 .all(this, cir.getReturnValue()));
     }
 
-    /**
-     * Filter one recipe type's list — the same route one size smaller, and the one most modded
-     * machines take. Create reaches it through sequenced assembly and through applying an item to
-     * a block by hand.
-     */
-    @Inject(method = "getAllRecipesFor(Lnet/minecraft/world/item/crafting/RecipeType;)Ljava/util/List;",
-            at = @At("RETURN"), cancellable = true, remap = true)
-    private <I extends RecipeInput, T extends Recipe<I>> void filterGetAllRecipesFor(
-            RecipeType<T> type, CallbackInfoReturnable<List<RecipeHolder<T>>> cir) {
-        if (!isServerRecipeManager()) return;
-        cir.setReturnValue(net.bananemdnsa.historystages.data.lock.VisibleRecipes
-                .ofType(this, type, cir.getReturnValue()));
+    @Override
+    public RecipeMap historystages$recipeMap() {
+        return this.recipes;
+    }
+
+    @Override
+    public Collection<RecipeHolder<?>> historystages$allRecipes() {
+        return this.recipes.values();
     }
 
     /**
@@ -316,8 +301,7 @@ public class RecipeManagerMixin implements RecipeResolutionFilter {
      * the server decides what actually gets crafted.
      */
     private boolean isServerRecipeManager() {
-        net.minecraft.server.MinecraftServer server =
-                net.neoforged.neoforge.server.ServerLifecycleHooks.getCurrentServer();
+        net.minecraft.server.MinecraftServer server = net.bananemdnsa.historystages.platform.Services.currentServer();
         return server != null && server.getRecipeManager() == (Object) this;
     }
 

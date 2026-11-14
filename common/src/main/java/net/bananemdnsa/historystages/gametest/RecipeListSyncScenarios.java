@@ -18,7 +18,7 @@ public final class RecipeListSyncScenarios {
 
     public static void theRecipeListReadsBackWhole(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
-        Collection<RecipeHolder<?>> recipes = server.getRecipeManager().getRecipes();
+        Collection<RecipeHolder<?>> recipes = net.bananemdnsa.historystages.util.lock.RecipeResolutionFilter.allRecipes(server.getRecipeManager());
         int[] skipped = new int[1];
         List<RecipeHolder<?>> back = RecipeListSync.fromJson(RecipeListSync.toJson(server, recipes),
                 server.registryAccess(), skipped);
@@ -44,7 +44,7 @@ public final class RecipeListSyncScenarios {
     /** The same recipes in another order make the same bytes, so a reload that changed nothing resends nothing. */
     public static void theSameRecipesEncodeTheSame(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
-        java.util.List<RecipeHolder<?>> recipes = new java.util.ArrayList<>(server.getRecipeManager().getRecipes());
+        java.util.List<RecipeHolder<?>> recipes = new java.util.ArrayList<>(net.bananemdnsa.historystages.util.lock.RecipeResolutionFilter.allRecipes(server.getRecipeManager()));
         java.util.List<RecipeHolder<?>> reversed = new java.util.ArrayList<>(recipes);
         java.util.Collections.reverse(reversed);
         try {

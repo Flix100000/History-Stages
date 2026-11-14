@@ -7,7 +7,6 @@ import net.bananemdnsa.historystages.util.lock.RecipeCraftContext;
 import net.minecraft.network.protocol.game.ServerboundPlaceRecipePacket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
-import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -28,19 +27,24 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(ServerGamePacketListenerImpl.class)
 public class RecipeBookPlacementMixin {
 
-    @Shadow @Final public ServerPlayer player;
+    @Shadow public ServerPlayer player;
 
     private static final String FEEDBACK_CATEGORY = "recipe_book";
 
-    @Inject(method = "handlePlaceRecipe", at = @At("HEAD"))
+    // After the thread hop rather than at HEAD: the packet arrives on the network thread first,
+    // and the lock check reads server state.
+    @Inject(method = "handlePlaceRecipe", at = @At(value = "INVOKE", shift = At.Shift.AFTER,
+            target = "Lnet/minecraft/network/protocol/PacketUtils;ensureRunningOnSameThread(Lnet/minecraft/network/protocol/Packet;Lnet/minecraft/network/PacketListener;Lnet/minecraft/server/level/ServerLevel;)V"))
     private void historystages$tellThemWhyNothingHappened(ServerboundPlaceRecipePacket packet,
                                                           CallbackInfo ci) {
+        // 26.2 sends a display id; the recipe behind it is only known to the server.
+        var display = this.player.level().getServer().getRecipeManager().getRecipeFromDisplay(packet.recipe());
+        if (display == null) return;
         // The same narrow window a station opens: this question is about this player and this
         // click, and nothing else.
         boolean locked = RecipeCraftContext.with(this.player.getUUID(),
-                () -> RecipeHandler.isRecipeIdLocked(packet.getRecipe(), false));
+                () -> RecipeHandler.isRecipeIdLocked(display.parent().id().identifier(), false));
         if (!locked) return;
-
         LockFeedback.sendActionbar(this.player, FEEDBACK_CATEGORY, LockMessages.recipeLocked());
     }
 }

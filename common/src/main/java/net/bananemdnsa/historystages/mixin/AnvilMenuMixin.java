@@ -83,7 +83,7 @@ public abstract class AnvilMenuMixin {
                                                     UUID player) {
         if (enchantments == null || enchantments.isEmpty()) return null;
         for (Object2IntMap.Entry<Holder<Enchantment>> entry : enchantments.entrySet()) {
-            String id = entry.getKey().unwrapKey().map(key -> key.location().toString()).orElse(null);
+            String id = entry.getKey().unwrapKey().map(key -> key.identifier().toString()).orElse(null);
             if (id == null) continue;
             if (StageLockHelper.isEnchantmentLockedForPlayer(id, entry.getIntValue(), "anvil", itemId, player)) {
                 return id + " " + entry.getIntValue();

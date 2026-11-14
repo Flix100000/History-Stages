@@ -13,6 +13,9 @@ displayURL="https://historystages.github.io/"
 logoFile="assets/${mod_id}/icon.png"
 logoBlur=false
 
+[[mixins]]
+config="historystages.mixins.json"
+
 [[dependencies.${mod_id}]]
 modId="neoforge"
 type="required"

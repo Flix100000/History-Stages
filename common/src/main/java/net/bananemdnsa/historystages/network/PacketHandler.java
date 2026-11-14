@@ -195,7 +195,7 @@ public class PacketHandler {
         reloadRequested = false;
 
         if (!net.bananemdnsa.historystages.data.lock.VisibleRecipes.gatedSetChanged(
-                server.getRecipeManager().getRecipes())) {
+                net.bananemdnsa.historystages.util.lock.RecipeResolutionFilter.allRecipes(server.getRecipeManager()))) {
             resyncRecipes(server);
             return;
         }

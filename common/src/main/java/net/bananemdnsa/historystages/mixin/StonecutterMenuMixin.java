@@ -6,7 +6,6 @@ import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 
 import net.bananemdnsa.historystages.util.lock.RecipeCraftContext;
-import net.minecraft.world.Container;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.inventory.StonecutterMenu;
@@ -51,9 +50,7 @@ public class StonecutterMenuMixin {
     }
 
     @WrapMethod(method = "setupRecipeList")
-    private void historystages$resolveForCrafter(Container container, ItemStack stack,
-                                                 Operation<Void> original) {
-        RecipeCraftContext.with(this.historystages$crafter,
-                () -> original.call(container, stack));
+    private void historystages$resolveForCrafter(ItemStack stack, Operation<Void> original) {
+        RecipeCraftContext.with(this.historystages$crafter, () -> original.call(stack));
     }
 }

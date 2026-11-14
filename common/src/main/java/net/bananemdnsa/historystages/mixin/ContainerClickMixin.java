@@ -7,13 +7,13 @@ import net.bananemdnsa.historystages.util.lock.LockFeedback;
 import net.bananemdnsa.historystages.util.lock.LockMessages;
 import net.bananemdnsa.historystages.util.lock.StageLockHelper;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraft.world.inventory.ClickType;
+import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.MerchantMenu;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
@@ -38,8 +38,8 @@ public class ContainerClickMixin {
      * blocked throwing items away, while a number-key swap onto an empty slot never got looked
      * at (Issue #122).
      */
-    @Inject(method = "clicked", at = @At("HEAD"), cancellable = true, remap = true)
-    private void onClicked(int slotId, int button, ClickType clickType, Player player, CallbackInfo ci) {
+    @Inject(method = "clicked", at = @At("HEAD"), cancellable = true)
+    private void onClicked(int slotId, int button, ContainerInput clickType, Player player, CallbackInfo ci) {
         if (player.level().isClientSide()) return;
         if (!(player instanceof ServerPlayer serverPlayer)) return;
         if (!Config.GAMEPLAY.lockContainerInteraction.get()) return;
@@ -63,7 +63,7 @@ public class ContainerClickMixin {
         if (StageLockHelper.isActionLockedByIndividualStage(stack, serverPlayer.getUUID(), "pickup")) {
             ci.cancel();
 
-            ResourceLocation itemRL = BuiltInRegistries.ITEM.getKey(stack.getItem());
+            Identifier itemRL = BuiltInRegistries.ITEM.getKey(stack.getItem());
             DebugLogger.runtimeThrottled(HsRuntimeCategories.CONTAINER_LOCK, "container_" + serverPlayer.getUUID() + "_" + itemRL,
                     "<" + serverPlayer.getName().getString() + "> Interaction with locked item '" + itemRL + "' in container blocked");
 
@@ -77,8 +77,8 @@ public class ContainerClickMixin {
      * Mouse Tweaks that bypass the post-hoc {@code LivingEquipmentChangeEvent} revert
      * by racing the client-side prediction.
      */
-    @Inject(method = "clicked", at = @At("HEAD"), cancellable = true, remap = true)
-    private void historystages$onEquipLockClicked(int slotId, int button, ClickType clickType, Player player, CallbackInfo ci) {
+    @Inject(method = "clicked", at = @At("HEAD"), cancellable = true)
+    private void historystages$onEquipLockClicked(int slotId, int button, ContainerInput clickType, Player player, CallbackInfo ci) {
         if (player.level().isClientSide()) return;
         if (!(player instanceof ServerPlayer serverPlayer)) return;
         if (!Config.GAMEPLAY.lockItemUsage.get() && !Config.GAMEPLAY.individualLockItemUsage.get()) return;
@@ -119,9 +119,9 @@ public class ContainerClickMixin {
                 if (targetIsEquipSlot) {
                     Inventory inv = serverPlayer.getInventory();
                     if (button == 40) {
-                        candidate = inv.offhand.get(0);
-                    } else if (button >= 0 && button < inv.items.size()) {
-                        candidate = inv.items.get(button);
+                        candidate = inv.getItem(Inventory.SLOT_OFFHAND);
+                    } else if (button >= 0 && button < inv.getNonEquipmentItems().size()) {
+                        candidate = inv.getNonEquipmentItems().get(button);
                     }
                 }
             }
@@ -133,7 +133,7 @@ public class ContainerClickMixin {
 
         ci.cancel();
 
-        ResourceLocation itemRL = BuiltInRegistries.ITEM.getKey(candidate.getItem());
+        Identifier itemRL = BuiltInRegistries.ITEM.getKey(candidate.getItem());
         DebugLogger.runtimeThrottled(HsRuntimeCategories.ITEM_USE_LOCK, "equip_click_" + serverPlayer.getUUID() + "_" + itemRL,
                 "<" + serverPlayer.getName().getString() + "> Equip via container click for '" + itemRL + "' blocked [action: equip]");
 
@@ -150,7 +150,7 @@ public class ContainerClickMixin {
      */
     @Unique
     private static ItemStack historystages$takenFromStorage(AbstractContainerMenu menu, Slot slot,
-                                                           ClickType clickType, ServerPlayer player) {
+                                                           ContainerInput clickType, ServerPlayer player) {
         switch (clickType) {
             case PICKUP -> {
                 if (historystages$isPlayerInventory(slot, player)) return ItemStack.EMPTY;

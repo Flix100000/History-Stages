@@ -101,7 +101,8 @@ public final class RecipeListSync {
         try {
             // The unfiltered snapshot when there is one: the editor lists locked recipes too.
             var all = net.bananemdnsa.historystages.util.AllRecipesCache.get();
-            encoded = encode(server, all.isEmpty() ? manager.getRecipes() : all);
+            encoded = encode(server, all.isEmpty()
+                    ? net.bananemdnsa.historystages.util.lock.RecipeResolutionFilter.allRecipes(manager) : all);
             encodedFor = manager;
             return encoded;
         } catch (IOException e) {
