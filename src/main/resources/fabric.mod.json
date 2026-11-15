@@ -44,6 +44,7 @@
 			"net.bananemdnsa.historystages.gametest.AddonHookTests",
 			"net.bananemdnsa.historystages.gametest.AnvilLockTests",
 			"net.bananemdnsa.historystages.gametest.AutoTriggerTests",
+			"net.bananemdnsa.historystages.gametest.BridgeMixinTests",
 			"net.bananemdnsa.historystages.gametest.ConfigCodecTests",
 			"net.bananemdnsa.historystages.gametest.ContainerLockTests",
 			"net.bananemdnsa.historystages.gametest.DependencyCheckerTests",
