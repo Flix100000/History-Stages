@@ -24,7 +24,8 @@
     "ServerRecipeBookMixin",
     "SmithingMenuMixin",
     "StonecutterMenuMixin",
-    "StructureGenerationMixin"
+    "StructureGenerationMixin",
+    "jei.RecipeLayoutMixin"
   ],
   "client": [
     "AttackStartLockMixin",
@@ -34,6 +35,7 @@
     "bettercombat.WeaponRegistryMixin",
     "disguise.BlockStateModelSetMixin",
     "disguise.ItemModelResolverMixin",
+    "jei.FluidTankRendererMixin",
     "toast.ToastComponentAccessor",
     "toast.ToastComponentMixin",
     "toast.ToastInstanceAccessor",

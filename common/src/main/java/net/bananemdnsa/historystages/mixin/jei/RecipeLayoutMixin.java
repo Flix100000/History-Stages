@@ -1,7 +1,7 @@
 package net.bananemdnsa.historystages.mixin.jei;
 
 import net.bananemdnsa.historystages.util.lock.StageLockHelper;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import org.spongepowered.asm.mixin.Mixin;
@@ -34,19 +34,12 @@ public abstract class RecipeLayoutMixin {
         }
     }
 
-    @Inject(method = "getRecipeSlotUnderMouse", at = @At("HEAD"), cancellable = true, require = 0)
-    private void blockRecipeSlotHoverIfLocked(double mouseX, double mouseY, CallbackInfoReturnable<Optional<?>> cir) {
-        if (isCurrentRecipeLocked()) {
-            cir.setReturnValue(Optional.empty());
-        }
-    }
-
     private boolean isCurrentRecipeLocked() {
         Object recipe = getRecipe();
 
         // 1. Check by recipe ID — in 1.21 recipes are wrapped in RecipeHolder<?>
         if (recipe instanceof RecipeHolder<?> holder) {
-            ResourceLocation recipeId = holder.id();
+            Identifier recipeId = holder.id().identifier();
             if (recipeId != null
                     && (StageLockHelper.isRecipeLockedForClient(recipeId.toString())
                         || net.bananemdnsa.historystages.events.RecipeHandler

@@ -58,13 +58,13 @@ public record SyncIndividualStagesPacket(Set<String> unlockedStages, Map<String,
             net.bananemdnsa.historystages.client.ClientFluidRecipeIndex.refresh();
 
             // JEI hiding (Issue #64): refresh visibility after individual-stage cache updated.
-            // PORT(Task 13): JEI refresh comes back with the JEI integration. PORT(later): EMI has no 26.2 build.
-            /*
             if (net.bananemdnsa.historystages.platform.Services.isModLoaded("jei")) {
                 try {
                     net.bananemdnsa.historystages.compat.jei.JEIPlugin.tryApplyDiff();
                 } catch (Throwable ignored) {}
             }
+            // PORT(later): EMI has no 26.2 build (code in port-later/emi).
+            /*
             if (net.bananemdnsa.historystages.platform.Services.isModLoaded("emi")) {
                 try {
                     net.bananemdnsa.historystages.compat.emi.EmiReloadBridge.reloadIfHiding();

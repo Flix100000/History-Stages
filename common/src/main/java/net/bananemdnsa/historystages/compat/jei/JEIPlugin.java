@@ -4,8 +4,8 @@ import com.mojang.logging.LogUtils;
 import mezz.jei.api.IModPlugin;
 import mezz.jei.api.JeiPlugin;
 import mezz.jei.api.constants.VanillaTypes;
-import mezz.jei.api.ingredients.subtypes.IIngredientSubtypeInterpreter;
-import mezz.jei.api.recipe.RecipeType;
+import mezz.jei.api.ingredients.subtypes.ISubtypeInterpreter;
+import mezz.jei.api.recipe.types.IRecipeType;
 import mezz.jei.api.registration.IAdvancedRegistration;
 import mezz.jei.api.registration.IRecipeCatalystRegistration;
 import mezz.jei.api.registration.IRecipeCategoryRegistration;
@@ -27,15 +27,17 @@ import net.bananemdnsa.historystages.research.ResearchBoosterRegistry;
 import net.bananemdnsa.historystages.util.CurrentRegistries;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.core.NonNullList;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.CraftingBookCategory;
 import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.RecipeHolder;
-import net.minecraft.world.item.crafting.ShapelessRecipe;
+import net.minecraft.world.item.crafting.display.SlotDisplay;
+import net.minecraft.world.item.ItemStackTemplate;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.core.registries.Registries;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
@@ -55,20 +57,18 @@ public class JEIPlugin implements IModPlugin {
     /** Item IDs whose hidden-display name was active last pass — used to detect name changes. */
     private static volatile Set<String> prevNameAffectedIds = Set.of();
     /** Tracks which recipes WE hid last pass, so we can unhide them on next refresh. */
-    private static final Map<RecipeType<?>, List<Object>> currentlyHiddenRecipes = new HashMap<>();
+    private static final Map<IRecipeType<?>, List<Object>> currentlyHiddenRecipes = new HashMap<>();
 
     @Override
-    public ResourceLocation getPluginUid() {
-        return ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "jei_plugin");
+    public Identifier getPluginUid() {
+        return Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "jei_plugin");
     }
 
     @Override
     public void registerItemSubtypes(ISubtypeRegistration registration) {
         // Tell JEI that scrolls with different StageResearch values are different items
-        IIngredientSubtypeInterpreter<ItemStack> interpreter = (stack, context) -> {
-            String stage = ScrollVariants.readStageResearch(stack);
-            return stage != null ? stage : IIngredientSubtypeInterpreter.NONE;
-        };
+        // null = no subtype (the old NONE constant).
+        ISubtypeInterpreter<ItemStack> interpreter = (stack, context) -> ScrollVariants.readStageResearch(stack);
         registration.registerSubtypeInterpreter(ModItems.RESEARCH_SCROLL.get(), interpreter);
         registration.registerSubtypeInterpreter(ModItems.CREATIVE_SCROLL.get(), interpreter);
     }
@@ -175,7 +175,7 @@ public class JEIPlugin implements IModPlugin {
         for (ItemStack stack : mgr.getAllItemStacks()) {
             if (stack.isEmpty()) continue;
             if (net.bananemdnsa.historystages.client.display.HiddenDisplayResolver.resolve(stack).changesName()) {
-                ResourceLocation rl = BuiltInRegistries.ITEM.getKey(stack.getItem());
+                Identifier rl = BuiltInRegistries.ITEM.getKey(stack.getItem());
                 if (rl != null) ids.add(rl.toString());
             }
         }
@@ -199,7 +199,7 @@ public class JEIPlugin implements IModPlugin {
 
         Set<ItemStack> refresh = new HashSet<>();
         for (ItemStack stack : mgr.getAllItemStacks()) {
-            ResourceLocation rl = BuiltInRegistries.ITEM.getKey(stack.getItem());
+            Identifier rl = BuiltInRegistries.ITEM.getKey(stack.getItem());
             if (rl != null && changed.contains(rl.toString())) refresh.add(stack);
         }
         if (refresh.isEmpty()) return;
@@ -228,9 +228,9 @@ public class JEIPlugin implements IModPlugin {
 
         // First: unhide everything we hid last pass.
         synchronized (currentlyHiddenRecipes) {
-            for (Map.Entry<RecipeType<?>, List<Object>> entry : currentlyHiddenRecipes.entrySet()) {
+            for (Map.Entry<IRecipeType<?>, List<Object>> entry : currentlyHiddenRecipes.entrySet()) {
                 try {
-                    rm.unhideRecipes((RecipeType) entry.getKey(), (List) entry.getValue());
+                    rm.unhideRecipes((IRecipeType) entry.getKey(), (List) entry.getValue());
                 } catch (Exception e) {
                     LOGGER.warn("[HistoryStages/JEI] unhideRecipes failed for {}: {}", entry.getKey(), e.toString());
                 }
@@ -253,11 +253,11 @@ public class JEIPlugin implements IModPlugin {
         HolderLookup.Provider registryAccess = CurrentRegistries.orEmpty();
 
         runtime.getJeiHelpers().getAllRecipeTypes().forEach(type ->
-                hideForType(rm, (RecipeType) type, lockedFinal, registryAccess));
+                hideForType(rm, (IRecipeType) type, lockedFinal, registryAccess));
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private static <R> void hideForType(IRecipeManager rm, RecipeType<R> type,
+    private static <R> void hideForType(IRecipeManager rm, IRecipeType<R> type,
                                          Set<ItemStack> lockedItems,
                                          HolderLookup.Provider registryAccess) {
         try {
@@ -285,7 +285,7 @@ public class JEIPlugin implements IModPlugin {
     private static List<ItemStack> extractOutputs(Object recipe, HolderLookup.Provider registryAccess) {
         if (recipe instanceof RecipeHolder<?> holder) {
             try {
-                ItemStack out = holder.value().getResultItem(registryAccess);
+                ItemStack out = net.bananemdnsa.historystages.util.RecipeOutputs.resultOf(holder.value(), registryAccess);
                 if (out != null && !out.isEmpty()) return List.of(out);
             } catch (Exception ignored) {
                 // A recipe that will not say what it makes cannot be matched against a locked
@@ -337,15 +337,22 @@ public class JEIPlugin implements IModPlugin {
         // These are display only; the real matching still happens in ResealScrollRecipe.
         if (net.bananemdnsa.historystages.Config.GAMEPLAY.enableScrollResealing.get()) {
             List<RecipeHolder<CraftingRecipe>> reseal = new ArrayList<>();
+            var factory = registration.getVanillaRecipeFactory();
             for (String stageId : ScrollVariants.scrollableStageIds()) {
-                NonNullList<Ingredient> inputs = NonNullList.create();
-                inputs.add(Ingredient.of(ScrollVariants.createOpenScroll(stageId)));
-                inputs.add(Ingredient.of(Items.PAPER));
-                reseal.add(new RecipeHolder<>(
-                        ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID,
-                                "reseal_scroll/" + StageDisplayPath.of(stageId)),
-                        new ShapelessRecipe("", CraftingBookCategory.MISC,
-                                ScrollVariants.createScroll(stageId), inputs)));
+                // 26.2 ingredients cannot carry components, so the stage scrolls go in as slot
+                // displays; the builder is shaped, the grid shows them side by side.
+                ItemStack open = ScrollVariants.createOpenScroll(stageId);
+                CraftingRecipe recipe = factory.createShapedRecipeBuilder(CraftingBookCategory.MISC,
+                                new SlotDisplay.ItemStackSlotDisplay(ItemStackTemplate.fromNonEmptyStack(
+                                        ScrollVariants.createScroll(stageId))))
+                        .define('S', Ingredient.of(open.getItem()),
+                                new SlotDisplay.ItemStackSlotDisplay(ItemStackTemplate.fromNonEmptyStack(open)))
+                        .define('P', Ingredient.of(Items.PAPER))
+                        .pattern("SP")
+                        .build();
+                reseal.add(new RecipeHolder<>(ResourceKey.create(Registries.RECIPE,
+                        Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID,
+                                "reseal_scroll/" + StageDisplayPath.of(stageId))), recipe));
             }
             registration.addRecipes(RecipeTypes.CRAFTING, reseal);
         }
@@ -364,7 +371,7 @@ public class JEIPlugin implements IModPlugin {
     @Override
     public void registerAdvanced(IAdvancedRegistration registration) {
         registration.getJeiHelpers().getAllRecipeTypes().forEach(recipeType -> {
-            registration.addRecipeCategoryDecorator((mezz.jei.api.recipe.RecipeType) recipeType, new LockedRecipeDecorator<>());
+            registration.addRecipeCategoryDecorator((IRecipeType) recipeType, new LockedRecipeDecorator<>());
         });
         LOGGER.info("[HistoryStages] Registered locked recipe decorators for all JEI recipe types.");
     }

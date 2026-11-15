@@ -46,10 +46,12 @@ dependencies {
     // ---- Optional integrations ----
     // In the dev runs too, unless -Pbare (smoke.sh --bare) asks for a run without them.
     compileOnly "maven.modrinth:jade:${rootProject.jade_neoforge_version}"
+    compileOnly "mezz.jei:jei-26.2-neoforge-api:${rootProject.jei_version}"
     compileOnly "maven.modrinth:curios:${rootProject.curios_version}"
     compileOnly "maven.modrinth:spell-engine:${rootProject.spell_engine_neoforge_version}"
     if (!rootProject.hasProperty("bare")) {
         localRuntime "maven.modrinth:jade:${rootProject.jade_neoforge_version}"
+        localRuntime "mezz.jei:jei-26.2-neoforge:${rootProject.jei_version}"
         localRuntime "maven.modrinth:better-combat:${rootProject.better_combat_neoforge_version}"
         localRuntime "maven.modrinth:spell-engine:${rootProject.spell_engine_neoforge_version}"
         localRuntime "maven.modrinth:spell-power:${rootProject.spell_power_neoforge_version}"

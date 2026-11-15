@@ -8,8 +8,8 @@ import mezz.jei.api.recipe.category.extensions.IRecipeCategoryDecorator;
 import net.bananemdnsa.historystages.util.lock.StageLockHelper;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeHolder;
 
@@ -23,16 +23,14 @@ public class LockedRecipeDecorator<T> implements IRecipeCategoryDecorator<T> {
 
     @Override
     public void draw(T recipe, IRecipeCategory<T> category, IRecipeSlotsView recipeSlotsView,
-                     GuiGraphics guiGraphics, double mouseX, double mouseY) {
+                     GuiGraphicsExtractor guiGraphics, double mouseX, double mouseY) {
         if (JerCategories.isJer(category) || !isRecipeLocked(recipe, recipeSlotsView)) return;
 
         int width = category.getWidth();
         int height = category.getHeight();
 
-        // Push pose and translate to z=300 so overlay renders above item icons (~200) but below tooltips (~400)
-        guiGraphics.pose().pushPose();
-        guiGraphics.pose().translate(0, 0, 300);
-
+        // 26.2 draws GUI layers in submission order, so no z translate: the decorator comes after
+        // the slots.
         // Semi-transparent dark overlay
         guiGraphics.fill(0, 0, width, height, 0xBB000000);
 
@@ -40,15 +38,13 @@ public class LockedRecipeDecorator<T> implements IRecipeCategoryDecorator<T> {
         Font font = Minecraft.getInstance().font;
         String text = "\u00A7c\u00A7l\u2716 Locked";
         int textWidth = font.width(text);
-        guiGraphics.drawString(font, text, (width - textWidth) / 2, height / 2 - 4, 0xFFFFFF, true);
-
-        guiGraphics.pose().popPose();
+        guiGraphics.text(font, text, (width - textWidth) / 2, height / 2 - 4, 0xFFFFFFFF, true);
     }
 
     private boolean isRecipeLocked(T recipe, IRecipeSlotsView recipeSlotsView) {
         // 1. Check by recipe ID if it's a vanilla RecipeHolder
         if (recipe instanceof RecipeHolder<?> holder) {
-            ResourceLocation recipeId = holder.id();
+            Identifier recipeId = holder.id().identifier();
             if (recipeId != null
                     && (StageLockHelper.isRecipeLockedForClient(recipeId.toString())
                         || net.bananemdnsa.historystages.events.RecipeHandler

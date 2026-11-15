@@ -44,9 +44,11 @@ dependencies {
     // ---- Optional integrations ----
     // In the dev runs too, unless -Pbare (smoke.sh --bare) asks for a run without them.
     compileOnly "maven.modrinth:jade:${rootProject.jade_fabric_version}"
+    compileOnly "mezz.jei:jei-26.2-fabric-api:${rootProject.jei_version}"
     compileOnly "maven.modrinth:spell-engine:${rootProject.spell_engine_fabric_version}"
     if (!rootProject.hasProperty("bare")) {
         localRuntime "maven.modrinth:jade:${rootProject.jade_fabric_version}"
+        localRuntime "mezz.jei:jei-26.2-fabric:${rootProject.jei_version}"
         localRuntime "maven.modrinth:better-combat:${rootProject.better_combat_fabric_version}"
         localRuntime "maven.modrinth:spell-engine:${rootProject.spell_engine_fabric_version}"
         localRuntime "maven.modrinth:spell-power:${rootProject.spell_power_fabric_version}"

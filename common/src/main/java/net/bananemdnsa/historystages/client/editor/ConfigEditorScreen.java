@@ -1706,16 +1706,14 @@ public class ConfigEditorScreen extends Screen {
             entry.initialValue = entry.value;
         }
 
-        // PORT(Task 13): JEI live-apply (JEIPlugin.tryApplyDiff) returns with the JEI integration.
-        // PORT(later): EMI has no 26.2 build (EmiReloadBridge.reloadIfPresent).
-        /*
         // JEI hiding (Issue #64): live-apply config changes if JEI is loaded.
         if (net.bananemdnsa.historystages.platform.Services.isModLoaded("jei")) {
             try {
                 net.bananemdnsa.historystages.compat.jei.JEIPlugin.tryApplyDiff();
             } catch (Throwable ignored) {}
         }
-
+        // PORT(later): EMI has no 26.2 build (code in port-later/emi).
+        /*
         // EMI: rebuild its index so booster/config changes show up immediately.
         if (net.bananemdnsa.historystages.platform.Services.isModLoaded("emi")) {
             try {

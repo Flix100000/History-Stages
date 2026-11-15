@@ -6,16 +6,16 @@ import mezz.jei.api.gui.ingredient.IRecipeSlotsView;
 import mezz.jei.api.helpers.IGuiHelper;
 import mezz.jei.api.recipe.IFocusGroup;
 import mezz.jei.api.recipe.RecipeIngredientRole;
-import mezz.jei.api.recipe.RecipeType;
+import mezz.jei.api.recipe.types.IRecipeType;
 import mezz.jei.api.recipe.category.IRecipeCategory;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.init.ModBlocks;
 import net.bananemdnsa.historystages.research.BoosterUtil;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 
 /**
@@ -24,10 +24,10 @@ import net.minecraft.world.item.ItemStack;
  * block, so right-clicking any of them opens the category.
  */
 public class BoosterRecipeCategory implements IRecipeCategory<BoosterRecipe> {
-    public static final ResourceLocation UID =
-            ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "research_boosters");
-    public static final RecipeType<BoosterRecipe> TYPE =
-            new RecipeType<>(UID, BoosterRecipe.class);
+    public static final Identifier UID =
+            Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "research_boosters");
+    public static final IRecipeType<BoosterRecipe> TYPE =
+            IRecipeType.create(UID, BoosterRecipe.class);
 
     private static final int WIDTH = 140;
     private static final int HEIGHT = 56;
@@ -35,16 +35,14 @@ public class BoosterRecipeCategory implements IRecipeCategory<BoosterRecipe> {
     private static final int LABEL_COLOR = 0xFF404040;
     private static final int VALUE_COLOR = 0xFF707070;
 
-    private final IDrawable background;
     private final IDrawable icon;
 
     public BoosterRecipeCategory(IGuiHelper helper) {
-        this.background = helper.createBlankDrawable(WIDTH, HEIGHT);
         this.icon = helper.createDrawableItemStack(new ItemStack(ModBlocks.RESEARCH_PEDESTAL.get()));
     }
 
     @Override
-    public RecipeType<BoosterRecipe> getRecipeType() {
+    public IRecipeType<BoosterRecipe> getRecipeType() {
         return TYPE;
     }
 
@@ -54,8 +52,13 @@ public class BoosterRecipeCategory implements IRecipeCategory<BoosterRecipe> {
     }
 
     @Override
-    public IDrawable getBackground() {
-        return background;
+    public int getWidth() {
+        return WIDTH;
+    }
+
+    @Override
+    public int getHeight() {
+        return HEIGHT;
     }
 
     @Override
@@ -65,28 +68,28 @@ public class BoosterRecipeCategory implements IRecipeCategory<BoosterRecipe> {
 
     @Override
     public void setRecipe(IRecipeLayoutBuilder builder, BoosterRecipe recipe, IFocusGroup focuses) {
-        builder.addSlot(RecipeIngredientRole.CATALYST, 4, 18).addItemStack(recipe.blockStack());
+        builder.addSlot(RecipeIngredientRole.CRAFTING_STATION, 4, 18).addItemStack(recipe.blockStack());
     }
 
     @Override
-    public void draw(BoosterRecipe recipe, IRecipeSlotsView slots, GuiGraphics graphics,
+    public void draw(BoosterRecipe recipe, IRecipeSlotsView slots, GuiGraphicsExtractor graphics,
                      double mouseX, double mouseY) {
         Font font = Minecraft.getInstance().font;
         int y = 4;
 
-        graphics.drawString(font, recipe.blockStack().getHoverName(), TEXT_X, y, LABEL_COLOR, false);
+        graphics.text(font, recipe.blockStack().getHoverName(), TEXT_X, y, LABEL_COLOR, false);
         y += 14;
 
         if (recipe.speedPercent() > 0) {
             String mText = BoosterUtil.formatMultiplier(recipe.speedPercent() / 100.0);
-            graphics.drawString(font,
+            graphics.text(font,
                     Component.translatable("jei.historystages.research_booster.speed", mText),
                     TEXT_X, y, VALUE_COLOR, false);
             y += 11;
         }
 
         if (recipe.costPercent() > 0) {
-            graphics.drawString(font,
+            graphics.text(font,
                     Component.translatable("jei.historystages.research_booster.cost", recipe.costPercent()),
                     TEXT_X, y, VALUE_COLOR, false);
         }

@@ -39,6 +39,9 @@
 		"historystages": [
 			"net.bananemdnsa.historystages.fabric.gametest.TestAddonPlugin"
 		],
+		"jei_mod_plugin": [
+			"net.bananemdnsa.historystages.compat.jei.JEIPlugin"
+		],
 		"jade": [
 			"net.bananemdnsa.historystages.compat.jade.JadePlugin"
 		]

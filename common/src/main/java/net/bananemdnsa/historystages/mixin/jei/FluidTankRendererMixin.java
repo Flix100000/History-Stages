@@ -1,10 +1,13 @@
 package net.bananemdnsa.historystages.mixin.jei;
 
 import net.bananemdnsa.historystages.client.LockIconRenderer;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
-import net.neoforged.neoforge.fluids.FluidStack;
+import net.minecraft.resources.Identifier;
+import mezz.jei.api.ingredients.IIngredientTypeWithSubtypes;
+import net.minecraft.world.level.material.Fluid;
+import org.spongepowered.asm.mixin.Final;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Pseudo;
 import org.spongepowered.asm.mixin.injection.At;
@@ -35,16 +38,20 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(targets = "mezz.jei.library.render.FluidTankRenderer", remap = false)
 public abstract class FluidTankRendererMixin {
 
-    @Inject(method = "render(Lnet/minecraft/client/gui/GuiGraphics;Ljava/lang/Object;II)V",
+    // Each loader has its own fluid ingredient class (NeoForge FluidStack, Fabric
+    // IJeiFluidIngredient); the renderer's ingredient type turns either into its Fluid.
+    @Shadow(remap = false) @Final private IIngredientTypeWithSubtypes<Fluid, Object> type;
+
+    @Inject(method = "render(Lnet/minecraft/client/gui/GuiGraphicsExtractor;Ljava/lang/Object;II)V",
             at = @At("TAIL"), require = 0)
-    private void historystages$drawFluidLockIcon(GuiGraphics guiGraphics, Object ingredient,
+    private void historystages$drawFluidLockIcon(GuiGraphicsExtractor guiGraphics, Object ingredient,
                                                  int x, int y, CallbackInfo ci) {
         try {
-            if (!(ingredient instanceof FluidStack fluid) || fluid.isEmpty()) return;
-            ResourceLocation id = BuiltInRegistries.FLUID.getKey(fluid.getFluid());
+            if (ingredient == null) return;
+            Identifier id = BuiltInRegistries.FLUID.getKey(type.getBase(ingredient));
             if (id == null) return;
 
-            ResourceLocation icon = LockIconRenderer.iconForFluid(id.toString());
+            Identifier icon = LockIconRenderer.iconForFluid(id.toString());
             if (icon != null) LockIconRenderer.draw(guiGraphics, icon, x, y);
         } catch (Throwable ignored) {
             // Never take a recipe screen down over an overlay.
