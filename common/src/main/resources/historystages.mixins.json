@@ -27,9 +27,11 @@
     "StructureGenerationMixin"
   ],
   "client": [
+    "AttackStartLockMixin",
     "ClientAdvancementsAccessor",
     "ItemStackMixin",
     "ZoneBarrierMixin",
+    "bettercombat.WeaponRegistryMixin",
     "disguise.BlockStateModelSetMixin",
     "disguise.ItemModelResolverMixin",
     "toast.ToastComponentAccessor",

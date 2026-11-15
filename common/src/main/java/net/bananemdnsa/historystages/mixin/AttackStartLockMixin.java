@@ -1,4 +1,4 @@
-package net.bananemdnsa.historystages.mixin.bettercombat;
+package net.bananemdnsa.historystages.mixin;
 
 import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.util.lock.LockGate;
@@ -14,11 +14,14 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 /**
  * Client-only: suppresses the vanilla attack arm-swing when the held weapon is stage-locked, so a
  * locked weapon produces no swing animation on attack. Better Combat's own upswing animation is
- * handled by {@link WeaponRegistryMixin}; this covers the plain vanilla swing that remains once
+ * handled by {@link net.bananemdnsa.historystages.mixin.bettercombat.WeaponRegistryMixin}; this covers the plain vanilla swing that remains once
  * Better Combat treats the item as a non-weapon (or when Better Combat is not installed).
  *
  * <p>Only cancels when the player is NOT targeting a block, so block breaking — governed separately
  * by the {@code break} lock — is unaffected.</p>
+ *
+ * <p>Targets vanilla only, so it sits outside {@code mixin/bettercombat}: the mixin plugin applies
+ * that package only with Better Combat loaded, and this swing has to stop without it too.</p>
  */
 @Mixin(Minecraft.class)
 public class AttackStartLockMixin {
