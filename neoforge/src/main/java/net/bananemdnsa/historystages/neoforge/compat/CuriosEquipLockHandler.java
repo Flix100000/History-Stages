@@ -32,7 +32,8 @@ public final class CuriosEquipLockHandler {
     private CuriosEquipLockHandler() {}
 
     public static void register() {
-        NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, CuriosEquipLockHandler::onCurioEquip);
+        NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, false, CurioCanEquipEvent.class,
+                CuriosEquipLockHandler::onCurioEquip);
     }
 
     private static void onCurioEquip(CurioCanEquipEvent event) {

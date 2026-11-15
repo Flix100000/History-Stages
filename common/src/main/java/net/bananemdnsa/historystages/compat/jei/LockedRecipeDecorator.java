@@ -36,7 +36,8 @@ public class LockedRecipeDecorator<T> implements IRecipeCategoryDecorator<T> {
 
         // "Locked" text centered
         Font font = Minecraft.getInstance().font;
-        String text = "\u00A7c\u00A7l\u2716 Locked";
+        net.minecraft.network.chat.Component text =
+                net.minecraft.network.chat.Component.translatable("jei.historystages.recipe_locked");
         int textWidth = font.width(text);
         guiGraphics.text(font, text, (width - textWidth) / 2, height / 2 - 4, 0xFFFFFFFF, true);
     }

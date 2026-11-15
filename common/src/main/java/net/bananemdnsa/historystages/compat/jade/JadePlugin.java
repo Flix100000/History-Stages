@@ -330,8 +330,10 @@ public class JadePlugin implements IWailaPlugin {
 
     private static void appendStageTooltip(ITooltip tooltip, List<String> totalRequiredStages, boolean individual) {
         if (Config.VISUAL.jadeStageName.get()) {
-            String header = individual ? "Required Individual Progress:" : "Required Progress:";
-            tooltip.add(Component.literal(header).withStyle(ChatFormatting.DARK_RED));
+            tooltip.add(Component.translatable(individual
+                            ? "tooltip.historystages.required_individual_progress"
+                            : "tooltip.historystages.required_progress")
+                    .withStyle(ChatFormatting.DARK_RED));
 
             for (Component line : RequiredStageLines.lines(
                     individual ? StageScope.INDIVIDUAL : StageScope.GLOBAL, totalRequiredStages,

@@ -199,6 +199,7 @@
   "jei.historystages.research_booster.header": "§9Forschungspodest-Booster",
   "jei.historystages.research_booster.speed": "Tempo-Multiplikator: %s",
   "jei.historystages.research_booster.cost": "Item-Kostenreduktion: -%s%%",
+  "jei.historystages.recipe_locked": "§c§l✖ Gesperrt",
   "jei.historystages.research_booster.usage": "Direkt unter einem Forschungspodest platzieren, um die aktive Forschung zu boosten.",
   "creativetab.history_tab": "History Stages",
   "tooltip.historystages.research_scroll.info1": "Lege diese Rolle in ein Forschungspodest,",

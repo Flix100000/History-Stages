@@ -56,11 +56,11 @@
 		"java": ">=25",
 		"fabric-api": "*",
 		"architectury": ">=21.1",
-		"lootr": ">=0.4"
+		"lootr": ">=1.23.38.112"
 	},
 	"suggests": {
-		"jade": ">=15",
-		"jei": ">=15",
+		"jade": ">=26.2 <26.3",
+		"jei": ">=30 <31",
 		"spell_engine": ">=1.9",
 		"bettercombat": ">=1"
 	}

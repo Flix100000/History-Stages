@@ -199,6 +199,7 @@
   "jei.historystages.research_booster.header": "§9Research Pedestal Booster",
   "jei.historystages.research_booster.speed": "Speed multiplier: %s",
   "jei.historystages.research_booster.cost": "Item cost reduction: -%s%%",
+  "jei.historystages.recipe_locked": "§c§l✖ Locked",
   "jei.historystages.research_booster.usage": "Place this block directly under a Research Pedestal to apply the boost to active research.",
   "creativetab.history_tab": "History Stages",
   "tooltip.historystages.research_scroll.info1": "Use this scroll in a Research Pedestal",
