@@ -14,6 +14,13 @@ import net.bananemdnsa.historystages.events.lock.ZoneLockHandler;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.projectile.throwableitemprojectile.ThrownEnderpearl;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.Vec3;
+import net.bananemdnsa.historystages.platform.bus.EventBus;
+import net.bananemdnsa.historystages.platform.event.tick.PlayerTickEvent;
 
 /**
  * The zone seam, answered against a live server.
@@ -88,6 +95,43 @@ public final class ZoneLockTests {
     private static ZoneEntry spawnBlocking(ZoneEntry zone) {
         zone.getRules().setBlockSpawns(true);
         return zone;
+    }
+
+    /**
+     * Throws a pearl straight down onto a stone block in the test structure and lets it fly the
+     * way the server would, tick by tick, until it is gone. The thrower stands ten blocks away.
+     * Returns the thrower's position afterwards, or null when the pearl never came down.
+     */
+    private static Vec3 throwPearlOntoTheFloor(GameTestHelper helper, ServerPlayer thrower) {
+        helper.setBlock(new BlockPos(1, 0, 1), Blocks.STONE);
+        ThrownEnderpearl pearl = new ThrownEnderpearl(helper.getLevel(), thrower, new ItemStack(Items.ENDER_PEARL));
+        Vec3 start = Vec3.atCenterOf(helper.absolutePos(new BlockPos(1, 2, 1)));
+        pearl.snapTo(start.x, start.y, start.z, 0.0F, 0.0F);
+        pearl.setDeltaMovement(0.0, -0.5, 0.0);
+        helper.getLevel().addFreshEntity(pearl);
+        for (int i = 0; i < 40 && !pearl.isRemoved(); i++) {
+            pearl.tick();
+        }
+        return pearl.isRemoved() ? thrower.position() : null;
+    }
+
+    private static ServerPlayer pearlThrower(GameTestHelper helper) {
+        ServerPlayer player = GameTestPlayers.createConnected(helper);
+        BlockPos stand = helper.absolutePos(new BlockPos(11, 1, 1));
+        player.snapTo(stand.getX() + 0.5, stand.getY(), stand.getZ() + 0.5, 0.0F, 0.0F);
+        return player;
+    }
+
+    /** A barrier zone around the test structure only, so the thrower stands outside it. */
+    private static ZoneEntry barrierAroundTheStructure(GameTestHelper helper) {
+        BlockPos low = helper.absolutePos(new BlockPos(-1, -1, -1));
+        BlockPos high = helper.absolutePos(new BlockPos(3, 4, 3));
+        ZoneEntry zone = new ZoneEntry();
+        zone.setName("walled");
+        zone.setDimension(dimensionOf(helper));
+        zone.setShapes(List.of(ZoneShape.cube(low.getX(), low.getY(), low.getZ(),
+                high.getX(), high.getY(), high.getZ(), false)));
+        return barrier(zone);
     }
 
     // ---------------------------------------------------------------------------------------
@@ -439,5 +483,87 @@ public final class ZoneLockTests {
         } finally {
             GameTestStages.removeAll();
         }
+    }
+
+    /**
+     * A sphere protects exactly the blocks within its radius. Checked because a biome lock that
+     * outlived its stage once looked like a sphere zone reaching past its own surface.
+     */
+    @HsGameTest
+    public static void aSphereZoneStopsAtItsRadius(GameTestHelper helper) {
+        ServerPlayer player = GameTestPlayers.create(helper);
+        try {
+            BlockPos centre = helper.absolutePos(new BlockPos(1, 1, 1));
+            ZoneEntry zone = new ZoneEntry();
+            zone.setName("ball");
+            zone.setDimension(dimensionOf(helper));
+            zone.setShapes(List.of(ZoneShape.sphere(centre.getX(), centre.getY(), centre.getZ(), 6)));
+            GameTestStages.global("zone_sphere", stage -> stage.setZones(new ArrayList<>(List.of(zone))));
+
+            BlockPos[] inside = {centre, centre.east(6), centre.above(6), centre.offset(3, 3, 3)};
+            BlockPos[] outside = {centre.east(7), centre.below(7), centre.offset(4, 4, 3), centre.offset(5, 0, 4)};
+            for (BlockPos pos : inside) {
+                if (ZoneLockHandler.lockingStagesAt(helper.getLevel(), pos, player.getUUID()).isEmpty()) {
+                    helper.fail(pos.subtract(centre) + " from the centre is inside a radius-6 sphere but not protected");
+                    return;
+                }
+            }
+            for (BlockPos pos : outside) {
+                if (!ZoneLockHandler.lockingStagesAt(helper.getLevel(), pos, player.getUUID()).isEmpty()) {
+                    helper.fail(pos.subtract(centre) + " from the centre is outside a radius-6 sphere but protected");
+                    return;
+                }
+            }
+            helper.succeed();
+        } finally {
+            GameTestStages.removeAll();
+            ZoneLockHandler.clearPlayer(player.getUUID());
+        }
+    }
+
+    /**
+     * A pearl thrown into a barrier zone from outside must not carry its thrower in, and must not
+     * stay in the world either.
+     */
+    @HsGameTest
+    public static void aPearlIntoABarrierZoneDoesNotTeleport(GameTestHelper helper) {
+        ServerPlayer player = pearlThrower(helper);
+        try {
+            GameTestStages.global("zone_pearl", stage -> stage.setZones(
+                    new ArrayList<>(List.of(barrierAroundTheStructure(helper)))));
+            EventBus.post(new PlayerTickEvent.Post(player));
+            if (ZoneLockHandler.verdictFor(player).isLocked()) {
+                helper.fail("the thrower should stand outside the zone");
+                return;
+            }
+
+            Vec3 before = player.position();
+            Vec3 after = throwPearlOntoTheFloor(helper, player);
+            if (after == null) {
+                helper.fail("the pearl never landed and is still in the world");
+                return;
+            }
+            if (!after.equals(before)) {
+                helper.fail("the pearl carried its thrower into a barrier zone, to " + after);
+                return;
+            }
+            helper.succeed();
+        } finally {
+            GameTestStages.removeAll();
+            ZoneLockHandler.clearPlayer(player.getUUID());
+        }
+    }
+
+    /** Without the zone the same throw does move the thrower, so the test above can fail. */
+    @HsGameTest
+    public static void aPearlWithoutAZoneTeleports(GameTestHelper helper) {
+        ServerPlayer player = pearlThrower(helper);
+        Vec3 before = player.position();
+        Vec3 after = throwPearlOntoTheFloor(helper, player);
+        if (after == null || after.equals(before)) {
+            helper.fail("an ordinary pearl did not teleport its thrower (landed: " + (after != null) + ")");
+            return;
+        }
+        helper.succeed();
     }
 }
