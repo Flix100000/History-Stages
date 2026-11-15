@@ -28,14 +28,14 @@ import net.bananemdnsa.historystages.util.lock.StageLockHelper;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.entity.decoration.ItemFrame;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import snownee.jade.api.*;
 import snownee.jade.api.config.IPluginConfig;
-import snownee.jade.api.ui.IElementHelper;
+import snownee.jade.api.ui.JadeUI;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -44,10 +44,10 @@ import java.util.Map;
 @WailaPlugin
 public class JadePlugin implements IWailaPlugin {
 
-    private static final ResourceLocation LOCKED_BLOCK = ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "locked_block");
-    private static final ResourceLocation LOCKED_ENTITY_ITEM = ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "locked_entity_item");
-    private static final ResourceLocation PEDESTAL_BOOSTER = ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "pedestal_booster");
-    private static final ResourceLocation SCROLL_SHELF = ResourceLocation.fromNamespaceAndPath(HistoryStages.MOD_ID, "scroll_shelf");
+    private static final Identifier LOCKED_BLOCK = Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "locked_block");
+    private static final Identifier LOCKED_ENTITY_ITEM = Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "locked_entity_item");
+    private static final Identifier PEDESTAL_BOOSTER = Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "pedestal_booster");
+    private static final Identifier SCROLL_SHELF = Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "scroll_shelf");
 
     @Override
     public void registerClient(IWailaClientRegistration registration) {
@@ -83,13 +83,12 @@ public class JadePlugin implements IWailaPlugin {
             if (slot.isEmpty()) return;
             ItemStack scroll = shelf.getItem(slot.getAsInt());
             if (scroll.isEmpty()) return;
-            IElementHelper elements = IElementHelper.get();
-            tooltip.add(elements.smallItem(scroll));
-            tooltip.append(elements.text(scroll.getHoverName()));
+            tooltip.add(JadeUI.smallItem(scroll));
+            tooltip.append(JadeUI.text(scroll.getHoverName()));
         }
 
         @Override
-        public ResourceLocation getUid() {
+        public Identifier getUid() {
             return SCROLL_SHELF;
         }
     }
@@ -134,7 +133,7 @@ public class JadePlugin implements IWailaPlugin {
         }
 
         @Override
-        public ResourceLocation getUid() {
+        public Identifier getUid() {
             return PEDESTAL_BOOSTER;
         }
     }
@@ -149,7 +148,7 @@ public class JadePlugin implements IWailaPlugin {
             Block block = realState.getBlock();
             if (ClientDisguises.isDisguised(realState)
                     && ClientDisguises.hidesHints(new ItemStack(block.asItem()))) return;
-            ResourceLocation blockLocation = BuiltInRegistries.BLOCK.getKey(block);
+            Identifier blockLocation = BuiltInRegistries.BLOCK.getKey(block);
             if (blockLocation == null) return;
 
             // Check via the block's item form
@@ -169,7 +168,7 @@ public class JadePlugin implements IWailaPlugin {
             if (!Config.VISUAL.jadeShowInfo.get()) return;
             boolean suppressHints = !hidden.showLockHints();
 
-            ResourceLocation itemLocation = BuiltInRegistries.ITEM.getKey(blockItem.getItem());
+            Identifier itemLocation = BuiltInRegistries.ITEM.getKey(blockItem.getItem());
             if (itemLocation == null) return;
 
             String itemID = itemLocation.toString();
@@ -184,7 +183,7 @@ public class JadePlugin implements IWailaPlugin {
                 boolean isListed = (stage.getMods().contains(modID) && !stage.isModExcepted(itemID, blockItem)) ||
                         stage.getItems().contains(itemID) ||
                         matchesNbtItem(stage, itemID, blockItem) ||
-                        blockItem.getTags().anyMatch(tag -> stage.getNbtFreeTags().contains(tag.location().toString())) ||
+                        blockItem.getItem().builtInRegistryHolder().tags().anyMatch(tag -> stage.getNbtFreeTags().contains(tag.location().toString())) ||
                         matchesNbtTag(stage, blockItem);
 
                 if (isListed) totalRequiredStages.add(stageID);
@@ -207,7 +206,7 @@ public class JadePlugin implements IWailaPlugin {
                     boolean isListed = (stage.getMods().contains(modID) && !stage.isModExcepted(itemID, blockItem)) ||
                             stage.getItems().contains(itemID) ||
                             matchesNbtItem(stage, itemID, blockItem) ||
-                            blockItem.getTags().anyMatch(tag -> stage.getNbtFreeTags().contains(tag.location().toString())) ||
+                            blockItem.getItem().builtInRegistryHolder().tags().anyMatch(tag -> stage.getNbtFreeTags().contains(tag.location().toString())) ||
                             matchesNbtTag(stage, blockItem);
 
                     if (isListed) individualRequiredStages.add(stageID);
@@ -222,7 +221,7 @@ public class JadePlugin implements IWailaPlugin {
         }
 
         @Override
-        public ResourceLocation getUid() {
+        public Identifier getUid() {
             return LOCKED_BLOCK;
         }
     }
@@ -240,10 +239,8 @@ public class JadePlugin implements IWailaPlugin {
                 ItemStack item = itemFrame.getItem();
                 if (!item.isEmpty()) items.add(item);
             } else if (accessor.getEntity() instanceof ArmorStand armorStand) {
-                for (ItemStack stack : armorStand.getArmorSlots()) {
-                    if (!stack.isEmpty()) items.add(stack);
-                }
-                for (ItemStack stack : armorStand.getHandSlots()) {
+                for (net.minecraft.world.entity.EquipmentSlot slot : net.minecraft.world.entity.EquipmentSlot.values()) {
+                    ItemStack stack = armorStand.getItemBySlot(slot);
                     if (!stack.isEmpty()) items.add(stack);
                 }
             }
@@ -256,7 +253,7 @@ public class JadePlugin implements IWailaPlugin {
             boolean isCurrentlyLocked = false;
 
             for (ItemStack stack : items) {
-                ResourceLocation itemLocation = BuiltInRegistries.ITEM.getKey(stack.getItem());
+                Identifier itemLocation = BuiltInRegistries.ITEM.getKey(stack.getItem());
                 if (itemLocation == null) continue;
 
                 String itemID = itemLocation.toString();
@@ -270,7 +267,7 @@ public class JadePlugin implements IWailaPlugin {
                     boolean isListed = (stage.getMods().contains(modID) && !stage.isModExcepted(itemID, stack)) ||
                             stage.getItems().contains(itemID) ||
                             matchesNbtItem(stage, itemID, stack) ||
-                            stack.getTags().anyMatch(tag -> stage.getNbtFreeTags().contains(tag.location().toString())) ||
+                            stack.getItem().builtInRegistryHolder().tags().anyMatch(tag -> stage.getNbtFreeTags().contains(tag.location().toString())) ||
                             matchesNbtTag(stage, stack);
 
                     if (isListed) {
@@ -293,7 +290,7 @@ public class JadePlugin implements IWailaPlugin {
                 boolean isIndividuallyLocked = false;
 
                 for (ItemStack stack : items) {
-                    ResourceLocation indItemLocation = BuiltInRegistries.ITEM.getKey(stack.getItem());
+                    Identifier indItemLocation = BuiltInRegistries.ITEM.getKey(stack.getItem());
                     if (indItemLocation == null) continue;
 
                     String indItemID = indItemLocation.toString();
@@ -307,7 +304,7 @@ public class JadePlugin implements IWailaPlugin {
                         boolean isListed = (stage.getMods().contains(indModID) && !stage.isModExcepted(indItemID, stack)) ||
                                 stage.getItems().contains(indItemID) ||
                                 matchesNbtItem(stage, indItemID, stack) ||
-                                stack.getTags().anyMatch(tag -> stage.getNbtFreeTags().contains(tag.location().toString())) ||
+                                stack.getItem().builtInRegistryHolder().tags().anyMatch(tag -> stage.getNbtFreeTags().contains(tag.location().toString())) ||
                                 matchesNbtTag(stage, stack);
 
                         if (isListed) {
@@ -326,7 +323,7 @@ public class JadePlugin implements IWailaPlugin {
         }
 
         @Override
-        public ResourceLocation getUid() {
+        public Identifier getUid() {
             return LOCKED_ENTITY_ITEM;
         }
     }

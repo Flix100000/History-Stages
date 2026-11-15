@@ -38,6 +38,9 @@
 		],
 		"historystages": [
 			"net.bananemdnsa.historystages.fabric.gametest.TestAddonPlugin"
+		],
+		"jade": [
+			"net.bananemdnsa.historystages.compat.jade.JadePlugin"
 		]
 	},
 	"mixins": [

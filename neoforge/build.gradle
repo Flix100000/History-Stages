@@ -43,6 +43,13 @@ dependencies {
     // The only hard dependency besides Architectury, see neoforge.mods.toml.
     implementation "maven.modrinth:lootr:${rootProject.lootr_neoforge_modrinth_id}"
 
+    // ---- Optional integrations ----
+    // In the dev runs too, unless -Pbare (smoke.sh --bare) asks for a run without them.
+    compileOnly "maven.modrinth:jade:${rootProject.jade_neoforge_version}"
+    if (!rootProject.hasProperty("bare")) {
+        localRuntime "maven.modrinth:jade:${rootProject.jade_neoforge_version}"
+    }
+
     testImplementation platform("org.junit:junit-bom:5.10.2")
     testImplementation "org.junit.jupiter:junit-jupiter"
     testRuntimeOnly "org.junit.platform:junit-platform-launcher"
