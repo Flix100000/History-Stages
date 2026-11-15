@@ -170,7 +170,7 @@ public final class ScrollShelfTests {
         helper.setBlock(SHELF.south(), Blocks.GLOWSTONE);
 
         // Polled rather than read after a fixed 10 ticks: the light engine runs off-thread and
-        // was occasionally later than that on Fabric 26.2. Same verdicts; the last one stands at
+        // was occasionally later than that on Fabric. Same verdicts; the last one stands at
         // the timeout.
         helper.succeedWhen(() -> {
             int light = helper.getLevel().getBrightness(LightLayer.BLOCK, helper.absolutePos(SHELF));

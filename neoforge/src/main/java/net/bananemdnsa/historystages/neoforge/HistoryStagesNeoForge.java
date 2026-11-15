@@ -12,7 +12,7 @@ public final class HistoryStagesNeoForge {
     public HistoryStagesNeoForge(IEventBus modBus) {
         HistoryStages.init();
         // Common setup runs on parallel workers; the registration window fires events into every
-        // addon and must run on the main thread, as main's enqueueWork did.
+        // addon and must run on the main thread.
         modBus.addListener(FMLCommonSetupEvent.class, event -> event.enqueueWork(HistoryStages::registrationWindow));
         NeoForgeEventSources.register(modBus);
         NeoForgeRegistrations.register(modBus);

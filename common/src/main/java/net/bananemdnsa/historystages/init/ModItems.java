@@ -105,13 +105,13 @@ public class ModItems {
         return Collections.unmodifiableMap(items);
     }
 
-    // 26.2 needs the registry key on the properties before the item is built.
+    // The registry key has to be on the properties before the item is built.
     private static Item.Properties props(String name) {
         return new Item.Properties().setId(ResourceKey.create(Registries.ITEM,
                 Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, name)));
     }
 
-    // Block items keep the block's name, as 1.21.1 BlockItems did.
+    // Block items keep the block's name.
     private static Item.Properties blockProps(String name) {
         return props(name).useBlockDescriptionPrefix();
     }

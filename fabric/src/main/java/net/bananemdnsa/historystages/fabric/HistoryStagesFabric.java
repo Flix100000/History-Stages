@@ -16,7 +16,7 @@ public final class HistoryStagesFabric implements ModInitializer {
         registerFlammability();
         registerFuel();
         net.bananemdnsa.historystages.fabric.gametest.FabricGameTests.register();
-        // What a pipe sees of the pedestal (main: NeoForge item handler capability).
+        // What a pipe sees of the pedestal.
         net.fabricmc.fabric.api.transfer.v1.item.ItemStorage.SIDED.registerForBlockEntity(
                 (pedestal, direction) -> PedestalStorage.of(pedestal.getItemHandler(), direction),
                 net.bananemdnsa.historystages.init.ModBlockEntities.RESEARCH_PEDESTAL_BE.get());

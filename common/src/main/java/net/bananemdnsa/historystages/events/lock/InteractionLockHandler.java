@@ -146,14 +146,14 @@ public class InteractionLockHandler {
         return "other";
     }
 
-    // 26.2 dropped AnimalArmorItem: horse and wolf armor are items equippable in the body slot.
+    // Horse and wolf armor are plain items equippable in the body slot.
     private static boolean isAnimalArmor(ItemStack held) {
         var equippable = held.get(DataComponents.EQUIPPABLE);
         return equippable != null && equippable.slot() == EquipmentSlot.BODY;
     }
 
-    // 26.2 dropped Saddleable. Every living entity "can use" the saddle slot by default, so ask
-    // whether a saddle would actually go on (the saddle's allowed-entities list), as Saddleable did.
+    // Every living entity "can use" the saddle slot by default, so ask whether a saddle would
+    // actually go on (the saddle's allowed-entities list).
     private static boolean takesSaddle(Entity target) {
         return target instanceof LivingEntity living
                 && living.isEquippableInSlot(new ItemStack(Items.SADDLE), EquipmentSlot.SADDLE);

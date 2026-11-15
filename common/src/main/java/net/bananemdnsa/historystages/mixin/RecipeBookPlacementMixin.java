@@ -37,7 +37,7 @@ public class RecipeBookPlacementMixin {
             target = "Lnet/minecraft/network/protocol/PacketUtils;ensureRunningOnSameThread(Lnet/minecraft/network/protocol/Packet;Lnet/minecraft/network/PacketListener;Lnet/minecraft/server/level/ServerLevel;)V"))
     private void historystages$tellThemWhyNothingHappened(ServerboundPlaceRecipePacket packet,
                                                           CallbackInfo ci) {
-        // 26.2 sends a display id; the recipe behind it is only known to the server.
+        // The client sends a display id; the recipe behind it is only known to the server.
         var display = this.player.level().getServer().getRecipeManager().getRecipeFromDisplay(packet.recipe());
         if (display == null) return;
         // The same narrow window a station opens: this question is about this player and this

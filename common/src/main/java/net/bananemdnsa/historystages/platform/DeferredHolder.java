@@ -34,7 +34,7 @@ public final class DeferredHolder<T, R extends T> implements Supplier<R> {
         return entry.getId();
     }
 
-    /** The registry holder, for the places in 26.2 that take a {@code Holder} rather than a value. */
+    /** The registry holder, for the places that take a {@code Holder} rather than a value. */
     public Holder<R> asHolder() {
         return entry.asHolder();
     }

@@ -9,7 +9,7 @@ import org.spongepowered.asm.mixin.injection.ModifyVariable;
 
 /**
  * A disguised block is drawn with its disguise's model: chunk meshes, block particles and the
- * breaking overlay all look the state up here. 1.21.1's {@code BlockModelShaper.getBlockModel}.
+ * breaking overlay all look the state up here.
  */
 @Mixin(BlockStateModelSet.class)
 public class BlockStateModelSetMixin {

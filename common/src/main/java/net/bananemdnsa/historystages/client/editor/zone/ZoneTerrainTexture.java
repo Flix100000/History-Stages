@@ -59,8 +59,8 @@ public final class ZoneTerrainTexture implements AutoCloseable {
             cols = surface.cols();
             rows = surface.rows();
             // Hard edges, no smoothing. One texel is one sample of ground, and blurring between
-            // two of them turns a landscape made of blocks into a watercolour of one. 26.2 sets
-            // filtering through the texture's sampler.
+            // two of them turns a landscape made of blocks into a watercolour of one. Filtering is
+            // set on the texture's sampler.
             texture = new DynamicTexture(id::toString, cols, rows, false) {
                 {
                     this.sampler = com.mojang.blaze3d.systems.RenderSystem.getSamplerCache()

@@ -20,8 +20,8 @@ import java.util.function.BiConsumer;
 
 /**
  * NeoForge side of {@code platform.AddonEntrypoints}: finds the platform {@code @EventBusSubscriber}
- * in every loaded mod's scan data, the way NeoForge finds its own annotation, so addons keep their
- * 1.21.1 shape with only the imports swapped.
+ * in every loaded mod's scan data, the way NeoForge finds its own annotation, so an addon only
+ * marks its class.
  */
 public final class AddonEntrypointsImpl {
 

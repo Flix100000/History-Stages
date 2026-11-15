@@ -24,13 +24,12 @@ import java.util.function.BiFunction;
 import java.util.function.Supplier;
 
 /**
- * The 26.2 shape of HS's world data: a codec in place of the load/save overrides, and an
- * identifier that doubles as the file path.
+ * HS's world data types: a codec for each, and an identifier that doubles as the file path.
  *
- * <p>The file layout inside stays what 1.21.1 wrote ({@code data} wrapper, same keys). Only the
- * location moves: 1.21.1 kept {@code <world>/data/historystages_<name>.dat}, 26.2 resolves the
- * identifier to {@code <world>/data/historystages/<name>.dat}. Vanilla's own file fixes only move
- * vanilla files, so {@link #get} moves an old file over once before the storage first reads it.
+ * <p>The layout inside the file is the one 1.21.1 wrote ({@code data} wrapper, same keys), but
+ * the identifier resolves to {@code <world>/data/historystages/<name>.dat} where 1.21.1 kept
+ * {@code <world>/data/historystages_<name>.dat}. Vanilla's file fixes only move vanilla files, so
+ * {@link #get} moves an old file over once before the storage first reads it.
  */
 public final class SavedDataTypes {
 

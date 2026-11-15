@@ -114,7 +114,7 @@ public class MobSpawnLockHandler {
             case BREEDING, CONVERSION, REINFORCEMENT, JOCKEY -> "breeding";
             case COMMAND -> "summon";
             case SPAWN_ITEM_USE, BUCKET, DISPENSER -> "spawn_egg";
-            // New in 26.2: an entity that already existed. No source key names it.
+            // An entity that already existed. No source key names it.
             case LOAD, DIMENSION_TRAVEL -> "loaded";
         };
     }

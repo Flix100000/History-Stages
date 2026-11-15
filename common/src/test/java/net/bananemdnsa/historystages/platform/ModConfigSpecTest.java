@@ -20,9 +20,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The config layer is the one part of the fabric port with no counterpart to copy from, and 348
- * compile errors' worth of code reads through it. These tests cover what the rest of the mod
- * actually asks of it rather than the whole NeoForge surface.
+ * Most of the mod reads its settings through this layer. These tests cover what the rest of the
+ * mod actually asks of it rather than the whole NeoForge surface.
  */
 class ModConfigSpecTest {
 

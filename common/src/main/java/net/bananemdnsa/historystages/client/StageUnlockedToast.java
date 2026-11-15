@@ -31,8 +31,8 @@ public class StageUnlockedToast implements Toast, DismissibleToast {
     }
 
 
-    // 26.2 split Toast.render into update/getWantedVisibility/extractRenderState. The old render
-    // body stays and reports the visibility it decided on for the next update.
+    // Toast drawing is split into update/getWantedVisibility/extractRenderState. The drawing code
+    // decides the visibility and getWantedVisibility hands it to the next update.
     private ToastManager toastManager;
     private Visibility wantedVisibility = Visibility.SHOW;
 

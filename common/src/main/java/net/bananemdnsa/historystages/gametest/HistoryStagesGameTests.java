@@ -13,14 +13,13 @@ import java.util.function.Consumer;
 import net.minecraft.gametest.framework.GameTestHelper;
 
 /**
- * The GameTests ported from 1.21.1, in one list both loaders register from.
+ * The common GameTests, in one list both loaders register from.
  *
- * <p>Names are {@code <class>/<method>} in snake case, so a failure reads like the 1.21.1 one
- * ({@code locktests.alockeditem...}) did.
+ * <p>Names are {@code <class>/<method>} in snake case, e.g. {@code locktests.alockeditem...}.
  */
 public final class HistoryStagesGameTests {
 
-    /** 1.21.1's {@code template = "empty"}: the mod's own 3x3x3 air structure, not vanilla's 1x1x1. */
+    /** The mod's own 3x3x3 air structure, not vanilla's 1x1x1. */
     public static final net.minecraft.resources.Identifier STRUCTURE =
             net.minecraft.resources.Identifier.fromNamespaceAndPath("historystages", "empty");
 
@@ -28,8 +27,8 @@ public final class HistoryStagesGameTests {
     public record Entry(String name, Consumer<GameTestHelper> test, int maxTicks, boolean required, String batch) {}
 
     /**
-     * Test classes. Not ported, because the mod they test has no 26.2 build yet (port-later/):
-     * FastSuiteRecipeLockTests, KubeJsRecipeLockTests.
+     * Test classes. FastSuiteRecipeLockTests and KubeJsRecipeLockTests wait in port-later/ until
+     * their mods have a 26.2 build.
      */
     private static final List<Class<?>> CLASSES = List.of(
             HarnessTests.class,

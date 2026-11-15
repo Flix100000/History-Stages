@@ -19,8 +19,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
- * A hand edit to a settings file on a running server reaches the values, as NeoForge's config
- * watcher made it on 1.21.1: the watcher reports the file, the reload reads it again.
+ * A hand edit to a settings file on a running server reaches the values: the watcher reports
+ * the file, the reload reads it again.
  */
 class ConfigWatcherTest {
 

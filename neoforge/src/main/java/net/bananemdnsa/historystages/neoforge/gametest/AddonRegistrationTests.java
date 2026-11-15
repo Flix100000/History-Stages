@@ -11,7 +11,7 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 /**
- * An addon written for 1.21.1 only swaps its imports: a class marked with the platform
+ * An addon only needs the platform annotation: a class marked with the platform
  * {@code @EventBusSubscriber} is found in NeoForge's scan data, registered on the platform bus and
  * hears the register events, with its mod named as the owner for the debug report.
  *

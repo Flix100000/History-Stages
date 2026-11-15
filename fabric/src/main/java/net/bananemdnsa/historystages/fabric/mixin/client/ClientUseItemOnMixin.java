@@ -18,8 +18,8 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 
 /**
- * The client half of the right-click-on-a-block gates, mirroring {@code ServerUseItemOnMixin}
- * (8ef8f5e3 on fabric-1.21.X). Fabric raises {@code UseBlockCallback} on the client too, so the
+ * The client half of the right-click-on-a-block gates, mirroring {@code ServerUseItemOnMixin}.
+ * Fabric raises {@code UseBlockCallback} on the client too, so the
  * handlers answer there as well; without these gates the client predicts what the server then
  * refuses: the block appears for a moment and the held stack loses a count nothing gives back.
  *

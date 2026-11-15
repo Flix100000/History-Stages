@@ -9,7 +9,7 @@ dependencies {
     implementation "net.fabricmc:fabric-loader:${rootProject.fabric_loader_version}"
     implementation "dev.architectury:architectury:${rootProject.architectury_api_version}"
     // ModConfigSpec is built on NightConfig. NeoForge ships 3.9.0 itself; the Fabric jar has to
-    // bundle the same version (Task 5). compileOnly, so common never decides what ships.
+    // bundle the same version. compileOnly, so common never decides what ships.
     compileOnly "com.electronwill.night-config:core:3.9.0"
     compileOnly "com.electronwill.night-config:toml:3.9.0"
 

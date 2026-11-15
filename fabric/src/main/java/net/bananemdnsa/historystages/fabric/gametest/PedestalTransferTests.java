@@ -17,7 +17,7 @@ import net.minecraft.world.item.ItemStack;
 
 /**
  * A pipe or hopper must not pull the scroll out of a pedestal whose research is running, and must
- * be able to once it is paused (main: the item handler capability refused it in extractItem).
+ * be able to once it is paused.
  */
 public class PedestalTransferTests {
 

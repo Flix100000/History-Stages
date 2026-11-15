@@ -44,7 +44,7 @@ public final class ClientBridge {
         }
     }
 
-    /** NeoForge 26.2 has no {@code RecipesUpdatedEvent} any more; this is its successor. */
+    /** NeoForge's counterpart of the platform {@code RecipesUpdatedEvent}. */
     private static void recipesReceived(RecipesReceivedEvent event, EventPriority priority) {
         if (Bridges.wanted(net.bananemdnsa.historystages.platform.event.client.RecipesUpdatedEvent.class, priority)) {
             EventBus.post(new net.bananemdnsa.historystages.platform.event.client.RecipesUpdatedEvent(
@@ -67,9 +67,9 @@ public final class ClientBridge {
     }
 
     /**
-     * The overlays draw right here, after the translucent terrain, as on 1.21.1. NeoForge's
-     * SubmitCustomGeometryEvent would be the 26.2 way, but submitted geometry is drawn before that
-     * terrain, so water and glass would cover the force field.
+     * The overlays draw right here, after the translucent terrain. Geometry submitted through
+     * NeoForge's SubmitCustomGeometryEvent is drawn before that terrain, so water and glass would
+     * cover the force field.
      */
     private static void afterTranslucentBlocks(RenderLevelStageEvent.AfterTranslucentBlocks event, EventPriority priority) {
         if (!Bridges.wanted(net.bananemdnsa.historystages.platform.event.client.RenderLevelStageEvent.class, priority)) {

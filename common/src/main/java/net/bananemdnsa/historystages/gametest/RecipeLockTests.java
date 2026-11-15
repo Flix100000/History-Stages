@@ -113,8 +113,7 @@ public final class RecipeLockTests {
         // whether a reload is warranted: this test is about what a reload does, and the deciding
         // is held by the two tests below.
         //
-        // The ungated list rather than getRecipes throughout (1.21.1: getOrderedRecipes, gone in
-        // 26.2): it is the one the gate leaves alone.
+        // The ungated list rather than getRecipes throughout: it is the one the gate leaves alone.
         MinecraftServer server = helper.getLevel().getServer();
         int before = RecipeResolutionFilter.allRecipes(server.getRecipeManager()).size();
         Object holderBefore = server.getRecipeManager().byKey(LOCKED_RECIPE_KEY).orElse(null);
@@ -288,8 +287,7 @@ public final class RecipeLockTests {
 
     @HsGameTest
     public static void theListEveryClientIsSentKeepsTheLockedRecipes(GameTestHelper helper) {
-        // The ungated list (1.21.1: getOrderedRecipes, which filled the packet sent on join and
-        // after every reload; 26.2 sends no recipes, the editor's list comes from it). It has to keep
+        // The ungated list, which the editor's recipe list is built from. It has to keep
         // carrying the locked recipes: the client draws them with a lock on them, the editor's
         // recipe picker lists them, and the fluid index is built from them. Cut them out here and
         // a recipe could be locked once and then never found again to unlock it.
@@ -540,7 +538,7 @@ public final class RecipeLockTests {
      */
     @SuppressWarnings({"unchecked", "rawtypes"})
     private static final class RegistryBackedResult implements Recipe<RecipeInput> {
-        // Not an override any more: 26.2 recipes have no result method, and RecipeOutputs falls
+        // Not an override: Recipe has no result method, and RecipeOutputs falls
         // back to this one by name, as it does for modded recipes that kept it.
         public ItemStack getResultItem(HolderLookup.Provider registries) {
             return registries.lookup(Registries.ITEM)

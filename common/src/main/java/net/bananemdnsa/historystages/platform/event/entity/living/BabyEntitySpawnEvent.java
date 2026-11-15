@@ -8,7 +8,7 @@ import net.minecraft.world.entity.Mob;
 /**
  * Two mobs breeding. Cancelling means no baby, which is how a spawn lock covers breeding.
  *
- * <p>The parents are typed as plain {@link Mob}s because NeoForge 26.2 hands them over that way.
+ * <p>The parents are typed as plain {@link Mob}s because NeoForge hands them over that way.
  * The child can be null when another mod already took it away.
  */
 public class BabyEntitySpawnEvent extends Event implements ICancellableEvent {

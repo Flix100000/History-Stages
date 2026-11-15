@@ -20,8 +20,8 @@ import java.util.function.Consumer;
  * fails silently and looks exactly like a rule that does not apply.
  *
  * <p>Dispatch follows NeoForge: a listener for an event class also receives every subclass of it,
- * so a handler taking {@code LivingEvent} hears {@code LivingDeathEvent} too. Handlers moved over
- * from the main branch rely on that and would otherwise never fire.
+ * so a handler taking {@code LivingEvent} hears {@code LivingDeathEvent} too. The handlers rely on
+ * that and would otherwise never fire.
  */
 public final class EventBus {
 

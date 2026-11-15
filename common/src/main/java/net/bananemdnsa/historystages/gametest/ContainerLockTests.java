@@ -207,8 +207,7 @@ public final class ContainerLockTests {
         inChest(helper, (menu, player) -> {
             menu.getSlot(INVENTORY_SLOT).set(new ItemStack(Items.DIAMOND, 5));
 
-            // Clears the thrown stack away again; nothing here needs it on the ground. (1.21.1
-            // captured the drop with NeoForge's captureDrops, which 26.2 common code cannot reach.)
+            // Clears the thrown stack away again; nothing here needs it on the ground.
             try {
                 menu.clicked(INVENTORY_SLOT, 1, ContainerInput.THROW, player);
             } finally {

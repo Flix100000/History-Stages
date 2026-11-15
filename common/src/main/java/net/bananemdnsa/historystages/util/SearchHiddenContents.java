@@ -14,7 +14,7 @@ import java.util.Optional;
  */
 public record SearchHiddenContents(String text) implements ComponentContents {
 
-    // 26.2 dropped ComponentContents.Type (codec plus id); the codec alone is left.
+    // Only a codec: ComponentContents has no type id.
     public static final MapCodec<SearchHiddenContents> CODEC =
             Codec.STRING.xmap(SearchHiddenContents::new, SearchHiddenContents::text).fieldOf("text");
 

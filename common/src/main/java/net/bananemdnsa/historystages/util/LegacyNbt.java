@@ -14,9 +14,9 @@ import net.minecraft.world.level.storage.ValueOutput;
 import java.util.stream.Stream;
 
 /**
- * Block entity data through 26.2's {@link ValueInput}/{@link ValueOutput}, keeping the 1.21.1
- * code that reads and writes a {@link CompoundTag}. Every key of the tag becomes a field of its
- * own, so a pedestal saved by 1.21.1 loads unchanged and is written back in the same shape.
+ * Block entity data through {@link ValueInput}/{@link ValueOutput} for code that reads and writes
+ * a {@link CompoundTag}. Every key of the tag becomes a field of its own, so a pedestal saved by
+ * 1.21.1 loads unchanged and is written back in the same shape.
  */
 public final class LegacyNbt {
 

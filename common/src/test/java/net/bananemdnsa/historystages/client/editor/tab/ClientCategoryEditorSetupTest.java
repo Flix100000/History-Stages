@@ -24,8 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The client registration window has to reach Fabric's {@code historystages:client} plugins, not
- * only the bus. Until Task 11 nothing called them on 26.2, so a Fabric addon's editor tab never
- * appeared.
+ * only the bus. Otherwise a Fabric addon's editor tab never appears.
  */
 class ClientCategoryEditorSetupTest {
 

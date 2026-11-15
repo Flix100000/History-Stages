@@ -11,8 +11,8 @@ import java.util.function.BiConsumer;
  *
  * <p>NeoForge: every class another mod marks with the platform {@code @EventBusSubscriber} is found
  * in NeoForge's scan data and registered on the platform bus with that mod as its owner
- * ({@link #discoverSubscribers}), so an addon written for 1.21.1 only swaps imports. Fabric: the
- * {@code historystages} and {@code historystages:client} entrypoints, as on the 1.21.1 Fabric line.
+ * ({@link #discoverSubscribers}). Fabric: the {@code historystages} and
+ * {@code historystages:client} entrypoints.
  */
 public final class AddonEntrypoints {
 

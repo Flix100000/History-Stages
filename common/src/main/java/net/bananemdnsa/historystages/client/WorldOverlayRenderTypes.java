@@ -25,11 +25,10 @@ import net.minecraft.resources.Identifier;
 /**
  * The render types the world overlays (lock and zone borders, zone selection) submit into.
  *
- * <p>1.21.1 set blend, depth and shader state by hand around an immediate draw. 26.2 bakes that
- * state into a pipeline, so the two combinations vanilla has no type for get one here: a textured
- * see-through quad with depth test but no depth write (the old force field) and lines drawn on top
- * of everything (the old selection box). Built on first use, in a class of its own, so nothing that
- * merely clears a cache on disconnect pulls the render system in.
+ * <p>Blend, depth and shader state live in a pipeline, so the two combinations vanilla has no type
+ * for get one here: a textured see-through quad with depth test but no depth write (the force
+ * field) and lines drawn on top of everything (the selection box). Built on first use, in a class
+ * of its own, so nothing that merely clears a cache on disconnect pulls the render system in.
  */
 public final class WorldOverlayRenderTypes {
 
@@ -46,8 +45,7 @@ public final class WorldOverlayRenderTypes {
             () -> Minecraft.getInstance().levelRenderer.translucentTarget());
 
     private static final class Holder {
-        // Same shader and vertex layout as the old GameRenderer::getPositionTexColorShader.
-        // Depth is reversed in 26.2, hence GREATER_THAN_OR_EQUAL as in vanilla's own pipelines.
+        // Depth is reversed, hence GREATER_THAN_OR_EQUAL as in vanilla's own pipelines.
         static final RenderPipeline FORCEFIELD_PIPELINE = RenderPipeline.builder()
                 .withBindGroupLayout(BindGroupLayouts.GLOBALS)
                 .withBindGroupLayout(BindGroupLayouts.MATRICES_PROJECTION)
@@ -71,8 +69,8 @@ public final class WorldOverlayRenderTypes {
                         .setOutputTarget(TRANSLUCENT)
                         .createRenderSetup());
 
-        // Vanilla's line pipeline without the depth test: the selection used to be drawn with
-        // depth test off so a corner behind a hill still shows.
+        // Vanilla's line pipeline without the depth test, so a corner of the selection behind a
+        // hill still shows.
         static final RenderPipeline LINES_ON_TOP_PIPELINE = RenderPipeline.builder()
                 .withBindGroupLayout(BindGroupLayouts.GLOBALS)
                 .withBindGroupLayout(BindGroupLayouts.MATRICES_PROJECTION)
@@ -105,7 +103,7 @@ public final class WorldOverlayRenderTypes {
         return Holder.FORCEFIELD;
     }
 
-    /** Translucent lines hidden behind blocks (the old zone outline). Vanilla's pipeline, our target. */
+    /** Translucent lines hidden behind blocks (zone outline). Vanilla's pipeline, our target. */
     public static RenderType lines() {
         return Holder.LINES;
     }
@@ -115,14 +113,14 @@ public final class WorldOverlayRenderTypes {
         return List.of(Holder.FORCEFIELD_PIPELINE, Holder.LINES_ON_TOP_PIPELINE);
     }
 
-    /** Translucent lines in front of everything (the old selection box). */
+    /** Translucent lines in front of everything (the selection box). */
     public static RenderType linesOnTop() {
         return Holder.LINES_ON_TOP;
     }
 
     /**
-     * One line segment for the line types above. 26.2 widens lines in the shader along the normal,
-     * which is the segment's own direction, so a line now needs both the normal and a width.
+     * One line segment for the line types above. The line shader widens along the normal, which is
+     * the segment's own direction, so a line needs both the normal and a width.
      */
     public static void line(VertexConsumer buf, PoseStack.Pose pose, float width,
                             float ax, float ay, float az, float bx, float by, float bz,

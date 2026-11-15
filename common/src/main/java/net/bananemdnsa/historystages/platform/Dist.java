@@ -2,7 +2,7 @@ package net.bananemdnsa.historystages.platform;
 
 /**
  * Which side of the game a piece of code belongs to, named like NeoForge's {@code Dist} so the
- * {@code @EventBusSubscriber(value = Dist.CLIENT)} lines carry over with only the import changed.
+ * {@code @EventBusSubscriber(value = Dist.CLIENT)} lines read the same as on NeoForge.
  */
 public enum Dist {
     CLIENT,

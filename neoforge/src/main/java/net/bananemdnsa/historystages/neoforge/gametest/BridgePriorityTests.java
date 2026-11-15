@@ -95,9 +95,9 @@ public final class BridgePriorityTests {
     }
 
     /**
-     * Vanilla 26.2 sends one interact packet and calls {@code interactOn} once per click, and
-     * NeoForge fires one {@code EntityInteract} from it. The bridge turns that into exactly one
-     * platform {@code EntityInteractSpecific} and one {@code EntityInteract}, as main expects.
+     * Vanilla sends one interact packet and calls {@code interactOn} once per click, and NeoForge
+     * fires one {@code EntityInteract} from it. The bridge turns that into exactly one platform
+     * {@code EntityInteractSpecific} and one {@code EntityInteract}.
      */
     public static void entityInteractIsPostedOncePerInteraction(GameTestHelper helper) {
         ServerPlayer player = TestPlayers.createConnected(helper);

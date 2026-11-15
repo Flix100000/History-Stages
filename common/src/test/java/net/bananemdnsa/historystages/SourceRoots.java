@@ -8,10 +8,10 @@ import java.util.List;
 import java.util.stream.Stream;
 
 /**
- * Where the mod's source lives since the port: common, the two loader modules, and the
- * integrations parked in {@code port-later/<integration>/java} until their mod has a 26.2 build.
- * A source guard that only walked {@code common/src/main/java} would let a
- * loader module or a not-yet-moved file break its rule unseen.
+ * Where the mod's source lives: common, the two loader modules, and the integrations parked in
+ * {@code port-later/<integration>/java} until their mod has a 26.2 build. A source guard that
+ * only walked {@code common/src/main/java} would let a loader module or a parked file break its
+ * rule unseen.
  */
 public final class SourceRoots {
 

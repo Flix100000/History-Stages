@@ -103,7 +103,7 @@ public final class TradeLockNoticeRenderer {
         if (!screen.getMenu().getOffers().isEmpty()) return;
 
         int openId = mc.player.containerMenu.containerId;
-        // 26.2 has no getter for leftPos/topPos; MerchantScreen centres its 276x166 window the same way.
+        // No getter for leftPos/topPos; MerchantScreen centres its 276x166 window the same way.
         int guiLeft = (screen.width - MERCHANT_WIDTH) / 2;
         int guiTop = (screen.height - MERCHANT_HEIGHT) / 2;
         draw(event.getGuiGraphics(), mc.font, guiLeft, guiTop,

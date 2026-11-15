@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * A {@code settings/} folder written by NeoForge 6.1.0 on 1.21.1 loads on 26.2 as it is: the
- * values come through, and a valid file is not rewritten just by loading it (review focus 1).
+ * values come through, and a valid file is not rewritten just by loading it.
  */
 class LegacySettingsLoadTest {
 

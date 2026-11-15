@@ -241,7 +241,7 @@ public class PacketHandler {
 
     private static volatile boolean reloadRequested;
 
-    // NeoForge's PacketDistributor.sendToAllPlayers, which also no-ops without a server.
+    // Does nothing without a server, like NeoForge's PacketDistributor.sendToAllPlayers.
     private static void sendToAllPlayers(CustomPacketPayload payload) {
         MinecraftServer server = Services.currentServer();
         if (server != null) NetworkManager.sendToPlayers(server.getPlayerList().getPlayers(), payload);

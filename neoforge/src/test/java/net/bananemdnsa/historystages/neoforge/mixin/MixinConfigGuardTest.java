@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The NeoForge module's copy of the Fabric module's guard: keeps the mixin config and its package
- * in step (68f5c6d3 on fabric-1.21.X).
+ * in step.
  *
  * <p>Mixin gives a config its whole package and refuses to load any class from it that the config
  * does not name. The refusal is an IllegalClassLoadError the first time something touches the

@@ -12,8 +12,8 @@ import java.util.function.Supplier;
  *
  * <p>The entries are declared as static fields that read each other
  * ({@code ModItems.RESEARCH_PEDESTAL_ITEM} wraps {@code ModBlocks.RESEARCH_PEDESTAL}), and the
- * call sites read them through {@code .get()}. Keeping that shape means the init classes and every
- * call site stay as they are on the NeoForge main branch.
+ * call sites read them through {@code .get()}. Keeping that shape keeps the init classes and call
+ * sites in step with the NeoForge-only branches.
  *
  * <p>Underneath is Architectury's DeferredRegister, which registers through each loader's own
  * mechanism. On NeoForge that is the registry event, one registry at a time; on Fabric the entries

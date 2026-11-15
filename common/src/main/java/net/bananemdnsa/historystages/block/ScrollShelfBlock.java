@@ -195,8 +195,8 @@ public class ScrollShelfBlock extends BaseEntityBlock {
         SLOT_OCCUPIED_PROPERTIES.forEach(builder::add);
     }
 
-    // 1.21.1 onRemove: the shelf (a Container) drops its scrolls in BlockEntity
-    // preRemoveSideEffects now; the comparator update follows here, after the block changed.
+    // The shelf (a Container) drops its scrolls in its block entity's preRemoveSideEffects; the
+    // comparator update follows here, after the block changed.
     @Override
     protected void affectNeighborsAfterRemoval(BlockState state, net.minecraft.server.level.ServerLevel level,
                                                BlockPos pos, boolean movedByPiston) {

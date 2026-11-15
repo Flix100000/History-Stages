@@ -60,8 +60,8 @@ public class ResearchPedestalBlock extends BaseEntityBlock implements TieredPede
         return 1.0F;
     }
 
-    // 26.2 derives isOcclusionShapeFullBlock from the occlusion shape; noOcclusion() keeps it
-    // false, which is what the 1.21.1 override answered.
+    // No isOcclusionShapeFullBlock override: vanilla derives it from the occlusion shape, and
+    // noOcclusion() keeps it false.
 
     @Override
     public RenderShape getRenderShape(BlockState pState) {
@@ -74,8 +74,7 @@ public class ResearchPedestalBlock extends BaseEntityBlock implements TieredPede
         return new ResearchPedestalBlockEntity(pPos, pState);
     }
 
-    // 1.21.1's onRemove dropped the slots here; 26.2 removed the hook, so the block entity drops
-    // them in preRemoveSideEffects, under the same "block changed" condition.
+    // The slots drop from the block entity's preRemoveSideEffects, not from here.
 
     @Override
     public InteractionResult useWithoutItem(BlockState pState, Level pLevel, BlockPos pPos, Player pPlayer, BlockHitResult pHit) {

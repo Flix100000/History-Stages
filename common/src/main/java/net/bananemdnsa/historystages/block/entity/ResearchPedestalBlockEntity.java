@@ -194,7 +194,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
         return itemHandler;
     }
 
-    /** 26.2 calls this before the block entity goes, where 1.21.1's Block.onRemove dropped the slots. */
+    /** Runs before the block entity goes; this is where the slots drop. */
     @Override
     public void preRemoveSideEffects(BlockPos pos, BlockState state) {
         if (level == null) return;
@@ -1241,7 +1241,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity implements MenuProv
     @Override
     protected void saveAdditional(ValueOutput output) {
         super.saveAdditional(output);
-        // 26.2 hands over a ValueOutput; the 1.21.1 tag is built as before and written key by key.
+        // Built as a CompoundTag and written key by key, so saves keep the shape they always had.
         CompoundTag nbt = new CompoundTag();
         saveLegacy(nbt, level != null ? level.registryAccess() : CurrentRegistries.orEmpty());
         LegacyNbt.write(output, nbt);

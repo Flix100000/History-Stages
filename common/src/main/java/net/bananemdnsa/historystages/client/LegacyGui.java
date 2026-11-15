@@ -8,14 +8,14 @@ import net.minecraft.resources.Identifier;
 import org.lwjgl.glfw.GLFW;
 
 /**
- * 1.21.1 GUI calls that 26.2 removed or reshaped, kept in one place so the editor code reads the
- * way it did on the main branch.
+ * The 1.21.1 GUI call shapes the editor code is written against, rebuilt on the current API in
+ * one place.
  */
 public final class LegacyGui {
 
     private LegacyGui() {}
 
-    /** {@code I18n.exists}: 26.2 only has the language's own lookup. */
+    /** {@code I18n.exists}, through the language's own lookup. */
     public static boolean i18nExists(String key) {
         return Language.getInstance().has(key);
     }

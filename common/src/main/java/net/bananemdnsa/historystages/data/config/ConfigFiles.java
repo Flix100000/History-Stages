@@ -10,14 +10,13 @@ import java.util.Set;
 import java.util.concurrent.Executor;
 
 /**
- * Loads the three settings files from where 1.21.1 kept them, on both loaders.
+ * Loads the three settings files on both loaders.
  *
- * <p>On NeoForge 1.21.1 this was three {@code registerConfig} calls plus the Loading/Reloading
- * config events. The specs are the platform's own now, so the paths are written out here and the
- * work that hung off those events hangs off one reload listener per spec.
+ * <p>The specs are the mod's own, so the paths are written out here, and whatever has to be
+ * rebuilt after a load hangs off one reload listener per spec.
  *
- * <p>{@code config/historystages/settings/} is where packs, the wiki and the editor look; any
- * other place would not carry over from a 1.21.1 world.
+ * <p>{@code config/historystages/settings/} is where packs, the wiki and the editor look, and
+ * where a 1.21.1 install already has its files.
  */
 public final class ConfigFiles {
 
@@ -65,8 +64,8 @@ public final class ConfigFiles {
     }
 
     /**
-     * Picks up hand edits while the server runs, as NeoForge's config watcher did on 1.21.1.
-     * {@code onReloaded} runs after each reload, on {@code serverThread}.
+     * Picks up hand edits while the server runs. {@code onReloaded} runs after each reload, on
+     * {@code serverThread}.
      */
     public static synchronized void startWatching(Executor serverThread, Runnable onReloaded) {
         stopWatching();

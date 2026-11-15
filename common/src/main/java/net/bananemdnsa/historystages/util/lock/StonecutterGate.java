@@ -12,7 +12,7 @@ import net.minecraft.world.item.crafting.SelectableRecipe;
 import net.minecraft.world.item.crafting.StonecutterRecipe;
 
 /**
- * The stonecutter recipes a player may use. 26.2 hands the client a list of stonecutter recipes
+ * The stonecutter recipes a player may use. The client is sent a list of stonecutter recipes
  * and the server reads clicks back as indices into its own copy, so both sides filter with the
  * same rule: the client's copy when it is sent, the server's when the menu builds its buttons.
  */

@@ -26,7 +26,7 @@ public class ModBlocks {
     public static final DeferredRegister<Block> BLOCKS =
             DeferredRegister.create(Registries.BLOCK, HistoryStages.MOD_ID);
 
-    // 26.2 builds the loot table and description id from a key set on the properties.
+    // The loot table and description id come from a key set on the properties.
     private static ResourceKey<Block> key(String name) {
         return ResourceKey.create(Registries.BLOCK, Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, name));
     }

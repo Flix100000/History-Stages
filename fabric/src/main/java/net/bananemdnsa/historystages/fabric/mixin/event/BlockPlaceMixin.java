@@ -16,7 +16,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  * read back from the level, so it is the block as it ended up.
  *
  * <p>A cancel is not acted on: NeoForge undoes the placement from a block snapshot, vanilla has
- * none. The only handler on main (AutoTriggerEventBridge) never cancels.
+ * none. The only handler (AutoTriggerEventBridge) never cancels.
  */
 @Mixin(BlockItem.class)
 public abstract class BlockPlaceMixin {

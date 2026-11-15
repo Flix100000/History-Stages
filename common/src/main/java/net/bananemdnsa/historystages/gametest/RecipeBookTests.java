@@ -19,8 +19,7 @@ import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.display.RecipeDisplayId;
 
 /**
- * 26.2's server builds each player's recipe book packets, so locked recipes stay out of them
- * (1.21.1 filtered the book on the client). New for the port.
+ * The server builds each player's recipe book packets, so locked recipes stay out of them.
  */
 public final class RecipeBookTests {
 

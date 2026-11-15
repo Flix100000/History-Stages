@@ -16,7 +16,7 @@ public final class RecipeOutputScenarios {
 
     private RecipeOutputScenarios() {}
 
-    /** A modded recipe's own result method, as many kept it after 1.21.2. */
+    /** A modded recipe's own result method, which many still have. */
     public interface LegacyResult {
         ItemStack getResultItem(HolderLookup.Provider registries);
     }
@@ -41,7 +41,7 @@ public final class RecipeOutputScenarios {
     }
 
     /**
-     * A stage that names a recipe by id locks that recipe. 26.2 recipe holders carry a registry key
+     * A stage that names a recipe by id locks that recipe. Recipe holders carry a registry key
      * whose toString is "ResourceKey[...]", not the id a stage file holds.
      */
     public static void aRecipeLockedByIdIsLocked(GameTestHelper helper) {

@@ -7,8 +7,7 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 
 /**
- * 1.21.1's {@code ServerPlayer.playNotifySound}, which 26.2 dropped: a sound only this player
- * hears, at their own position. Same packet the vanilla method sent.
+ * A sound only this player hears, at their own position.
  */
 public final class PlayerSounds {
 

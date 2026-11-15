@@ -44,9 +44,9 @@ public final class GameTestPlayers {
     }
 
     /**
-     * 26.2 gives a new player the server's default mode, and the GameTest server's is creative
-     * (1.21.1: survival). A creative player keeps what it places and skips most locks, so every
-     * test here would ask the wrong player.
+     * A new player gets the server's default mode, and the GameTest server's is creative. A
+     * creative player keeps what it places and skips most locks, so every test here would ask the
+     * wrong player.
      *
      * <p>Not {@code changeGameModeForPlayer}: it broadcasts a player-info packet built from the
      * player's connection, which {@link #create} players do not have.

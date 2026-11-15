@@ -6,13 +6,13 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Locale;
 
-/** {@code ChatFormatting} lookups that 26.2 took off the enum. */
+/** {@code ChatFormatting} lookups by name and by colour, which the enum itself lacks. */
 public final class Formats {
 
     private Formats() {}
 
     /**
-     * 1.21.1's {@code ChatFormatting.getByName}: case and anything but letters are ignored, so
+     * Looks a formatting up by name: case and anything but letters are ignored, so
      * "gold", "dark_aqua", "darkaqua" and "Dark Aqua" all match.
      */
     public static @Nullable ChatFormatting byName(@Nullable String name) {
@@ -28,7 +28,7 @@ public final class Formats {
         return name.toLowerCase(Locale.ROOT).replaceAll("[^a-z]", "");
     }
 
-    /** 1.21.1's {@code ChatFormatting.getColor}: the RGB of a colour code, null for a style code. */
+    /** The RGB of a colour code, null for a style code. */
     public static @Nullable Integer colorOf(ChatFormatting format) {
         TextColor color = TextColor.fromLegacyFormat(format);
         return color == null ? null : color.getValue();

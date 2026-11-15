@@ -131,7 +131,7 @@ public final class TradeLockTests {
      * sent.
      *
      * <p>The offers are read off the connection rather than by overriding
-     * {@code sendMerchantOffers}: that method is the seam under test (26.2), and an override
+     * {@code sendMerchantOffers}: that method is the seam under test, and an override
      * would walk straight past it.
      */
     private static final class RecordingPlayer extends ServerPlayer {
@@ -293,9 +293,9 @@ public final class TradeLockTests {
      * villager trade — the table is pure vanilla, so nothing else in these tests would notice if
      * added trades were being skipped.
      */
-    // PORT(26.2-gap): 26.2 dropped VillagerTrades.TRADES; trades are data (TradeSet registry), and
-    // a mod adds one with a data pack. The registry is frozen at runtime, so a test cannot add one
-    // the way 1.21.1 did. The 1.21.1 body is kept below for when this gets a test data pack.
+    // PORT(26.2-gap): trades are data (TradeSet registry) that a mod adds with a data pack, and
+    // the registry is frozen at runtime, so a test cannot add one on the fly. The 1.21.1 body is
+    // kept below for when this gets a test data pack.
     @HsGameTest(gap = "26.2 has no VillagerTrades.TRADES to add a trade to at runtime")
     public static void aTradeAddedTheWayAModAddsItIsFoundAndGateable(GameTestHelper helper) {
         helper.fail("PORT(26.2-gap): not ported");
@@ -651,7 +651,7 @@ public final class TradeLockTests {
 
     /**
      * Clicking a row of the shortened list selects that row's offer on the server, not whatever
-     * sits at the same index in the merchant's full list (new for the port; 1.21.1 had the gap).
+     * sits at the same index in the merchant's full list.
      */
     @HsGameTest
     public static void aClickedRowSelectsThatRowsOfferOnTheServer(GameTestHelper helper) {
@@ -686,7 +686,7 @@ public final class TradeLockTests {
     /**
      * A restock re-sends the offers into the open screen (Villager.resendOffersToTradingPlayer).
      * That list goes through the same filter, and a click after it still selects the clicked
-     * row's offer (new for the port; 1.21.1 sent the full list there).
+     * row's offer.
      */
     @HsGameTest
     public static void aRestockSendsTheShortListAndRowsStillMatch(GameTestHelper helper) {

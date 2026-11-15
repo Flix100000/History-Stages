@@ -52,8 +52,8 @@ public final class LifecycleBridge {
             }
         });
 
-        // Server levels only. NeoForge also fires Load for the client level; the one handler on
-        // main (HistoryStages.onWorldLoad) is about the server.
+        // Server levels only. NeoForge also fires Load for the client level; the one handler
+        // (HistoryStages.onWorldLoad) is about the server.
         Phases.listen(ServerLevelEvents.LOAD, priority -> (server, level) -> {
             if (Phases.wanted(LevelEvent.Load.class, priority)) {
                 EventBus.post(new LevelEvent.Load(level), priority);

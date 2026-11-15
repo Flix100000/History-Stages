@@ -5,9 +5,8 @@ import net.minecraft.nbt.NumericTag;
 import net.minecraft.nbt.Tag;
 
 /**
- * The typed key check 26.2 dropped from {@code CompoundTag}. 1.21.1's
- * {@code contains(key, type)} matched the tag id exactly, except that 99 meant "any number".
- * The code reading stage data still relies on that, so the check lives on here.
+ * A typed key check for {@code CompoundTag}: the tag id has to match exactly, except that 99
+ * means "any number". The code reading stage data relies on that rule.
  */
 public final class NbtTypes {
 

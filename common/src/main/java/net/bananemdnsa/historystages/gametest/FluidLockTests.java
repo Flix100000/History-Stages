@@ -55,7 +55,7 @@ public final class FluidLockTests {
     private static PlayerInteractEvent.RightClickBlock rightClick(GameTestHelper helper,
                                                                   ServerPlayer player, BlockPos relative) {
         BlockPos pos = helper.absolutePos(relative);
-        // 26.2: the platform event is posted directly; both loaders' bridges post the same one.
+        // The platform event is posted directly; both loaders' bridges post the same one.
         return EventBus.post(new PlayerInteractEvent.RightClickBlock(player, InteractionHand.MAIN_HAND, pos, Direction.UP));
     }
 

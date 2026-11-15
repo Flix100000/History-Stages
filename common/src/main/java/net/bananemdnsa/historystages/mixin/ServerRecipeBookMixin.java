@@ -16,8 +16,8 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 
 /**
- * Keeps locked recipes out of the vanilla recipe book (1.21.1 did this on the client, from the
- * recipe list every client had; 26.2 clients get only the entries their book holds, from here).
+ * Keeps locked recipes out of the vanilla recipe book. A client only gets the entries its book
+ * holds, and it gets them from here.
  *
  * <p>Only the display entries sent are filtered. The known set, which is saved with the player,
  * keeps every recipe, so an unlock brings them back with the next full send

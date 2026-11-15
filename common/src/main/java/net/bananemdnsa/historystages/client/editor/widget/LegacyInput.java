@@ -7,8 +7,8 @@ import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.input.MouseButtonInfo;
 
 /**
- * Forwards input to vanilla widgets with 1.21.1's argument lists. 26.2 widgets take event records;
- * the editor code that hands clicks and keys on keeps its old shape through these.
+ * Forwards plain coordinates and key codes to vanilla widgets, which take event records. The
+ * editor code that hands clicks and keys on is written against the plain form.
  */
 public final class LegacyInput {
 
@@ -39,8 +39,8 @@ public final class LegacyInput {
     }
 
     /**
-     * 1.21.1 handed a character outside the BMP to {@code charTyped(char, int)} as its two
-     * surrogates, one call each; a plain {@code (char)} cast would cut it to garbage.
+     * A character outside the BMP goes to {@code charTyped(char, int)} as its two surrogates, one
+     * call each; a plain {@code (char)} cast would cut it to garbage.
      */
     public static boolean eachChar(int codepoint, java.util.function.IntPredicate perChar) {
         if (Character.isBmpCodePoint(codepoint)) return perChar.test(codepoint);

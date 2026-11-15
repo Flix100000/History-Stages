@@ -17,12 +17,11 @@ import org.spongepowered.asm.mixin.Mixin;
 /**
  * The first trade seam: the player is shown only the offers they may see.
  *
- * <p>On the one method every offer list passes through on its way to a player. 1.21.1 wrapped
- * the call in {@code Merchant.openTradingScreen}, which covered opening the screen but not
- * {@code Villager.resendOffersToTradingPlayer} (restock, catching up on demand): that sent the full
- * list into the open screen, locked offers included. Here both go through the same filter, and
- * the rows the player was sent are remembered ({@link TradeIndexMap}) so a click selects the
- * offer that row stands for.
+ * <p>On the one method every offer list passes through on its way to a player, so opening the
+ * screen and {@code Villager.resendOffersToTradingPlayer} (restock, catching up on demand) go
+ * through the same filter. Wrapping {@code Merchant.openTradingScreen} alone would let a restock
+ * send the full list into the open screen, locked offers included. The rows the player was sent
+ * are remembered ({@link TradeIndexMap}) so a click selects the offer that row stands for.
  *
  * <p>The merchant comes from the open menu: every caller sends the offers for the menu that is
  * open. Anything else goes through untouched.

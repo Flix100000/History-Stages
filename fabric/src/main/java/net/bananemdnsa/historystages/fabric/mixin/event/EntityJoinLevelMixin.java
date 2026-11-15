@@ -15,7 +15,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 /**
  * Raises the entity-joins-the-world event for fresh entities on the server. Cancelling keeps the
  * entity out. NeoForge also fires it for entities loaded from disk and on the client; the one
- * handler on main (MobSpawnLockHandler) is about new spawns.
+ * handler (MobSpawnLockHandler) is about new spawns.
  */
 @Mixin(ServerLevel.class)
 public abstract class EntityJoinLevelMixin {

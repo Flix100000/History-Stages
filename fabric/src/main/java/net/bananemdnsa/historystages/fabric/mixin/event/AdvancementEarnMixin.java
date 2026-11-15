@@ -15,7 +15,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 /**
  * Raises the advancement-earned event once, when the advancement completes.
  *
- * <p>Not at RETURN: in 26.2 {@code award} answers true for every criterion it grants, so that
+ * <p>Not at RETURN: {@code award} answers true for every criterion it grants, so that
  * fired once per criterion. The rewards are handed out only in the branch where the advancement
  * just became done, which is the moment NeoForge raises its event too. Like NeoForge, only for
  * advancements with a display; recipe unlocks and other hidden bookkeeping are not "earned".

@@ -19,14 +19,13 @@ import java.util.function.Supplier;
  * The config spec this mod is written against, rebuilt so common code does not depend on a loader.
  *
  * <p>NeoForge hands out a builder that declares keys with defaults, ranges and comments, and then
- * owns the TOML file behind them. Fabric has nothing of the kind, so this is that class again, used
- * on both loaders and kept to the shape the mod already uses: the same builder calls, the same value types, and the
- * same two trees behind {@link #getValues()} and {@link #getSpec()}.
+ * owns the TOML file behind them. Fabric has nothing of the kind, so this is that class again,
+ * used on both loaders and kept to the shape the mod already uses: the same builder calls and
+ * value types, and the same two trees behind {@link #getValues()} and {@link #getSpec()}.
  *
- * <p>It stands on NightConfig, which is the library NeoForge builds on as well. That is not
- * convenience: five files in this tree walk those trees generically and read NightConfig types
- * straight out of them, and the files this writes have to stay readable by the other loader. A
- * hand-rolled TOML layer would have broken both.
+ * <p>It is built on NightConfig, as NeoForge's is. Several classes walk those trees generically
+ * and read NightConfig types straight out of them, and the files this writes have to stay
+ * readable by the other loader.
  *
  * <p>There is no file watcher in here. The settings folder is watched by the server alone
  * ({@code ConfigWatcher}), so tests and clients never see a config change under them.

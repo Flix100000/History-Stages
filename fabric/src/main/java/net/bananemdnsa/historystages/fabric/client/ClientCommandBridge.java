@@ -22,7 +22,7 @@ import net.minecraft.commands.CommandSourceStack;
  * for node, so the chat line still parses and completes it; every node that can run hands the full
  * input back to our dispatcher with a {@link ClientCommandSourceStack}. Permission checks are asked
  * of that source as well. What does not carry over: custom suggestion providers (they expect the
- * vanilla source, so the argument type suggests for itself) and redirects. Main's two client
+ * vanilla source, so the argument type suggests for itself) and redirects. The mod's two client
  * commands use neither.
  */
 final class ClientCommandBridge {

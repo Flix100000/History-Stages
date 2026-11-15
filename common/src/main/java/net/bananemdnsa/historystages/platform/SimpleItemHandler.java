@@ -15,10 +15,9 @@ import net.minecraft.world.item.ItemStack;
 /**
  * The pedestal's two slots.
  *
- * <p>Stands in for NeoForge's item handler, and matters for one reason beyond compiling: it writes
- * and reads <strong>the same NBT</strong>. A world that has been on the other loader keeps
- * whatever was in the pedestal, and one moved the other way does too. Anything else would empty
- * the slots of every pedestal in a save on the first load, silently.
+ * <p>Stands in for NeoForge's item handler and writes and reads <strong>the same NBT</strong>, so
+ * a world moved between loaders keeps what was in its pedestals. Anything else would silently
+ * empty every pedestal in the save on the first load.
  *
  * <p>It is also a {@link Container}, which is what lets vanilla's own slots and hoppers work with
  * it without a second wrapper. Extraction goes through {@link #extractItem} either way, so the
@@ -70,8 +69,8 @@ public class SimpleItemHandler implements Container {
      * Whether this slot accepts that stack at all. Open by default; the pedestal narrows slot 0
      * to scrolls.
      *
-     * <p>Both ways in go through it — the menu's own slot and anything inserting from outside —
-     * so a hopper cannot put into a slot what a player could not.
+     * <p>Both ways in go through it (the menu's own slot and anything inserting from outside), so
+     * a hopper cannot put into a slot what a player could not.
      */
     public boolean isItemValid(int slot, ItemStack stack) {
         return true;
@@ -105,9 +104,9 @@ public class SimpleItemHandler implements Container {
     // ------------------------------------------------------------------ nbt
 
     /**
-     * NeoForge's shape: the slot count, and one entry per filled slot carrying its index. Since
-     * 1.21.5 ItemStack has no save/parse of its own, so the entry is written through its map codec,
-     * which produces the same id/count/components fields the old methods did.
+     * NeoForge's shape: the slot count, and one entry per filled slot carrying its index. ItemStack
+     * has no save/parse of its own, so the entry is written through its map codec, which gives the
+     * same id/count/components fields.
      */
     public CompoundTag serializeNBT(HolderLookup.Provider registries) {
         RegistryOps<Tag> ops = registries.createSerializationContext(NbtOps.INSTANCE);

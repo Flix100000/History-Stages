@@ -10,7 +10,7 @@ import org.spongepowered.asm.mixin.injection.ModifyVariable;
 
 /**
  * A disguised item is drawn as its disguise, in hand, in slots and on the ground. Every item
- * render in 26.2 resolves its model here (1.21.1: {@code ItemRenderer.getModel} and {@code render}).
+ * render resolves its model here.
  */
 @Mixin(ItemModelResolver.class)
 public class ItemModelResolverMixin {

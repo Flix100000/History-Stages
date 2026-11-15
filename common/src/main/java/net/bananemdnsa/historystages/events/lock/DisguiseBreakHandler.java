@@ -51,8 +51,8 @@ public final class DisguiseBreakHandler {
         float realHardness = real.getDestroySpeed(player.level(), pos);
         float fakeHardness = fake.getDestroySpeed(player.level(), pos);
         if (fakeHardness < 0) {
-            // Disguised as something unbreakable, so it is unbreakable. Main cancelled the event;
-            // the platform event is not cancellable, and a speed of zero never finishes the break.
+            // Disguised as something unbreakable, so it is unbreakable. The event cannot be
+            // cancelled, but a speed of zero never finishes the break.
             event.setNewSpeed(0);
             return;
         }

@@ -42,8 +42,8 @@ public interface RecipeResolutionFilter {
     net.minecraft.world.item.crafting.RecipeMap historystages$recipeMap();
 
     /**
-     * Every loaded recipe, ungated. What 1.21.1's {@code getOrderedRecipes} was for this mod: the
-     * index, the gated-set baseline and the editor's list must see recipes the gate hides.
+     * Every loaded recipe, ungated. The index, the gated-set baseline and the editor's list must
+     * see recipes the gate hides.
      */
     java.util.Collection<RecipeHolder<?>> historystages$allRecipes();
 

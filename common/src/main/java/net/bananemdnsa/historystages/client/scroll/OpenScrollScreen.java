@@ -793,7 +793,7 @@ public class OpenScrollScreen extends Screen {
     public static void drawChapterIcon(GuiGraphicsExtractor g, OpenScrollChapter chapter, int x, int y, int rgb) {
         int size = OpenScrollGeometry.TAB_ICON_SIZE;
         // The texture is 8x8; blitting it into the larger square scales it with nearest filtering.
-        // 26.2 has no shader colour; the blit takes the tint itself.
+        // The blit takes the tint itself; there is no shader colour to set.
         g.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, chapterIconTexture(chapter),
                 x, y, 0f, 0f, size, size, 8, 8, 8, 8, 0xFF000000 | (rgb & 0xFFFFFF));
     }

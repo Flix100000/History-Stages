@@ -10,8 +10,8 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 /**
- * An {@link EditBox} with the input filter 26.2 removed from vanilla: text the filter rejects is
- * never set, inserted or left behind by a delete, as with 1.21.1's {@code EditBox.setFilter}.
+ * An {@link EditBox} with an input filter, which vanilla's lacks: text the filter rejects is
+ * never set, inserted or left behind by a delete.
  *
  * <p>Vanilla writes the text first and tells the responder straight away, so the check has to sit
  * between the two: the responder is held back while vanilla edits and only hears the result once

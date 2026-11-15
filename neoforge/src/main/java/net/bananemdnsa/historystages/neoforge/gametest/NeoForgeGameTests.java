@@ -22,7 +22,7 @@ import net.neoforged.neoforge.registries.RegisterEvent;
 /**
  * Hands the mod's GameTests to the game.
  *
- * <p>Since 1.21.5 a GameTest is two registry entries: the test function in the built-in
+ * <p>A GameTest is two registry entries: the test function in the built-in
  * {@code test_function} registry, and a test instance that names the function, the structure and
  * the environment. NeoForge offers {@link RegisterGameTestsEvent} for the instances and only fires
  * it when GameTests are enabled; the functions go through the ordinary {@link RegisterEvent}.
@@ -55,7 +55,7 @@ public final class NeoForgeGameTests {
     private static void registerInstances(RegisterGameTestsEvent event) {
         Holder<TestEnvironmentDefinition<?>> environment = event.registerEnvironment(id("default"));
         TESTS.keySet().forEach(name -> event.registerTest(id(name), instance(name, environment, EMPTY, MAX_TICKS, true)));
-        // A test with its own batch gets its own environment: 26.2 batches tests by environment.
+        // A test with its own batch gets its own environment: tests are batched by environment.
         Map<String, Holder<TestEnvironmentDefinition<?>>> batches = new LinkedHashMap<>();
         for (HistoryStagesGameTests.Entry entry : HistoryStagesGameTests.all()) {
             Holder<TestEnvironmentDefinition<?>> env = entry.batch().isEmpty() ? environment

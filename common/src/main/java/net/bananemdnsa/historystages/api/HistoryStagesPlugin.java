@@ -14,10 +14,10 @@ import net.bananemdnsa.historystages.api.trigger.RegisterTriggerTypesEvent;
  * How another mod adds to History Stages on Fabric.
  *
  * <p>On NeoForge an addon marks a class with the platform {@code @EventBusSubscriber} and History
- * Stages finds it in the mod's scan data. Fabric has no such scan, and mod initializers run in no particular order, so an addon that simply registered a
- * listener might do it after the registries had already closed. Declaring an entrypoint instead
- * removes the question: the loader knows every mod before any of them is asked, so this is called
- * at the right moment by construction rather than by luck.
+ * Stages finds it in the mod's scan data. Fabric has no such scan, and mod initializers run in no
+ * particular order, so an addon that simply registered a listener might do it after the
+ * registries had already closed. An entrypoint avoids that: the loader knows every mod before any
+ * of them is asked.
  *
  * <p>In the addon's {@code fabric.mod.json}:
  *
@@ -31,8 +31,8 @@ import net.bananemdnsa.historystages.api.trigger.RegisterTriggerTypesEvent;
  * themselves are the same classes as on the other loader, so the body of each method carries over
  * unchanged.
  *
- * <p>The client-side registrations — editor tabs, field screens, requirement and trigger editors
- * — are in {@code HistoryStagesClientPlugin}, under the {@code historystages:client} entrypoint,
+ * <p>The client-side registrations (editor tabs, field screens, requirement and trigger editors)
+ * are in {@code HistoryStagesClientPlugin}, under the {@code historystages:client} entrypoint,
  * because a dedicated server must not load them.
  */
 public interface HistoryStagesPlugin {

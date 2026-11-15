@@ -15,7 +15,7 @@ import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeManager;
 
 /**
- * Which recipes a player's client is told about. 26.2's server sends each player their own
+ * Which recipes a player's client is told about. The server sends each player their own
  * recipe book (display entries) and stonecutter list, so locked recipes are left out there; the
  * book itself (the known ids saved with the player) is never touched.
  *

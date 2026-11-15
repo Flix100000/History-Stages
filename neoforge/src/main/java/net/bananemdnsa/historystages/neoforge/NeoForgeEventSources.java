@@ -11,9 +11,10 @@ import net.neoforged.neoforge.common.NeoForge;
 /**
  * Feeds NeoForge's events into the platform bus.
  *
- * <p>The handlers in common listen on the platform bus, with the event classes NeoForge 1.21.1 had.
- * For each of those a listener here takes the real NeoForge 26.2 event, builds the platform event,
- * posts it, and writes cancel flags and results back, so the handlers decide about the real thing.
+ * <p>The handlers in common listen on the platform bus, whose event classes follow NeoForge's
+ * 1.21.1 ones. For each of those a listener here takes the real NeoForge event, builds the
+ * platform event, posts it, and writes cancel flags and results back, so the handlers decide
+ * about the real thing.
  */
 public final class NeoForgeEventSources {
 

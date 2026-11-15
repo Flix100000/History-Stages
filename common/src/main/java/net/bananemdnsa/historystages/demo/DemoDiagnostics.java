@@ -57,7 +57,7 @@ public final class DemoDiagnostics {
     public static final class Game {
         private Game() {}
 
-        /** The server the line was written for; 26.2 has no started event on the platform bus. */
+        /** The server the line was written for; the platform bus has no server-started event. */
         private static Object loggedFor;
 
         @SubscribeEvent

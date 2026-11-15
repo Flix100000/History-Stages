@@ -10,8 +10,7 @@ import org.spongepowered.asm.mixin.injection.At;
 
 /**
  * Translates the trade row a player clicked into the merchant's own index when locked offers
- * were held back from that player ({@link TradeIndexMap}). New for the port; 1.21.1 had the same
- * gap.
+ * were held back from that player ({@link TradeIndexMap}).
  */
 @Mixin(ServerGamePacketListenerImpl.class)
 public class SelectTradeMixin {

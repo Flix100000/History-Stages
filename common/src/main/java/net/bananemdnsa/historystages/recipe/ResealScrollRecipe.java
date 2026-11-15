@@ -27,8 +27,8 @@ import net.minecraft.world.level.Level;
  */
 public class ResealScrollRecipe extends CustomRecipe {
 
-    // 26.2 special recipes are singletons with a unit codec; the "category" field in the json is
-    // ignored, and CustomRecipe reports MISC as before.
+    // Special recipes are singletons with a unit codec; the "category" field in the json is
+    // ignored, and CustomRecipe reports MISC.
     public static final ResealScrollRecipe INSTANCE = new ResealScrollRecipe();
     public static final MapCodec<ResealScrollRecipe> MAP_CODEC = MapCodec.unit(INSTANCE);
     public static final StreamCodec<RegistryFriendlyByteBuf, ResealScrollRecipe> STREAM_CODEC = StreamCodec.unit(INSTANCE);

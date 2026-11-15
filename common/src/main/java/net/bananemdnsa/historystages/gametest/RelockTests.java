@@ -214,7 +214,7 @@ public final class RelockTests {
         String id = P + "cond_rain";
         ServerLevel level = helper.getLevel();
         StageData data = StageData.get(level);
-        // 26.2: weather is server-wide data, set through the server.
+        // Weather is server-wide data, set through the server.
         net.minecraft.world.level.saveddata.WeatherData weather = level.getServer().getWeatherData();
         boolean wasRaining = weather.isRaining();
         boolean wasThundering = weather.isThundering();

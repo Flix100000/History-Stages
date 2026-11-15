@@ -14,8 +14,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * 26.2 skips text whose colour has alpha 0; 1.21.1 made it opaque. Every editor colour written as
- * {@code 0xRRGGBB} would vanish without the 1.21.1 rule.
+ * The font skips text whose colour has alpha 0. Every editor colour written as
+ * {@code 0xRRGGBB} would vanish without the opaque rule.
  */
 class TextColorsTest {
 
@@ -23,7 +23,7 @@ class TextColorsTest {
     void rgbWithoutAlphaBecomesOpaque() {
         assertEquals(0xFFCCCCCC, TextColors.legacy(0xCCCCCC));
         assertEquals(0xFF000000, TextColors.legacy(0));
-        // Alpha below 4 counts as unset, as in 1.21.1's Font.adjustColor.
+        // Alpha below 4 counts as unset.
         assertEquals(0xFF123456, TextColors.legacy(0x03123456));
     }
 

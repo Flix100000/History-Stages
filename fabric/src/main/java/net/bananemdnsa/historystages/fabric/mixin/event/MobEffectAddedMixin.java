@@ -14,8 +14,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 /**
  * Raises the effect-applied event, which an auto-trigger watches. Only when the effect took:
  * {@code addEffect} answers false for an immune entity or a weaker repeat. NeoForge's {@code Added}
- * covers exactly the successful {@code addEffect} calls, new effects and upgrades alike, so the
- * mixin from fabric-1.21.X stays rather than Fabric's {@code ServerMobEffectEvents}.
+ * covers exactly the successful {@code addEffect} calls, new effects and upgrades alike, so this
+ * is a mixin rather than Fabric's {@code ServerMobEffectEvents}.
  */
 @Mixin(LivingEntity.class)
 public abstract class MobEffectAddedMixin {

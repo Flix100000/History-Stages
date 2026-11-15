@@ -37,10 +37,9 @@ public final class LevelBridge {
     }
 
     /**
-     * NeoForge 26.2 renamed {@code BlockEvent.BreakEvent} to {@code BreakBlockEvent} and fires it on
-     * the client as well. The platform event keeps the old server-only meaning, so client-side
-     * firings are not passed on. A cancel on the server also resends the block, so the client does
-     * not keep showing the hole it predicted.
+     * NeoForge's {@code BreakBlockEvent} fires on the client as well. The platform event is
+     * server only, so client-side firings are not passed on. A cancel on the server also resends
+     * the block, so the client does not keep showing the hole it predicted.
      */
     private static void blockBreak(BreakBlockEvent event, EventPriority priority) {
         if (event.getLevel().isClientSide()

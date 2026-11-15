@@ -60,7 +60,7 @@ public final class ClientBridge {
 
         ClientCommandBridge.register();
 
-        // After the translucent terrain, inside the level pass: the overlays draw here, as on 1.21.1.
+        // After the translucent terrain, inside the level pass: the overlays draw here.
         Phases.listen(LevelRenderEvents.AFTER_TRANSLUCENT_TERRAIN, priority -> context -> {
             if (Phases.wanted(RenderLevelStageEvent.class, priority)) {
                 var camera = context.levelState().cameraRenderState;
@@ -110,7 +110,7 @@ public final class ClientBridge {
 
     /**
      * Fabric only exposes the widget list. Anything that is not a widget has no place to go here;
-     * the handlers on main only add buttons.
+     * the handlers only add buttons.
      */
     private static void addWidget(Screen screen, net.minecraft.client.gui.components.events.GuiEventListener listener) {
         if (listener instanceof AbstractWidget widget) {

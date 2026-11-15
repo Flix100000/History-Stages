@@ -11,9 +11,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
  * Raises the player-tick event at the end of {@code Player.tick}, where NeoForge raises it, on
- * both sides. fabric-1.21.X looped over the server's players at the end of the server tick
- * instead, which moved the handlers behind every other entity's tick and never reached the
- * client player. {@code ServerPlayer.doTick} and {@code LocalPlayer.tick} both call this method.
+ * both sides. Looping over the server's players at the end of the server tick instead would run
+ * the handlers behind every other entity's tick and never reach the client player.
+ * {@code ServerPlayer.doTick} and {@code LocalPlayer.tick} both call this method.
  */
 @Mixin(Player.class)
 public abstract class PlayerTickMixin {

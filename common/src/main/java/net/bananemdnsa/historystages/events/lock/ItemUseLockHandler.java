@@ -264,9 +264,8 @@ public class ItemUseLockHandler {
             if (any.test(stack) && !isActionLocked(stack, player, "use")) return stack;
         }
         if (player.getAbilities().instabuild) {
-            // PORT(26.2-gap): NeoForge's ProjectileWeaponItem.getDefaultCreativeAmmo is gone, so a
-            // modded weapon's own creative ammo is not asked; vanilla hands out a plain arrow
-            // (Player.getProjectile), and so does this.
+            // PORT(26.2-gap): no getDefaultCreativeAmmo hook to ask a modded weapon for its
+            // own creative ammo, so this hands out a plain arrow, as Player.getProjectile does.
             ItemStack creative = new ItemStack(net.minecraft.world.item.Items.ARROW);
             if (!isActionLocked(creative, player, "use")) return creative;
         }

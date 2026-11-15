@@ -16,7 +16,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Raises the anvil-result event after vanilla worked out the result, where NeoForge 26.2 raises it
+ * Raises the anvil-result event after vanilla worked out the result, where NeoForge raises it
  * (its patched {@code createResult} runs vanilla first, then the hook, and only with a left item).
  * A cancel clears the result, the level cost and the material cost, as NeoForge does: the gated
  * combination produces nothing and the screen does not keep showing the old cost.

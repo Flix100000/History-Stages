@@ -29,11 +29,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 /**
  * The stonecutter's recipe gate.
  *
- * <p>1.21.1 resolved the button list through {@code getRecipesFor}, which the recipe filter
- * gates. 26.2 takes the list from a precomputed set ({@code stonecutterRecipes().selectByInput})
- * and the result straight from the chosen entry, so neither lookup is ever asked. The gate sits
- * where the chosen entry hands over its recipe: a locked one yields no result, both for the
- * preview and for every refill after a take.
+ * <p>The stonecutter takes its button list from a precomputed set
+ * ({@code stonecutterRecipes().selectByInput}) and the result straight from the chosen entry, so
+ * no lookup the recipe filter gates is ever asked. The gate sits where the chosen entry hands
+ * over its recipe: a locked one yields no result, both for the preview and for every refill
+ * after a take.
  *
  * <p>The buttons are filtered too, per crafter: on the server here in {@code setupRecipeList},
  * on the client through the list each player is sent ({@code RecipePacketMixin}), with the same

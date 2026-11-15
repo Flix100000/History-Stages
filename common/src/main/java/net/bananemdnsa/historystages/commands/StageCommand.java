@@ -156,9 +156,9 @@ public class StageCommand {
                 // --- RELOAD ---
                 .then(Commands.literal("reload")
                         .executes(ctx -> {
-                            // The settings files too: on 1.21.1 NeoForge's watcher had already
-                            // reloaded them, here a reload is also the way to be sure. Not for the
-                            // silent reloads every pedestal unlock runs (see below).
+                            // The settings files too, in case the watcher has not caught up
+                            // with a hand edit. Not for the silent reloads every pedestal unlock
+                            // runs (see below).
                             if (!ctx.getSource().isSilent()) {
                                 net.bananemdnsa.historystages.data.config.ConfigFiles.loadAll();
                                 PacketHandler.sendConfigToAll(

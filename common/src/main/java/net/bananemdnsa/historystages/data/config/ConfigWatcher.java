@@ -20,10 +20,9 @@ import java.util.function.Consumer;
 /**
  * Watches the settings folder and reports a changed file once it has stopped being written.
  *
- * <p>On 1.21.1 NeoForge's config watcher did this for the three settings files: an admin editing
- * {@code gameplay.toml} by hand on a running server saw the change without a restart, and the
- * derived caches were rebuilt from the Reloading event. The platform specs have no watcher of
- * their own, so this one stands in for it, on the server only.
+ * <p>An admin editing {@code gameplay.toml} by hand on a running server sees the change without
+ * a restart. The platform specs have no watcher of their own, so this one does the job, on the
+ * server only.
  */
 public final class ConfigWatcher {
 

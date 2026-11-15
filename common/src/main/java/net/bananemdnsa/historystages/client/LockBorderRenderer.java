@@ -47,7 +47,7 @@ public final class LockBorderRenderer {
         Vec3 cam = event.getCameraPosition();
         float scroll = (float) ((Util.getMillis() % 3000L) / 3000.0);
 
-        // Blend, depth test without depth write and no culling live in the render type now.
+        // Blend, depth test without depth write and no culling live in the render type.
         PoseStack pose = new PoseStack();
         pose.pushPose();
         pose.translate(-cam.x, -cam.y, -cam.z);

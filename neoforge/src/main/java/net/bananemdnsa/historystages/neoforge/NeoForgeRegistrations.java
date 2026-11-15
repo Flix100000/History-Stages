@@ -20,9 +20,9 @@ final class NeoForgeRegistrations {
     }
 
     /**
-     * What a pipe sees of the pedestal, as on main (ItemHandler.BLOCK). 26.2 replaced item handlers
-     * with resource handlers; the container wrapper does not ask the handler before taking, so the
-     * scroll lock is checked here, the same rule {@code SimpleItemHandler.extractItem} applies.
+     * What a pipe sees of the pedestal. NeoForge exposes resource handlers, and the container
+     * wrapper does not ask the handler before taking, so the scroll lock is checked here, the same
+     * rule {@code SimpleItemHandler.extractItem} applies.
      */
     private static void registerCapabilities(RegisterCapabilitiesEvent event) {
         event.registerBlockEntity(Capabilities.Item.BLOCK, ModBlockEntities.RESEARCH_PEDESTAL_BE.get(),

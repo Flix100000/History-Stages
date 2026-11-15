@@ -18,7 +18,7 @@ import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
  */
 public final class HistoryStagesMixinPlugin implements IMixinConfigPlugin {
 
-    /** Sub-package of {@code mixin} to the mod id it needs. Task 13 adds the "jetzt" integrations. */
+    /** Sub-package of {@code mixin} to the mod id it needs. */
     private static final Map<String, String> COMPAT_PACKAGES = Map.of(
             "jei", "jei",
             "bettercombat", "bettercombat",
@@ -50,7 +50,7 @@ public final class HistoryStagesMixinPlugin implements IMixinConfigPlugin {
             Object loader = fabric.getMethod("getInstance").invoke(null);
             return (boolean) fabric.getMethod("isModLoaded", String.class).invoke(loader, modId);
         } catch (ClassNotFoundException notFabric) {
-            // NeoForge below.
+            // Not Fabric; NeoForge is asked below.
         } catch (ReflectiveOperationException e) {
             return false;
         }

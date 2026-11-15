@@ -33,8 +33,8 @@ public abstract class LevelEvent extends Event {
      * changed. Taking an entry out here is cheaper than refusing each mob afterwards, and it also
      * stops the spawn attempt counting against the cap.
      *
-     * <p>Entries carry their weight in a {@link Weighted} wrapper since 1.21.5, the shape vanilla
-     * and NeoForge 26.2 use; {@code SpawnerData} itself no longer has a weight.
+     * <p>Entries carry their weight in a {@link Weighted} wrapper, as in vanilla and NeoForge;
+     * {@code SpawnerData} itself has no weight.
      */
     public static class PotentialSpawns extends LevelEvent {
 

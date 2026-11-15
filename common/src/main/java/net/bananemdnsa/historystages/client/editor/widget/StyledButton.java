@@ -69,7 +69,7 @@ public class StyledButton extends Button {
                 && mouseX < ex + ew && mouseY < this.getY() + this.height;
     }
 
-    // 26.2 dropped clicked(x, y); the click test is isMouseOver now.
+    // The click test: only the effective area counts.
     @Override
     public boolean isMouseOver(double mouseX, double mouseY) {
         return this.active && this.visible && overEffective(mouseX, mouseY);

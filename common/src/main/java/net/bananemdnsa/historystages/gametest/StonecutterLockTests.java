@@ -12,9 +12,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
 /**
- * The stonecutter in 26.2 takes its buttons from a precomputed set and its result straight from
- * the chosen entry, past every recipe lookup the filter gates (new for the port; 1.21.1 was
- * covered through {@code getRecipesFor}).
+ * The stonecutter takes its buttons from a precomputed set and its result straight from the
+ * chosen entry, past every recipe lookup the filter gates.
  */
 public final class StonecutterLockTests {
 

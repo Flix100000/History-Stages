@@ -55,9 +55,9 @@ public class HistoryStages {
     }
 
     /**
-     * What the NeoForge constructor did, for both loaders. Each loader's entry class calls this
-     * while the mod is being constructed (NeoForge needs the registers then). What only one loader
-     * has (capabilities, menu screens, item decorations) stays in that loader's entry class.
+     * Mod setup shared by both loaders. Each loader's entry class calls this while the mod is being
+     * constructed (NeoForge needs the registers then). What only one loader has (capabilities, menu
+     * screens, item decorations) stays in that loader's entry class.
      */
     public static void init() {
         // Must run before either config spec is loaded below — see the class comment on
@@ -76,7 +76,7 @@ public class HistoryStages {
         ModMenuTypes.register();
         ModRecipes.register();
 
-        // Same files and keys as the three COMMON registrations on main, see ConfigFiles.
+        // The three settings files; where they live and why is in ConfigFiles.
         ConfigFiles.loadAll();
 
         ConfigHandler.setupConfig();
@@ -94,8 +94,8 @@ public class HistoryStages {
         // Registration window for addon lock categories: see registrationWindow(). The loaders
         // call it, because NeoForge has to queue it onto the main thread itself.
 
-        // PORT(later): FTB Teams/Quests, Accessories, KubeJS and CraftTweaker have no 26.2 build yet
-        // (code in port-later/). Kept as on main, not compiled. Curios lives in the NeoForge module.
+        // PORT(later): FTB Teams/Quests, Accessories, KubeJS and CraftTweaker have no 26.2 build
+        // yet. Their code waits in port-later/ and is not compiled. Curios is in the NeoForge module.
         /*
         // FTB Teams on its own, without FTB Quests, is a common pack setup, so it gets its own check.
         if (Services.isModLoaded("ftbteams")) {
@@ -158,10 +158,10 @@ public class HistoryStages {
     private static volatile String registrationThread;
 
     /**
-     * Registration window for addon lock categories, at the point main used: once every mod
-     * has been constructed (FMLCommonSetupEvent), before anything plays. Every registry it fills
-     * is closed on the way out. NeoForge runs common setup on parallel workers, so its entry
-     * class queues this with {@code enqueueWork} as main did; Fabric calls it from SETUP.
+     * Registration window for addon lock categories: once every mod has been constructed
+     * (FMLCommonSetupEvent on NeoForge), before anything plays. Every registry it fills is closed
+     * on the way out. NeoForge runs common setup on parallel workers, so its entry class queues
+     * this with {@code enqueueWork}; Fabric calls it from SETUP.
      */
     public static void registrationWindow() {
         registrationThread = Thread.currentThread().getName();
@@ -363,7 +363,7 @@ public class HistoryStages {
             if (!serverInitialized) {
                 serverInitialized = true;
                 LOGGER.info("[HistoryStages] Server cache initialized.");
-                // Hand edits to settings/*.toml apply without a restart, as on 1.21.1. Clients get
+                // Hand edits to settings/*.toml apply without a restart. Clients get
                 // the new values the way an editor save hands them out.
                 ConfigFiles.startWatching(sl.getServer(),
                         () -> PacketHandler.sendConfigToAll(SyncConfigPacket.fromServerConfig()));
@@ -423,11 +423,10 @@ public class HistoryStages {
         // recipes after that call, so an index built there would miss a script pack entirely.
         // A tick has, by definition, waited for all of them. Costs one boolean read when clean.
         //
-        // The ungated list rather than getRecipes: the latter is gated on the server now, and a
+        // The ungated list rather than getRecipes: that one is gated on the server, and a
         // fluid-gated recipe is exactly one of the recipes it leaves out — building the index from
         // it would drop that recipe from the index, which would ungate it, which would put it back
         // in the list. This one has to see every recipe there is.
-        // 26.2 has no getOrderedRecipes; RecipeResolutionFilter.allRecipes is the ungated list.
         if (event.getServer() != null) {
             net.bananemdnsa.historystages.data.lock.FluidRecipeIndex.rebuildIfDirty(
                     net.bananemdnsa.historystages.util.lock.RecipeResolutionFilter.allRecipes(event.getServer().getRecipeManager()),

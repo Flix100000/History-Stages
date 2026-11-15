@@ -16,7 +16,7 @@ import org.spongepowered.asm.mixin.injection.At;
  * Raises the pearl-landing event where NeoForge does: on the server, for a player thrower whose
  * connection is live, once vanilla has decided the owner may be teleported. Only the pearl: the
  * plain {@code EntityTeleportEvent} (commands, chorus fruit) has no source on Fabric, and nothing
- * on main listens for it.
+ * listens for it.
  *
  * <p>A cancel answers "may not teleport", which sends vanilla down its own branch for that case:
  * the pearl is discarded, the player stays put. Cancelling at the head of {@code onHit} instead

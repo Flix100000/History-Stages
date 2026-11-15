@@ -29,7 +29,7 @@ public class LockedRecipeDecorator<T> implements IRecipeCategoryDecorator<T> {
         int width = category.getWidth();
         int height = category.getHeight();
 
-        // 26.2 draws GUI layers in submission order, so no z translate: the decorator comes after
+        // GUI layers draw in submission order, so no z translate: the decorator comes after
         // the slots.
         // Semi-transparent dark overlay
         guiGraphics.fill(0, 0, width, height, 0xBB000000);

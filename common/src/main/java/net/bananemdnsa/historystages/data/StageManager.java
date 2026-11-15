@@ -82,8 +82,8 @@ public class StageManager {
     }
 
     /**
-     * Whether {@code value} parses as an id ({@code namespace:path}). The messages keep the 1.21.1
-     * word "ResourceLocation", which is what pack authors and the wiki know it as.
+     * Whether {@code value} parses as an id ({@code namespace:path}). The messages say
+     * "ResourceLocation", the name pack authors and the wiki know it by.
      */
     private static boolean isValidResourceLocation(String value) {
         return value != null && Identifier.tryParse(value) != null;

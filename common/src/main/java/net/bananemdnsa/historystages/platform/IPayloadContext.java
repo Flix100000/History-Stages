@@ -9,8 +9,8 @@ import net.minecraft.world.entity.player.Player;
  * What a packet handler is given alongside its payload.
  *
  * <p>NeoForge hands over a context with a wide surface; the handlers in this mod use only a few
- * things from it, so that is what this carries. Keeping the parameter type and the method names
- * means the handler bodies carry over from the NeoForge main branch unchanged.
+ * things from it, so that is what this carries. Same parameter type and method names, so the
+ * handler bodies stay in step with the NeoForge-only branches.
  */
 public interface IPayloadContext {
 

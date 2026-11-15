@@ -175,7 +175,7 @@ public final class ZoneBorderRenderer {
         // whole wall it reads as the wall sliding sideways instead, so there it stands still.
         float scroll = full ? 0f : (float) ((Util.getMillis() % 3000L) / 3000.0);
 
-        // Blend, depth test without depth write and no culling live in the render type now.
+        // Blend, depth test without depth write and no culling live in the render type.
         WorldOverlayDraw.draw(WorldOverlayRenderTypes.forcefield(), pose.last(), (m, buffer) -> {
             for (int i = 0; i < WALL.count(); i++) {
                 quad(buffer, m, cam, look, reach, full, scroll,

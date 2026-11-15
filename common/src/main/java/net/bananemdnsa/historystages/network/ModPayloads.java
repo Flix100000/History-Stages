@@ -66,13 +66,12 @@ import java.util.function.BiConsumer;
  * Every payload, registered over Architectury's NetworkManager. Called once from
  * {@code HistoryStages.init()}.
  *
- * <p>NeoForge's registrar took a protocol version ("2" since the gzipped definitions sync), so a
- * 5.x client got the "incompatible mod" screen. Architectury has no such version; a mismatched
- * client now fails to decode instead.
+ * <p>Architectury's registration has no protocol version, so a mismatched client fails to decode
+ * rather than getting the "incompatible mod" screen.
  *
- * <p>Every payload goes through Architectury's split transformer. NeoForge split large payloads
- * by itself on 1.21.1; vanilla's limits (32 KiB to the server, 1 MiB to the client) would
- * otherwise disconnect a Fabric player saving a big stage or receiving a big pack.
+ * <p>Every payload goes through Architectury's split transformer: vanilla's limits (32 KiB to the
+ * server, 1 MiB to the client) would otherwise disconnect a Fabric player saving a big stage or
+ * receiving a big pack.
  */
 public final class ModPayloads {
 

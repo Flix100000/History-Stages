@@ -77,8 +77,8 @@ public class MultiBlockResearchPedestalBlock extends BaseEntityBlock implements 
         return 1.0F;
     }
 
-    // isOcclusionShapeFullBlock: 26.2 derives it from the occlusion shape, which noOcclusion()
-    // (set by every pedestal's constructor) leaves empty, so it stays false as before.
+    // No isOcclusionShapeFullBlock override: vanilla derives it from the occlusion shape, which
+    // noOcclusion() (set by every pedestal's constructor) leaves empty, so it is false.
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
@@ -182,8 +182,8 @@ public class MultiBlockResearchPedestalBlock extends BaseEntityBlock implements 
         return super.playerWillDestroy(level, pos, state, player);
     }
 
-    // 1.21.1 onRemove, split the 26.2 way: the foot's block entity drops its slots itself
-    // (preRemoveSideEffects), and the partner half goes here, after the block has changed.
+    // The foot's block entity drops its slots itself (preRemoveSideEffects); the partner half goes
+    // here, after the block has changed.
     @Override
     protected void affectNeighborsAfterRemoval(BlockState oldState, net.minecraft.server.level.ServerLevel level,
                                                BlockPos pos, boolean movedByPiston) {
@@ -192,10 +192,10 @@ public class MultiBlockResearchPedestalBlock extends BaseEntityBlock implements 
     }
 
     /**
-     * Takes the other half with this one. 26.2 only calls affectNeighborsAfterRemoval for a change
-     * with neighbour updates, where 1.21.1's onRemove ran for every change; the foot's block
-     * entity calls this too, so a foot replaced without updates does not leave its head behind.
-     * A head replaced that way still can: it has no block entity to hear about it.
+     * Takes the other half with this one. Vanilla only calls affectNeighborsAfterRemoval for a
+     * change with neighbour updates, so the foot's block entity calls this too, and a foot replaced
+     * without updates does not leave its head behind. A head replaced that way still can: it has no
+     * block entity to hear about it.
      */
     public static void removePartner(Level level, BlockPos pos, BlockState oldState) {
         if (!(oldState.getBlock() instanceof MultiBlockResearchPedestalBlock block)) return;

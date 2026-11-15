@@ -50,7 +50,7 @@ class DemoUsesOnlyApiTest {
                     String path = imports.group(1);
                     if (path.startsWith("api.")) continue;
                     if (path.equals("HistoryStages")) continue;
-                    // 26.2: an addon subscribes through the platform bus, which carries the events.
+                    // An addon subscribes through the platform bus, which carries the events.
                     if (path.startsWith("platform.bus.") || path.startsWith("platform.event.")
                             || path.equals("platform.Dist")) continue;
                     String simple = path.substring(path.lastIndexOf('.') + 1);

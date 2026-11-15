@@ -9,8 +9,8 @@ import org.spongepowered.asm.mixin.gen.Accessor;
 
 /**
  * Reaches the three fields an anvil keeps on its superclass. A {@code @Shadow} on the anvil mixin
- * only finds fields the anvil itself declares: it compiles, then fails at startup (614c4fbe on
- * fabric-1.21.X). Must stay listed in the mixin config, or the first cast to it throws
+ * only finds fields the anvil itself declares: it compiles, then fails at startup. Must stay
+ * listed in the mixin config, or the first cast to it throws
  * IllegalClassLoadError when a player opens an anvil (Issue #103).
  */
 @Mixin(ItemCombinerMenu.class)

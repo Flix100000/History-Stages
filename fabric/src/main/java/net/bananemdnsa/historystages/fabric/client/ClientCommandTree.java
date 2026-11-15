@@ -9,8 +9,7 @@ import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Puts the client-only commands into the command tree the chat line reads (4df7376a on
- * fabric-1.21.X).
+ * Puts the client-only commands into the command tree the chat line reads.
  *
  * <p>Fabric keeps client commands in a dispatcher of their own and copies them into the real tree
  * once the server has sent its own. When a client command shares its name with a server command,

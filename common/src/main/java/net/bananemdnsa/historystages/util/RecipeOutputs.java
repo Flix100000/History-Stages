@@ -18,14 +18,14 @@ import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.ShapedRecipe;
 
 /**
- * What 1.21.1's {@code Recipe.getResultItem(registries)} answered. 26.2 dropped that method; the
- * output now lives in the recipe's displays, so the first display's result stands in for it.
+ * A recipe's output, for the output-based locks. The output lives in the recipe's displays, so
+ * the first display's result stands for it.
  *
  * <p>Every vanilla recipe with a fixed output describes itself (shaped, shapeless, cooking,
- * stonecutting, smithing, transmute); the special crafting recipes had no fixed output on 1.21.1
- * either. A modded recipe that ships no display falls back to its own result method if it kept
- * one under the old names. PORT(26.2-gap): a modded recipe with neither has no output as far as
- * output-based locks go; listed in PROGRESS.
+ * stonecutting, smithing, transmute); the special crafting recipes have no fixed output. A
+ * modded recipe that ships no display falls back to its own result method if it has one under
+ * the usual names. PORT(26.2-gap): a modded recipe with neither has no output as far as
+ * output-based locks go.
  */
 public final class RecipeOutputs {
 
@@ -56,7 +56,7 @@ public final class RecipeOutputs {
     private static final java.util.Map<Class<?>, Optional<java.lang.reflect.Method>> LEGACY_RESULT =
             new java.util.concurrent.ConcurrentHashMap<>();
 
-    /** A modded recipe's own result method, as many kept it after 1.21.2: getResultItem(registries) first. */
+    /** A modded recipe's own result method, which many still have; getResultItem(registries) first. */
     private static ItemStack legacyResult(Recipe<?> recipe, @Nullable HolderLookup.Provider registries) {
         Optional<java.lang.reflect.Method> method = LEGACY_RESULT.computeIfAbsent(recipe.getClass(), RecipeOutputs::findLegacyResult);
         if (method.isEmpty()) return ItemStack.EMPTY;
@@ -76,7 +76,7 @@ public final class RecipeOutputs {
                 Class<?>[] params = m.getParameterTypes();
                 if (params.length == 0 || (params.length == 1 && params[0] == HolderLookup.Provider.class)) {
                     // A public method on a non-public recipe class is not callable by reflection
-                    // until opened; 1.21.1 called it through the interface and never noticed.
+                    // until opened.
                     try {
                         m.setAccessible(true);
                     } catch (RuntimeException closed) {
@@ -89,7 +89,7 @@ public final class RecipeOutputs {
         return Optional.empty();
     }
 
-    /** 1.21.1 recipe ids were plain identifiers; in 26.2 the holder carries a registry key. */
+    /** The id a stage file writes; the holder carries a registry key whose toString is not it. */
     public static Identifier idOf(RecipeHolder<?> holder) {
         return holder.id().identifier();
     }
@@ -99,8 +99,8 @@ public final class RecipeOutputs {
     }
 
     /**
-     * 1.21.1's {@code Recipe.getIngredients()}. A shaped recipe keeps its grid with null for an
-     * empty cell (26.2 has no empty ingredient); anything else lists what it places.
+     * The recipe's ingredients. A shaped recipe keeps its grid with null for an empty cell
+     * (there is no empty ingredient); anything else lists what it places.
      */
     public static List<Ingredient> ingredientsOf(Recipe<?> recipe) {
         if (recipe instanceof ShapedRecipe shaped) {
@@ -116,7 +116,7 @@ public final class RecipeOutputs {
     }
 
     /**
-     * 1.21.1's {@code Ingredient.getItems()}; null (an empty grid cell) has none. Through the
+     * The stacks an ingredient accepts; null (an empty grid cell) has none. Through the
      * ingredient's display where it has stacks, which keeps the components a loader's custom
      * ingredient asks for (a specific potion, an enchanted book); the bare items otherwise.
      */

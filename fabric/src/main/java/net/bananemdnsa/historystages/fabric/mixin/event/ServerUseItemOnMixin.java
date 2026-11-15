@@ -26,7 +26,7 @@ import org.spongepowered.asm.mixin.injection.At;
  * be used", which is how a locked chest stays shut while a torch can still go on it. Those two
  * halves are gated here, where vanilla performs them.
  *
- * <p>A refused block answers PASS from {@code BlockState.useItemOn}: in 26.2 that skips the
+ * <p>A refused block answers PASS from {@code BlockState.useItemOn}, which skips the
  * fallback to {@code useWithoutItem} (TRY_WITH_EMPTY_HAND would ask for it). Not covered:
  * spectators, whose read-only menu opens from an earlier branch; a cancel still stops them.
  */

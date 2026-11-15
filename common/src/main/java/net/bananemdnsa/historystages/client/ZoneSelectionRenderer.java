@@ -79,7 +79,7 @@ public final class ZoneSelectionRenderer {
         float width = WorldOverlayRenderTypes.lineWidth();
         float bx0 = x0, by0 = y0, bz0 = z0, bx1 = x1, by1 = y1, bz1 = z1;
 
-        // Drawn over everything, as the old depth-test-off draw was.
+        // Drawn over everything, so a corner behind a hill still shows.
         PoseStack pose = new PoseStack();
         pose.pushPose();
         pose.translate(-cam.x, -cam.y, -cam.z);

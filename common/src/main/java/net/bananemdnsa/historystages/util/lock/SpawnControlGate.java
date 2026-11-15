@@ -115,7 +115,7 @@ public final class SpawnControlGate {
             SpawnWeight weight = extra.spawns().weight() != null
                     ? extra.spawns().weight()
                     : defaultWeight(type.get(), biomes);
-            // 26.2 moved the weight out of SpawnerData into the Weighted wrapper.
+            // The weight sits on the Weighted wrapper, not on SpawnerData.
             Weighted<MobSpawnSettings.SpawnerData> data = new Weighted<>(new MobSpawnSettings.SpawnerData(
                     type.get(), weight.minGroup(), weight.maxGroup()), weight.weight());
             out.computeIfAbsent(type.get().getCategory(), k -> new ArrayList<>())

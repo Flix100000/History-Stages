@@ -70,8 +70,8 @@ public final class EntityPreviewRenderer {
         entity.yHeadRotO = 180.0F;
 
         try {
-            // 26.2 draws GUI entities as a render state the GUI renders off-screen; no direct
-            // buffer access. Feet at (x, y) as before, with the box big enough to hold the mob.
+            // GUI entities are drawn as a render state the GUI renders off-screen. Feet at
+            // (x, y), with the box big enough to hold the mob.
             Quaternionf flipAndSpin = new Quaternionf().rotateZ((float) Math.PI);
             flipAndSpin.mul(new Quaternionf().rotateY(angleDegrees * ((float) Math.PI / 180.0F)));
 

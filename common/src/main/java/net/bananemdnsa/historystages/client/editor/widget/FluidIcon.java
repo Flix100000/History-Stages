@@ -40,7 +40,7 @@ public final class FluidIcon {
         Fluid fluid = fluidOf(fluidId);
         if (fluid == null) return;
 
-        // 26.2 keeps the fluid's look in vanilla fluid models on both loaders.
+        // The fluid's look comes from vanilla's fluid models on both loaders.
         net.minecraft.world.level.material.FluidState state = fluid.defaultFluidState();
         net.minecraft.client.renderer.block.FluidModel model = Minecraft.getInstance().getModelManager()
                 .getFluidStateModelSet().get(state);

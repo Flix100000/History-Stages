@@ -67,7 +67,7 @@ public class JEIPlugin implements IModPlugin {
     @Override
     public void registerItemSubtypes(ISubtypeRegistration registration) {
         // Tell JEI that scrolls with different StageResearch values are different items
-        // null = no subtype (the old NONE constant).
+        // null = no subtype.
         ISubtypeInterpreter<ItemStack> interpreter = (stack, context) -> ScrollVariants.readStageResearch(stack);
         registration.registerSubtypeInterpreter(ModItems.RESEARCH_SCROLL.get(), interpreter);
         registration.registerSubtypeInterpreter(ModItems.CREATIVE_SCROLL.get(), interpreter);
@@ -339,7 +339,7 @@ public class JEIPlugin implements IModPlugin {
             List<RecipeHolder<CraftingRecipe>> reseal = new ArrayList<>();
             var factory = registration.getVanillaRecipeFactory();
             for (String stageId : ScrollVariants.scrollableStageIds()) {
-                // 26.2 ingredients cannot carry components, so the stage scrolls go in as slot
+                // Ingredients cannot carry components, so the stage scrolls go in as slot
                 // displays; the builder is shaped, the grid shows them side by side.
                 ItemStack open = ScrollVariants.createOpenScroll(stageId);
                 CraftingRecipe recipe = factory.createShapedRecipeBuilder(CraftingBookCategory.MISC,

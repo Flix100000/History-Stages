@@ -138,7 +138,7 @@ public final class NodeTextures {
      */
     private static Identifier register(String name, NativeImage img, boolean smooth) {
         Identifier id = Identifier.fromNamespaceAndPath("historystages", "dyn/" + name);
-        // 26.2 sets filtering and wrapping through the sampler. Repeat keeps repeatingQuad tiling.
+        // Filtering and wrapping are set on the sampler. Repeat keeps repeatingQuad tiling.
         FilterMode filter = smooth ? FilterMode.LINEAR : FilterMode.NEAREST;
         DynamicTexture tex = new DynamicTexture(id::toString, img) {
             {
@@ -167,7 +167,7 @@ public final class NodeTextures {
         float gg = ((color >> 8) & 0xFF) / 255f;
         float b = (color & 0xFF) / 255f;
 
-        // 26.2 GUI drawing goes through render states, so the float corners become a unit blit
+        // GUI drawing goes through render states, so the float corners become a unit blit
         // scaled into place by the pose; sub-pixel sizes stay exact that way too.
         int argb = ((int) (a * 255) << 24) | ((int) (r * 255) << 16) | ((int) (gg * 255) << 8) | (int) (b * 255);
         g.pose().pushMatrix();

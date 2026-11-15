@@ -70,8 +70,8 @@ public class ClientDisconnectHandler {
         // Undo steps are snapshots of the last server's graph; replayed on the next one they
         // would send that layout there.
         GraphLayoutHistory.CLIENT.clear();
-        // 26.2: the editor's recipe list comes from the server (or the integrated one) and is
-        // that world's; the next one sends or reads its own.
+        // The editor's recipe list came from this server (or the integrated one); the next world
+        // sends or reads its own.
         ClientRecipes.clear();
         net.bananemdnsa.historystages.util.AllRecipesCache.set(java.util.List.of());
     }

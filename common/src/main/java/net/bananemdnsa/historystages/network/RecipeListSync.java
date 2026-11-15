@@ -23,13 +23,12 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * The recipe list for the editor on a dedicated server.
  *
- * <p>Up to 1.21.1 every client got all recipes at login, and the editor's recipe pickers read
- * them from the client's recipe manager. Since 1.21.2 a client gets none. Only the editor needs
- * the full list, so it goes only to players allowed to open the editor (the same operator check
- * the editor command has), when they open it and again after a datapack reload changed it.
+ * <p>A client gets no recipes from the server. Only the editor needs the full list, so it goes
+ * only to players allowed to open the editor (the same operator check the editor command has),
+ * when they open it and again after a datapack reload changed it.
  *
  * <p>Each recipe travels as its data-pack JSON (the recipe codec every recipe has, unlike the
- * network codec, which modded recipes no longer need since nothing syncs them), gzipped like the
+ * network codec, which a modded recipe need not have since nothing syncs it), gzipped like the
  * stage sync. A recipe that cannot be written is left out rather than failing the list.
  */
 public final class RecipeListSync {

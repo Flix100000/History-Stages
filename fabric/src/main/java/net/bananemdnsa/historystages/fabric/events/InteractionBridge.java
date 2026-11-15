@@ -47,7 +47,7 @@ public final class InteractionBridge {
         });
 
         // useBlock/useItem have no gate here: Fabric's attack path has no seam between the block
-        // and the item, so only a cancel stops a left click (as on fabric-1.21.X).
+        // and the item, so only a cancel stops a left click.
         Phases.listen(AttackBlockCallback.EVENT, priority -> (player, level, hand, pos, direction) -> {
             if (!Phases.wanted(PlayerInteractEvent.LeftClickBlock.class, priority)) {
                 return InteractionResult.PASS;
@@ -76,7 +76,7 @@ public final class InteractionBridge {
         });
 
         // Fabric raises this from ServerPlayerGameMode only, so the platform event stays server
-        // only, as decided for the NeoForge bridge. On a refusal Fabric resends the block itself.
+        // only, as on the NeoForge bridge. On a refusal Fabric resends the block itself.
         Phases.listen(PlayerBlockBreakEvents.BEFORE, priority -> (level, player, pos, state, blockEntity) -> {
             if (!Phases.wanted(BlockEvent.BreakEvent.class, priority)) {
                 return true;

@@ -7,7 +7,7 @@ import net.fabricmc.loader.api.entrypoint.EntrypointContainer;
 
 import java.util.function.BiConsumer;
 
-/** Fabric side of {@code platform.AddonEntrypoints}: the entrypoints from the 1.21.1 Fabric line. */
+/** Fabric side of {@code platform.AddonEntrypoints}: addons declare entrypoints. */
 public final class AddonEntrypointsImpl {
 
     private static final org.slf4j.Logger LOGGER = com.mojang.logging.LogUtils.getLogger();

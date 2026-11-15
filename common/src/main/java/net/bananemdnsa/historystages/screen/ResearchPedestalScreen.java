@@ -166,8 +166,8 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
         this.imageH = PedestalLayout.HEIGHT;
 
         super.init();
-        // 26.2 made imageWidth/imageHeight final; the pedestal grows with its dependency panel,
-        // so it keeps its own size and centres itself on it.
+        // imageWidth/imageHeight are final, and the pedestal grows with its dependency panel, so it
+        // keeps its own size and centres itself on it.
         this.leftPos = (this.width - this.imageW) / 2;
         this.topPos = (this.height - this.imageH) / 2;
 

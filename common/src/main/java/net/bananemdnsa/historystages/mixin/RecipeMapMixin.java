@@ -23,9 +23,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * The two list lookups 1.21.1 had on the recipe manager ({@code getRecipesFor} and
- * {@code getAllRecipesFor}). 26.2 moved them to {@link RecipeMap}; the gating is the same as
- * before, see {@code RecipeManagerMixin} for which route is gated where.
+ * Gates the recipe map's two list lookups, {@code getRecipesFor} and {@code getAllRecipesFor}.
+ * See {@code RecipeManagerMixin} for which route is gated where.
  */
 @Mixin(RecipeMap.class)
 public class RecipeMapMixin {

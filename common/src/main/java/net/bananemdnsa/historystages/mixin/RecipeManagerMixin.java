@@ -53,10 +53,10 @@ import java.util.*;
  * almost nothing: nothing in vanilla crafts through it, and placing a recipe from the book still
  * has to pass the resolution above.
  *
- * <p>26.2 dropped {@code getOrderedRecipes}, {@code getRecipesFor} and {@code getAllRecipesFor}.
- * The two list lookups live on {@link RecipeMap} now and are gated there ({@code RecipeMapMixin}).
- * Our own scanners need every recipe there is and read {@link #historystages$allRecipes()}, the
- * ungated list, instead of {@code getRecipes()}.
+ * <p>The two list lookups, {@code getRecipesFor} and {@code getAllRecipesFor}, live on
+ * {@link RecipeMap} and are gated there ({@code RecipeMapMixin}). Our own scanners need every
+ * recipe there is and read {@link #historystages$allRecipes()}, the ungated list, instead of
+ * {@code getRecipes()}.
  *
  * <p>The gate lives inside these method bodies, which means a mod that puts its own subclass of
  * the recipe manager in place and overrides them is not gated at all. That is not hypothetical —

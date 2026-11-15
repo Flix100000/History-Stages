@@ -47,7 +47,7 @@ public final class FabricGameTests {
     private static void registerInstances(Registry<GameTestInstance> instances,
                                           Registry<TestEnvironmentDefinition<?>> environments) {
         Holder<TestEnvironmentDefinition<?>> environment = environment(environments, "default");
-        // A test with its own batch gets its own environment: 26.2 batches tests by environment.
+        // A test with its own batch gets its own environment: tests are batched by environment.
         Map<String, Holder<TestEnvironmentDefinition<?>>> batches = new LinkedHashMap<>();
         for (HistoryStagesGameTests.Entry entry : HistoryStagesGameTests.all()) {
             Holder<TestEnvironmentDefinition<?>> env = entry.batch().isEmpty() ? environment

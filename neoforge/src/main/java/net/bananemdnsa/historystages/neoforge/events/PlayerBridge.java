@@ -114,15 +114,16 @@ public final class PlayerBridge {
     }
 
     /**
-     * NeoForge 26.2 folded {@code EntityInteractSpecific} into {@code EntityInteract}, which now
-     * carries the local hit position. Main-branch handlers listen for both, so both are posted:
-     * the specific one first, as vanilla used to ask {@code interactAt} before {@code interact}.
+     * NeoForge has a single {@code EntityInteract}, which carries the local hit position. The
+     * handlers listen for both {@code EntityInteractSpecific} and {@code EntityInteract}, so both
+     * are posted: the specific one first, as vanilla used to ask {@code interactAt} before
+     * {@code interact}.
      * When a handler cancels the specific one, the plain one is not asked any more; the interaction
      * is over. When the native event already arrived cancelled, both are still posted, so handlers
      * with {@code receiveCanceled} see both.
      *
-     * <p>Vanilla 26.2 sends one interact packet per click and NeoForge fires one EntityInteract from
-     * it (a GameTest checks this), so each platform event is posted once per interaction.
+     * <p>Vanilla sends one interact packet per click and NeoForge fires one EntityInteract from it,
+     * so each platform event is posted once per interaction.
      */
     private static void entityInteract(PlayerInteractEvent.EntityInteract event, EventPriority priority) {
         boolean arrivedCanceled = event.isCanceled();

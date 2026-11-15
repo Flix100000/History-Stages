@@ -118,7 +118,7 @@ public final class TradeGoodsScanner {
         // Keyed by what makes two rolls the same trade, so a recipe that rolls its own price does
         // not appear eight times at eight prices. First roll wins; see TradePreview#identity.
         Map<String, TradePreview> offers = new LinkedHashMap<>();
-        // 26.2 trades are loot-driven data: rolling one needs a server level's loot context, and
+        // Trades are loot-driven data: rolling one needs a server level's loot context, and
         // the trade registry is not sent to clients. A client relies on the server's answer.
         if (!(level instanceof ServerLevel serverLevel)) return List.of();
 
@@ -319,8 +319,8 @@ public final class TradeGoodsScanner {
      * locking one by its item still works.
      */
     private static boolean searchesTheWorld(VillagerTrade listing) {
-        // 26.2 makes the map through an item modifier on a data-driven trade. The field is
-        // private; 26.2 is not obfuscated, so the name holds on both loaders.
+        // The map comes from an item modifier on a data-driven trade. The field is private; the
+        // game ships unobfuscated, so the name holds on both loaders.
         if (GIVEN_ITEM_MODIFIERS == null) return false;
         try {
             if (!(GIVEN_ITEM_MODIFIERS.get(listing) instanceof List<?> modifiers)) return false;
