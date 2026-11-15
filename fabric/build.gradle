@@ -50,6 +50,8 @@ dependencies {
         localRuntime "maven.modrinth:jade:${rootProject.jade_fabric_version}"
         localRuntime "mezz.jei:jei-26.2-fabric:${rootProject.jei_version}"
         localRuntime "maven.modrinth:better-combat:${rootProject.better_combat_fabric_version}"
+        localRuntime "maven.modrinth:reliable-remover:${rootProject.reliable_remover_fabric_version}"
+        localRuntime "maven.modrinth:reliable-recipes:${rootProject.reliable_recipes_fabric_version}"
         localRuntime "maven.modrinth:spell-engine:${rootProject.spell_engine_fabric_version}"
         localRuntime "maven.modrinth:spell-power:${rootProject.spell_power_fabric_version}"
         localRuntime "maven.modrinth:player-animation-library:${rootProject.player_animation_lib_version}"

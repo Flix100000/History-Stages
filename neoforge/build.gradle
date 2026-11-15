@@ -53,6 +53,8 @@ dependencies {
         localRuntime "maven.modrinth:jade:${rootProject.jade_neoforge_version}"
         localRuntime "mezz.jei:jei-26.2-neoforge:${rootProject.jei_version}"
         localRuntime "maven.modrinth:better-combat:${rootProject.better_combat_neoforge_version}"
+        localRuntime "maven.modrinth:reliable-remover:${rootProject.reliable_remover_neoforge_version}"
+        localRuntime "maven.modrinth:reliable-recipes:${rootProject.reliable_recipes_neoforge_version}"
         localRuntime "maven.modrinth:spell-engine:${rootProject.spell_engine_neoforge_version}"
         localRuntime "maven.modrinth:spell-power:${rootProject.spell_power_neoforge_version}"
         localRuntime "maven.modrinth:player-animation-library:${rootProject.player_animation_lib_version}"
