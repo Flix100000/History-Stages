@@ -1,5 +1,7 @@
 package net.bananemdnsa.historystages.screen;
 
+import net.bananemdnsa.historystages.client.LegacyGui;
+
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractButton;
 import net.minecraft.client.gui.components.Tooltip;
@@ -67,7 +69,7 @@ public class PedestalIconButton extends AbstractButton {
 
         int u = this.column.getAsInt() * PedestalLayout.ICON_SIZE;
         int v = pressedIn ? PedestalLayout.ICON_SIZE : 0;
-        guiGraphics.blit(this.sheet, this.getX(), this.getY(), u, v,
+        LegacyGui.blit(guiGraphics, this.sheet, this.getX(), this.getY(), u, v,
                 PedestalLayout.ICON_SIZE, PedestalLayout.ICON_SIZE, 54, 36);
     }
 

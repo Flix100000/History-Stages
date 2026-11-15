@@ -99,7 +99,7 @@ public final class LockIconRenderer {
         guiGraphics.pose().translate(x, y);
         float scale = size / 32.0f;
         guiGraphics.pose().scale(scale, scale);
-        guiGraphics.blit(icon, 0, 0, 0, 0, 32, 32, 32, 32);
+        LegacyGui.blit(guiGraphics, icon, 0, 0, 0f, 0f, 32, 32, 32, 32);
         guiGraphics.pose().popMatrix();
     }
 
@@ -108,7 +108,7 @@ public final class LockIconRenderer {
         guiGraphics.pose().pushMatrix();
         guiGraphics.pose().translate(x, y);
         guiGraphics.pose().scale(0.25f, 0.25f);
-        guiGraphics.blit(icon, 0, 0, 0, 0, 32, 32, 32, 32);
+        LegacyGui.blit(guiGraphics, icon, 0, 0, 0f, 0f, 32, 32, 32, 32);
         guiGraphics.pose().popMatrix();
     }
 }

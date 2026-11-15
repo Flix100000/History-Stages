@@ -1,5 +1,7 @@
 package net.bananemdnsa.historystages.screen;
 
+import net.bananemdnsa.historystages.client.LegacyGui;
+
 import net.bananemdnsa.historystages.util.TextColors;
 import net.minecraft.client.input.MouseButtonInfo;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -566,7 +568,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
         // One blit for the whole sheet, candles included: imageH covers everything that
         // is painted, so the screen centres on what the player actually sees.
         Identifier sheet = tierTexture();
-        guiGraphics.blit(sheet, this.leftPos, this.topPos,
+        LegacyGui.blit(guiGraphics, sheet, this.leftPos, this.topPos,
                 PedestalLayout.SHEET_X, PedestalLayout.SHEET_Y,
                 PedestalLayout.WIDTH, PedestalLayout.HEIGHT, 256, 256);
 
@@ -574,7 +576,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
             int depX = this.leftPos + PedestalLayout.WIDTH + PedestalLayout.DEP_GAP;
             // Hangs off the slab, not off the panel top — above the slab there are only candles.
             int depY = this.topPos + PedestalLayout.BODY_TOP;
-            guiGraphics.blit(TEXTURE_DEP, depX, depY,
+            LegacyGui.blit(guiGraphics, TEXTURE_DEP, depX, depY,
                     PedestalLayout.DEP_SHEET_X, PedestalLayout.DEP_SHEET_Y,
                     PedestalLayout.DEP_W, PedestalLayout.DEP_H, 256, 256);
             renderDependencyPanel(guiGraphics, depX, depY, pMouseX, pMouseY);
@@ -589,7 +591,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
         }
         // Layer 3: the mask — opaque everywhere the fill must not show, with the bar window
         // punched out of it.
-        guiGraphics.blit(TEXTURE_BAR, this.leftPos, this.topPos,
+        LegacyGui.blit(guiGraphics, TEXTURE_BAR, this.leftPos, this.topPos,
                 PedestalLayout.SHEET_X, PedestalLayout.SHEET_Y,
                 PedestalLayout.WIDTH, PedestalLayout.HEIGHT, 256, 256);
     }
@@ -624,7 +626,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
                     int slotX = this.leftPos + PedestalLayout.SCROLL_SLOT_X;
                     int slotY = this.topPos + PedestalLayout.SCROLL_SLOT_Y;
                     guiGraphics.pose().pushMatrix();
-                    guiGraphics.pose().translate(0, 0);
+                    guiGraphics.nextStratum();
                     guiGraphics.fill(slotX, slotY, slotX + 16, slotY + 16, 0x80808080);
                     guiGraphics.pose().popMatrix();
                 }
@@ -1026,7 +1028,7 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
                     boolean affordable = canAfford(entry);
                     // Same convention as PedestalIconButton: a button that would do nothing
                     // sits pressed in, which is also the hover face.
-                    guiGraphics.blit(TEXTURE_BUTTONS, xpX, xpY,
+                    LegacyGui.blit(guiGraphics, TEXTURE_BUTTONS, xpX, xpY,
                             PedestalLayout.ICON_COL_XP * PedestalLayout.ICON_SIZE,
                             (xpHovered || !affordable) ? PedestalLayout.ICON_SIZE : 0,
                             PedestalLayout.ICON_SIZE, PedestalLayout.ICON_SIZE, 54, 36);

@@ -719,8 +719,8 @@ public class OpenScrollScreen extends Screen {
         g.fill(0, 0, this.width, this.height, backdrop);
         // One blit of the whole sheet, offset so the drawn region lands on the panel. Blitting the
         // region alone would centre the screen on the sheet's empty margins instead.
-        g.blit(SHEET, leftPos - OpenScrollGeometry.SHEET_X, topPos - OpenScrollGeometry.SHEET_Y,
-                0, 0, OpenScrollGeometry.SHEET_SIZE, OpenScrollGeometry.SHEET_SIZE,
+        net.bananemdnsa.historystages.client.LegacyGui.blit(g, SHEET, leftPos - OpenScrollGeometry.SHEET_X, topPos - OpenScrollGeometry.SHEET_Y,
+                0f, 0f, OpenScrollGeometry.SHEET_SIZE, OpenScrollGeometry.SHEET_SIZE,
                 OpenScrollGeometry.SHEET_SIZE, OpenScrollGeometry.SHEET_SIZE);
         renderTabs(g, mouseX, mouseY);
 

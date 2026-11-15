@@ -441,7 +441,7 @@ public class OpenScrollDocumentScreen extends Screen {
         int gx = Math.min(mouseX + 8, this.width - gw - 4);
         int gy = Math.min(mouseY - 8, this.height - 18);
         g.pose().pushMatrix();
-        g.pose().translate(0, 0);
+        g.nextStratum();
         g.fill(gx, gy, gx + gw, gy + 16, 0xE0101010);
         g.fill(gx, gy + 15, gx + gw, gy + 16, 0xFFFFCC00);
         g.text(this.font, label, gx + 5, gy + 4, 0xFFFFFFFF, false);
@@ -477,8 +477,8 @@ public class OpenScrollDocumentScreen extends Screen {
 
         int sx = 0;
         int sy = 0;
-        g.blit(SHEET, sx - OpenScrollGeometry.SHEET_X, sy - OpenScrollGeometry.SHEET_Y,
-                0, 0, OpenScrollGeometry.SHEET_SIZE, OpenScrollGeometry.SHEET_SIZE,
+        net.bananemdnsa.historystages.client.LegacyGui.blit(g, SHEET, sx - OpenScrollGeometry.SHEET_X, sy - OpenScrollGeometry.SHEET_Y,
+                0f, 0f, OpenScrollGeometry.SHEET_SIZE, OpenScrollGeometry.SHEET_SIZE,
                 OpenScrollGeometry.SHEET_SIZE, OpenScrollGeometry.SHEET_SIZE);
 
         int x = sx + OpenScrollGeometry.CONTENT_X;
