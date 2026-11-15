@@ -33,6 +33,7 @@ public final class ClientHandlers {
             ZoneSelectionRenderer.class,
             ClientDebugCommand.class,
             ClientScreenCommand.class,
+            net.bananemdnsa.historystages.client.editor.SmokeTour.class,
             ToastClickHandler.class,
             TooltipEventHandler.class,
             net.bananemdnsa.historystages.demo.DemoAddonCategoryEditor.class,

@@ -14,6 +14,8 @@ loom {
             // Spell Engine uses @OnlyIn. Their log lines stay.
             property "neoforge.warnings.logofile.hide", "true"
             property "neoforge.warnings.onlyin.hide", "true"
+            // smoke.sh --tour: open a list of screens after joining and screenshot each (SmokeTour).
+            if (rootProject.hasProperty("smokeTour")) property "historystages.smoke.tour", rootProject.smokeTour
         }
         server {
             programArg "--nogui"
