@@ -77,7 +77,10 @@ public class StructureLockHandler {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
         if (player.isSpectator()) return;
 
-        if (!StageLocks.engine().anyStructureLocks()) return;
+        if (!StageLocks.engine().anyStructureLocks()) {
+            releaseLeftovers(player);
+            return;
+        }
 
         PlayerState state = STATE.computeIfAbsent(player.getUUID(), u -> new PlayerState());
 
@@ -381,6 +384,19 @@ public class StructureLockHandler {
 
     public static void clearPlayer(UUID uuid) {
         STATE.remove(uuid);
+    }
+
+    /**
+     * Once the last structure lock is gone the tick stops early, so the state from before would
+     * never be recomputed: clicks stay refused and the client keeps drawing (and bumping into)
+     * borders of a lock that no longer exists.
+     */
+    private static void releaseLeftovers(ServerPlayer player) {
+        if (STATE.isEmpty()) return;
+        PlayerState state = STATE.remove(player.getUUID());
+        if (state != null && state.lastBorderHash != computeBoxHash(Collections.emptyList())) {
+            PacketHandler.sendLockBordersToPlayer(new SyncLockBordersPacket(Collections.emptyList()), player);
+        }
     }
 
     /**

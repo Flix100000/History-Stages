@@ -73,7 +73,10 @@ public class BiomeLockHandler {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
         if (player.isSpectator()) return;
 
-        if (!StageLocks.engine().anyBiomeLocks()) return;
+        if (!StageLocks.engine().anyBiomeLocks()) {
+            releaseLeftovers(player);
+            return;
+        }
 
         PlayerState state = STATE.computeIfAbsent(player.getUUID(), u -> new PlayerState());
 
@@ -297,6 +300,18 @@ public class BiomeLockHandler {
 
     public static void clearPlayer(UUID uuid) {
         STATE.remove(uuid);
+    }
+
+    /**
+     * Once the last biome lock is gone the tick stops early, so nothing would ever recompute the
+     * state left from before: the player stays "inside a locked biome" and every click is refused.
+     */
+    private static void releaseLeftovers(ServerPlayer player) {
+        if (STATE.isEmpty()) return;
+        PlayerState state = STATE.remove(player.getUUID());
+        if (state != null && state.wasLocked && Config.GAMEPLAY.biomeClearEffectsOnLeave.get()) {
+            clearEffects(player);
+        }
     }
 
     /**

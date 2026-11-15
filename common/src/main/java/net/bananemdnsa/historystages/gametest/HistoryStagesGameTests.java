@@ -35,6 +35,7 @@ public final class HistoryStagesGameTests {
             AddonApiTests.class,
             AddonHookTests.class,
             AutoTriggerTests.class,
+            BiomeLockTests.class,
             ConfigCodecTests.class,
             ContainerLockTests.class,
             DependencyCheckerTests.class,
