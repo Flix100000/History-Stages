@@ -1363,6 +1363,7 @@ public class StageManager {
                     DebugLogger.warn("Unknown Entities", "Entity '" + entityId + "' does not exist in the entity registry (Stage: " + stageId + ", spawnlock). Typo or missing mod?");
                 }
             }
+            checkNbtCriteria(entry, "Stage: " + stageId);
             runAddonChecks(stageId, StageScope.GLOBAL, entry);
         }
 
@@ -1410,6 +1411,7 @@ public class StageManager {
                 }
                 validateInteractionItemsAgainstRegistry(inEntry, indId, "Individual Stage");
             }
+            checkNbtCriteria(indData, "Individual Stage: " + indId);
             runAddonChecks(indId, StageScope.INDIVIDUAL, indData);
         }
 
@@ -1425,6 +1427,15 @@ public class StageManager {
      * Registry check for an interaction entry's item filter. Only plain item IDs are checked —
      * "#tag" refs cannot be resolved reliably here (tags load later), same as structure tags.
      */
+    private static void checkNbtCriteria(StageEntry entry, String where) {
+        List<ItemEntry> items = new ArrayList<>(entry.getItemEntries());
+        items.addAll(entry.getModExceptionEntries());
+        for (ItemEntry item : items) {
+            NbtMatcher.checkCriteria(item.getNbt(), problem -> DebugLogger.warn("NBT Criteria",
+                    "Item '" + item.getId() + "' (" + where + "): " + problem));
+        }
+    }
+
     private static void validateInteractionItemsAgainstRegistry(EntityInteractionLockEntry inEntry, String stageId, String label) {
         if (!inEntry.hasLockItems()) return;
         for (ItemEntry item : inEntry.getLockItems()) {

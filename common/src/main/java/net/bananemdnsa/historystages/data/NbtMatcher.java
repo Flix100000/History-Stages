@@ -48,8 +48,30 @@ public class NbtMatcher {
     public static boolean matches(ItemStack stack, JsonObject nbtCriteria) {
         if (nbtCriteria == null || nbtCriteria.size() == 0) return true;
 
-        CompoundTag tag = buildMatchTag(stack, nbtCriteria);
-        return !tag.isEmpty() && matchesCompound(tag, nbtCriteria);
+        // Problems are reported once by checkCriteria at load, not on every match.
+        JsonObject criteria = LegacyComponentCriteria.normalise(nbtCriteria, (id, msg) -> {});
+        CompoundTag tag = buildMatchTag(stack, criteria);
+        return !tag.isEmpty() && matchesCompound(tag, criteria);
+    }
+
+    /**
+     * Load-time check of one criterion: components the game doesn't know and 1.21.1 shapes. Needs
+     * the registries, so it runs in the registry pass.
+     */
+    public static void checkCriteria(JsonObject nbtCriteria, java.util.function.Consumer<String> problems) {
+        if (nbtCriteria == null) return;
+        JsonObject criteria = LegacyComponentCriteria.normalise(nbtCriteria, (id, msg) -> problems.accept(msg));
+        if (criteria != nbtCriteria) {
+            problems.accept("criterion " + nbtCriteria.getAsJsonObject("components")
+                    + " uses the 1.21.1 form and is matched as " + criteria.getAsJsonObject("components"));
+        }
+        if (!criteria.has("components") || !criteria.get("components").isJsonObject()) return;
+        for (String componentId : criteria.getAsJsonObject("components").keySet()) {
+            Identifier rl = Identifier.tryParse(componentId);
+            if (rl == null || !BuiltInRegistries.DATA_COMPONENT_TYPE.containsKey(rl)) {
+                problems.accept("component " + componentId + " is unknown (typo, mod missing, or removed in 26.2); this criterion never matches");
+            }
+        }
     }
 
     private static CompoundTag buildMatchTag(ItemStack stack, JsonObject criteria) {

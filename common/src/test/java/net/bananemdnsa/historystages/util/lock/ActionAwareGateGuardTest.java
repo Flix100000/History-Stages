@@ -45,6 +45,7 @@ class ActionAwareGateGuardTest {
             "FluidLockTests.java",    // GameTest: same
             "InterchangeableStageTests.java", // GameTest: same
             "EnchantmentEffectLockTests.java", // GameTest: same
+            "NbtCriteriaLockTests.java", // GameTest: same
             // A disguise belongs to the item and holds while any stage gates it at all. How it
             // breaks is the disguise rule's own setting, not an action narrowing of the entry.
             "Disguises.java",

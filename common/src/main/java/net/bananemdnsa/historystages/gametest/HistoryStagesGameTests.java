@@ -44,6 +44,7 @@ public final class HistoryStagesGameTests {
             GraphReachabilityTests.class,
             InterchangeableStageTests.class,
             ItemTagDepositTests.class,
+            NbtCriteriaLockTests.class,
             LockTests.class,
             LootrLootFilterTests.class,
             PacketTests.class,
