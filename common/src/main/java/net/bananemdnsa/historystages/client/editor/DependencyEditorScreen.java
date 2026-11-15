@@ -1192,6 +1192,7 @@ public class DependencyEditorScreen extends Screen {
         buildBuiltInTab("individual_stage", requirement -> new IndividualStageTab(requirement,
                 (onSelect, alreadyAdded) -> {
                     SearchableStageList picker = new SearchableStageList(onSelect, true, alreadyAdded);
+                    if (isIndividual) picker.setExcludeStageId(currentStageId);
                     picker.setMultiSelect(true);
                     return picker;
                 },

@@ -395,6 +395,17 @@ public class StageManager {
         DebugLogger.warn("Dependency Groups", msg);
     }
 
+    private static void dropSelfDependencies(String stageId, StageEntry entry, boolean individual) {
+        int removed = net.bananemdnsa.historystages.data.dependency.SelfDependencies.strip(
+                stageId, individual, entry.getDependencies());
+        if (removed == 0) return;
+        String msg = (individual ? "Individual stage '" : "Stage '") + stageId
+                + "' lists itself as a dependency. It could never be unlocked that way, so the entry"
+                + " was ignored.";
+        addMessage(MessageLevel.WARN, msg);
+        DebugLogger.warn("Dependency Groups", msg);
+    }
+
     /**
      * Hands the stage's dependency groups their ids, and says so when two of them clashed.
      *
@@ -619,6 +630,7 @@ public class StageManager {
         }
 
         trimDependencyGroups(stageId, entry);
+        dropSelfDependencies(stageId, entry, false);
         assignDependencyGroupIds(stageId, entry);
         warnAboutScopeMismatches(stageId, entry, StageScope.GLOBAL);
 
@@ -1824,6 +1836,7 @@ public class StageManager {
         validateLockTriggers(stageId, entry);
 
         trimDependencyGroups(stageId, entry);
+        dropSelfDependencies(stageId, entry, true);
         assignDependencyGroupIds(stageId, entry);
         // No-op today, because every built-in works at INDIVIDUAL scope. Here anyway, so a
         // requirement that later declares itself global-only is caught on this side too.
