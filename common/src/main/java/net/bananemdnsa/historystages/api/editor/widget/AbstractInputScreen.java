@@ -209,7 +209,7 @@ public abstract class AbstractInputScreen extends AbstractModalScreen {
                         f.label() != null ? f.label() : Component.literal(f.key()));
                 box.setMaxLength(f.maxLength());
                 box.setBordered(false);
-                box.setTextColor(0xFFFFFF);
+                box.setTextColor(0xFFFFFFFF);
                 box.setValue(f.initial());
                 box.moveCursorToEnd(false);
                 if (f.hint() != null) box.setHint(f.hint());

@@ -33,8 +33,10 @@ class TextColorsTest {
         assertEquals(0x04FFFFFF, TextColors.legacy(0x04FFFFFF));
     }
 
+    // EditBox.setTextColor ends in the same font call, so typed text vanished the same way.
     private static final Pattern BARE_RGB_TEXT = Pattern.compile(
-            "\\.(?:text|centeredText)\\([^;]*,\\s*0x[0-9A-Fa-f]{6}\\s*(?:,\\s*(?:true|false)\\s*)?\\)\\s*;");
+            "\\.(?:text|centeredText)\\([^;]*,\\s*0x[0-9A-Fa-f]{6}\\s*(?:,\\s*(?:true|false)\\s*)?\\)\\s*;"
+                    + "|\\.setTextColor(?:Uneditable)?\\(\\s*0x[0-9A-Fa-f]{6}\\s*\\)");
 
     @Test
     void noTextCallPassesABareRgbLiteral() throws IOException {
