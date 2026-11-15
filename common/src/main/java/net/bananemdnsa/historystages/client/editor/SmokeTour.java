@@ -9,6 +9,7 @@ import net.bananemdnsa.historystages.client.editor.dialog.StylePresetNameScreen;
 import net.bananemdnsa.historystages.client.editor.graph.GraphLegend;
 import net.bananemdnsa.historystages.api.editor.CategoryTab;
 import net.bananemdnsa.historystages.client.scroll.OpenScrollScreen;
+import net.bananemdnsa.historystages.compat.ScrollVariants;
 import net.bananemdnsa.historystages.init.ModBlocks;
 import net.bananemdnsa.historystages.platform.Dist;
 import net.bananemdnsa.historystages.platform.bus.EventBusSubscriber;
@@ -48,7 +49,8 @@ import java.util.function.Supplier;
  * ways no unit test or GameTest sees: a colour without alpha, a blit with the wrong argument
  * order or a popup on the wrong layer all pass every automated check.
  *
- * <p>The editor scenes expect a global stage {@code hs_smoke}, which the smoke script writes.
+ * <p>The editor scenes expect a global stage {@code hs_smoke}, and the pedestal requirements scene
+ * {@code hs_smoke_deps}; the smoke script writes both.
  */
 @EventBusSubscriber(modid = HistoryStages.MOD_ID, value = Dist.CLIENT)
 public final class SmokeTour {
@@ -159,9 +161,73 @@ public final class SmokeTour {
             list.add(scene("pedestal_t" + tier, () -> placePedestal(pedestals.get().get(t - 1), t),
                     Map.of(10, () -> openPedestal(t))));
         }
+        // The research scroll of a stage with a requirement, so the requirements panel opens
+        // beside the sheet, where JEI's item list must keep clear of it.
+        list.add(scene("pedestal_requirements", () -> placePedestal(pedestals.get().get(0), 1),
+                Map.of(10, () -> openPedestal(1),
+                        15, () -> onServer(player -> player.containerMenu.getSlot(PEDESTAL_SCROLL_SLOT)
+                                .set(ScrollVariants.createScroll(DEPS_STAGE))))));
+        list.add(scene("jei_boosters", SmokeTour::showJeiBoosters, Map.of()));
         list.add(scene("open_scroll", () -> show(new OpenScrollScreen(STAGE)), Map.of()));
         list.add(scene("mod_list", SmokeTour::openModList, Map.of()));
+        // A locked block under the crosshair, for Jade's lines.
+        list.add(scene("jade_locked_block", () -> {
+            show(null);
+            onServer(player -> {
+                runCommand(player, "setblock 18 97 -7 minecraft:iron_block");
+                runCommand(player, "tp @s 18.5 96 -4.5 180 20");
+            });
+        }, Map.of()));
+        // Water and stained glass between the camera and the force fields and the selection box.
+        list.add(scene("overlays_water", () -> {
+            show(null);
+            onServer(player -> {
+                for (String command : WATER_AND_GLASS) runCommand(player, command);
+            });
+        }, Map.of()));
         return list;
+    }
+
+    private static final String DEPS_STAGE = "hs_smoke_deps";
+    private static final int PEDESTAL_SCROLL_SLOT = 36;
+
+    /**
+     * Built around the player's spot from the smoke data pack (18.5 96 -4.5): a water column in front
+     * of the village's red field straight ahead, stained glass in front of the zone's wall on the
+     * right and of the selection box on the left.
+     */
+    private static final List<String> WATER_AND_GLASS = List.of(
+            "time set noon",
+            "tp @s 18.5 96 -4.5 -160 15",
+            // Barriers hold the water in place and are not drawn.
+            "fill 16 95 -8 19 100 -6 minecraft:barrier",
+            "fill 17 96 -7 18 99 -7 minecraft:water",
+            "fill 20 95 -7 20 99 -5 minecraft:lime_stained_glass",
+            "fill 14 95 -6 15 98 -6 minecraft:lime_stained_glass");
+
+    private static void runCommand(ServerPlayer player, String command) {
+        var source = player.createCommandSourceStack().withSuppressedOutput()
+                .withPermission(net.minecraft.server.permissions.LevelBasedPermissionSet.OWNER);
+        player.level().getServer().getCommands().performPrefixedCommand(source, command);
+    }
+
+    /** JEI's recipe screen on the booster category, looked up by name so a run without JEI skips it. */
+    private static void showJeiBoosters() {
+        if (!Platform.isModLoaded("jei")) {
+            LOGGER.info("[HistoryStages] Smoke tour: JEI not loaded");
+            return;
+        }
+        try {
+            Class<?> plugin = Class.forName("net.bananemdnsa.historystages.compat.jei.JEIPlugin");
+            Object runtime = field(null, plugin, "RUNTIME");
+            Object type = Class.forName("net.bananemdnsa.historystages.compat.jei.BoosterRecipeCategory")
+                    .getField("TYPE").get(null);
+            Object gui = Class.forName("mezz.jei.api.runtime.IJeiRuntime").getMethod("getRecipesGui").invoke(runtime);
+            Class.forName("mezz.jei.api.runtime.IRecipesGui").getMethod("showTypes", List.class)
+                    .invoke(gui, List.of(type));
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     private static Scene scene(String name, Runnable open, Map<Integer, Runnable> actions) {
@@ -245,6 +311,12 @@ public final class SmokeTour {
     private static void type(String text) {
         Screen screen = screen();
         text.codePoints().forEach(cp -> screen.charTyped(new CharacterEvent(cp)));
+    }
+
+    private static Object field(Object owner, Class<?> type, String name) throws ReflectiveOperationException {
+        Field f = findField(type, name);
+        f.setAccessible(true);
+        return f.get(owner);
     }
 
     @SuppressWarnings("unchecked")
