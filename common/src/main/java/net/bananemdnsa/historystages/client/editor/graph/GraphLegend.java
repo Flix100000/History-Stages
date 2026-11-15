@@ -97,7 +97,7 @@ public final class GraphLegend {
         // Drawn above canvas/sidebar/panel content, outside the canvas's own scissor, so it
         // stays fixed on screen regardless of pan or zoom.
         g.pose().pushMatrix();
-        g.pose().translate(0, 0);
+        g.nextStratum();
 
         int animH = Math.round(bodyH * revealT);
         if (animH > 1) {
@@ -234,8 +234,8 @@ public final class GraphLegend {
     }
 
     private int bodyHeight() {
-        // 3 node rows + 2 edge rows, two section headers, a separator gap, padding top/bottom.
-        return PAD * 2 + SUB_H * 2 + ROW_H * 5 + 4;
+        // 4 node rows + 2 edge rows, two section headers, a separator gap, padding top/bottom.
+        return PAD * 2 + SUB_H * 2 + ROW_H * 6 + 4;
     }
 
     // --- Input ----------------------------------------------------------------------------------
