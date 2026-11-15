@@ -44,8 +44,14 @@ dependencies {
     // ---- Optional integrations ----
     // In the dev runs too, unless -Pbare (smoke.sh --bare) asks for a run without them.
     compileOnly "maven.modrinth:jade:${rootProject.jade_fabric_version}"
+    compileOnly "maven.modrinth:spell-engine:${rootProject.spell_engine_fabric_version}"
     if (!rootProject.hasProperty("bare")) {
         localRuntime "maven.modrinth:jade:${rootProject.jade_fabric_version}"
+        localRuntime "maven.modrinth:spell-engine:${rootProject.spell_engine_fabric_version}"
+        localRuntime "maven.modrinth:spell-power:${rootProject.spell_power_fabric_version}"
+        localRuntime "maven.modrinth:player-animation-library:${rootProject.player_animation_lib_version}"
+        localRuntime "maven.modrinth:cloth-config:${rootProject.cloth_config_fabric_version}"
+        localRuntime "maven.modrinth:trinkets-updated:${rootProject.trinkets_version}"
     }
 
     // The platform ModConfigSpec is built on NightConfig. NeoForge ships 3.9.0; Fabric does not,

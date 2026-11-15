@@ -19,6 +19,7 @@ dependencies {
 
     // Optional integrations. Their APIs are loader-neutral, the Fabric jars only carry them.
     compileOnly "maven.modrinth:jade:${rootProject.jade_fabric_version}"
+    compileOnly "maven.modrinth:spell-engine:${rootProject.spell_engine_fabric_version}"
 
     testImplementation platform("org.junit:junit-bom:5.10.2")
     testImplementation "org.junit.jupiter:junit-jupiter"

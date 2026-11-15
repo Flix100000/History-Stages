@@ -7,7 +7,7 @@ import net.bananemdnsa.historystages.util.lock.LockFeedback;
 import net.bananemdnsa.historystages.util.lock.LockGate;
 import net.bananemdnsa.historystages.util.lock.LockMessages;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -34,7 +34,7 @@ public final class SpellEngineCompat {
             if (LockGate.isActionLocked(stack, caster, "use",
                     Config.GAMEPLAY.lockItemUsage, Config.GAMEPLAY.individualLockItemUsage)) {
                 if (caster instanceof ServerPlayer sp) {
-                    ResourceLocation itemRL = BuiltInRegistries.ITEM.getKey(stack.getItem());
+                    Identifier itemRL = BuiltInRegistries.ITEM.getKey(stack.getItem());
                     DebugLogger.runtimeThrottled(HsRuntimeCategories.ITEM_USE_LOCK, "cast_" + sp.getUUID() + "_" + itemRL,
                             "<" + sp.getName().getString() + "> Spell cast with '" + itemRL + "' blocked [action: use]");
                     LockFeedback.sendActionbar(sp, "item", LockMessages.itemLocked());

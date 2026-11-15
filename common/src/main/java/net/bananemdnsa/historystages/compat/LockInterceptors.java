@@ -17,8 +17,6 @@ public final class LockInterceptors {
     private LockInterceptors() {}
 
     public static void init() {
-        // PORT(Task 13): SpellEngineCompat waits in port-pending until it builds against Spell Engine 26.2.
-        /*
         if (Services.isModLoaded("spell_engine")) {
             try {
                 net.bananemdnsa.historystages.compat.spellengine.SpellEngineCompat.register();
@@ -27,6 +25,5 @@ public final class LockInterceptors {
                 LOGGER.error("[HistoryStages] Failed to load Spell Engine lock adapter.", t);
             }
         }
-        */
     }
 }
