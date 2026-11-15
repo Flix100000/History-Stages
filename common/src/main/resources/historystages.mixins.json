@@ -30,6 +30,7 @@
   "client": [
     "AttackStartLockMixin",
     "ClientAdvancementsAccessor",
+    "ContainerScreenSizeAccessor",
     "GuiDeferredOverlayMixin",
     "ItemStackMixin",
     "ZoneBarrierMixin",

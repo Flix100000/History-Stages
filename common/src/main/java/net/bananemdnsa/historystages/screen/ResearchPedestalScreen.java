@@ -40,6 +40,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
+import net.bananemdnsa.historystages.mixin.ContainerScreenSizeAccessor;
 
 public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPedestalMenu> {
     private int imageW = PedestalLayout.WIDTH;
@@ -166,10 +167,12 @@ public class ResearchPedestalScreen extends AbstractContainerScreen<ResearchPede
                 ? PedestalLayout.WIDTH + PedestalLayout.DEP_GAP + PedestalLayout.DEP_W
                 : PedestalLayout.WIDTH;
         this.imageH = PedestalLayout.HEIGHT;
+        // JEI reads the inherited size to keep its item list clear of the requirements panel.
+        ContainerScreenSizeAccessor size = (ContainerScreenSizeAccessor) this;
+        size.historystages$setImageWidth(this.imageW);
+        size.historystages$setImageHeight(this.imageH);
 
         super.init();
-        // imageWidth/imageHeight are final, and the pedestal grows with its dependency panel, so it
-        // keeps its own size and centres itself on it.
         this.leftPos = (this.width - this.imageW) / 2;
         this.topPos = (this.height - this.imageH) / 2;
 
