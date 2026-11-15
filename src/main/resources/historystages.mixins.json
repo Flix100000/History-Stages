@@ -18,6 +18,9 @@
     "BrewingStandMixin",
     "MerchantOffersMixin",
     "MerchantContainerMixin",
+    "MerchantMenuAccessor",
+    "MerchantMenuCloseMixin",
+    "SelectTradeMixin",
     "jei.RecipeLayoutMixin",
     "fastsuite.AuxRecipeManagerMixin"
   ],
