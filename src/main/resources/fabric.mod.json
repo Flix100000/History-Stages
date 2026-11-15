@@ -58,6 +58,7 @@
 			"net.bananemdnsa.historystages.gametest.LockTests",
 			"net.bananemdnsa.historystages.gametest.LootrLootFilterTests",
 			"net.bananemdnsa.historystages.gametest.PacketTests",
+			"net.bananemdnsa.historystages.gametest.PedestalTransferTests",
 			"net.bananemdnsa.historystages.gametest.PersistenceTests",
 			"net.bananemdnsa.historystages.gametest.ReachTests",
 			"net.bananemdnsa.historystages.gametest.RecipeLockTests",

@@ -20,7 +20,12 @@ import net.bananemdnsa.historystages.network.clientbound.SyncVisualConfigPacket;
 import net.fabricmc.fabric.api.gametest.v1.FabricGameTest;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.bananemdnsa.historystages.data.StageJsonLimits;
+import net.bananemdnsa.historystages.network.serverbound.SaveStagePacket;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.protocol.common.ServerboundCustomPayloadPacket;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 
 /**
  * Packets survive the wire.
@@ -273,6 +278,37 @@ public class PacketTests {
                         + " instead of " + sent.get(i));
                 return;
             }
+        }
+        helper.succeed();
+    }
+
+    /**
+     * A stage near the editor's size limit goes through the serverbound custom payload codec whole.
+     *
+     * <p>NeoForge caps a mod payload at 32 KiB to the server and splits anything bigger; the 26.2
+     * port had to add that splitting. On Fabric 1.21.1 the 32 KiB cap only applies to payloads
+     * nobody registered, so the save travels in one packet. This holds that in place: if a Fabric
+     * API update brings the cap to registered payloads, this fails before players get disconnected.
+     */
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public static void aBigStageSaveFitsTheServerboundCodec(GameTestHelper helper) {
+        StringBuilder json = new StringBuilder("{\"items\":[");
+        while (json.length() < StageJsonLimits.MAX_STAGE_JSON - 40) {
+            json.append("\"minecraft:stone\",");
+        }
+        json.append("\"minecraft:dirt\"]}");
+        SaveStagePacket save = new SaveStagePacket("gametest:big", json.toString(), false, false, "");
+
+        RegistryFriendlyByteBuf buffer = new RegistryFriendlyByteBuf(Unpooled.buffer(),
+                helper.getLevel().registryAccess());
+        ServerboundCustomPayloadPacket.STREAM_CODEC.encode(buffer, new ServerboundCustomPayloadPacket(save));
+        int size = buffer.readableBytes();
+        CustomPacketPayload restored = ServerboundCustomPayloadPacket.STREAM_CODEC.decode(buffer).payload();
+
+        if (!(restored instanceof SaveStagePacket back) || !back.stageJson().equals(save.stageJson())) {
+            helper.fail("a " + json.length() + "-character stage save (" + size
+                    + " bytes) did not come back through the serverbound codec, got " + restored);
+            return;
         }
         helper.succeed();
     }
