@@ -55,7 +55,7 @@
 		"minecraft": ">=${minecraft_version} <26.3",
 		"java": ">=25",
 		"fabric-api": "*",
-		"architectury": ">=21.1",
+		"architectury": ">=21.1.12",
 		"lootr": ">=1.23.38.112"
 	},
 	"suggests": {

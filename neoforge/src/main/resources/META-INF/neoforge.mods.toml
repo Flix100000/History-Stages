@@ -36,7 +36,8 @@ side="BOTH"
 [[dependencies.${mod_id}]]
 modId="architectury"
 type="required"
-versionRange="[21.1,)"
+# 21.1.12 is what we compile against; the 21.1.x line is the one for 26.2.
+versionRange="[21.1.12,)"
 ordering="AFTER"
 side="BOTH"
 
