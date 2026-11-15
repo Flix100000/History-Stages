@@ -21,16 +21,17 @@ Stages can unlock **server-wide** (global), **per player** (individual), or use 
 | 1.20      | Forge    | Actively maintained            |
 | 1.19      | Forge    | Legacy — no further updates    |
 
-### Requirements on 26.2
+### Requirements
 
-The 26.2 jars are built from one multi-project, one jar per loader.
+| Minecraft | Loader   | Required mods                       | Optional integrations                                                                                         | Java |
+| --------- | -------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------- | ---- |
+| 26.2      | NeoForge | Architectury API, Lootr             | JEI, Jade, Curios, Spell Engine, Better Combat                                                                | 25   |
+| 26.2      | Fabric   | Fabric API, Architectury API, Lootr | JEI, Jade, Spell Engine, Better Combat                                                                        | 25   |
+| 1.21.1    | Fabric   | Fabric API, Lootr                   | JEI, EMI, Jade, FTB Quests, FTB Teams, Accessories, Spell Engine, Better Combat                               | 21   |
+| 1.21.1    | NeoForge | Lootr                               | JEI, EMI, Jade, FTB Quests, FTB Teams, Curios, Accessories, Spell Engine, Better Combat, KubeJS, CraftTweaker | 21   |
+| 1.20.1    | Forge    | Lootr                               | JEI, EMI, Jade, FTB Quests, FTB Teams, Curios, Accessories, Spell Engine, Better Combat, KubeJS, CraftTweaker | 17   |
 
-- **Required on both loaders:** [Architectury API](https://modrinth.com/mod/architectury-api) and [Lootr](https://modrinth.com/mod/lootr)
-- **Required on Fabric:** [Fabric API](https://modrinth.com/mod/fabric-api)
-- **Optional:** JEI, Jade
-- Java 25
-
-The 1.21 and 1.20 branches do not need Architectury API.
+Links: [Lootr](https://modrinth.com/mod/lootr), [Architectury API](https://modrinth.com/mod/architectury-api), [Fabric API](https://modrinth.com/mod/fabric-api).
 
 ## Downloads
 
