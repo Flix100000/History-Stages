@@ -143,7 +143,7 @@ public class SearchableEntityList implements PickerOverlay {
     private boolean isLivingEntityType(EntityType<?> type) {
         try {
             if (Minecraft.getInstance().level != null) {
-                Entity entity = type.create(Minecraft.getInstance().level, net.minecraft.world.entity.EntitySpawnReason.LOAD);
+                Entity entity = EntityPreviewRenderer.create(type);
                 boolean isLiving = entity instanceof LivingEntity;
                 if (entity != null)
                     entity.discard();
@@ -820,7 +820,7 @@ public class SearchableEntityList implements PickerOverlay {
         }
 
         guiGraphics.pose().pushMatrix();
-        guiGraphics.pose().translate(0, 0);
+        guiGraphics.nextStratum();
         int hoveredSlot = getInventorySlotAt(mouseX, mouseY);
         if (hoveredSlot >= 0) {
             ItemStack stack = player.getInventory().getItem(hoveredSlot);

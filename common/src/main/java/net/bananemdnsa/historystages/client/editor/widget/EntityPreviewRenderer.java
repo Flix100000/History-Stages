@@ -28,6 +28,8 @@ public final class EntityPreviewRenderer {
     private EntityPreviewRenderer() {}
 
     private static final Map<String, LivingEntity> CACHE = new HashMap<>();
+    private static final java.util.Set<EntityType<?>> FAILED = new java.util.HashSet<>();
+    private static final org.slf4j.Logger LOGGER = com.mojang.logging.LogUtils.getLogger();
 
     /**
      * Returns a cached client-side {@link LivingEntity} instance for the given entity id,
@@ -42,7 +44,7 @@ public final class EntityPreviewRenderer {
             if (rl == null) return null;
             EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.getValue(rl);
             if (type == null) return null;
-            Entity entity = type.create(mc.level, net.minecraft.world.entity.EntitySpawnReason.LOAD);
+            Entity entity = create(type);
             if (entity instanceof LivingEntity living) {
                 CACHE.put(entityId, living);
                 return living;
@@ -52,6 +54,26 @@ public final class EntityPreviewRenderer {
         }
         CACHE.put(entityId, null);
         return null;
+    }
+
+    /** Next id for a preview entity; negative, so it can never match an entity the server sent. */
+    private static int nextPreviewId = -1;
+
+    /**
+     * A client-side copy of {@code type} that is never added to the level, or null.
+     *
+     * <p>26.2 hands out entity ids only when an entity joins a level, and the renderers ask for
+     * the id (item models seed on it), so an unadded entity threw on its first frame. The spawn
+     * checks are skipped as well: since 26.2 {@code create} refuses monsters on Peaceful, and a
+     * picker should list them regardless of the editing player's difficulty.
+     */
+    public static Entity create(EntityType<?> type) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null) return null;
+        Entity entity = type.create(mc.level, new net.minecraft.world.entity.EntitySpawnRequest(
+                net.minecraft.world.entity.EntitySpawnReason.LOAD, true));
+        if (entity != null) entity.setId(nextPreviewId--);
+        return entity;
     }
 
     /** Renders {@code entity} spinning around the Y axis at screen position (x, y). */
@@ -83,6 +105,12 @@ public final class EntityPreviewRenderer {
             int half = scale * 6;
             g.entity(state, scale, new org.joml.Vector3f(), flipAndSpin, new Quaternionf(),
                     x - half, y - half, x + half, y + half);
+        } catch (RuntimeException e) {
+            // Never thrown on to the caller: callers open a scissor around this call, and an
+            // exception skipping their disableScissor clipped the rest of the screen away.
+            if (FAILED.add(entity.getType())) {
+                LOGGER.warn("[HistoryStages] Could not draw a preview of {}", entity.getType(), e);
+            }
         } finally {
             entity.yBodyRot = origBodyRot;
             entity.setYRot(origYRot);

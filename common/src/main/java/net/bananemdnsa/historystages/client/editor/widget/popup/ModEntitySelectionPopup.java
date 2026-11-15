@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.widget.popup;
 
+import net.bananemdnsa.historystages.client.editor.widget.EntityPreviewRenderer;
 import net.bananemdnsa.historystages.util.TextColors;
 import com.mojang.blaze3d.platform.Lighting;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -136,7 +137,7 @@ public class ModEntitySelectionPopup {
     private boolean isLivingEntityType(EntityType<?> type) {
         try {
             if (Minecraft.getInstance().level != null) {
-                Entity entity = type.create(Minecraft.getInstance().level, net.minecraft.world.entity.EntitySpawnReason.LOAD);
+                Entity entity = EntityPreviewRenderer.create(type);
                 boolean isLiving = entity instanceof LivingEntity;
                 if (entity != null) entity.discard();
                 return isLiving;
@@ -156,7 +157,7 @@ public class ModEntitySelectionPopup {
             if (rl == null) return null;
             EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.getValue(rl);
             if (type == null) return null;
-            Entity entity = type.create(Minecraft.getInstance().level, net.minecraft.world.entity.EntitySpawnReason.LOAD);
+            Entity entity = EntityPreviewRenderer.create(type);
             if (entity instanceof LivingEntity living) {
                 entityCache.put(entityId, living);
                 return living;
@@ -392,7 +393,7 @@ public class ModEntitySelectionPopup {
 
     private void renderTooltip(GuiGraphicsExtractor guiGraphics, Font font, String text, int mouseX, int mouseY) {
         guiGraphics.pose().pushMatrix();
-        guiGraphics.pose().translate(0, 0);
+        guiGraphics.nextStratum();
 
         int tooltipW = font.width(text) + 8;
         int tooltipH = 16;
