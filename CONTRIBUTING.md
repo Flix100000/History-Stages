@@ -34,13 +34,13 @@ Useful places to look around first:
 History Stages keeps one branch per Minecraft version and loader. There is no shared `main` branch — each branch
 is self-contained.
 
-| Branch            | Minecraft | Loader             | JDK | Status                       |
-| ----------------- | --------- | ------------------ | --- | ---------------------------- |
-| `26.2`            | 26.2      | NeoForge 26.2.x and Fabric Loader 0.20 | 25 | Actively maintained, Architectury multi-project |
-| `neoforge-1.21.X` | 1.21.1    | NeoForge 21.1.x    | 21  | Actively maintained, leading |
-| `fabric-1.21.X`   | 1.21.1    | Fabric Loader 0.18 | 21  | Actively maintained          |
-| `forge-1.20.X`    | 1.20.1    | Forge 47.4.x       | 17  | Actively maintained          |
-| `forge-1.19.X`    | 1.19.2    | Forge 43.5.0       | 17  | Legacy — no further updates  |
+| Branch            | Minecraft | Loader                                 | JDK | Status                                          |
+| ----------------- | --------- | -------------------------------------- | --- | ----------------------------------------------- |
+| `26.2`            | 26.2      | NeoForge 26.2.x and Fabric Loader 0.20 | 25  | Actively maintained, Architectury multi-project |
+| `neoforge-1.21.X` | 1.21.1    | NeoForge 21.1.x                        | 21  | Actively maintained, leading                    |
+| `fabric-1.21.X`   | 1.21.1    | Fabric Loader 0.18                     | 21  | Actively maintained                             |
+| `forge-1.20.X`    | 1.20.1    | Forge 47.4.x                           | 17  | Actively maintained                             |
+| `forge-1.19.X`    | 1.19.2    | Forge 43.5.0                           | 17  | Legacy — no further updates                     |
 
 **Open your pull request against the branch of the version you are contributing to.** If you fixed a bug on
 Forge 1.20, target `forge-1.20.X` — you don't need to port it anywhere else.
