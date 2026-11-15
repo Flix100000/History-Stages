@@ -60,11 +60,19 @@ public final class ClientBridge {
 
         ClientCommandBridge.register();
 
-        // After the translucent terrain, inside the level pass: the overlays draw here.
+        // The overlays draw on either side of the translucent terrain; see the platform event.
+        Phases.listen(LevelRenderEvents.BEFORE_TRANSLUCENT_TERRAIN, priority -> context -> {
+            if (Phases.wanted(RenderLevelStageEvent.class, priority)) {
+                var camera = context.levelState().cameraRenderState;
+                EventBus.post(new RenderLevelStageEvent(RenderLevelStageEvent.Stage.BEFORE_TRANSLUCENT,
+                        camera.pos, camera.orientation), priority);
+            }
+        });
         Phases.listen(LevelRenderEvents.AFTER_TRANSLUCENT_TERRAIN, priority -> context -> {
             if (Phases.wanted(RenderLevelStageEvent.class, priority)) {
                 var camera = context.levelState().cameraRenderState;
-                EventBus.post(new RenderLevelStageEvent(camera.pos, camera.orientation), priority);
+                EventBus.post(new RenderLevelStageEvent(RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT,
+                        camera.pos, camera.orientation), priority);
             }
         });
 

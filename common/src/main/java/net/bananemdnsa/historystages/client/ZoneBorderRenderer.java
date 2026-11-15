@@ -112,6 +112,7 @@ public final class ZoneBorderRenderer {
 
     @SubscribeEvent
     public static void onRenderLevel(RenderLevelStageEvent event) {
+        if (event.getStage() != RenderLevelStageEvent.Stage.BEFORE_TRANSLUCENT) return;
         if (ClientZoneShapes.isEmpty()) return;
 
         // Whether a zone has a border at all is the zone's own business; this only says how

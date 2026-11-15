@@ -36,6 +36,8 @@ public final class ZoneSelectionRenderer {
 
     @SubscribeEvent
     public static void onRenderLevel(RenderLevelStageEvent event) {
+        // No depth test, so after the translucent terrain it stays on top of water and glass.
+        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT) return;
         if (!ClientZoneSelection.hasFirst() && !ClientZoneSelection.hasSecond()) return;
 
         Minecraft mc = Minecraft.getInstance();

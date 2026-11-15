@@ -37,11 +37,18 @@ public final class WorldOverlayRenderTypes {
     public static final Identifier FORCEFIELD_TEXTURE = Identifier.withDefaultNamespace("textures/misc/forcefield.png");
 
     /**
-     * Drawn right after the translucent terrain, so into the target that terrain went to. With
-     * Fabulous graphics that is the translucent layer (water and glass in front still cover the
-     * overlay when the layers are combined); otherwise it falls back to the main target.
+     * The main target, drawn just before the translucent terrain. Water and stained glass write
+     * depth, so anything drawn after them is hidden behind them; drawn before, they blend over the
+     * overlay the way they blend over the terrain behind them. With Fabulous graphics the main
+     * layer is also the one that gets combined underneath the translucent one.
      */
-    private static final OutputTarget TRANSLUCENT = new OutputTarget("historystages_translucent",
+    private static final OutputTarget TARGET = OutputTarget.MAIN_TARGET;
+
+    /**
+     * For the selection box, drawn after the translucent terrain: with Fabulous graphics that is the
+     * translucent layer, so it stays on top when the layers are combined; otherwise the main target.
+     */
+    private static final OutputTarget AFTER_TRANSLUCENT = new OutputTarget("historystages_translucent",
             () -> Minecraft.getInstance().levelRenderer.translucentTarget());
 
     private static final class Holder {
@@ -66,7 +73,7 @@ public final class WorldOverlayRenderTypes {
                         // stretches the transparent edge texel across the whole wall.
                         .withTexture("Sampler0", FORCEFIELD_TEXTURE,
                                 () -> RenderSystem.getSamplerCache().getRepeat(FilterMode.NEAREST))
-                        .setOutputTarget(TRANSLUCENT)
+                        .setOutputTarget(TARGET)
                         .createRenderSetup());
 
         // Vanilla's line pipeline without the depth test, so a corner of the selection behind a
@@ -88,13 +95,13 @@ public final class WorldOverlayRenderTypes {
         static final RenderType LINES_ON_TOP = RenderType.create("historystages_lines_on_top",
                 RenderSetup.builder(LINES_ON_TOP_PIPELINE)
                         .setLayeringTransform(LayeringTransform.VIEW_OFFSET_Z_LAYERING)
-                        .setOutputTarget(TRANSLUCENT)
+                        .setOutputTarget(AFTER_TRANSLUCENT)
                         .createRenderSetup());
 
         static final RenderType LINES = RenderType.create("historystages_lines",
                 RenderSetup.builder(RenderPipelines.LINES_TRANSLUCENT)
                         .setLayeringTransform(LayeringTransform.VIEW_OFFSET_Z_LAYERING)
-                        .setOutputTarget(TRANSLUCENT)
+                        .setOutputTarget(TARGET)
                         .createRenderSetup());
     }
 

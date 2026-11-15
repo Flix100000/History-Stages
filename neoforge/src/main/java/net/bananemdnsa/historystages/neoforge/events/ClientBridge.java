@@ -25,6 +25,7 @@ public final class ClientBridge {
         Bridges.listen(bus, RecipesReceivedEvent.class, ClientBridge::recipesReceived);
         Bridges.listen(bus, RegisterClientCommandsEvent.class, ClientBridge::registerClientCommands);
         Bridges.listen(bus, RenderGuiEvent.Post.class, ClientBridge::renderGuiPost);
+        Bridges.listen(bus, RenderLevelStageEvent.AfterTranslucentFeatures.class, ClientBridge::beforeTranslucentBlocks);
         Bridges.listen(bus, RenderLevelStageEvent.AfterTranslucentBlocks.class, ClientBridge::afterTranslucentBlocks);
         Bridges.listen(bus, ScreenEvent.Init.Post.class, ClientBridge::screenInitPost);
         Bridges.listen(bus, ScreenEvent.Render.Post.class, ClientBridge::screenRenderPost);
@@ -66,18 +67,22 @@ public final class ClientBridge {
         }
     }
 
-    /**
-     * The overlays draw right here, after the translucent terrain. Geometry submitted through
-     * NeoForge's SubmitCustomGeometryEvent is drawn before that terrain, so water and glass would
-     * cover the force field.
-     */
-    private static void afterTranslucentBlocks(RenderLevelStageEvent.AfterTranslucentBlocks event, EventPriority priority) {
-        if (!Bridges.wanted(net.bananemdnsa.historystages.platform.event.client.RenderLevelStageEvent.class, priority)) {
-            return;
-        }
+    /** The overlays draw on either side of the translucent terrain; see the platform event. */
+    private static void beforeTranslucentBlocks(RenderLevelStageEvent.AfterTranslucentFeatures event, EventPriority priority) {
         var camera = event.getLevelRenderState().cameraRenderState;
-        EventBus.post(new net.bananemdnsa.historystages.platform.event.client.RenderLevelStageEvent(
-                camera.pos, camera.orientation), priority);
+        postRenderStage(net.bananemdnsa.historystages.platform.event.client.RenderLevelStageEvent.Stage.BEFORE_TRANSLUCENT, camera.pos, camera.orientation, priority);
+    }
+
+    private static void afterTranslucentBlocks(RenderLevelStageEvent.AfterTranslucentBlocks event, EventPriority priority) {
+        var camera = event.getLevelRenderState().cameraRenderState;
+        postRenderStage(net.bananemdnsa.historystages.platform.event.client.RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT, camera.pos, camera.orientation, priority);
+    }
+
+    private static void postRenderStage(net.bananemdnsa.historystages.platform.event.client.RenderLevelStageEvent.Stage stage, net.minecraft.world.phys.Vec3 pos,
+                                        org.joml.Quaternionfc orientation, EventPriority priority) {
+        if (Bridges.wanted(net.bananemdnsa.historystages.platform.event.client.RenderLevelStageEvent.class, priority)) {
+            EventBus.post(new net.bananemdnsa.historystages.platform.event.client.RenderLevelStageEvent(stage, pos, orientation), priority);
+        }
     }
 
     private static void screenInitPost(ScreenEvent.Init.Post event, EventPriority priority) {

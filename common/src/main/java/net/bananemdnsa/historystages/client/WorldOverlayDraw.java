@@ -17,9 +17,8 @@ import java.util.function.BiConsumer;
 /**
  * Draws a batch of overlay geometry straight away, in the middle of the level pass.
  *
- * <p>The submit path would draw it before the translucent terrain, so water and stained glass
- * would paint over the force field. This draws right after that terrain instead, the way
- * vanilla's weather does: build the mesh, upload it, one render pass with the render type's state.
+ * <p>Drawn at a fixed point of the level pass (see {@code RenderLevelStageEvent}) the way vanilla's
+ * weather is: build the mesh, upload it, one render pass with the render type's state.
  */
 public final class WorldOverlayDraw {
 
