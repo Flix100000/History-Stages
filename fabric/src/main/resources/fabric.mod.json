@@ -60,10 +60,7 @@
 	},
 	"suggests": {
 		"jade": ">=15",
-		"emi": ">=1.1",
 		"jei": ">=15",
-		"ftbquests": ">=2101",
-		"accessories": ">=1.1.0-beta",
 		"spell_engine": ">=1.9",
 		"bettercombat": ">=1"
 	}

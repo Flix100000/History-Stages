@@ -8,8 +8,9 @@ import java.util.List;
 import java.util.stream.Stream;
 
 /**
- * Where the mod's source lives since the port: common, the two loader modules, and whatever still
- * waits in port-pending. A source guard that only walked {@code common/src/main/java} would let a
+ * Where the mod's source lives since the port: common, the two loader modules, and the
+ * integrations parked in {@code port-later/<integration>/java} until their mod has a 26.2 build.
+ * A source guard that only walked {@code common/src/main/java} would let a
  * loader module or a not-yet-moved file break its rule unseen.
  */
 public final class SourceRoots {
@@ -25,8 +26,14 @@ public final class SourceRoots {
     public static List<Path> all(Path relative) {
         Path inside = MAIN_JAVA.relativize(relative);
         List<Path> out = new ArrayList<>();
-        for (Path root : List.of(MAIN_JAVA, Path.of("..", "neoforge", "src", "main", "java"),
-                Path.of("..", "fabric", "src", "main", "java"), Path.of("..", "port-pending", "java"))) {
+        List<Path> roots = new ArrayList<>(List.of(MAIN_JAVA, Path.of("..", "neoforge", "src", "main", "java"),
+                Path.of("..", "fabric", "src", "main", "java")));
+        try (Stream<Path> later = Files.list(Path.of("..", "port-later"))) {
+            later.map(dir -> dir.resolve("java")).filter(Files::isDirectory).sorted().forEach(roots::add);
+        } catch (IOException e) {
+            // No parked integrations.
+        }
+        for (Path root : roots) {
             Path candidate = root.resolve(inside);
             if (Files.isDirectory(candidate)) out.add(candidate);
         }
