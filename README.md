@@ -4,7 +4,7 @@
 
 **History Stages** is a progression and gatekeeping mod built for modpack creators. Lock items, recipes, fluids, villager trades, dimensions, structures, biomes, mobs, and loot behind custom research-based eras, and let players work together or individually to unlock them.
 
-Stages can unlock **server-wide** (global), **per player** (individual), or use a **dual-phase** approach that combines both. Players research them at the Research Pedestal, or a stage opens by itself once someone has earned an advancement, reached a biome, or put in the playtime you asked for. With a built-in in-game editor, FTB Quests integration, KubeJS and CraftTweaker support, an API for addon mods, and a flexible dependency system, you have full control over how progression works in your pack.
+Stages can unlock **server-wide** (global), **per player** (individual), or use a **dual-phase** approach that combines both. Players research them at the Research Pedestal, or a stage opens by itself once someone has earned an advancement, reached a biome, or put in the playtime you asked for. With a built-in in-game editor, FTB Quests integration, KubeJS and CraftTweaker support (1.21 and 1.20 only for now), an API for addon mods, and a flexible dependency system, you have full control over how progression works in your pack.
 
 ## Trailer
 
