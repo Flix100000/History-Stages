@@ -10,7 +10,8 @@ displayName="${mod_name}"
 authors="${mod_authors}"
 description='''${mod_description}'''
 displayURL="https://historystages.github.io/"
-iconFile="assets/${mod_id}/icon.png"
+# A resource id, not a path: in the dev run the mod's own pack root does not hold the common assets.
+iconFile="${mod_id}:icon.png"
 iconBlur=false
 
 [[mixins]]
