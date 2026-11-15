@@ -12,6 +12,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # A release created from the wrong branch would otherwise publish this branch's jar
+      # under the other branch's tag, so nothing runs unless the tag matches this branch.
+      - name: Check release tag matches this branch
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          if ! echo "$TAG" | grep -Eq '^[0-9]+(\.[0-9]+)*-26\.2$'; then
+            echo "::error::Release tag '$TAG' does not match this branch (26.2), expected <mod version>-26.2. Nothing was published."
+            exit 1
+          fi
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -65,8 +76,8 @@ jobs:
           modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
 
           # Mod-Details
-          name: History Stages ${{ github.event.release.tag_name }}
-          version: ${{ github.event.release.tag_name }}
+          name: History Stages ${{ github.event.release.tag_name }} NeoForge
+          version: ${{ github.event.release.tag_name }}-neoforge
           changelog: ${{ github.event.release.body }}
           game-versions: |
             26.2
@@ -92,8 +103,8 @@ jobs:
           modrinth-id: ${{ secrets.MODRINTH_PROJECT_ID }}
           modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
 
-          name: History Stages ${{ github.event.release.tag_name }}
-          version: ${{ github.event.release.tag_name }}
+          name: History Stages ${{ github.event.release.tag_name }} Fabric
+          version: ${{ github.event.release.tag_name }}-fabric
           changelog: ${{ github.event.release.body }}
           game-versions: |
             26.2
