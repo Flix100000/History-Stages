@@ -31,6 +31,8 @@ dependencies {
 
 tasks.named("test", Test) {
     useJUnitPlatform()
+    // The lock benchmark is an instrument, not a test: on only with `./gradlew test -Pbench`.
+    systemProperty "historystages.bench", project.hasProperty("bench") ? "true" : "false"
     testLogging {
         events "passed", "skipped", "failed"
     }
