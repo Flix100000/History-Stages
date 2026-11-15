@@ -94,8 +94,8 @@ public class HistoryStages {
         // Registration window for addon lock categories: see registrationWindow(). The loaders
         // call it, because NeoForge has to queue it onto the main thread itself.
 
-        // PORT(later): FTB Teams/Quests, Accessories, KubeJS and CraftTweaker have no 26.2 build yet,
-        // and Curios moves with Task 13 into the NeoForge module. Kept as on main, not compiled.
+        // PORT(later): FTB Teams/Quests, Accessories, KubeJS and CraftTweaker have no 26.2 build yet
+        // (code in port-later/). Kept as on main, not compiled. Curios lives in the NeoForge module.
         /*
         // FTB Teams on its own, without FTB Quests, is a common pack setup, so it gets its own check.
         if (Services.isModLoaded("ftbteams")) {
@@ -114,15 +114,6 @@ public class HistoryStages {
                 LOGGER.info("[HistoryStages] FTB Quests integration loaded.");
             } catch (Exception e) {
                 LOGGER.error("[HistoryStages] Failed to load FTB Quests integration.", e);
-            }
-        }
-
-        if (Services.isModLoaded("curios")) {
-            try {
-                EventBus.register(net.bananemdnsa.historystages.events.lock.CuriosEquipLockHandler.class);
-                LOGGER.info("[HistoryStages] Curios integration loaded.");
-            } catch (Exception e) {
-                LOGGER.error("[HistoryStages] Failed to load Curios integration.", e);
             }
         }
 

@@ -16,6 +16,11 @@ public final class HistoryStagesNeoForge {
         modBus.addListener(FMLCommonSetupEvent.class, event -> event.enqueueWork(HistoryStages::registrationWindow));
         NeoForgeEventSources.register(modBus);
         NeoForgeRegistrations.register(modBus);
+        if (net.bananemdnsa.historystages.platform.Services.isModLoaded("curios")) {
+            // Its own class, so Curios types are only linked when Curios is there.
+            net.bananemdnsa.historystages.neoforge.compat.CuriosEquipLockHandler.register();
+            org.slf4j.LoggerFactory.getLogger(HistoryStagesNeoForge.class).info("[HistoryStages] Curios integration loaded.");
+        }
         if (net.bananemdnsa.historystages.platform.Services.isClient()) {
             net.bananemdnsa.historystages.neoforge.client.NeoForgeClientRegistrations.register(modBus);
         }

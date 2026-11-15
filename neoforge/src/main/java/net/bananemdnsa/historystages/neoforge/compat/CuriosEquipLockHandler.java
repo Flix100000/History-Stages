@@ -1,4 +1,4 @@
-package net.bananemdnsa.historystages.events.lock;
+package net.bananemdnsa.historystages.neoforge.compat;
 
 import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.util.DebugLogger;
@@ -11,22 +11,31 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.bananemdnsa.historystages.platform.bus.EventPriority;
-import net.bananemdnsa.historystages.platform.bus.SubscribeEvent;
-import net.bananemdnsa.historystages.platform.TriState;
+import net.minecraft.util.TriState;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.neoforge.common.NeoForge;
 import top.theillusivec4.curios.api.event.CurioCanEquipEvent;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-public class CuriosEquipLockHandler {
+/**
+ * Curios slots go through Curios' own equip event on the NeoForge bus, which the platform bus
+ * does not bridge. Curios has no Fabric build, so this lives in the NeoForge module.
+ */
+public final class CuriosEquipLockHandler {
 
     private static final Map<UUID, Long> MESSAGE_COOLDOWNS = new HashMap<>();
     private static final long COOLDOWN_MS = 2000;
 
-    @SubscribeEvent(priority = EventPriority.LOWEST)
-    public static void onCurioEquip(CurioCanEquipEvent event) {
+    private CuriosEquipLockHandler() {}
+
+    public static void register() {
+        NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, CuriosEquipLockHandler::onCurioEquip);
+    }
+
+    private static void onCurioEquip(CurioCanEquipEvent event) {
         if (!(event.getEntity() instanceof Player player)) return;
         if (!Config.GAMEPLAY.lockItemUsage.get() && !Config.GAMEPLAY.individualLockItemUsage.get()) return;
 

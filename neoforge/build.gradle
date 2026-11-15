@@ -46,6 +46,7 @@ dependencies {
     // ---- Optional integrations ----
     // In the dev runs too, unless -Pbare (smoke.sh --bare) asks for a run without them.
     compileOnly "maven.modrinth:jade:${rootProject.jade_neoforge_version}"
+    compileOnly "maven.modrinth:curios:${rootProject.curios_version}"
     compileOnly "maven.modrinth:spell-engine:${rootProject.spell_engine_neoforge_version}"
     if (!rootProject.hasProperty("bare")) {
         localRuntime "maven.modrinth:jade:${rootProject.jade_neoforge_version}"
@@ -54,6 +55,7 @@ dependencies {
         localRuntime "maven.modrinth:spell-power:${rootProject.spell_power_neoforge_version}"
         localRuntime "maven.modrinth:player-animation-library:${rootProject.player_animation_lib_version}"
         localRuntime "maven.modrinth:cloth-config:${rootProject.cloth_config_neoforge_version}"
+        localRuntime "maven.modrinth:curios:${rootProject.curios_version}"
     }
 
     testImplementation platform("org.junit:junit-bom:5.10.2")
