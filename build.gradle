@@ -14,7 +14,7 @@ allprojects {
     apply plugin: "architectury-plugin"
 
     group = rootProject.mod_group_id
-    version = "${rootProject.mod_version}-${rootProject.minecraft_version}"
+    version = rootProject.mod_version
 
     base {
         archivesName = "${rootProject.mod_id}-${project.name}"
