@@ -9,6 +9,11 @@ loom {
     runs {
         client {
             property "historystages.demoCategory", "true"
+            // NeoForge's load-warnings screen only shows in dev, but it sits in front of quick play.
+            // Both triggers are other mods: Lootr's bundled Resourceful Config still uses logoFile,
+            // Spell Engine uses @OnlyIn. Their log lines stay.
+            property "neoforge.warnings.logofile.hide", "true"
+            property "neoforge.warnings.onlyin.hide", "true"
         }
         server {
             programArg "--nogui"

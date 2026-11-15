@@ -10,8 +10,8 @@ displayName="${mod_name}"
 authors="${mod_authors}"
 description='''${mod_description}'''
 displayURL="https://historystages.github.io/"
-logoFile="assets/${mod_id}/icon.png"
-logoBlur=false
+iconFile="assets/${mod_id}/icon.png"
+iconBlur=false
 
 [[mixins]]
 config="historystages.mixins.json"
