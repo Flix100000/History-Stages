@@ -485,7 +485,7 @@ public final class GraphSidebar {
         if (x2 - x1 < 4 || y2 - y1 < 4) return;
 
         g.pose().pushMatrix();
-        g.pose().translate(0, 0); // above the tray's item icons
+        g.nextStratum(); // above the tray's item icons
         g.fill(x1, y1, x2, y2, DROP_FILL);
         // Bounded by the side length up front, never by a running sum — see the grid loop in
         // GraphRenderer for why that matters.

@@ -137,6 +137,13 @@ public class EnumDropdown {
     }
 
     public void renderPopup(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
+        // Drawn after the screen: whatever the screen draws later would otherwise cover it.
+        net.bananemdnsa.historystages.client.editor.widget.DeferredOverlay.add(g,
+                net.bananemdnsa.historystages.client.editor.widget.DeferredOverlay.POPUP,
+                gg -> drawPopup(gg, font, mouseX, mouseY));
+    }
+
+    private void drawPopup(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         // Kept rendering past the click that closed it, so the popup rolls back up instead of
         // vanishing. open drives both the reveal here and the caret in renderButton.
         float t = open.ramp(expanded ? 1.0f : 0.0f, Timing.POPUP_MS);

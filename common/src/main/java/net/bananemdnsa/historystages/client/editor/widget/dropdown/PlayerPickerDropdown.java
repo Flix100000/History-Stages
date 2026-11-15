@@ -199,6 +199,13 @@ public class PlayerPickerDropdown {
     }
 
     public void renderPopup(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
+        // Drawn after the screen: whatever the screen draws later would otherwise cover it.
+        net.bananemdnsa.historystages.client.editor.widget.DeferredOverlay.add(g,
+                net.bananemdnsa.historystages.client.editor.widget.DeferredOverlay.POPUP,
+                gg -> drawPopup(gg, font, mouseX, mouseY));
+    }
+
+    private void drawPopup(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         float t = open.ramp(expanded ? 1.0f : 0.0f, Timing.POPUP_MS);
         if (t < 0.02f) return;
 

@@ -411,7 +411,7 @@ public class DisguiseDialog extends AbstractInputScreen {
         super.render(g, picking ? -1 : mouseX, picking ? -1 : mouseY, partialTick);
         if (!picking) return;
         g.pose().pushMatrix();
-        g.pose().translate(0, 0);
+        g.nextStratum();
         g.fill(0, 0, this.width, this.height, 0x80000000);
         overlay.render(g, this.font, mouseX, mouseY);
         g.pose().popMatrix();

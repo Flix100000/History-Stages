@@ -1247,7 +1247,7 @@ public class ConfigEditorScreen extends Screen {
         // through it. Same treatment the stage editor gives its own pickers.
         if (itemPickerOverlay != null) {
             guiGraphics.pose().pushMatrix();
-            guiGraphics.pose().translate(0, 0);
+            guiGraphics.nextStratum();
             guiGraphics.fill(0, 0, this.width, this.height, 0x80000000);
             itemPickerOverlay.render(guiGraphics, this.font, mouseX, mouseY);
             guiGraphics.pose().popMatrix();

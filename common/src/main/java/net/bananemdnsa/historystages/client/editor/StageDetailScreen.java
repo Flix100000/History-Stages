@@ -2049,7 +2049,7 @@ public class StageDetailScreen extends Screen {
         super.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
 
         guiGraphics.pose().pushMatrix();
-        guiGraphics.pose().translate(0, 0);
+        guiGraphics.nextStratum();
 
         // Category search dropdown (close if a modal overlay is open)
         if (categoryDropdownVisible && isAnyOverlayVisible()) {
@@ -2107,11 +2107,9 @@ public class StageDetailScreen extends Screen {
         }
         if (actionOverlay() != null) actionOverlay().render(guiGraphics, this.font, mouseX, mouseY);
         iconSearch.render(guiGraphics, this.font, mouseX, mouseY);
-        // Lifted above the popups it can be opened from, so it never gets drawn under their content.
-        guiGraphics.pose().pushMatrix();
-        guiGraphics.pose().translate(0, 0);
-        contextMenu.render(guiGraphics, this.font, mouseX, mouseY);
-        guiGraphics.pose().popMatrix();
+        // Above the popups it can be opened from, which are drawn after it.
+        net.bananemdnsa.historystages.client.editor.widget.DeferredOverlay.add(guiGraphics, net.bananemdnsa.historystages.client.editor.widget.DeferredOverlay.POPUP,
+                g -> contextMenu.render(g, this.font, mouseX, mouseY));
         modEntityPopup.render(guiGraphics, this.font, mouseX, mouseY);
         modStructurePopup.render(guiGraphics, this.font, mouseX, mouseY);
         modBiomePopup.render(guiGraphics, this.font, mouseX, mouseY);

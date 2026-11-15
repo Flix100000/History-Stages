@@ -415,19 +415,19 @@ public class StageGraphScreen extends Screen {
 
         if (shortcutsOpen) {
             shortcutPanel.layout(this.font, this.width - TOP_BAR_RIGHT_MARGIN, TOP_BAR_H + 2, mode == Mode.EDITOR);
-            // Item icons on the map are drawn around z 150, so anything lower lets them shine
-            // through. Same layer as the legend, the other panel floating over the map.
+            // On a layer of its own, or the item icons on the map shine through. Same treatment
+            // as the legend, the other panel floating over the map.
             g.pose().pushMatrix();
-            g.pose().translate(0, 0);
+            g.nextStratum();
             shortcutPanel.render(g, this.font);
             g.pose().popMatrix();
         }
 
-        // Rendered last, above everything above, with a z-translate — same convention as
+        // Rendered last, on a layer of its own — same convention as
         // StageOverviewScreen's context menu. Above the shortcut panel, which can sit under it.
         if (contextMenu != null && contextMenu.isVisible()) {
             g.pose().pushMatrix();
-            g.pose().translate(0, 0);
+            g.nextStratum();
             contextMenu.render(g, this.font, mouseX, mouseY);
             g.pose().popMatrix();
         } else {

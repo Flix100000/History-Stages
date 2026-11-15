@@ -30,6 +30,7 @@
   "client": [
     "AttackStartLockMixin",
     "ClientAdvancementsAccessor",
+    "GuiDeferredOverlayMixin",
     "ItemStackMixin",
     "ZoneBarrierMixin",
     "bettercombat.WeaponRegistryMixin",

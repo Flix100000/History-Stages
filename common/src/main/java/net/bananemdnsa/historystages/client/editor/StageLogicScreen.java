@@ -199,13 +199,13 @@ public class StageLogicScreen extends Screen {
         syncPickerState();
         if (pickerOverlay != null) {
             g.pose().pushMatrix();
-            g.pose().translate(0, 0);
+            g.nextStratum();
             g.fill(0, 0, this.width, this.height, 0x80000000);
             pickerOverlay.render(g, this.font, mouseX, mouseY);
             g.pose().popMatrix();
         } else if (addMenu != null && addMenu.isVisible()) {
             g.pose().pushMatrix();
-            g.pose().translate(0, 0);
+            g.nextStratum();
             addMenu.render(g, this.font, mouseX, mouseY);
             g.pose().popMatrix();
         }

@@ -216,6 +216,8 @@ public abstract class AbstractModalScreen extends Screen {
     public void render(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
         if (renderParentBehind() && parent != null) {
             parent.extractRenderState(g, -1, -1, partialTick);
+            // A dropdown the parent left open belongs under the dialog, not on top of the frame.
+            net.bananemdnsa.historystages.client.editor.widget.DeferredOverlay.flush(g);
             // The parent batches its text and items and would otherwise flush them after our
             // fills, painting them back over the dialog. Force them out now.
             g.nextStratum();

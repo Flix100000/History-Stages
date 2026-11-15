@@ -831,7 +831,7 @@ public class StageStyleScreen extends Screen {
             // Lifted above the rows: text is flushed after the panel's fills, so the row labels
             // would otherwise show through it.
             g.pose().pushMatrix();
-            g.pose().translate(0, 0);
+            g.nextStratum();
             g.fill(0, 0, this.width, this.height, 0x80000000);
             texturePicker.render(g, this.font, mouseX, mouseY);
             g.pose().popMatrix();

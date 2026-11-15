@@ -624,7 +624,7 @@ public class SearchableItemList implements PickerOverlay {
         renderAddButton(guiGraphics, font, mouseX, mouseY);
 
         guiGraphics.pose().pushMatrix();
-        guiGraphics.pose().translate(0, 0);
+        guiGraphics.nextStratum();
         if (!filterUiHovered) {
             for (int row = 0; row < gridRows(); row++) {
                 for (int col = 0; col < GRID_COLS; col++) {
@@ -847,7 +847,7 @@ public class SearchableItemList implements PickerOverlay {
         renderAddButton(guiGraphics, font, mouseX, mouseY);
 
         guiGraphics.pose().pushMatrix();
-        guiGraphics.pose().translate(0, 0);
+        guiGraphics.nextStratum();
         int hoveredSlot = getInventorySlotAt(mouseX, mouseY);
         if (hoveredSlot >= 0) {
             ItemStack stack = player.getInventory().getItem(hoveredSlot);
@@ -940,7 +940,7 @@ public class SearchableItemList implements PickerOverlay {
         renderAddButton(guiGraphics, font, mouseX, mouseY);
 
         guiGraphics.pose().pushMatrix();
-        guiGraphics.pose().translate(0, 0);
+        guiGraphics.nextStratum();
         if (!filterUiHovered) {
             for (int row = 0; row < gridRows(); row++) {
                 for (int col = 0; col < GRID_COLS; col++) {

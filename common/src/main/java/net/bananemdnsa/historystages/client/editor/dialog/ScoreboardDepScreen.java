@@ -151,10 +151,11 @@ public class ScoreboardDepScreen extends AbstractInputScreen {
         if (!opDropdownOpen) return;
 
         // The popup is an overlay: it overflows extraContentHeight() and must beat both the
-        // error line and the widgets drawn after renderContent, hence the z translate.
-        g.pose().pushMatrix();
-        g.pose().translate(0, 0);
+        // error line and the widgets drawn after renderContent, so it waits for the frame's end.
+        net.bananemdnsa.historystages.client.editor.widget.DeferredOverlay.add(g, 300, gg -> drawOperatorPopup(gg, mouseX, mouseY));
+    }
 
+    private void drawOperatorPopup(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         int[] geom = popupGeometry();
         int px = geom[0], py = geom[1], pw = geom[2], ph = geom[3];
         g.fill(px - 1, py - 1, px + pw + 1, py + ph + 1, 0xFF555555);
@@ -167,7 +168,6 @@ public class ScoreboardDepScreen extends AbstractInputScreen {
             g.text(this.font, operators[i], px + 6, iy + (OPTION_H - 8) / 2,
                     TextColors.legacy(i == opIndex ? ACCENT_GOLD : 0xFFEEEEEE), false);
         }
-        g.pose().popMatrix();
     }
 
     @Override

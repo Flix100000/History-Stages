@@ -16,9 +16,6 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
  */
 public final class DropdownChrome {
 
-    /** Depth the popup is lifted to, clearing the widgets it overlaps. */
-    private static final int POPUP_Z = 400;
-
     /**
      * Horizontal room a caret needs beside its label: the 5px glyph plus the clearance on either
      * side. Public so that everything drawing a collapsed dropdown by hand reserves the same
@@ -31,8 +28,11 @@ public final class DropdownChrome {
     }
 
     /**
-     * Opens a clipped, depth-lifted layer and draws the popup frame into it. Callers draw their
-     * rows afterwards and must call {@link #end} when the value returned is {@code true}.
+     * Opens a clipped layer above everything drawn so far and draws the popup frame into it.
+     * Callers draw their rows afterwards and must call {@link #end} when the value returned is
+     * {@code true}. Whatever the caller draws after {@link #end} and overlaps still lands on top,
+     * so a popup belongs at the end of a frame, or in {@link
+     * net.bananemdnsa.historystages.client.editor.widget.DeferredOverlay}.
      *
      * @param t       reveal progress, 0..1
      * @param flipped true when the popup sits above its button, so it must grow upwards
@@ -47,7 +47,7 @@ public final class DropdownChrome {
         int clipBottom = flipped ? py + ph : py + visibleH;
 
         g.pose().pushMatrix();
-        g.pose().translate(0, 0);
+        g.nextStratum();
         g.enableScissor(px - 1, clipTop - 1, px + pw + 1, clipBottom + 1);
 
         g.fill(px - 1, py - 1, px + pw + 1, py + ph + 1, 0xFF555555);

@@ -1153,7 +1153,7 @@ public class StageOverviewScreen extends Screen {
         drawMenuButtonContent(guiGraphics);
 
         guiGraphics.pose().pushMatrix();
-        guiGraphics.pose().translate(0, 0);
+        guiGraphics.nextStratum();
         contextMenu.render(guiGraphics, this.font, mouseX, mouseY);
         guiGraphics.pose().popMatrix();
 
@@ -1169,7 +1169,7 @@ public class StageOverviewScreen extends Screen {
                 int ghostX = Math.min(mouseX + 8, this.width - ghostW - 2);
                 int ghostY = Math.min(mouseY + 8, this.height - 16);
                 guiGraphics.pose().pushMatrix();
-                guiGraphics.pose().translate(0, 0);
+                guiGraphics.nextStratum();
                 guiGraphics.fill(ghostX, ghostY, ghostX + ghostW, ghostY + 14, 0xE0101010);
                 guiGraphics.fill(ghostX, ghostY + 13, ghostX + ghostW, ghostY + 14, 0xFFFFCC00);
                 guiGraphics.text(this.font, ghost, ghostX + 4, ghostY + 3, 0xFFFFFFFF, false);
@@ -2385,9 +2385,13 @@ public class StageOverviewScreen extends Screen {
             if (!open) return;
 
             // The popup is an overlay: it overflows extraContentHeight() and must beat both the
-            // error line and the widgets drawn after renderContent, hence the z translate.
-            g.pose().pushMatrix();
-            g.pose().translate(0, 0);
+            // error line and the widgets drawn after renderContent, so it waits for the frame's end.
+            net.bananemdnsa.historystages.client.editor.widget.DeferredOverlay.add(g, 300,
+                    gg -> drawDropdownPopup(gg, x, mouseX, mouseY, labels, colors, selected));
+        }
+
+        private void drawDropdownPopup(GuiGraphicsExtractor g, int x, int mouseX, int mouseY,
+                                       Component[] labels, int[] colors, int selected) {
             int optY = dropdownY + POPUP_OFFSET_Y;
             int popupH = OPTION_H * labels.length;
 
@@ -2403,8 +2407,6 @@ public class StageOverviewScreen extends Screen {
                 g.text(this.font, labels[i], x + 6, oy + 4,
                         TextColors.legacy(optHovered ? 0xFFFFFF : (i == selected ? colors[i] : 0xAAAAAA)), false);
             }
-
-            g.pose().popMatrix();
         }
 
         @Override

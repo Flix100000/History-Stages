@@ -1904,7 +1904,8 @@ public class StageSettingsScreen extends Screen {
                 cooldownUnitDropdown.renderPopup(guiGraphics, this.font, mouseX, mouseY);
             }
         }
-        renderModeDropdownPopup(guiGraphics, mouseX, mouseY);
+        net.bananemdnsa.historystages.client.editor.widget.DeferredOverlay.add(guiGraphics, net.bananemdnsa.historystages.client.editor.widget.DeferredOverlay.POPUP,
+                g -> renderModeDropdownPopup(g, mouseX, mouseY));
         nameModeDropdown.renderPopup(guiGraphics, this.font, mouseX, mouseY);
         tooltipModeDropdown.renderPopup(guiGraphics, this.font, mouseX, mouseY);
         for (AddonCard card : addonCards) {
@@ -1919,26 +1920,26 @@ public class StageSettingsScreen extends Screen {
         // otherwise bleed through it.
         if (itemPickerOverlay != null) {
             guiGraphics.pose().pushMatrix();
-            guiGraphics.pose().translate(0, 0);
+            guiGraphics.nextStratum();
             guiGraphics.fill(0, 0, this.width, this.height, 0x80000000);
             itemPickerOverlay.render(guiGraphics, this.font, mouseX, mouseY);
             guiGraphics.pose().popMatrix();
         }
         if (lockActionsPopup.isVisible()) {
             guiGraphics.pose().pushMatrix();
-            guiGraphics.pose().translate(0, 0);
+            guiGraphics.nextStratum();
             lockActionsPopup.render(guiGraphics, this.font, this.width, this.height, mouseX, mouseY);
             guiGraphics.pose().popMatrix();
         }
         if (spawnControlPopup.isVisible()) {
             guiGraphics.pose().pushMatrix();
-            guiGraphics.pose().translate(0, 0);
+            guiGraphics.nextStratum();
             spawnControlPopup.render(guiGraphics, this.font, mouseX, mouseY);
             guiGraphics.pose().popMatrix();
         }
         if (interactionActionsPopup.isVisible()) {
             guiGraphics.pose().pushMatrix();
-            guiGraphics.pose().translate(0, 0);
+            guiGraphics.nextStratum();
             interactionActionsPopup.render(guiGraphics, this.font, mouseX, mouseY);
             guiGraphics.pose().popMatrix();
         }

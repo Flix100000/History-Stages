@@ -226,12 +226,12 @@ final class GraphInteraction {
         int w = font.width(label) + 8;
         int gx = mouseX + 10;
         int gy = mouseY + 10;
-        g.pose().pushMatrix();
-        g.pose().translate(0, 0); // above nodes/edges, below modal dialogs
-        g.fill(gx, gy, gx + w, gy + 14, GHOST_BG);
-        g.fill(gx, gy + 13, gx + w, gy + 14, GHOST_ACCENT);
-        g.text(font, label, gx + 4, gy + 3, 0xFFFFFFFF, false);
-        g.pose().popMatrix();
+        // Waits for the frame's end, so the sidebar it is dragged over does not cover it.
+        net.bananemdnsa.historystages.client.editor.widget.DeferredOverlay.add(g, 300, gg -> {
+            gg.fill(gx, gy, gx + w, gy + 14, GHOST_BG);
+            gg.fill(gx, gy + 13, gx + w, gy + 14, GHOST_ACCENT);
+            gg.text(font, label, gx + 4, gy + 3, 0xFFFFFFFF, false);
+        });
     }
 
     private static String labelFor(StageGraphModel.Node node) {

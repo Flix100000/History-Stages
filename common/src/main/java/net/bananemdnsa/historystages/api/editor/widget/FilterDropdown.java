@@ -160,8 +160,15 @@ public class FilterDropdown {
         }
     }
 
-    /** Renders the dropdown popup. Call AFTER all other UI so it draws on top. */
+    /** Queues the dropdown popup; it is drawn on top once the screen is done. */
     public void renderPopup(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
+        // Drawn after the screen: whatever the screen draws later would otherwise cover it.
+        net.bananemdnsa.historystages.client.editor.widget.DeferredOverlay.add(g,
+                net.bananemdnsa.historystages.client.editor.widget.DeferredOverlay.POPUP,
+                gg -> drawPopup(gg, font, mouseX, mouseY));
+    }
+
+    private void drawPopup(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
         if (options.isEmpty()) return;
 
         // Kept rendering past the click that closed it, so the popup rolls back up.

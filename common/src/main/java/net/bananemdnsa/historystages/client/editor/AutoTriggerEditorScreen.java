@@ -398,7 +398,7 @@ public class AutoTriggerEditorScreen extends Screen {
         tooltip.render(g, this.font, tooltipKey, tooltipText, mx, my, this.width, this.height);
 
         // Add-dropdown popup — always rendered; the reveal animation decides what is visible.
-        renderAddDropdown(g, mx, my);
+        net.bananemdnsa.historystages.client.editor.widget.DeferredOverlay.add(g, net.bananemdnsa.historystages.client.editor.widget.DeferredOverlay.POPUP, gg -> renderAddDropdown(gg, mx, my));
 
         // Dim the rest of the screen whenever a modal overlay is active (Searchable widget or
         // the choice list). Without this the editor's title and the empty-state text bleed
@@ -406,7 +406,7 @@ public class AutoTriggerEditorScreen extends Screen {
         boolean overlayActive = isOverlayActive();
         if (overlayActive) {
             g.pose().pushMatrix();
-            g.pose().translate(0, 0);
+            g.nextStratum();
             g.fill(0, 0, this.width, this.height, 0xC0000000);
             g.pose().popMatrix();
         }
@@ -414,14 +414,14 @@ public class AutoTriggerEditorScreen extends Screen {
         // Searchable list overlay
         if (currentList != null && currentList.isVisible()) {
             g.pose().pushMatrix();
-            g.pose().translate(0, 0);
+            g.nextStratum();
             currentList.render(g, this.font, mx, my);
             g.pose().popMatrix();
         }
 
         // Context menu always on top
         g.pose().pushMatrix();
-        g.pose().translate(0, 0);
+        g.nextStratum();
         contextMenu.render(g, this.font, mx, my);
         g.pose().popMatrix();
     }

@@ -338,7 +338,7 @@ public class NbtItemEditScreen extends Screen {
 
         super.extractRenderState(g, mouseX, mouseY, partialTick);
 
-        // Lifted onto its own Z layer and dimmed underneath: text is batched and flushed after the
+        // On a layer of its own and dimmed underneath: text is batched and flushed after the
         // picker's panel fills, so the cards and button labels below would otherwise bleed through
         // it. Same treatment every other picker in the editor gets.
         // A picker can hide itself without telling anyone — Escape goes straight to its own key
@@ -347,7 +347,7 @@ public class NbtItemEditScreen extends Screen {
         syncPickerState();
         if (pickerOverlay != null) {
             g.pose().pushMatrix();
-            g.pose().translate(0, 0);
+            g.nextStratum();
             g.fill(0, 0, this.width, this.height, 0x80000000);
             pickerOverlay.render(g, this.font, mouseX, mouseY);
             g.pose().popMatrix();
@@ -391,7 +391,7 @@ public class NbtItemEditScreen extends Screen {
         int panelY = (this.height - panelH) / 2;
 
         g.pose().pushMatrix();
-        g.pose().translate(0, 0);
+        g.nextStratum();
         g.fill(0, 0, this.width, this.height, 0x80000000);
 
         g.fill(panelX, panelY, panelX + panelW, panelY + panelH, 0xFF2F2F2F);

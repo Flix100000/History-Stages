@@ -504,7 +504,7 @@ public class DependencyEditorScreen extends Screen {
 
         // Overlays (z-ordered on top)
         g.pose().pushMatrix();
-        g.pose().translate(0, 0);
+        g.nextStratum();
 
         if (addonPicker() != null)
             addonPicker().render(g, this.font, mouseX, mouseY);
@@ -876,7 +876,7 @@ public class DependencyEditorScreen extends Screen {
 
     private void renderTooltip(GuiGraphicsExtractor g, String text, int mouseX, int mouseY) {
         g.pose().pushMatrix();
-        g.pose().translate(0, 0);
+        g.nextStratum();
 
         List<String> lines = new ArrayList<>();
         for (String segment : text.split("\n")) {

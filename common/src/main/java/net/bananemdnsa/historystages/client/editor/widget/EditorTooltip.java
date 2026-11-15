@@ -26,12 +26,6 @@ public final class EditorTooltip {
     private static final int LINE_H = 10;
     private static final int PAD_X = 4;
     private static final int PAD_Y = 3;
-    /**
-     * Above everything else the editor draws. Higher than the dropdown popups at 400, because a
-     * per-option tooltip is drawn while such a popup is open and must not fight it for depth.
-     */
-    private static final int TOOLTIP_Z = 500;
-
     private static final int FRAME = 0xFF3D3D3D;
     private static final int BACKGROUND = 0xFF0D0D0D;
     private static final int TEXT = 0xCCCCCC;
@@ -62,7 +56,7 @@ public final class EditorTooltip {
     }
 
     /**
-     * Paints the tooltip immediately, in the editor's look.
+     * Paints the tooltip in the editor's look, on top of everything else this frame.
      *
      * <p>Public for callers that already track their own hover timing, or that deliberately have
      * none — a tooltip inside a modal popup is being read on purpose, not brushed past.
@@ -72,8 +66,13 @@ public final class EditorTooltip {
      */
     public static void draw(GuiGraphicsExtractor g, Font font, String text,
                             int mouseX, int mouseY, int screenW, int screenH) {
-        g.pose().pushMatrix();
-        g.pose().translate(0, 0);
+        // Queued rather than drawn: an open dropdown is queued too, and the tooltip belongs above it.
+        DeferredOverlay.add(g, DeferredOverlay.TOOLTIP,
+                gg -> paint(gg, font, text, mouseX, mouseY, screenW, screenH));
+    }
+
+    private static void paint(GuiGraphicsExtractor g, Font font, String text,
+                              int mouseX, int mouseY, int screenW, int screenH) {
 
         List<String> lines = wrap(font, text);
         int w = 0;
@@ -97,8 +96,6 @@ public final class EditorTooltip {
             g.text(font, line, x + PAD_X, ty, TextColors.legacy(TEXT), false);
             ty += LINE_H;
         }
-
-        g.pose().popMatrix();
     }
 
     /**

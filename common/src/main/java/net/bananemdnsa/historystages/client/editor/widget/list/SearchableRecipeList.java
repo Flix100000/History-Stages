@@ -610,7 +610,7 @@ public class SearchableRecipeList implements PickerOverlay {
 
         // Tooltips last and lifted, or the panel below paints over them.
         guiGraphics.pose().pushMatrix();
-        guiGraphics.pose().translate(0, 0);
+        guiGraphics.nextStratum();
         if (!filterUiHovered) {
             renderMasterTooltip(guiGraphics, font, gridX, gridY, rows, mouseX, mouseY);
             renderCardTooltip(guiGraphics, font, mouseX, mouseY);

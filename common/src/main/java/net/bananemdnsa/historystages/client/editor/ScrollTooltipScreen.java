@@ -963,7 +963,7 @@ public class ScrollTooltipScreen extends Screen {
         int gx = Math.min(mouseX + 8, this.width - gw - 4);
         int gy = Math.min(mouseY - 8, this.height - 18);
         g.pose().pushMatrix();
-        g.pose().translate(0, 0);
+        g.nextStratum();
         g.fill(gx, gy, gx + gw, gy + 16, 0xE0101010);
         g.fill(gx, gy + 15, gx + gw, gy + 16, 0xFFFFCC00);
         g.text(this.font, label, gx + 5, gy + 4, 0xFFFFFFFF, false);

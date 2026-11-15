@@ -25,8 +25,8 @@ import java.util.function.Consumer;
  * frame before {@link #render}.
  *
  * <p>The funnel button and popup are drawn as part of {@link #render}; the
- * popup is z-translated above the rest of the panel content so it can occlude
- * a grid that draws afterwards. Use {@link #isMouseOverFilterUi(double, double)}
+ * popup is drawn after the rest of the screen so it can occlude a grid that
+ * draws afterwards. Use {@link #isMouseOverFilterUi(double, double)}
  * to suppress underlying tooltips/hover effects when the filter UI is in the
  * way.
  */
