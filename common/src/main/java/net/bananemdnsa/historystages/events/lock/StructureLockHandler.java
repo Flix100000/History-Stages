@@ -75,7 +75,10 @@ public class StructureLockHandler {
     @SubscribeEvent
     public static void onPlayerTick(PlayerTickEvent.Post event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
-        if (player.isSpectator()) return;
+        if (player.isSpectator()) {
+            releaseLeftovers(player);
+            return;
+        }
 
         if (!StageLocks.engine().anyStructureLocks()) {
             releaseLeftovers(player);
@@ -387,9 +390,9 @@ public class StructureLockHandler {
     }
 
     /**
-     * Once the last structure lock is gone the tick stops early, so the state from before would
-     * never be recomputed: clicks stay refused and the client keeps drawing (and bumping into)
-     * borders of a lock that no longer exists.
+     * Once the last structure lock is gone, or the player turns spectator, the tick stops early,
+     * so the state from before would never be recomputed: clicks stay refused and the client keeps
+     * drawing (and bumping into) borders of a lock that no longer exists.
      */
     private static void releaseLeftovers(ServerPlayer player) {
         if (STATE.isEmpty()) return;

@@ -71,7 +71,10 @@ public class BiomeLockHandler {
     @SubscribeEvent
     public static void onPlayerTick(PlayerTickEvent.Post event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
-        if (player.isSpectator()) return;
+        if (player.isSpectator()) {
+            releaseLeftovers(player);
+            return;
+        }
 
         if (!StageLocks.engine().anyBiomeLocks()) {
             releaseLeftovers(player);
@@ -303,8 +306,9 @@ public class BiomeLockHandler {
     }
 
     /**
-     * Once the last biome lock is gone the tick stops early, so nothing would ever recompute the
-     * state left from before: the player stays "inside a locked biome" and every click is refused.
+     * Once the last biome lock is gone, or the player turns spectator, the tick stops early, so
+     * nothing would ever recompute the state left from before: the player stays "inside a locked
+     * biome" and every click is refused.
      */
     private static void releaseLeftovers(ServerPlayer player) {
         if (STATE.isEmpty()) return;
