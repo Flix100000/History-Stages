@@ -37,12 +37,11 @@ public final class WorldOverlayRenderTypes {
     public static final Identifier FORCEFIELD_TEXTURE = Identifier.withDefaultNamespace("textures/misc/forcefield.png");
 
     /**
-     * The main target, drawn just before the translucent terrain. Water and stained glass write
-     * depth, so anything drawn after them is hidden behind them; drawn before, they blend over the
-     * overlay the way they blend over the terrain behind them. With Fabulous graphics the main
-     * layer is also the one that gets combined underneath the translucent one.
+     * Fields and outline, drawn after the translucent terrain but tested against the depth from
+     * before it, so water and stained glass neither hide nor cover them; see {@link OpaqueDepthTarget}.
      */
-    private static final OutputTarget TARGET = OutputTarget.MAIN_TARGET;
+    private static final OutputTarget TARGET = new OutputTarget("historystages_overlays",
+            () -> OpaqueDepthTarget.INSTANCE);
 
     /**
      * For the selection box, drawn after the translucent terrain: with Fabulous graphics that is the

@@ -17,13 +17,12 @@ public class RenderLevelStageEvent extends Event {
     public enum Stage {
         /**
          * Right before the translucent terrain (NeoForge {@code AfterTranslucentFeatures}, Fabric
-         * {@code BEFORE_TRANSLUCENT_TERRAIN}). Water and stained glass write depth, so a see-through
-         * wall drawn after them would be hidden behind them; drawn here, they blend over it.
+         * {@code BEFORE_TRANSLUCENT_TERRAIN}): the depth buffer still holds the solid world only.
          */
         BEFORE_TRANSLUCENT,
         /**
          * Right after it (NeoForge {@code AfterTranslucentBlocks}, Fabric
-         * {@code AFTER_TRANSLUCENT_TERRAIN}), for what is drawn on top of everything anyway.
+         * {@code AFTER_TRANSLUCENT_TERRAIN}), where the overlays draw.
          */
         AFTER_TRANSLUCENT
     }

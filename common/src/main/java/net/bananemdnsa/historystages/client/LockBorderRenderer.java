@@ -37,7 +37,7 @@ public final class LockBorderRenderer {
 
     @SubscribeEvent
     public static void onRenderLevel(RenderLevelStageEvent event) {
-        if (event.getStage() != RenderLevelStageEvent.Stage.BEFORE_TRANSLUCENT) return;
+        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT) return;
         if (!Config.VISUAL.structureBorderEnabled.get()) return;
 
         List<BoundingBox> boxes = LockBorderClientCache.get();

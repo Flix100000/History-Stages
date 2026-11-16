@@ -25,6 +25,7 @@ public final class ClientHandlers {
             ClientDisguises.class,
             EditorButtonHandler.class,
             LockBorderRenderer.class,
+            OpaqueDepthTarget.class,
             LockOverlayRenderer.class,
             OpenScrollHandler.class,
             TradeLockNoticeRenderer.class,
