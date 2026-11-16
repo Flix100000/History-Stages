@@ -6,6 +6,7 @@ import java.util.Locale;
 import com.mojang.brigadier.CommandDispatcher;
 
 import net.bananemdnsa.historystages.network.PacketHandler;
+import net.bananemdnsa.historystages.reload.BackgroundReload;
 import net.bananemdnsa.historystages.reload.LightReload;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
@@ -25,14 +26,17 @@ public final class ReloadLabCommand {
         dispatcher.register(Commands.literal("hsreloadlab")
                 .requires(source -> source.hasPermission(2))
                 .then(Commands.literal("full").executes(ctx -> full(ctx.getSource())))
-                .then(Commands.literal("light").executes(ctx -> light(ctx.getSource(), false)))
-                .then(Commands.literal("light_tags").executes(ctx -> light(ctx.getSource(), true)))
+                .then(Commands.literal("background").executes(ctx -> background(ctx.getSource())))
+                .then(Commands.literal("targeted").executes(ctx -> targeted(ctx.getSource())))
                 .then(Commands.literal("resend").executes(ctx -> resend(ctx.getSource())))
                 .then(Commands.literal("listeners").executes(ctx -> listeners(ctx.getSource())))
+                .then(Commands.literal("jei")
+                        .then(Commands.literal("restart").executes(ctx -> jei(ctx.getSource(), true)))
+                        .then(Commands.literal("diff").executes(ctx -> jei(ctx.getSource(), false))))
                 .then(Commands.literal("mode")
                         .then(Commands.literal("full").executes(ctx -> mode(ctx.getSource(), LightReload.Mode.FULL)))
-                        .then(Commands.literal("light").executes(ctx -> mode(ctx.getSource(), LightReload.Mode.LIGHT)))
-                        .then(Commands.literal("light_tags").executes(ctx -> mode(ctx.getSource(), LightReload.Mode.LIGHT_TAGS)))));
+                        .then(Commands.literal("background").executes(ctx -> mode(ctx.getSource(), LightReload.Mode.BACKGROUND)))
+                        .then(Commands.literal("targeted").executes(ctx -> mode(ctx.getSource(), LightReload.Mode.TARGETED)))));
     }
 
     private static int full(CommandSourceStack source) {
@@ -46,15 +50,32 @@ public final class ReloadLabCommand {
         return 1;
     }
 
-    private static int light(CommandSourceStack source, boolean tags) {
+    private static int background(CommandSourceStack source) {
+        MinecraftServer server = source.getServer();
+        LightReload.requestProfile();
+        long start = System.nanoTime();
+        BackgroundReload.request(server);
+        // The command returns at once; the report follows when the reload is through.
+        BackgroundReload.whenIdle(server, () -> {
+            long millis = (System.nanoTime() - start) / 1_000_000;
+            source.sendSuccess(() -> Component.translatable("command.historystages.reloadlab.background", millis), true);
+        });
+        return 1;
+    }
+
+    private static int targeted(CommandSourceStack source) {
         MinecraftServer server = source.getServer();
         long start = System.nanoTime();
-        LightReload.Result result = LightReload.run(server, tags);
-        // Counted in, because the full reload sends the recipe list as part of its time too.
-        PacketHandler.resyncRecipes(server);
-        long millis = (System.nanoTime() - start) / 1_000_000;
-        source.sendSuccess(() -> Component.translatable("command.historystages.reloadlab.light",
-                millis, result.replayed(), result.skipped()), true);
+        LightReload.start(server, true).whenComplete((result, error) -> {
+            long millis = (System.nanoTime() - start) / 1_000_000;
+            if (error != null) {
+                source.sendFailure(Component.translatable("command.historystages.reloadlab.targeted.failed",
+                        String.valueOf(error.getMessage())));
+                return;
+            }
+            source.sendSuccess(() -> Component.translatable("command.historystages.reloadlab.targeted",
+                    millis, result.replayed(), result.skipped()), true);
+        });
         return 1;
     }
 
@@ -70,6 +91,14 @@ public final class ReloadLabCommand {
         LightReload.setMode(mode);
         String name = mode.name().toLowerCase(Locale.ROOT);
         source.sendSuccess(() -> Component.translatable("command.historystages.reloadlab.mode", name), true);
+        return 1;
+    }
+
+    private static int jei(CommandSourceStack source, boolean restart) {
+        LightReload.setResendRecipes(restart);
+        source.sendSuccess(() -> Component.translatable(restart
+                ? "command.historystages.reloadlab.jei.restart"
+                : "command.historystages.reloadlab.jei.diff"), true);
         return 1;
     }
 

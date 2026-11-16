@@ -8,6 +8,7 @@
     "AttributeLockMixin",
     "RecipeManagerMixin",
     "SimpleReloadInstanceMixin",
+    "PlayerListReloadMixin",
     "CraftingMenuMixin",
     "StonecutterMenuMixin",
     "SmithingMenuMixin",

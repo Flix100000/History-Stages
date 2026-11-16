@@ -33,12 +33,7 @@ public final class LockedJeiVisibility {
      */
     public static Set<ItemStack> computeLockedItems(Iterable<ItemStack> allStacks,
                                                      MultiStagePolicy policy) {
-        // "recipe" and not the item as a whole: the action is described in the editor as
-        // "Show in JEI / EMI", so an entry that leaves it unlocked must leave the item listed.
-        Predicate<ItemStack> isLocked = switch (policy) {
-            case STRICT  -> stack -> StageLockHelper.isItemActionLockedForClient(stack, "recipe");
-            case LENIENT -> stack -> StageLockHelper.isItemActionLockedForClientLenient(stack, "recipe");
-        };
+        Predicate<ItemStack> isLocked = lockPredicate(policy);
 
         Set<ItemStack> locked = new HashSet<>();
         for (ItemStack stack : allStacks) {
@@ -46,6 +41,16 @@ public final class LockedJeiVisibility {
             if (isLocked.test(stack)) locked.add(stack);
         }
         return locked;
+    }
+
+    /** Whether one stack is locked for the local player, under the configured policy. */
+    public static Predicate<ItemStack> lockPredicate(MultiStagePolicy policy) {
+        // "recipe" and not the item as a whole: the action is described in the editor as
+        // "Show in JEI / EMI", so an entry that leaves it unlocked must leave the item listed.
+        return switch (policy) {
+            case STRICT  -> stack -> StageLockHelper.isItemActionLockedForClient(stack, "recipe");
+            case LENIENT -> stack -> StageLockHelper.isItemActionLockedForClientLenient(stack, "recipe");
+        };
     }
 
     /**

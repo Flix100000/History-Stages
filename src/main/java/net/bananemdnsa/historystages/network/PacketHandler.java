@@ -1,5 +1,7 @@
 package net.bananemdnsa.historystages.network;
+import net.bananemdnsa.historystages.reload.BackgroundReload;
 import net.bananemdnsa.historystages.reload.LightReload;
+import net.bananemdnsa.historystages.reload.ReloadStats;
 import net.bananemdnsa.historystages.network.serverbound.RequestClusterShapesPacket;
 import net.bananemdnsa.historystages.network.serverbound.ToggleStructureVizPacket;
 import net.bananemdnsa.historystages.network.serverbound.RequestStructureDebugPacket;
@@ -281,26 +283,32 @@ public class PacketHandler {
         if (!reloadRequested) return;
         reloadRequested = false;
 
-        if (!net.bananemdnsa.historystages.data.lock.VisibleRecipes.gatedSetChanged(
-                server.getRecipeManager().getOrderedRecipes())) {
-            resyncRecipes(server);
-            return;
-        }
-
-        // PROTOTYPE: /hsreloadlab mode picks what happens here; FULL is the shipped behaviour.
+        var recipes = server.getRecipeManager().getOrderedRecipes();
+        int gatedBefore = net.bananemdnsa.historystages.data.lock.VisibleRecipes.gatedCount();
+        boolean changed = net.bananemdnsa.historystages.data.lock.VisibleRecipes.gatedSetChanged(recipes);
+        int gatedAfter = net.bananemdnsa.historystages.data.lock.VisibleRecipes.gatedCount();
         LightReload.Mode mode = LightReload.mode();
-        if (mode != LightReload.Mode.FULL) {
-            LightReload.run(server, mode == LightReload.Mode.LIGHT_TAGS);
-            // A full reload ends by sending clients the recipe list again; this has to as well.
-            resyncRecipes(server);
+        ReloadStats.begin(changed ? mode.name().toLowerCase(java.util.Locale.ROOT) : "none",
+                gatedBefore, gatedAfter, recipes.size());
+
+        // PROTOTYPE: the resend only exists to restart JEI; /hsreloadlab jei picks.
+        if (!changed) {
+            if (LightReload.resendRecipes()) resyncRecipes(server);
+            ReloadStats.end(null);
             return;
         }
 
-        long start = System.nanoTime();
+        // PROTOTYPE: /hsreloadlab mode picks what happens here. FULL is what shipped; BACKGROUND
+        // the same reload without the freeze; TARGETED only the mods' listeners, the branch default.
+        if (mode != LightReload.Mode.FULL) {
+            BackgroundReload.request(server);
+            // A full reload ends by sending the recipe list itself; the targeted one does not.
+            if (mode == LightReload.Mode.TARGETED && LightReload.resendRecipes()) resyncRecipes(server);
+            return;
+        }
+
         server.reloadResources(server.getPackRepository().getSelectedIds())
-                .thenRun(() -> com.mojang.logging.LogUtils.getLogger().info(
-                        "[HistoryStages/LightReload] Full datapack reload after a stage change took {} ms",
-                        (System.nanoTime() - start) / 1_000_000))
+                .whenComplete((ignored, e) -> ReloadStats.end(e))
                 .exceptionally(e -> {
                     DebugLogger.warn("Recipe Locks",
                             "Reloading datapacks after a stage change failed: " + e.getMessage()

@@ -2,6 +2,7 @@ package net.bananemdnsa.historystages.gametest;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.reload.LightReload;
@@ -39,40 +40,36 @@ public final class LightReloadTests {
         helper.succeed();
     }
 
-    @GameTest(template = "empty")
+    @GameTest(template = "empty", batch = "targeted_reload", timeoutTicks = 400)
     public static void aLightReloadRunsModListenersAndLeavesTheRecipesAlone(GameTestHelper helper) {
-        // Synchronous from end to end, so no other test's reload can replace the list in between.
         MinecraftServer server = helper.getLevel().getServer();
         List<PreparableReloadListener> real = LightReload.remembered();
         RecipeManager recipesBefore = server.getRecipeManager();
         Probe probe = new Probe();
+
+        List<PreparableReloadListener> fake = new ArrayList<>();
+        fake.add(recipesBefore);
+        fake.add(probe);
+        LightReload.rememberIfServerData(fake);
+        CompletableFuture<LightReload.Result> run;
         try {
-            List<PreparableReloadListener> fake = new ArrayList<>();
-            fake.add(recipesBefore);
-            fake.add(probe);
-            LightReload.rememberIfServerData(fake);
-
-            LightReload.run(server, false);
-
-            if (probe.calls != 1) {
-                helper.fail("the mod listener ran " + probe.calls + " times instead of once, so "
-                        + "a mod holding a copy of the recipe list would not be told to let go");
-                return;
-            }
-            if (!probe.hadContext) {
-                helper.fail("the mod listener ran without NeoForge's condition context, so any "
-                        + "condition it reads would come out false");
-                return;
-            }
-            if (server.getRecipeManager() != recipesBefore) {
-                helper.fail("the light reload replaced the recipe manager, which means it did the "
-                        + "expensive full reload after all");
-                return;
-            }
-            helper.succeed();
+            run = LightReload.start(server, false);
         } finally {
+            // The list is read when the run starts; put the real one back before anything else
+            // gets to reload with the fake.
             LightReload.restoreRemembered(real);
         }
+
+        helper.succeedWhen(() -> {
+            helper.assertTrue(run.isDone(), "the light reload is still running");
+            helper.assertFalse(run.isCompletedExceptionally(), "the light reload failed");
+            helper.assertTrue(probe.calls == 1, "the mod listener ran " + probe.calls + " times instead "
+                    + "of once, so a mod holding a copy of the recipe list would not be told to let go");
+            helper.assertTrue(probe.hadContext, "the mod listener ran without NeoForge's condition "
+                    + "context, so any condition it reads would come out false");
+            helper.assertTrue(server.getRecipeManager() == recipesBefore, "the light reload replaced the "
+                    + "recipe manager, which means it did the expensive full reload after all");
+        });
     }
 
     /** A mod's reload listener, reduced to counting. */

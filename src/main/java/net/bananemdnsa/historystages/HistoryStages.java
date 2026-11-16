@@ -431,6 +431,8 @@ public class HistoryStages {
         serverInitialized = false;
         // Rolled from the trade hooks this server registered; the next one may register others.
         net.bananemdnsa.historystages.data.lock.TradeGoodsScanner.clearCache();
+        net.bananemdnsa.historystages.reload.BackgroundReload.forget();
+        net.bananemdnsa.historystages.reload.ReloadStats.forget();
         DebugLogger.runtime(HsRuntimeCategories.SERVER, "Server stopping — flushing runtime log");
         DebugLogger.flushRuntimeBuffer();
     }
@@ -487,6 +489,7 @@ public class HistoryStages {
         // work, and keeps it out of the middle of whatever else was ticking.
         if (server != null) {
             net.bananemdnsa.historystages.network.PacketHandler.runRequestedLockReload(server);
+            net.bananemdnsa.historystages.reload.ReloadStats.onTick();
         }
     }
 

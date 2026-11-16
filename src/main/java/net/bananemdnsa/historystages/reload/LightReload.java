@@ -45,8 +45,15 @@ public final class LightReload {
 
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    /** What a stage change that altered the gated recipes does. In memory only, for testing. */
-    public enum Mode { FULL, LIGHT, LIGHT_TAGS }
+    /**
+     * What a stage change that altered the gated recipes does. In memory only, for testing.
+     * <ul>
+     *   <li>FULL — what shipped: every datapack, and the server waits for it.</li>
+     *   <li>BACKGROUND — the same full reload, with the server ticking on, see {@link BackgroundReload}.</li>
+     *   <li>TARGETED — only the mods' own listeners plus a tags event, also without waiting.</li>
+     * </ul>
+     */
+    public enum Mode { FULL, BACKGROUND, TARGETED }
 
     /**
      * Listeners that must not run twice on one recipe load. Both run scripts that add and remove
@@ -57,7 +64,21 @@ public final class LightReload {
             "dev.latvian.mods.kubejs.server.KubeJSReloadListener",
             "com.blamejared.crafttweaker.impl.script.ScriptReloadListener");
 
-    private static volatile Mode mode = Mode.FULL;
+    private static volatile Mode mode = Mode.TARGETED;
+    /**
+     * Whether a stage change sends clients the recipe list. Sending it restarts JEI from scratch;
+     * not sending it leaves JEI to the hide pass on the stage sync. Off on this branch, to test
+     * whether that pass is enough on its own.
+     */
+    private static volatile boolean resendRecipes = false;
+
+    public static boolean resendRecipes() {
+        return resendRecipes;
+    }
+
+    public static void setResendRecipes(boolean resend) {
+        resendRecipes = resend;
+    }
     private static volatile List<PreparableReloadListener> remembered = List.of();
     private static volatile boolean profileRequested;
 
@@ -129,13 +150,23 @@ public final class LightReload {
     /** What one light reload did. */
     public record Result(long millis, int replayed, int skipped) {}
 
+    /** Whether a reload has been seen to replay. Without one, there is nothing to run. */
+    public static boolean hasRemembered() {
+        return !remembered.isEmpty();
+    }
+
     /**
-     * Runs the mods' listeners again and waits for them, the way a full reload would have.
+     * Runs the mods' listeners again. Returns at once; the future completes on the server thread.
      *
-     * <p>Waits on purpose: a full reload started from the server thread blocks it until done, and
-     * the point of the prototype is to compare the two on the same terms.
+     * <p>Not waited for, for the same reason as {@link BackgroundReload}: nothing it touches
+     * differs from what is loaded, and the gate answers on every lookup, so a machine rebuilding
+     * its cache while this runs already gets the right list.
+     *
+     * <p>Each listener prepares on the background pool and applies on the server thread between
+     * ticks — the split vanilla uses — and the log names every listener and what it cost, which is
+     * the list to look at when one pack is still slow.
      */
-    public static Result run(MinecraftServer server, boolean fireTagsUpdated) {
+    public static CompletableFuture<Result> start(MinecraftServer server, boolean fireTagsUpdated) {
         long start = System.nanoTime();
         ReloadableServerResources managers = server.getServerResources().managers();
 
@@ -149,34 +180,34 @@ public final class LightReload {
                 case VANILLA -> { }
             }
         }
+        int skippedFinal = skipped;
 
         // NeoForge hands each listener the reload's condition context and clears it again once the
         // reload is over. A listener reading conditions without it would see every one as false.
         injectContext(toRun, managers.getConditionContext(), managers.getRegistryLookup());
+        CompletableFuture<?> done;
         try {
-            // Profiled, so the log names every listener and what it cost: the list to look at when
-            // a light reload is still slow on some pack.
-            CompletableFuture<?> done = SimpleReloadInstance.create(server.getResourceManager(), toRun,
+            done = SimpleReloadInstance.create(server.getResourceManager(), toRun,
                     Util.backgroundExecutor(), server, CompletableFuture.completedFuture(Unit.INSTANCE),
                     true).done();
-            if (server.isSameThread()) {
-                server.managedBlock(done::isDone);
-            }
-            done.join();
-        } finally {
+        } catch (RuntimeException e) {
             injectContext(toRun, ICondition.IContext.EMPTY, RegistryAccess.EMPTY);
+            return CompletableFuture.failedFuture(e);
         }
 
-        if (fireTagsUpdated) {
-            // Some mods build their recipe caches when tags arrive rather than in a listener of
-            // their own, since that is the first moment both recipes and tags are ready.
-            NeoForge.EVENT_BUS.post(new TagsUpdatedEvent(managers.fullRegistries().get(), false, false));
-        }
-
-        long millis = (System.nanoTime() - start) / 1_000_000;
-        LOGGER.info("[HistoryStages/LightReload] Replayed {} mod reload listeners ({} skipped{}) in {} ms",
-                toRun.size(), skipped, fireTagsUpdated ? ", tags event fired" : "", millis);
-        return new Result(millis, toRun.size(), skipped);
+        return done.handleAsync((ignored, error) -> {
+            injectContext(toRun, ICondition.IContext.EMPTY, RegistryAccess.EMPTY);
+            if (error != null) throw new java.util.concurrent.CompletionException(error);
+            if (fireTagsUpdated) {
+                // Some mods build their recipe caches when tags arrive rather than in a listener of
+                // their own, since that is the first moment both recipes and tags are ready.
+                NeoForge.EVENT_BUS.post(new TagsUpdatedEvent(managers.fullRegistries().get(), false, false));
+            }
+            long millis = (System.nanoTime() - start) / 1_000_000;
+            LOGGER.info("[HistoryStages/LightReload] Replayed {} mod reload listeners ({} skipped{}) in {} ms",
+                    toRun.size(), skippedFinal, fireTagsUpdated ? ", tags event fired" : "", millis);
+            return new Result(millis, toRun.size(), skippedFinal);
+        }, server);
     }
 
     private static Kind kindOf(PreparableReloadListener inner) {
