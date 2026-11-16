@@ -178,6 +178,14 @@ public final class SmokeTour {
                 runCommand(player, "tp @s 18.5 96 -4.5 180 20");
             });
         }, Map.of()));
+        // The other way round: water and stained glass behind the zone's wall, which has to stay
+        // on top of them.
+        list.add(scene("overlays_over_water", () -> {
+            show(null);
+            onServer(player -> {
+                for (String command : WATER_AND_GLASS_BEHIND) runCommand(player, command);
+            });
+        }, Map.of()));
         // Water and stained glass between the camera and the force fields and the selection box.
         list.add(scene("overlays_water", () -> {
             show(null);
@@ -204,6 +212,14 @@ public final class SmokeTour {
             "fill 17 96 -7 18 99 -7 minecraft:water",
             "fill 20 95 -7 20 99 -5 minecraft:lime_stained_glass",
             "fill 14 95 -6 15 98 -6 minecraft:lime_stained_glass");
+
+    /** Inside the zone, behind its west wall as seen from the player's spot, looking east. */
+    private static final List<String> WATER_AND_GLASS_BEHIND = List.of(
+            "time set noon",
+            "tp @s 18.5 96 -4.5 -100 10",
+            "fill 21 94 -7 24 100 -4 minecraft:barrier",
+            "fill 22 95 -6 23 99 -5 minecraft:water",
+            "fill 22 95 -3 22 99 -2 minecraft:lime_stained_glass");
 
     private static void runCommand(ServerPlayer player, String command) {
         var source = player.createCommandSourceStack().withSuppressedOutput()
