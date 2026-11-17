@@ -29,6 +29,9 @@ import java.util.Locale;
  * <p>The stage screen only reaches the rules of entries it lists. A rule whose item is locked
  * nowhere any more has no stage left to open it from — this is where it can still be found,
  * greyed and at the bottom, and removed.
+ *
+ * <p>Opened from the same header menu as the config editor, so it keeps the config editor's
+ * footer: back bottom left, add bottom centre.
  */
 public class DisguiseListScreen extends Screen {
 
@@ -67,13 +70,13 @@ public class DisguiseListScreen extends Screen {
             search.setFocused(false);
         }
         // Not the full width: a short list of rules does not need a bar across the whole screen.
-        search.setPosition(MARGIN, 22, Math.min(SEARCH_W, this.width - MARGIN * 2 - 110));
+        search.setPosition(MARGIN, 22, Math.min(SEARCH_W, this.width - MARGIN * 2));
 
+        addRenderableWidget(StyledButton.of(Component.translatable("editor.historystages.back"),
+                b -> onClose(), MARGIN, this.height - 30, 60, 20));
         addRenderableWidget(StyledButton.of(Component.translatable("editor.historystages.disguise.list.add"),
                 b -> this.minecraft.setScreen(new DisguiseDialog(this, null, true)),
-                this.width - MARGIN - 100, 22, 100, 20));
-        addRenderableWidget(StyledButton.of(Component.translatable("editor.historystages.back"),
-                b -> onClose(), MARGIN, this.height - 28, 60, 20));
+                this.width / 2 - 50, this.height - 30, 100, 20));
     }
 
     private List<Line> buildLines() {
@@ -126,7 +129,6 @@ public class DisguiseListScreen extends Screen {
                     lines.size(), (row, i) -> describe(row, lines.get(i)));
             g.disableScissor();
         }
-        g.fill(MARGIN, listBottom + 1, this.width - MARGIN, listBottom + 2, 0xFF555555);
 
         super.render(g, mouseX, mouseY, partialTick);
         search.render(g, this.font, mouseX, mouseY);
