@@ -33,6 +33,7 @@ public final class ReloadStats {
     private static long worstGapNanos;
     private static int ticks;
     private static String error;
+    private static String lastLine;
 
     private ReloadStats() {}
 
@@ -74,12 +75,26 @@ public final class ReloadStats {
             ticks++;
             return;
         }
-        LOGGER.info(String.format(Locale.ROOT,
-                "[HistoryStages/ReloadStats] mode=%s recipes=%d gated=%d->%d total=%dms ticksDuring=%d "
-                        + "longestTickGap=%dms%s",
+        lastLine = String.format(Locale.ROOT,
+                "mode=%s recipes=%d gated=%d->%d total=%dms ticksDuring=%d longestTickGap=%dms%s",
                 mode, recipes, gatedBefore, gatedAfter, (endNanos - startNanos) / 1_000_000, ticks,
-                worstGapNanos / 1_000_000, error == null ? "" : " FAILED: " + error));
+                worstGapNanos / 1_000_000, error == null ? "" : " FAILED: " + error);
+        LOGGER.info("[HistoryStages/ReloadStats] " + lastLine);
         active = false;
+    }
+
+    /** The last line written, without its prefix, or null. For the bench. */
+    public static synchronized String lastLine() {
+        return lastLine;
+    }
+
+    public static synchronized void clearLastLine() {
+        lastLine = null;
+    }
+
+    /** Nothing being measured, nothing waiting to be written. */
+    public static synchronized boolean isIdle() {
+        return !active;
     }
 
     /** Server going away. */

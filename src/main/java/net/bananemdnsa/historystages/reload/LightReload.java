@@ -56,13 +56,20 @@ public final class LightReload {
     public enum Mode { FULL, BACKGROUND, TARGETED }
 
     /**
-     * Listeners that must not run twice on one recipe load. Both run scripts that add and remove
-     * recipes — a second pass would apply every removal and addition again to the result of the
-     * first.
+     * Listeners a targeted reload leaves out.
+     *
+     * <p>The two script loaders must not run twice on one recipe load: they add and remove recipes,
+     * and a second pass would apply every change again to the result of the first.
+     *
+     * <p>Modular Machinery Reborn's machine loader holds no recipes at all — it reads machine
+     * definitions, which a stage change cannot touch — and it opens the datapacks once per machine
+     * to find where each came from. On Manufactio Reforged that was 10.7 of the 12 seconds a
+     * targeted reload took, all of it on the server thread.
      */
     private static final Set<String> SKIPPED = Set.of(
             "dev.latvian.mods.kubejs.server.KubeJSReloadListener",
-            "com.blamejared.crafttweaker.impl.script.ScriptReloadListener");
+            "com.blamejared.crafttweaker.impl.script.ScriptReloadListener",
+            "es.degrassi.mmreborn.common.machine.MachineJsonReloadListener");
 
     private static volatile Mode mode = Mode.TARGETED;
     /**

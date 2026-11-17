@@ -8,6 +8,7 @@ import com.mojang.brigadier.CommandDispatcher;
 import net.bananemdnsa.historystages.network.PacketHandler;
 import net.bananemdnsa.historystages.reload.BackgroundReload;
 import net.bananemdnsa.historystages.reload.LightReload;
+import net.bananemdnsa.historystages.reload.ReloadBench;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -30,6 +31,16 @@ public final class ReloadLabCommand {
                 .then(Commands.literal("targeted").executes(ctx -> targeted(ctx.getSource())))
                 .then(Commands.literal("resend").executes(ctx -> resend(ctx.getSource())))
                 .then(Commands.literal("listeners").executes(ctx -> listeners(ctx.getSource())))
+                .then(Commands.literal("bench")
+                        .executes(ctx -> bench(ctx.getSource(), List.of(LightReload.Mode.FULL,
+                                LightReload.Mode.BACKGROUND, LightReload.Mode.TARGETED)))
+                        .then(Commands.literal("full").executes(ctx -> bench(ctx.getSource(), List.of(LightReload.Mode.FULL))))
+                        .then(Commands.literal("background").executes(ctx -> bench(ctx.getSource(), List.of(LightReload.Mode.BACKGROUND))))
+                        .then(Commands.literal("targeted").executes(ctx -> bench(ctx.getSource(), List.of(LightReload.Mode.TARGETED))))
+                        .then(Commands.literal("stop").executes(ctx -> {
+                            ReloadBench.stop();
+                            return 1;
+                        })))
                 .then(Commands.literal("jei")
                         .then(Commands.literal("restart").executes(ctx -> jei(ctx.getSource(), true)))
                         .then(Commands.literal("diff").executes(ctx -> jei(ctx.getSource(), false))))
@@ -91,6 +102,21 @@ public final class ReloadLabCommand {
         LightReload.setMode(mode);
         String name = mode.name().toLowerCase(Locale.ROOT);
         source.sendSuccess(() -> Component.translatable("command.historystages.reloadlab.mode", name), true);
+        return 1;
+    }
+
+    private static int bench(CommandSourceStack source, List<LightReload.Mode> modes) {
+        if (ReloadBench.isRunning()) {
+            source.sendFailure(Component.translatable("command.historystages.reloadlab.bench.busy"));
+            return 0;
+        }
+        int stages = ReloadBench.start(source, modes);
+        if (stages == 0) {
+            source.sendFailure(Component.translatable("command.historystages.reloadlab.bench.nostages"));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.translatable("command.historystages.reloadlab.bench.started",
+                stages, modes.size()), true);
         return 1;
     }
 

@@ -433,6 +433,7 @@ public class HistoryStages {
         net.bananemdnsa.historystages.data.lock.TradeGoodsScanner.clearCache();
         net.bananemdnsa.historystages.reload.BackgroundReload.forget();
         net.bananemdnsa.historystages.reload.ReloadStats.forget();
+        net.bananemdnsa.historystages.reload.ReloadBench.stop();
         DebugLogger.runtime(HsRuntimeCategories.SERVER, "Server stopping — flushing runtime log");
         DebugLogger.flushRuntimeBuffer();
     }
@@ -488,6 +489,7 @@ public class HistoryStages {
         // it here rather than where it was asked for turns a bundle of unlocks into one piece of
         // work, and keeps it out of the middle of whatever else was ticking.
         if (server != null) {
+            net.bananemdnsa.historystages.reload.ReloadBench.onTick(server);
             net.bananemdnsa.historystages.network.PacketHandler.runRequestedLockReload(server);
             net.bananemdnsa.historystages.reload.ReloadStats.onTick();
         }
