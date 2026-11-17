@@ -301,6 +301,11 @@ public class HistoryStages {
     @SubscribeEvent
     public void onRegisterCommands(RegisterCommandsEvent event) {
         StageCommand.register(event.getDispatcher());
+        // A measuring tool, not something a player or pack should have: only in the dev runs.
+        // The settings it overrides live in gameplay.toml [advanced] for everyone else.
+        if (!net.neoforged.fml.loading.FMLEnvironment.production) {
+            net.bananemdnsa.historystages.commands.ReloadLabCommand.register(event.getDispatcher());
+        }
     }
 
     @SubscribeEvent
@@ -430,6 +435,11 @@ public class HistoryStages {
         serverInitialized = false;
         // Rolled from the trade hooks this server registered; the next one may register others.
         net.bananemdnsa.historystages.data.lock.TradeGoodsScanner.clearCache();
+        net.bananemdnsa.historystages.reload.BackgroundReload.forget();
+        net.bananemdnsa.historystages.reload.ReloadStats.forget();
+        net.bananemdnsa.historystages.reload.ReloadBench.stop();
+        // After the bench: stopping it puts its mode back, which would outlive the world.
+        net.bananemdnsa.historystages.reload.LightReload.forgetOverrides();
         DebugLogger.runtime(HsRuntimeCategories.SERVER, "Server stopping — flushing runtime log");
         DebugLogger.flushRuntimeBuffer();
     }
@@ -485,7 +495,9 @@ public class HistoryStages {
         // it here rather than where it was asked for turns a bundle of unlocks into one piece of
         // work, and keeps it out of the middle of whatever else was ticking.
         if (server != null) {
+            net.bananemdnsa.historystages.reload.ReloadBench.onTick(server);
             net.bananemdnsa.historystages.network.PacketHandler.runRequestedLockReload(server);
+            net.bananemdnsa.historystages.reload.ReloadStats.onTick();
         }
     }
 

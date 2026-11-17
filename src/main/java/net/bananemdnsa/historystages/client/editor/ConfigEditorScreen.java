@@ -708,6 +708,26 @@ public class ConfigEditorScreen extends Screen {
         zoneLock.add(new ConfigEntry("zone_lock.markerItem", "zoneMarkerItem", ConfigType.ITEM,
                 Config.GAMEPLAY.zoneMarkerItem.get(), false, "minecraft:stick"));
         gameplaySections.add(zoneLock);
+
+        // Last, and its title says so: these are for pack authors who measured something, not
+        // for everyday tuning. The wiki carries the explanation and the benchmark numbers.
+        ConfigSection advanced = new ConfigSection("editor.historystages.config.advanced");
+        advanced.add(new ConfigEntry("advanced.reloadAfterStageChange", ConfigType.ENUM,
+                Config.GAMEPLAY.reloadAfterStageChange.get().name(), false, "TARGETED",
+                "editor.historystages.config.reloadAfterStageChange",
+                "editor.historystages.config.reloadAfterStageChange.desc",
+                Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, null,
+                java.util.Arrays.stream(net.bananemdnsa.historystages.reload.StageReloadMode.values())
+                        .map(Enum::name).toList(),
+                net.bananemdnsa.historystages.reload.StageReloadMode.class.getSimpleName()));
+        // A plain text row: these are class names, which no item or tag picker could offer.
+        advanced.add(new ConfigEntry("advanced.targetedReloadSkip", "targetedReloadSkip", ConfigType.STRING,
+                String.join(ConfigSpecCodec.LIST_SEPARATOR, Config.GAMEPLAY.targetedReloadSkip.get()), false,
+                String.join(ConfigSpecCodec.LIST_SEPARATOR,
+                        net.bananemdnsa.historystages.reload.StageReloadMode.DEFAULT_TARGETED_SKIP)));
+        advanced.add(new ConfigEntry("advanced.slowListenerHintMs", "slowListenerHintMs", ConfigType.INTEGER,
+                Config.GAMEPLAY.slowListenerHintMs.get().toString(), false, "250", 0, 60000));
+        gameplaySections.add(advanced);
     }
 
     /**
