@@ -8,6 +8,10 @@ run-server
 run-gametest
 run-gametest-forge
 
+# build leftovers from the multiloader (26.2) checkout; this branch has no such modules
+/common/
+/neoforge/
+
 # eclipse / vscode
 bin
 .eclipse/
