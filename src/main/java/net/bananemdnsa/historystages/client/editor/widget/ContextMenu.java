@@ -55,6 +55,12 @@ public class ContextMenu {
             menuWidth = Math.max(menuWidth, font.width(e.label) + PADDING * 2 + 4);
         }
         menuHeight = entries.size() * ITEM_HEIGHT + PADDING * 2;
+
+        // Opened near the bottom of a long list, the menu used to hang off screen and take
+        // "Remove", always the last entry, with it (#142).
+        var window = Minecraft.getInstance().getWindow();
+        this.x = MenuPlacement.fit(x, menuWidth, window.getGuiScaledWidth());
+        this.y = MenuPlacement.fit(y, menuHeight, window.getGuiScaledHeight());
     }
 
     /**
@@ -64,7 +70,8 @@ public class ContextMenu {
      */
     public void showRightAligned(int rightX, int y, Font font) {
         show(rightX, y, font);
-        this.x = rightX - menuWidth;
+        this.x = MenuPlacement.clamp(rightX - menuWidth, menuWidth,
+                Minecraft.getInstance().getWindow().getGuiScaledWidth());
     }
 
     public void hide() {
