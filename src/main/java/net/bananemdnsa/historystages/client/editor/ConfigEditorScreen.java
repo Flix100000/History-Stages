@@ -1453,12 +1453,22 @@ public class ConfigEditorScreen extends Screen {
      * in place of literal text, and the mod's own key is the one an admin wants back after trying
      * something else. Offering it as a chip beats retyping it from the config comment.
      */
-    private static final Map<String, List<String>> RICH_TEXT_PLACEHOLDERS = Map.of(
-            "notifications.unlockMessageFormat", List.of("{stage}"),
-            "individual_stages.unlockMessageFormat", List.of("{stage}", "{player}"),
-            "structure_lock.messageFormat", List.of("{structure}", "{stage}"),
-            "biome_lock.messageFormat", List.of("{biome}", "{stage}"),
-            "graph.general.title", List.of(GraphConfig.GRAPH.title.getDefault()));
+    private static final Map<String, List<String>> RICH_TEXT_PLACEHOLDERS = Map.ofEntries(
+            Map.entry("notifications.unlockMessageFormat", List.of("{stage}")),
+            Map.entry("notifications.individual.unlockMessageFormat", List.of("{stage}", "{player}")),
+            Map.entry("structure_lock.messageFormat", List.of("{structure}", "{stage}")),
+            Map.entry("biome_lock.messageFormat", List.of("{biome}", "{stage}")),
+            Map.entry("lock_messages.dimensionUnknown", List.of("{dimension}", "{stage}")),
+            Map.entry("lock_messages.mobUnknown", List.of("{mob}", "{stage}")),
+            Map.entry("lock_messages.itemLocked", List.of("{item}", "{stage}")),
+            Map.entry("lock_messages.fluidLocked", List.of("{fluid}", "{stage}")),
+            Map.entry("lock_messages.blockLocked", List.of("{block}", "{stage}")),
+            Map.entry("lock_messages.entityItemLocked", List.of("{item}", "{stage}")),
+            Map.entry("lock_messages.enchantmentLocked", List.of("{enchantment}", "{item}", "{stage}")),
+            Map.entry("lock_messages.recipeLocked", List.of("{item}", "{stage}")),
+            Map.entry("lock_messages.stageBlocked", List.of("{stage}")),
+            Map.entry("lock_messages.stageRevoked", List.of("{stage}")),
+            Map.entry("graph.general.title", List.of(GraphConfig.GRAPH.title.getDefault())));
 
     /**
      * Opens the screen an addon registered for this field.

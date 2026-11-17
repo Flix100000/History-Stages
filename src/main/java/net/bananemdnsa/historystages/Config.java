@@ -411,19 +411,19 @@ public class Config {
             ).push("lock_messages");
 
             msgDimensionUnknown = builder
-                    .comment("Actionbar message when entering a locked dimension. Lang key: message.historystages.dimension_unknown")
+                    .comment("Actionbar message when entering a locked dimension. {dimension} is the dimension ID, {stage} the missing stage. Lang key: message.historystages.dimension_unknown")
                     .define("dimensionUnknown", "");
 
             msgMobUnknown = builder
-                    .comment("Actionbar message when attacking a locked mob. Lang key: message.historystages.mob_unknown")
+                    .comment("Actionbar message when attacking a locked mob. {mob} is the creature, {stage} the missing stage. Lang key: message.historystages.mob_unknown")
                     .define("mobUnknown", "");
 
             msgItemLocked = builder
-                    .comment("Actionbar message when interacting with a locked item. Lang key: message.historystages.item_locked")
+                    .comment("Actionbar message when interacting with a locked item. {item} is the item, {stage} the missing stage. Lang key: message.historystages.item_locked")
                     .define("itemLocked", "");
 
             msgFluidLocked = builder
-                    .comment("Actionbar message when taking a locked fluid out of the world. Lang key: message.historystages.fluid_locked")
+                    .comment("Actionbar message when taking a locked fluid out of the world. {fluid} is the fluid, {stage} the missing stage. Lang key: message.historystages.fluid_locked")
                     .define("fluidLocked", "");
 
             msgTradeLocked = builder
@@ -431,19 +431,19 @@ public class Config {
                     .define("tradeLocked", "");
 
             msgBlockLocked = builder
-                    .comment("Actionbar message when interacting with a locked block. Lang key: message.historystages.block_locked")
+                    .comment("Actionbar message when interacting with a locked block. {block} is the block, {stage} the missing stage. Lang key: message.historystages.block_locked")
                     .define("blockLocked", "");
 
             msgEntityItemLocked = builder
-                    .comment("Actionbar message when interacting with armor stands / item frames holding locked items. Lang key: message.historystages.entity_item_locked")
+                    .comment("Actionbar message when interacting with armor stands / item frames holding locked items. {item} is the displayed item, {stage} the missing stage. Lang key: message.historystages.entity_item_locked")
                     .define("entityItemLocked", "");
 
             msgEnchantmentLocked = builder
-                    .comment("Actionbar message when applying a locked enchantment. Lang key: message.historystages.enchantment_locked")
+                    .comment("Actionbar message when applying a locked enchantment. {enchantment} is the enchantment, {item} the item, {stage} the missing stage. Lang key: message.historystages.enchantment_locked")
                     .define("enchantmentLocked", "");
 
             msgRecipeLocked = builder
-                    .comment("Actionbar message when clicking a locked recipe in the recipe book. Lang key: message.historystages.recipe_locked")
+                    .comment("Actionbar message when clicking a locked recipe in the recipe book. {item} is what the recipe makes, {stage} the missing stage. Lang key: message.historystages.recipe_locked")
                     .define("recipeLocked", "");
 
             msgStageBlocked = builder

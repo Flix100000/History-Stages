@@ -57,7 +57,7 @@ public class ItemUseLockHandler {
                 ResourceLocation itemRL = BuiltInRegistries.ITEM.getKey(heldItem.getItem());
                 DebugLogger.runtimeThrottled(HsRuntimeCategories.ITEM_USE_LOCK, "use_" + event.getEntity().getUUID() + "_" + itemRL,
                         "<" + event.getEntity().getName().getString() + "> Use of '" + itemRL + "' blocked [action: use]");
-                showMessage(event.getEntity());
+                showMessage(event.getEntity(), heldItem, "use");
             }
         }
     }
@@ -86,7 +86,7 @@ public class ItemUseLockHandler {
                 ResourceLocation itemRL = BuiltInRegistries.ITEM.getKey(heldItem.getItem());
                 DebugLogger.runtimeThrottled(HsRuntimeCategories.ITEM_USE_LOCK, "entityuse_" + player.getUUID() + "_" + itemRL,
                         "<" + player.getName().getString() + "> Use on entity with '" + itemRL + "' blocked [action: use]");
-                showMessage(player);
+                showMessage(player, heldItem, "use");
             }
         }
     }
@@ -125,7 +125,7 @@ public class ItemUseLockHandler {
                             "blockuse_" + event.getEntity().getUUID() + "_" + itemRL,
                             "<" + event.getEntity().getName().getString() + "> Use of '" + itemRL
                                     + "' on '" + blockRL + "' blocked [action: use on item-consuming block]");
-                    showMessage(event.getEntity());
+                    showMessage(event.getEntity(), heldItem, "use");
                 }
             }
             return;
@@ -144,7 +144,7 @@ public class ItemUseLockHandler {
                         action + "_" + event.getEntity().getUUID() + "_" + itemRL,
                         "<" + event.getEntity().getName().getString() + "> '" + itemRL
                                 + "' blocked [action: " + action + "]");
-                showMessage(event.getEntity());
+                showMessage(event.getEntity(), heldItem, action);
             }
         }
     }
@@ -166,7 +166,7 @@ public class ItemUseLockHandler {
                 ResourceLocation itemRL = BuiltInRegistries.ITEM.getKey(heldItem.getItem());
                 DebugLogger.runtimeThrottled(HsRuntimeCategories.ITEM_USE_LOCK, "break_" + event.getEntity().getUUID() + "_" + itemRL,
                         "<" + event.getEntity().getName().getString() + "> Mining with '" + itemRL + "' blocked [action: break]");
-                showMessage(event.getEntity());
+                showMessage(event.getEntity(), heldItem, "break");
             }
         }
     }
@@ -189,7 +189,7 @@ public class ItemUseLockHandler {
                 ResourceLocation weaponRL = BuiltInRegistries.ITEM.getKey(weapon.getItem());
                 DebugLogger.runtimeThrottled(HsRuntimeCategories.ITEM_USE_LOCK, "attack_" + event.getEntity().getUUID() + "_" + weaponRL,
                         "<" + event.getEntity().getName().getString() + "> Attack with '" + weaponRL + "' blocked [action: attack]");
-                showMessage(event.getEntity());
+                showMessage(event.getEntity(), weapon, "attack");
             }
         }
     }
@@ -232,7 +232,7 @@ public class ItemUseLockHandler {
             } finally {
                 suppressEquipmentCheck = false;
             }
-            showMessage(player);
+            showMessage(player, newItem, "equip");
         }
     }
 
@@ -276,8 +276,8 @@ public class ItemUseLockHandler {
                 Config.GAMEPLAY.individualLockItemUsage);
     }
 
-    private static void showMessage(Player player) {
+    private static void showMessage(Player player, ItemStack item, String action) {
         if (!(player instanceof ServerPlayer sp)) return;
-        LockFeedback.sendActionbar(sp, FEEDBACK_CATEGORY, LockMessages.itemLocked());
+        LockFeedback.sendActionbar(sp, FEEDBACK_CATEGORY, LockMessages.itemLocked(sp, item, action));
     }
 }

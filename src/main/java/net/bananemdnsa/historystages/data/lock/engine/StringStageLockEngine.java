@@ -305,6 +305,12 @@ public class StringStageLockEngine implements StageLockEngine {
     public boolean isFluidActionLocked(String fluidId, String action, StageScope scope,
                                        StageStateView state) {
         if (fluidId == null) return false;
+        return LockResolution.isLocked(scope, gatingStagesForFluidAction(fluidId, action, scope), state);
+    }
+
+    @Override
+    public List<String> gatingStagesForFluidAction(String fluidId, String action, StageScope scope) {
+        if (fluidId == null) return List.of();
 
         // Empty item id and mod id on purpose: no stage lists those, so the item and mod halves
         // of the narrowing contribute nothing and the fluid half is the whole answer. The same
@@ -314,13 +320,11 @@ public class StringStageLockEngine implements StageLockEngine {
         Collection<String> candidates = global
                 ? CategoryLockIndexes.globalCandidates("", "", null, fluidId)
                 : CategoryLockIndexes.individualCandidates("", "", null, fluidId);
-        if (candidates.isEmpty()) return false;
+        if (candidates.isEmpty()) return List.of();
 
-        Map<String, StageEntry> stages = stagesOf(scope);
         LockSubjects.ItemSubject subject =
                 new LockSubjects.ItemSubject("", "", null, null, fluidId);
-
-        return LockResolution.isLocked(scope, actionGating(candidates, stages, subject, action), state);
+        return actionGating(candidates, stagesOf(scope), subject, action);
     }
 
     /**

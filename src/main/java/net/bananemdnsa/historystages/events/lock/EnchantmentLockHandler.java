@@ -44,7 +44,7 @@ public class EnchantmentLockHandler {
                     "<" + serverPlayer.getName().getString() + "> Anvil use blocked: right slot contains locked item '"
                             + BuiltInRegistries.ITEM.getKey(right.getItem()) + "'");
 
-            LockFeedback.sendActionbar(serverPlayer, FEEDBACK_CATEGORY, LockMessages.enchantmentLocked());
+            LockFeedback.sendActionbar(serverPlayer, FEEDBACK_CATEGORY, LockMessages.enchantmentLocked(serverPlayer, null, 0, "anvil", right));
         }
     }
 }
