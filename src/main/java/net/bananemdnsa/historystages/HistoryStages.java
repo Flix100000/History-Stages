@@ -301,7 +301,11 @@ public class HistoryStages {
     @SubscribeEvent
     public void onRegisterCommands(RegisterCommandsEvent event) {
         StageCommand.register(event.getDispatcher());
-        net.bananemdnsa.historystages.commands.ReloadLabCommand.register(event.getDispatcher());
+        // A measuring tool, not something a player or pack should have: only in the dev runs.
+        // The settings it overrides live in gameplay.toml [advanced] for everyone else.
+        if (!net.neoforged.fml.loading.FMLEnvironment.production) {
+            net.bananemdnsa.historystages.commands.ReloadLabCommand.register(event.getDispatcher());
+        }
     }
 
     @SubscribeEvent
