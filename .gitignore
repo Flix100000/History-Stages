@@ -10,6 +10,7 @@ run-gametest-forge
 
 # build leftovers from the multiloader (26.2) checkout; this branch has no such modules
 /common/
+/fabric/
 /neoforge/
 
 # eclipse / vscode
