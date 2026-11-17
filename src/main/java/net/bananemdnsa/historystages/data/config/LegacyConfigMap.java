@@ -81,6 +81,10 @@ public final class LegacyConfigMap {
             // Zones were not a lock category before 6.0, so there was no area to mark out and no
             // item to pick for marking it.
             "GAMEPLAY|zone_lock.markerItem",
+            // The reload after a stage change had no settings before: it was always the full one.
+            "GAMEPLAY|advanced.reloadAfterStageChange",
+            "GAMEPLAY|advanced.targetedReloadSkip",
+            "GAMEPLAY|advanced.slowListenerHintMs",
             // Same reason: no zones before 6.0, so no force field to draw and nothing to decide
             // about how far it should reach.
             "VISUAL|zone_overlay.zoneBorderDistance",

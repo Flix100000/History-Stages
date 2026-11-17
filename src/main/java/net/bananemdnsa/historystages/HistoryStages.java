@@ -434,6 +434,8 @@ public class HistoryStages {
         net.bananemdnsa.historystages.reload.BackgroundReload.forget();
         net.bananemdnsa.historystages.reload.ReloadStats.forget();
         net.bananemdnsa.historystages.reload.ReloadBench.stop();
+        // After the bench: stopping it puts its mode back, which would outlive the world.
+        net.bananemdnsa.historystages.reload.LightReload.forgetOverrides();
         DebugLogger.runtime(HsRuntimeCategories.SERVER, "Server stopping — flushing runtime log");
         DebugLogger.flushRuntimeBuffer();
     }

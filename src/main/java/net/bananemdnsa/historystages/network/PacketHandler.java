@@ -1,6 +1,7 @@
 package net.bananemdnsa.historystages.network;
 import net.bananemdnsa.historystages.reload.BackgroundReload;
 import net.bananemdnsa.historystages.reload.LightReload;
+import net.bananemdnsa.historystages.reload.StageReloadMode;
 import net.bananemdnsa.historystages.reload.ReloadStats;
 import net.bananemdnsa.historystages.network.serverbound.RequestClusterShapesPacket;
 import net.bananemdnsa.historystages.network.serverbound.ToggleStructureVizPacket;
@@ -287,7 +288,7 @@ public class PacketHandler {
         int gatedBefore = net.bananemdnsa.historystages.data.lock.VisibleRecipes.gatedCount();
         boolean changed = net.bananemdnsa.historystages.data.lock.VisibleRecipes.gatedSetChanged(recipes);
         int gatedAfter = net.bananemdnsa.historystages.data.lock.VisibleRecipes.gatedCount();
-        LightReload.Mode mode = LightReload.mode();
+        StageReloadMode mode = LightReload.mode();
         ReloadStats.begin(changed ? mode.name().toLowerCase(java.util.Locale.ROOT) : "none",
                 gatedBefore, gatedAfter, recipes.size());
 
@@ -300,10 +301,10 @@ public class PacketHandler {
 
         // PROTOTYPE: /hsreloadlab mode picks what happens here. FULL is what shipped; BACKGROUND
         // the same reload without the freeze; TARGETED only the mods' listeners, the branch default.
-        if (mode != LightReload.Mode.FULL) {
+        if (mode != StageReloadMode.FULL) {
             BackgroundReload.request(server);
             // A full reload ends by sending the recipe list itself; the targeted one does not.
-            if (mode == LightReload.Mode.TARGETED && LightReload.resendRecipes()) resyncRecipes(server);
+            if (mode == StageReloadMode.TARGETED && LightReload.resendRecipes()) resyncRecipes(server);
             return;
         }
 

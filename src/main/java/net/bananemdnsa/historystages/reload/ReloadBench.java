@@ -42,7 +42,7 @@ public final class ReloadBench {
     /** Ticks to let the server settle after a reload before the next step. */
     private static final int SETTLE_TICKS = 40;
 
-    private record Step(String label, LightReload.Mode mode, String command, boolean recorded) {}
+    private record Step(String label, StageReloadMode mode, String command, boolean recorded) {}
 
     private static final Deque<Step> queue = new ArrayDeque<>();
     private static final List<String> results = new ArrayList<>();
@@ -50,7 +50,7 @@ public final class ReloadBench {
     private static boolean waiting;
     private static int settle;
     private static Step current;
-    private static LightReload.Mode modeBefore;
+    private static StageReloadMode modeBefore;
 
     private ReloadBench() {}
 
@@ -59,7 +59,7 @@ public final class ReloadBench {
     }
 
     /** Queues the whole run. Returns how many bench stages the pack has. */
-    public static synchronized int start(CommandSourceStack from, List<LightReload.Mode> modes) {
+    public static synchronized int start(CommandSourceStack from, List<StageReloadMode> modes) {
         List<String> present = new ArrayList<>();
         for (String id : STAGES) {
             if (StageManager.getStages().containsKey(id)) present.add(id);
@@ -68,8 +68,8 @@ public final class ReloadBench {
 
         queue.clear();
         results.clear();
-        modeBefore = LightReload.mode();
-        for (LightReload.Mode mode : modes) {
+        modeBefore = LightReload.modeOverride();
+        for (StageReloadMode mode : modes) {
             String name = mode.name().toLowerCase(Locale.ROOT);
             // All of them open first, so each step below moves only what its own stage gates.
             // Locked together, the largest would hide everything the smaller ones gate and
@@ -128,7 +128,7 @@ public final class ReloadBench {
 
     private static void finish(String how) {
         if (source == null) return;
-        if (modeBefore != null) LightReload.setMode(modeBefore);
+        LightReload.setMode(modeBefore); // null hands it back to the config
         LOGGER.info("[HistoryStages/ReloadBench] ===== bench {} ({} rows) =====", how, results.size());
         results.forEach(row -> LOGGER.info("[HistoryStages/ReloadBench] {}", row));
         source.sendSystemMessage(Component.translatable("command.historystages.reloadlab.bench." + how,

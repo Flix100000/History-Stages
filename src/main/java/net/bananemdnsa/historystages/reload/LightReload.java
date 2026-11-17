@@ -8,6 +8,7 @@ import java.util.concurrent.CompletableFuture;
 
 import com.mojang.logging.LogUtils;
 
+import net.bananemdnsa.historystages.Config;
 import net.minecraft.Util;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.server.MinecraftServer;
@@ -39,64 +40,78 @@ import org.slf4j.Logger;
  * comes from {@code SimpleReloadInstanceMixin}, kept from the last real reload.
  *
  * <p>Script loaders are left out on purpose: they would run the scripts again against a recipe
- * manager they have already edited once. They are named in {@link #SKIPPED}.
+ * manager they have already edited once. They are named in {@link #ALWAYS_SKIPPED}; what else a
+ * pack leaves out is {@code [advanced] targetedReloadSkip} in gameplay.toml.
  */
 public final class LightReload {
 
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    /**
-     * What a stage change that altered the gated recipes does. In memory only, for testing.
-     * <ul>
-     *   <li>FULL — what shipped: every datapack, and the server waits for it.</li>
-     *   <li>BACKGROUND — the same full reload, with the server ticking on, see {@link BackgroundReload}.</li>
-     *   <li>TARGETED — only the mods' own listeners plus a tags event, also without waiting.</li>
-     * </ul>
-     */
-    public enum Mode { FULL, BACKGROUND, TARGETED }
 
     /**
-     * Listeners a targeted reload leaves out.
+     * Listeners a targeted reload always leaves out, whatever the config says.
      *
      * <p>The two script loaders must not run twice on one recipe load: they add and remove recipes,
-     * and a second pass would apply every change again to the result of the first.
-     *
-     * <p>Modular Machinery Reborn's machine loader holds no recipes at all — it reads machine
-     * definitions, which a stage change cannot touch — and it opens the datapacks once per machine
-     * to find where each came from. On Manufactio Reforged that was 10.7 of the 12 seconds a
-     * targeted reload took, all of it on the server thread.
+     * and a second pass would apply every change again to the result of the first. That is a
+     * question of correctness, not of speed, so it is not left to a list a pack can empty.
      */
-    private static final Set<String> SKIPPED = Set.of(
+    private static final Set<String> ALWAYS_SKIPPED = Set.of(
             "dev.latvian.mods.kubejs.server.KubeJSReloadListener",
-            "com.blamejared.crafttweaker.impl.script.ScriptReloadListener",
-            "es.degrassi.mmreborn.common.machine.MachineJsonReloadListener");
+            "com.blamejared.crafttweaker.impl.script.ScriptReloadListener");
 
-    private static volatile Mode mode = Mode.TARGETED;
+    /** A mode set with the lab command, in force until the server restarts. Null = the config. */
+    private static volatile StageReloadMode modeOverride;
+    /** Same for the recipe resend. Null = resend only in FULL mode, as 6.x always did. */
+    private static volatile Boolean resendOverride;
+
     /**
      * Whether a stage change sends clients the recipe list. Sending it restarts JEI from scratch;
-     * not sending it leaves JEI to the hide pass on the stage sync. Off on this branch, to test
-     * whether that pass is enough on its own.
+     * not sending it leaves JEI to the hide pass on the stage sync. Only FULL still sends it, so
+     * that mode stays exactly what 6.x shipped.
      */
-    private static volatile boolean resendRecipes = false;
-
     public static boolean resendRecipes() {
-        return resendRecipes;
+        Boolean forced = resendOverride;
+        return forced != null ? forced : mode() == StageReloadMode.FULL;
     }
 
+    /** Lab command only, in memory until the server restarts. */
     public static void setResendRecipes(boolean resend) {
-        resendRecipes = resend;
+        resendOverride = resend;
     }
     private static volatile List<PreparableReloadListener> remembered = List.of();
     private static volatile boolean profileRequested;
 
     private LightReload() {}
 
-    public static Mode mode() {
-        return mode;
+    /** The lab override if one is set, otherwise {@code [advanced] reloadAfterStageChange}. */
+    public static StageReloadMode mode() {
+        StageReloadMode forced = modeOverride;
+        if (forced != null) return forced;
+        try {
+            return Config.GAMEPLAY.reloadAfterStageChange.get();
+        } catch (IllegalStateException e) {
+            // Config not loaded yet: nothing can have changed a stage at that point either.
+            return StageReloadMode.TARGETED;
+        }
     }
 
-    public static void setMode(Mode newMode) {
-        mode = newMode;
+    /**
+     * Lab command only: in memory until the server restarts, the config file is not touched.
+     * Null goes back to the config.
+     */
+    public static void setMode(StageReloadMode newMode) {
+        modeOverride = newMode;
+    }
+
+    /** The lab override, or null while the config decides. For putting it back after a bench. */
+    public static StageReloadMode modeOverride() {
+        return modeOverride;
+    }
+
+    /** Server going away: lab overrides do not outlive the world they were set in. */
+    public static void forgetOverrides() {
+        modeOverride = null;
+        resendOverride = null;
     }
 
     /**
@@ -149,7 +164,7 @@ public final class LightReload {
         List<Entry> out = new ArrayList<>();
         for (PreparableReloadListener listener : remembered) {
             PreparableReloadListener inner = unwrap(listener);
-            out.add(new Entry(inner.getClass().getName(), kindOf(inner)));
+            out.add(new Entry(inner.getClass().getName(), kindOf(inner, configSkipped())));
         }
         return out;
     }
@@ -177,12 +192,17 @@ public final class LightReload {
         long start = System.nanoTime();
         ReloadableServerResources managers = server.getServerResources().managers();
 
+        Set<String> configSkipped = configSkipped();
         List<PreparableReloadListener> toRun = new ArrayList<>();
+        List<Timed> timed = new ArrayList<>();
         int skipped = 0;
         for (PreparableReloadListener listener : remembered) {
             PreparableReloadListener inner = unwrap(listener);
-            switch (kindOf(inner)) {
-                case REPLAYED -> toRun.add(inner);
+            switch (kindOf(inner, configSkipped)) {
+                case REPLAYED -> {
+                    toRun.add(inner);
+                    timed.add(new Timed(inner));
+                }
                 case SKIPPED -> skipped++;
                 case VANILLA -> { }
             }
@@ -194,9 +214,11 @@ public final class LightReload {
         injectContext(toRun, managers.getConditionContext(), managers.getRegistryLookup());
         CompletableFuture<?> done;
         try {
-            done = SimpleReloadInstance.create(server.getResourceManager(), toRun,
+            // Not vanilla's profiled run: its log names lambdas by an empty string. Timed knows the
+            // real class, which is what a pack author has to put in the skip list.
+            done = SimpleReloadInstance.create(server.getResourceManager(), List.copyOf(timed),
                     Util.backgroundExecutor(), server, CompletableFuture.completedFuture(Unit.INSTANCE),
-                    true).done();
+                    false).done();
         } catch (RuntimeException e) {
             injectContext(toRun, ICondition.IContext.EMPTY, RegistryAccess.EMPTY);
             return CompletableFuture.failedFuture(e);
@@ -213,16 +235,106 @@ public final class LightReload {
             long millis = (System.nanoTime() - start) / 1_000_000;
             LOGGER.info("[HistoryStages/LightReload] Replayed {} mod reload listeners ({} skipped{}) in {} ms",
                     toRun.size(), skippedFinal, fireTagsUpdated ? ", tags event fired" : "", millis);
+            logSlowest(timed);
             return new Result(millis, toRun.size(), skippedFinal);
         }, server);
     }
 
-    private static Kind kindOf(PreparableReloadListener inner) {
+    private static Kind kindOf(PreparableReloadListener inner, Set<String> configSkipped) {
         if (inner instanceof TagManager || inner instanceof RecipeManager
                 || inner instanceof ServerFunctionLibrary || inner instanceof ServerAdvancementManager) {
             return Kind.VANILLA;
         }
-        return SKIPPED.contains(inner.getClass().getName()) ? Kind.SKIPPED : Kind.REPLAYED;
+        String name = inner.getClass().getName();
+        return ALWAYS_SKIPPED.contains(name) || configSkipped.contains(name) ? Kind.SKIPPED : Kind.REPLAYED;
+    }
+
+    private static Set<String> configSkipped() {
+        try {
+            Set<String> out = new java.util.HashSet<>();
+            for (String name : Config.GAMEPLAY.targetedReloadSkip.get()) out.add(name.trim());
+            return out;
+        } catch (IllegalStateException e) {
+            return Set.copyOf(StageReloadMode.DEFAULT_TARGETED_SKIP);
+        }
+    }
+
+    private static int hintThresholdMs() {
+        try {
+            return Config.GAMEPLAY.slowListenerHintMs.get();
+        } catch (IllegalStateException e) {
+            return 250;
+        }
+    }
+
+    /**
+     * Names the listeners that held the server thread longest, so a pack author can find their own
+     * Modular Machinery without a profiler. Only the part on the server thread counts: what a
+     * listener prepares on the background pool costs the players nothing.
+     */
+    private static void logSlowest(List<Timed> timed) {
+        int threshold = hintThresholdMs();
+        if (threshold <= 0) return;
+        List<Timed> slow = timed.stream()
+                .filter(t -> t.applyMillis() >= threshold)
+                .sorted(java.util.Comparator.comparingLong(Timed::applyMillis).reversed())
+                .limit(3)
+                .toList();
+        if (slow.isEmpty()) return;
+        StringBuilder line = new StringBuilder();
+        for (Timed t : slow) {
+            if (line.length() > 0) line.append(", ");
+            line.append(t.inner.getClass().getName());
+            String module = t.inner.getClass().getModule().getName();
+            if (module != null) line.append(" [").append(module).append(']');
+            line.append(' ').append(t.applyMillis()).append(" ms");
+        }
+        LOGGER.warn("[HistoryStages/TargetedReload] Held the server thread longest: {}. A listener that "
+                + "only loads its own data and keeps no recipes can be left out of this reload: add its "
+                + "class name to targetedReloadSkip under [advanced] in gameplay.toml. Threshold: {} ms "
+                + "(slowListenerHintMs, 0 turns this off).", line, threshold);
+    }
+
+    /**
+     * A mod's listener with a stopwatch on the part that runs on the server thread. The listener
+     * itself is untouched: same preparation, same resource manager, same condition context.
+     */
+    private static final class Timed implements PreparableReloadListener {
+        final PreparableReloadListener inner;
+        private final java.util.concurrent.atomic.AtomicLong applyNanos =
+                new java.util.concurrent.atomic.AtomicLong();
+
+        Timed(PreparableReloadListener inner) {
+            this.inner = inner;
+        }
+
+        long applyMillis() {
+            return applyNanos.get() / 1_000_000;
+        }
+
+        @Override
+        public CompletableFuture<Void> reload(PreparationBarrier barrier,
+                                              net.minecraft.server.packs.resources.ResourceManager resourceManager,
+                                              net.minecraft.util.profiling.ProfilerFiller preparationsProfiler,
+                                              net.minecraft.util.profiling.ProfilerFiller reloadProfiler,
+                                              java.util.concurrent.Executor backgroundExecutor,
+                                              java.util.concurrent.Executor gameExecutor) {
+            java.util.concurrent.Executor timedGame = task -> gameExecutor.execute(() -> {
+                long start = System.nanoTime();
+                try {
+                    task.run();
+                } finally {
+                    applyNanos.addAndGet(System.nanoTime() - start);
+                }
+            });
+            return inner.reload(barrier, resourceManager, preparationsProfiler, reloadProfiler,
+                    backgroundExecutor, timedGame);
+        }
+
+        @Override
+        public String getName() {
+            return inner.getName();
+        }
     }
 
     private static void injectContext(List<PreparableReloadListener> listeners, ICondition.IContext context,

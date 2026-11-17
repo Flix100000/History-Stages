@@ -5,7 +5,9 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import net.bananemdnsa.historystages.HistoryStages;
+import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.reload.LightReload;
+import net.bananemdnsa.historystages.reload.StageReloadMode;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.MinecraftServer;
@@ -70,6 +72,73 @@ public final class LightReloadTests {
             helper.assertTrue(server.getRecipeManager() == recipesBefore, "the light reload replaced the "
                     + "recipe manager, which means it did the expensive full reload after all");
         });
+    }
+
+    @GameTest(template = "empty", batch = "targeted_reload_skip", timeoutTicks = 400)
+    public static void aListenerNamedInTheConfigIsLeftOutAndTheRestStillRuns(GameTestHelper helper) {
+        MinecraftServer server = helper.getLevel().getServer();
+        List<PreparableReloadListener> real = LightReload.remembered();
+        List<? extends String> skipBefore = Config.GAMEPLAY.targetedReloadSkip.get();
+        Probe skippedProbe = new Probe();
+        OtherProbe keptProbe = new OtherProbe();
+
+        LightReload.rememberIfServerData(List.of(server.getRecipeManager(), skippedProbe, keptProbe));
+        Config.GAMEPLAY.targetedReloadSkip.set(List.of(Probe.class.getName()));
+        CompletableFuture<LightReload.Result> run;
+        try {
+            run = LightReload.start(server, false);
+        } finally {
+            // Both are read when the run starts, so neither has to stay changed while it runs.
+            LightReload.restoreRemembered(real);
+            Config.GAMEPLAY.targetedReloadSkip.set(skipBefore);
+        }
+
+        helper.succeedWhen(() -> {
+            helper.assertTrue(run.isDone(), "the targeted reload is still running");
+            helper.assertFalse(run.isCompletedExceptionally(), "the targeted reload failed");
+            helper.assertTrue(skippedProbe.calls == 0, "the listener named in targetedReloadSkip ran "
+                    + skippedProbe.calls + " times, so the config list is not read");
+            helper.assertTrue(keptProbe.calls == 1, "the listener not on the list ran " + keptProbe.calls
+                    + " times instead of once, so skipping one took others with it");
+            helper.assertTrue(run.join().skipped() == 1, "the run counted " + run.join().skipped()
+                    + " skipped listeners instead of one");
+        });
+    }
+
+    @GameTest(template = "empty", batch = "targeted_reload_mode")
+    public static void theModeComesFromTheConfigUntilTheLabOverridesIt(GameTestHelper helper) {
+        StageReloadMode configBefore = Config.GAMEPLAY.reloadAfterStageChange.get();
+        StageReloadMode overrideBefore = LightReload.modeOverride();
+        try {
+            LightReload.setMode(null);
+            Config.GAMEPLAY.reloadAfterStageChange.set(StageReloadMode.FULL);
+            helper.assertTrue(LightReload.mode() == StageReloadMode.FULL,
+                    "with no lab override the mode is " + LightReload.mode() + ", not the config's FULL");
+            helper.assertTrue(LightReload.resendRecipes(),
+                    "FULL no longer resends the recipe list, so it is not what 6.x shipped any more");
+
+            Config.GAMEPLAY.reloadAfterStageChange.set(StageReloadMode.TARGETED);
+            helper.assertFalse(LightReload.resendRecipes(),
+                    "TARGETED resends the recipe list, which restarts JEI on every stage change");
+
+            LightReload.setMode(StageReloadMode.BACKGROUND);
+            helper.assertTrue(LightReload.mode() == StageReloadMode.BACKGROUND,
+                    "the lab override did not win over the config");
+            helper.succeed();
+        } finally {
+            LightReload.setMode(overrideBefore);
+            Config.GAMEPLAY.reloadAfterStageChange.set(configBefore);
+        }
+    }
+
+    /** A second listener class, so one can be skipped by name while the other runs. */
+    private static final class OtherProbe implements ResourceManagerReloadListener {
+        int calls;
+
+        @Override
+        public void onResourceManagerReload(ResourceManager resourceManager) {
+            calls++;
+        }
     }
 
     /** A mod's reload listener, reduced to counting. */

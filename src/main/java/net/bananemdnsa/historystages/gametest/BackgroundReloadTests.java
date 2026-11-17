@@ -3,6 +3,7 @@ package net.bananemdnsa.historystages.gametest;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.reload.BackgroundReload;
 import net.bananemdnsa.historystages.reload.LightReload;
+import net.bananemdnsa.historystages.reload.StageReloadMode;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.MinecraftServer;
@@ -21,8 +22,8 @@ public final class BackgroundReloadTests {
     public static void aBackgroundReloadSwapsTheRecipesWhileTheServerKeepsTicking(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         RecipeManager before = server.getRecipeManager();
-        LightReload.Mode previous = LightReload.mode();
-        LightReload.setMode(LightReload.Mode.BACKGROUND);
+        StageReloadMode previous = LightReload.mode();
+        LightReload.setMode(StageReloadMode.BACKGROUND);
         try {
             BackgroundReload.request(server);
         } finally {
@@ -53,8 +54,8 @@ public final class BackgroundReloadTests {
     public static void aTargetedReloadKeepsTheRecipesAndDoesNotHoldTheServer(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         RecipeManager before = server.getRecipeManager();
-        LightReload.Mode previous = LightReload.mode();
-        LightReload.setMode(LightReload.Mode.TARGETED);
+        StageReloadMode previous = LightReload.mode();
+        LightReload.setMode(StageReloadMode.TARGETED);
         try {
             BackgroundReload.request(server);
         } finally {

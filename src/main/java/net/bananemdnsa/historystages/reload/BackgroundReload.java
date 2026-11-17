@@ -87,7 +87,7 @@ public final class BackgroundReload {
         owed = false;
         long startNanos = System.nanoTime();
 
-        boolean targeted = LightReload.mode() == LightReload.Mode.TARGETED;
+        boolean targeted = LightReload.mode() == StageReloadMode.TARGETED;
         if (targeted && !LightReload.hasRemembered()) {
             LOGGER.info("[HistoryStages/BackgroundReload] No reload seen to replay yet, doing the full one");
             targeted = false;

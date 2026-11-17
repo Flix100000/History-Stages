@@ -651,6 +651,11 @@ public class Config {
         public final ModConfigSpec.BooleanValue biomeBlockExplosions;
         public final ModConfigSpec.ConfigValue<String> zoneMarkerItem;
 
+        // Advanced: the reload a stage change sets off
+        public final ModConfigSpec.EnumValue<net.bananemdnsa.historystages.reload.StageReloadMode> reloadAfterStageChange;
+        public final ModConfigSpec.ConfigValue<List<? extends String>> targetedReloadSkip;
+        public final ModConfigSpec.IntValue slowListenerHintMs;
+
         // Stage logic
         public final ModConfigSpec.EnumValue<ResearchWhenBlocked> researchWhenBlocked;
         public final ModConfigSpec.BooleanValue warnOnForcedUnlock;
@@ -1007,6 +1012,51 @@ public class Config {
                     .define("markerItem", "minecraft:stick");
 
             builder.pop(); // zone_lock
+
+            // Last on purpose: nothing below the warning should look like an everyday setting.
+            builder.comment(
+                    "ADVANCED SETTINGS - only change these if you know exactly what they do.",
+                    "The defaults are right for almost every pack. If you are unsure, leave this section alone.",
+                    "The History Stages wiki explains each setting and how to measure its effect on your pack.",
+                    "",
+                    "When a stage change alters which recipes are locked, machines that keep their own copy",
+                    "of the recipe list have to be told to drop it. These settings decide how that happens."
+            ).push("advanced");
+
+            reloadAfterStageChange = builder
+                    .comment(
+                            "What a stage change that alters locked recipes sets off:",
+                            "TARGETED   = only re-run the parts of mods that react to a reload; the server keeps",
+                            "             running (default). Fastest by far on large packs.",
+                            "BACKGROUND = the full datapack reload, with the server running on while it loads.",
+                            "             Every mod sees it like /reload, but each still finishes in one go.",
+                            "FULL       = the full datapack reload with the server waiting for it, as History",
+                            "             Stages 6.x always did. Freezes large packs for many seconds; only",
+                            "             as a fallback if something misbehaves with the other two.",
+                            "[Default: TARGETED]")
+                    .defineEnum("reloadAfterStageChange",
+                            net.bananemdnsa.historystages.reload.StageReloadMode.TARGETED);
+
+            targetedReloadSkip = builder
+                    .comment(
+                            "Reload listeners the TARGETED reload leaves out, by full class name.",
+                            "Only for listeners that load their own data and keep no recipes - leaving out one",
+                            "that does keep recipes makes its machines miss stage changes until /reload.",
+                            "The server log names the slowest listeners after each targeted reload.",
+                            "KubeJS and CraftTweaker scripts are always left out and need no entry here.",
+                            "[Default: Modular Machinery Reborn's machine loader, The Hordes' spawn tables]")
+                    .defineListAllowEmpty("targetedReloadSkip",
+                            net.bananemdnsa.historystages.reload.StageReloadMode.DEFAULT_TARGETED_SKIP,
+                            o -> o instanceof String);
+
+            slowListenerHintMs = builder
+                    .comment(
+                            "After a TARGETED reload, log the listeners that held the server for at least",
+                            "this many milliseconds, so they can be checked for targetedReloadSkip.",
+                            "0 turns the hint off. [Default: 250]")
+                    .defineInRange("slowListenerHintMs", 250, 0, 60000);
+
+            builder.pop(); // advanced
         }
     }
 
