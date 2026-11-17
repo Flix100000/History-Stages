@@ -379,6 +379,27 @@ final class BuiltInLockCategories {
                     enchantments ? item.contents().allEnchantments() : item.contents().effects(),
                     item.itemId());
         }
+
+        /**
+         * {@link #matches} has no stage, so it cannot see the actions the stage settings fix.
+         * Every engine check comes through here, and here they are applied.
+         */
+        @Override
+        public boolean gates(StageEntry stage, Object subject) {
+            if (!(subject instanceof LockSubjects.ItemSubject item)) return false;
+            var carried = enchantments ? item.contents().allEnchantments() : item.contents().effects();
+            if (carried.isEmpty()) return false;
+            for (net.bananemdnsa.historystages.data.LevelledLockEntry entry : read(stage)) {
+                List<String> actions = enchantments
+                        ? stage.effectiveEnchantmentLockActions(entry.getLockActions())
+                        : stage.effectiveEffectLockActions(entry.getLockActions());
+                if (net.bananemdnsa.historystages.data.lock.engine.LevelledMatching.locksItem(
+                        entry, actions, carried, item.itemId())) {
+                    return true;
+                }
+            }
+            return false;
+        }
     }
 
     /**
