@@ -15,6 +15,12 @@ public final class CustomDataCriterion implements NbtCriterion {
      * never acted on automatically.
      */
     public boolean legacySuspect;
+    /**
+     * Lang keys for a friendly name and description, set by the entity editor when the key is one
+     * of its presets. Null everywhere else, which leaves the card headed by the raw key.
+     */
+    public String presetName;
+    public String presetDescription;
 
     public CustomDataCriterion(String key, String valueText, boolean legacySuspect) {
         this.key = key == null ? "" : key;

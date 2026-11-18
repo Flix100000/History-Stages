@@ -374,6 +374,22 @@ public class StringStageLockEngine implements StageLockEngine {
     }
 
     @Override
+    public List<String> gatingStagesForEntityAttack(String entityId,
+                                                    @Nullable java.util.function.Predicate<com.google.gson.JsonObject> targetMatches,
+                                                    StageScope scope) {
+        return narrowed("historystages:attacklock",
+                new LockSubjects.AttackSubject(entityId, targetMatches), scope);
+    }
+
+    @Override
+    public List<String> gatingStagesForEntityInteraction(String entityId, String action, ItemStack held,
+                                                         @Nullable java.util.function.Predicate<com.google.gson.JsonObject> targetMatches,
+                                                         StageScope scope) {
+        return narrowed("historystages:interactionlock",
+                new LockSubjects.InteractionSubject(entityId, action, held, targetMatches), scope);
+    }
+
+    @Override
     public List<String> gatingStagesForEntitySpawn(String entityId, String source,
                                                    String dimension, StageScope scope) {
         // Individual spawn locks do not exist in the data model. Returning empty here is what

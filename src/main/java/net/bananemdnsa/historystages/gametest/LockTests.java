@@ -525,6 +525,53 @@ public final class LockTests {
         helper.succeed();
     }
 
+    // An NBT filter on entity locks is checked against the entity's real saved data, which a unit
+    // test cannot produce. A stage locks oak boats only; a birch boat must stay free.
+
+    @GameTest(template = "empty")
+    public static void anEntityNbtFilterLocksOnlyMatchingBoats(GameTestHelper helper) {
+        try {
+            com.google.gson.JsonObject oak = new com.google.gson.JsonObject();
+            oak.addProperty("Type", "oak");
+            var filter = net.bananemdnsa.historystages.data.lock.EntityNbtFilter.of(List.of(oak));
+            GameTestStages.global("oak_boats", stage -> {
+                stage.getEntities().setInteractionlock(new ArrayList<>(List.of(
+                        new net.bananemdnsa.historystages.data.lock.EntityInteractionLockEntry(
+                                "minecraft:boat", null, null, filter))));
+                stage.getEntities().setAttacklockEntries(List.of(
+                        new net.bananemdnsa.historystages.data.lock.EntityAttackLockEntry("minecraft:boat", filter)));
+            });
+
+            var oakBoat = helper.spawn(net.minecraft.world.entity.EntityType.BOAT, 1, 2, 1);
+            oakBoat.setVariant(net.minecraft.world.entity.vehicle.Boat.Type.OAK);
+            var birchBoat = helper.spawn(net.minecraft.world.entity.EntityType.BOAT, 3, 2, 1);
+            birchBoat.setVariant(net.minecraft.world.entity.vehicle.Boat.Type.BIRCH);
+
+            var engine = StageLocks.engine();
+            var oakMatches = net.bananemdnsa.historystages.data.lock.EntityNbt.matcherFor(oakBoat);
+            var birchMatches = net.bananemdnsa.historystages.data.lock.EntityNbt.matcherFor(birchBoat);
+
+            if (engine.gatingStagesForEntityInteraction("minecraft:boat", "mount", ItemStack.EMPTY,
+                    oakMatches, StageScope.GLOBAL).isEmpty()) {
+                helper.fail("the oak boat matches the filter, but mounting it was not locked");
+                return;
+            }
+            if (!engine.gatingStagesForEntityInteraction("minecraft:boat", "mount", ItemStack.EMPTY,
+                    birchMatches, StageScope.GLOBAL).isEmpty()) {
+                helper.fail("the birch boat does not match the filter, but mounting it was locked");
+                return;
+            }
+            if (engine.gatingStagesForEntityAttack("minecraft:boat", oakMatches, StageScope.GLOBAL).isEmpty()
+                    || !engine.gatingStagesForEntityAttack("minecraft:boat", birchMatches, StageScope.GLOBAL).isEmpty()) {
+                helper.fail("the attack lock did not follow the NBT filter");
+                return;
+            }
+            helper.succeed();
+        } finally {
+            GameTestStages.removeAll();
+        }
+    }
+
     /** An individual stage locking the whole {@code minecraft} namespace, for the named actions. */
     private static void individualStageLockingMod(String name, List<String> actions) {
         GameTestStages.individual(name, stage -> stage.setModEntries(new ArrayList<>(
