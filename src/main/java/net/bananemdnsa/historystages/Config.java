@@ -54,6 +54,8 @@ public class Config {
         public final ModConfigSpec.BooleanValue hideLockedItemsInViewers;
         public final ModConfigSpec.BooleanValue hideLockedRecipesInViewers;
         public final ModConfigSpec.EnumValue<MultiStagePolicy> lockedItemMultiStagePolicy;
+        public final ModConfigSpec.BooleanValue showLockOverlay;
+        public final ModConfigSpec.ConfigValue<List<? extends String>> lockOverlayExemptions;
 
         // Central notifications (chat, actionbar, sounds, texts)
         public final ModConfigSpec.BooleanValue broadcastChat;
@@ -344,6 +346,18 @@ public class Config {
                             "STRICT  = locked while ANY assigned stage is still locked (default).",
                             "LENIENT = unlocked as soon as ANY assigned stage is unlocked.")
                     .defineEnum("lockedItemMultiStagePolicy", MultiStagePolicy.STRICT);
+
+            showLockOverlay = builder
+                    .comment("Darken locked recipes in JEI and EMI and block hovering their slots?",
+                            "Off, locked recipes look like any other; hiding them is the switch above. [Default: true]")
+                    .define("showLockOverlay", true);
+
+            lockOverlayExemptions = builder
+                    .comment("JEI and EMI categories the recipe lock leaves alone: no dark overlay, hover works,",
+                            "and nothing is hidden there. A category id (create:mixing) names one category,",
+                            "a mod id (create) names all of that mod's categories.",
+                            "For pages that only show where things come from. JER is always left alone. [Default: none]")
+                    .defineListAllowEmpty("lockOverlayExemptions", List.of(), o -> o instanceof String);
 
             builder.pop();
 

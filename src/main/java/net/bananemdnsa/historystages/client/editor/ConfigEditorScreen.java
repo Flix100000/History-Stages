@@ -387,6 +387,11 @@ public class ConfigEditorScreen extends Screen {
                 Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, null,
                 java.util.Arrays.stream(Config.Visual.MultiStagePolicy.values()).map(Enum::name).toList(),
                 Config.Visual.MultiStagePolicy.class.getSimpleName()));
+        viewerHiding.add(new ConfigEntry("jei_hiding.showLockOverlay", "showLockOverlay", ConfigType.BOOLEAN,
+                Config.VISUAL.showLockOverlay.get().toString(), true, "true"));
+        viewerHiding.add(new ConfigEntry("jei_hiding.lockOverlayExemptions", "lockOverlayExemptions",
+                ConfigType.VIEWER_CATEGORIES,
+                String.join(ConfigSpecCodec.LIST_SEPARATOR, Config.VISUAL.lockOverlayExemptions.get()), true, ""));
         visualSections.add(viewerHiding);
 
         ConfigSection notifications = new ConfigSection("editor.historystages.config.notifications");
@@ -1430,6 +1435,9 @@ public class ConfigEditorScreen extends Screen {
             case ITEM -> openItemPicker(entry);
             case BOOSTER_LIST -> this.minecraft.setScreen(new BoosterListEditorScreen(this, entry));
             case EFFECT_LIST -> this.minecraft.setScreen(new EffectListEditorScreen(this, entry));
+            case VIEWER_CATEGORIES -> openPicker(entry, new net.bananemdnsa.historystages.client.editor.widget.popup
+                    .ViewerCategoriesPopup(splitList(entry.value),
+                            list -> entry.value = String.join(ConfigSpecCodec.LIST_SEPARATOR, list)));
             case ENUM -> openEnumDropdown(entry, contentLeft, rowY);
             case COLOR -> this.minecraft.setScreen(new ColorInputScreen(this, entry));
             case SUBSCREEN -> {
@@ -1510,6 +1518,14 @@ public class ConfigEditorScreen extends Screen {
             entry.value = texture;
             closePicker();
         }));
+    }
+
+    private static List<String> splitList(String value) {
+        List<String> out = new ArrayList<>();
+        for (String part : value.split(ConfigSpecCodec.LIST_SEPARATOR)) {
+            if (!part.isBlank()) out.add(part.trim());
+        }
+        return out;
     }
 
     private void openPicker(ConfigEntry entry, PickerOverlay picker) {
@@ -1733,6 +1749,8 @@ public class ConfigEditorScreen extends Screen {
 
     public enum ConfigType {
         BOOLEAN, INTEGER, DOUBLE, STRING, ITEM_LIST, TAG_LIST, ITEM, BOOSTER_LIST, EFFECT_LIST,
+        /** JEI/EMI category ids, ticked in a picker of the installed categories. */
+        VIEWER_CATEGORIES,
         ENUM, COLOR, TEXTURE,
         /**
          * A string carrying {@code &} format codes, placeholders, or both. Opens the rich text

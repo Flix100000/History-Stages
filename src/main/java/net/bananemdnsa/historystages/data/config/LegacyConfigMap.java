@@ -92,6 +92,9 @@ public final class LegacyConfigMap {
             "VISUAL|zone_overlay.zoneBorderFullView",
             "VISUAL|zone_overlay.zoneBorderOutline",
             "VISUAL|zone_overlay.zoneBorderColor",
+            // Before 6.2 only JER was spared the recipe lock, and that was not a setting.
+            "VISUAL|jei_hiding.showLockOverlay",
+            "VISUAL|jei_hiding.lockOverlayExemptions",
             // Interchangeable stages arrived in 6.1, so there was no "One of:" group to show.
             "VISUAL|visuals.groupInterchangeableStages",
             "VISUAL|jade.groupInterchangeableStages",
