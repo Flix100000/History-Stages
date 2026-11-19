@@ -1,6 +1,5 @@
 package net.bananemdnsa.historystages.client.editor.graph;
 
-import com.mojang.math.Axis;
 import net.bananemdnsa.historystages.GraphConfig;
 import net.bananemdnsa.historystages.client.editor.anim.Anim;
 import net.bananemdnsa.historystages.client.editor.anim.Ease;
@@ -14,9 +13,11 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import org.joml.Matrix4f;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -65,6 +66,23 @@ final class GraphRenderer {
     /** Accent used for the focused-node highlight ring, matching the editor's gold accent. */
     private static final int FOCUS_RING_COLOR = 0xFFFFCC00;
 
+    /*
+     * One batch per layer, so each layer is a few draw calls however large the pack is. Static
+     * because a batch keeps its buffer memory for the session (see QuadBatch); only one graph is
+     * ever on screen, and each layer is flushed before the next starts.
+     */
+    private static final QuadBatch EDGE_BATCH = new QuadBatch();
+    private static final QuadBatch SHAPE_BATCH = new QuadBatch();
+    /** Separate from the shapes so a badge never ends up under a node drawn from a later texture. */
+    private static final QuadBatch BADGE_BATCH = new QuadBatch();
+
+    /**
+     * Styles resolved this frame. Every node's style is asked for several times a frame (edges,
+     * shape, label, hit test), and the shared cache behind styleFor builds a string key on every
+     * call - with a few thousand edges that alone was a noticeable share of the frame.
+     */
+    private final Map<StageGraphModel.Node, ResolvedStyle> frameStyles = new IdentityHashMap<>();
+
     /** Shared hover-lift progress (0..1), applied only to whichever node is under the cursor. */
     private final Anim hoverAnim = new Anim();
 
@@ -79,6 +97,7 @@ final class GraphRenderer {
 
     void setModel(StageGraphModel model) {
         this.model = model;
+        frameStyles.clear();
         refreshDrawOrder();
     }
 
@@ -117,19 +136,32 @@ final class GraphRenderer {
         }
 
         if (model != null) {
+            frameStyles.clear();
             String hoverKey = camera.within(mouseX, mouseY) ? nodeAt(mouseX, mouseY) : null;
             float hover = animationsEnabled()
                     ? hoverAnim.ramp(hoverKey != null, Timing.HOVER_IN_MS, Timing.HOVER_OUT_MS)
                     : (hoverKey != null ? 1f : 0f);
 
             // Edges first so their lines pass behind the nodes.
+            Matrix4f matrix = g.pose().last().pose();
             for (StageGraphModel.Edge edge : model.edges()) {
                 if (edgeOffScreen(edge)) continue;
-                drawEdge(g, edge);
+                drawEdge(matrix, edge);
             }
+            EDGE_BATCH.flush();
+
+            // Shapes and badges are batched; the item icons cannot be (renderItem draws on its
+            // own), so they get a pass of their own. They sit at a higher z anyway, so drawing
+            // them after every shape changes nothing on screen.
             for (Map.Entry<String, StageGraphModel.Node> e : drawOrder) {
                 if (nodeOffScreen(e.getValue())) continue;
                 drawNodeShape(g, e.getValue(), e.getKey().equals(hoverKey) ? hover : 0f);
+            }
+            SHAPE_BATCH.flush();
+            BADGE_BATCH.flush();
+            for (Map.Entry<String, StageGraphModel.Node> e : drawOrder) {
+                if (nodeOffScreen(e.getValue())) continue;
+                drawNodeIcon(g, e.getValue(), e.getKey().equals(hoverKey) ? hover : 0f);
             }
             if (camera.zoom() >= LABEL_HIDE_ZOOM) {
                 for (Map.Entry<String, StageGraphModel.Node> e : drawOrder) {
@@ -155,7 +187,17 @@ final class GraphRenderer {
 
     /** Drawn radius of {@code node} at the current zoom, before hover lift. */
     int nodeRadiusFor(StageGraphModel.Node node) {
-        return nodeRadius(StageGraphConfig.styleFor(node.stageId(), node.individual(), node.state()));
+        return nodeRadius(style(node));
+    }
+
+    /** The node's resolved style, looked up once per frame. */
+    private ResolvedStyle style(StageGraphModel.Node node) {
+        ResolvedStyle style = frameStyles.get(node);
+        if (style == null) {
+            style = StageGraphConfig.styleFor(node.stageId(), node.individual(), node.state());
+            frameStyles.put(node, style);
+        }
+        return style;
     }
 
     private static boolean animationsEnabled() {
@@ -246,28 +288,34 @@ final class GraphRenderer {
 
 
     private void drawNodeShape(GuiGraphics g, StageGraphModel.Node node, float hoverT) {
-        ResolvedStyle style = StageGraphConfig.styleFor(node.stageId(), node.individual(), node.state());
+        ResolvedStyle style = style(node);
         int cx = camera.screenX(node.pos().x());
         int cy = camera.screenY(node.pos().y());
         int r = nodeRadius(style);
 
-        float scale = 1f + HOVER_LIFT * Ease.outCubic(hoverT);
-        boolean scaled = Math.abs(scale - 1f) > 1.0e-3f;
-        if (scaled) {
-            g.pose().pushPose();
-            g.pose().translate(cx, cy, 0);
-            g.pose().scale(scale, scale, 1f);
-            g.pose().translate(-cx, -cy, 0);
-        }
-
+        boolean scaled = pushHoverLift(g, cx, cy, hoverT);
         int bw = Math.max(0, Math.round(style.borderWidth() * camera.zoom()));
-        NodeShapes.draw(g, style.shape(), cx, cy, r, style.fillArgb(), style.border(), bw);
-        drawNodeIcon(g, node, cx, cy, r);
+        NodeShapes.draw(SHAPE_BATCH, g, style.shape(), cx, cy, r, style.fillArgb(), style.border(), bw);
         if (style.checkmark()) {
-            NodeShapes.statusBadge(g, node.state(), cx, cy, r, style.border());
+            NodeShapes.statusBadge(BADGE_BATCH, g, node.state(), cx, cy, r, style.border());
         }
-
         if (scaled) g.pose().popPose();
+    }
+
+    /**
+     * Scales the pose about the node centre for the hover lift. The batches take the pose's
+     * matrix at the moment a quad is added, so the lift survives being drawn later.
+     *
+     * @return whether a pose was pushed, which the caller must pop
+     */
+    private static boolean pushHoverLift(GuiGraphics g, int cx, int cy, float hoverT) {
+        float scale = 1f + HOVER_LIFT * Ease.outCubic(hoverT);
+        if (Math.abs(scale - 1f) <= 1.0e-3f) return false;
+        g.pose().pushPose();
+        g.pose().translate(cx, cy, 0);
+        g.pose().scale(scale, scale, 1f);
+        g.pose().translate(-cx, -cy, 0);
+        return true;
     }
 
     /**
@@ -277,19 +325,24 @@ final class GraphRenderer {
      * has a side of about 1.41× the radius, and the diamond is the tightest of the five shapes.
      * Below a few pixels the sprite is a smudge rather than a symbol, so it is dropped instead.
      */
-    private void drawNodeIcon(GuiGraphics g, StageGraphModel.Node node, int cx, int cy, int r) {
+    private void drawNodeIcon(GuiGraphics g, StageGraphModel.Node node, float hoverT) {
         if (node.icon() == null || node.icon().isEmpty()) return;
         ItemStack stack = iconStack(node.icon());
         if (stack.isEmpty()) return;
 
+        int r = nodeRadius(style(node));
         float side = r * 1.25f;
         if (side < 6f) return;
 
+        int cx = camera.screenX(node.pos().x());
+        int cy = camera.screenY(node.pos().y());
+        boolean scaled = pushHoverLift(g, cx, cy, hoverT);
         g.pose().pushPose();
         g.pose().translate(cx - side / 2f, cy - side / 2f, 0);
         g.pose().scale(side / 16f, side / 16f, 1f);
         g.renderItem(stack, 0, 0);
         g.pose().popPose();
+        if (scaled) g.pose().popPose();
     }
 
     /** Cached: this runs once per visible node per frame, and a registry lookup is not free. */
@@ -304,7 +357,7 @@ final class GraphRenderer {
     }
 
     private void drawLabel(GuiGraphics g, Font font, StageGraphModel.Node node) {
-        ResolvedStyle style = StageGraphConfig.styleFor(node.stageId(), node.individual(), node.state());
+        ResolvedStyle style = style(node);
         if ("NONE".equals(style.label())) return;
         String text = "ID".equals(style.label()) ? node.stageId() : node.label();
         if (text == null || text.isEmpty()) return;
@@ -320,7 +373,7 @@ final class GraphRenderer {
     }
 
     private void drawFocusHighlight(GuiGraphics g, StageGraphModel.Node node) {
-        ResolvedStyle style = StageGraphConfig.styleFor(node.stageId(), node.individual(), node.state());
+        ResolvedStyle style = style(node);
         int cx = camera.screenX(node.pos().x());
         int cy = camera.screenY(node.pos().y());
         int r = nodeRadius(style);
@@ -335,13 +388,13 @@ final class GraphRenderer {
 
     private record Point(float x, float y) {}
 
-    private void drawEdge(GuiGraphics g, StageGraphModel.Edge edge) {
+    private void drawEdge(Matrix4f matrix, StageGraphModel.Edge edge) {
         StageGraphModel.Node from = model.nodes().get(edge.fromKey());
         StageGraphModel.Node to = model.nodes().get(edge.toKey());
         if (from == null || to == null) return; // StageGraphModel guarantees both exist; defensive only
 
-        ResolvedStyle fromStyle = StageGraphConfig.styleFor(from.stageId(), from.individual(), from.state());
-        ResolvedStyle toStyle = StageGraphConfig.styleFor(to.stageId(), to.individual(), to.state());
+        ResolvedStyle fromStyle = style(from);
+        ResolvedStyle toStyle = style(to);
 
         float fx = camera.screenX(from.pos().x());
         float fy = camera.screenY(from.pos().y());
@@ -395,9 +448,9 @@ final class GraphRenderer {
             }
         }
 
-        drawPath(g, xs, ys, color, thickness, dashLen, gapLen);
+        drawPath(matrix, xs, ys, color, thickness, dashLen, gapLen);
         if (cfg.edgeArrowheads.get()) {
-            drawArrowHead(g, xs[last], ys[last], xs[last - 1], ys[last - 1], thickness, color);
+            drawArrowHead(matrix, xs[last], ys[last], xs[last - 1], ys[last - 1], thickness, color);
         }
     }
 
@@ -450,17 +503,18 @@ final class GraphRenderer {
      * everything else on the canvas keeps shrinking with the zoom, that floor is what made the
      * lines look heavier the further out you went — they were the only thing that stopped
      * getting smaller.
+     *
+     * <p>Thickness stays a float all the way to the vertex buffer. Rounding it to whole pixels is
+     * what forced a two-pixel floor before: an integer-sized rotated rectangle either snaps up to
+     * two pixels or, at one, misses pixel centres along a diagonal and breaks into specks. A quad
+     * with sub-pixel corners and a filtered texture just gets fainter as it thins, the way FTB
+     * Quests' dependency lines do.
      */
-    private void drawPath(GuiGraphics g, float[] xs, float[] ys, int color, float thickness,
+    private void drawPath(Matrix4f matrix, float[] xs, float[] ys, int color, float thickness,
                           float dashLen, float gapLen) {
-        // Thickness stays a float all the way to the vertex buffer. Rounding it to whole pixels is
-        // what forced a two-pixel floor before: an integer-sized rotated rectangle either snaps up
-        // to two pixels or, at one, misses pixel centres along a diagonal and breaks into specks.
-        // A quad with sub-pixel corners and a filtered texture just gets fainter as it thins, the
-        // way FTB Quests' dependency lines do.
         float h = Math.max(MIN_LINE_H, thickness);
         if (dashLen > 0f) {
-            drawDashedPolyline(g, xs, ys, color, h, dashLen, gapLen);
+            drawDashedPolyline(matrix, xs, ys, color, h, dashLen, gapLen);
             return;
         }
         // Joins only once the line is thick enough for the notch at a bend to be worth patching.
@@ -469,12 +523,15 @@ final class GraphRenderer {
         // circle texture squeezed into a few pixels, more conspicuous than the seam.
         int joinRadius = h >= 3f ? Math.round(h / 2f) : 0;
         for (int i = 0; i < xs.length - 1; i++) {
-            drawSegment(g, xs[i], ys[i], xs[i + 1], ys[i + 1], h, color);
-            if (i > 0 && joinRadius > 0) blitDot(g, xs[i], ys[i], joinRadius, color);
+            float x1 = xs[i], y1 = ys[i];
+            float dx = xs[i + 1] - x1, dy = ys[i + 1] - y1;
+            float len = (float) Math.hypot(dx, dy);
+            if (len >= 0.5f) segmentQuad(matrix, x1, y1, dx / len, dy / len, 0f, len, h, color);
+            if (i > 0 && joinRadius > 0) dot(matrix, xs[i], ys[i], joinRadius, color);
         }
         if (joinRadius > 0) {
-            blitDot(g, xs[0], ys[0], joinRadius, color);
-            blitDot(g, xs[xs.length - 1], ys[xs.length - 1], joinRadius, color);
+            dot(matrix, xs[0], ys[0], joinRadius, color);
+            dot(matrix, xs[xs.length - 1], ys[xs.length - 1], joinRadius, color);
         }
     }
 
@@ -483,21 +540,17 @@ final class GraphRenderer {
      * many small sub-segments read as one continuous dashed line rather than restarting the
      * pattern at every sample point.
      */
-    private void drawDashedPolyline(GuiGraphics g, float[] xs, float[] ys, int color, float h,
+    private void drawDashedPolyline(Matrix4f matrix, float[] xs, float[] ys, int color, float h,
                                     float dash, float gap) {
         float cycle = dash + gap;
         float carried = 0f;
 
         for (int i = 0; i < xs.length - 1; i++) {
-            float x1 = xs[i], y1 = ys[i], x2 = xs[i + 1], y2 = ys[i + 1];
-            float dx = x2 - x1, dy = y2 - y1;
+            float x1 = xs[i], y1 = ys[i];
+            float dx = xs[i + 1] - x1, dy = ys[i + 1] - y1;
             float len = (float) Math.hypot(dx, dy);
             if (len < 0.5f) continue;
-            float angle = (float) Math.atan2(dy, dx);
-
-            g.pose().pushPose();
-            g.pose().translate(x1, y1, 0);
-            g.pose().mulPose(Axis.ZP.rotation(angle));
+            float cos = dx / len, sin = dy / len;
 
             // Stepped by dash index, not by an accumulating cursor. The previous version advanced
             // a float `pos` by a computed remainder; that remainder can be arbitrarily small, and
@@ -514,62 +567,62 @@ final class GraphRenderer {
                 if (start > len) break;
                 float from = Math.max(0f, start);
                 float to = Math.min(len, start + dash);
-                if (to > from) blitLine(g, from, to, h, color);
+                if (to > from) segmentQuad(matrix, x1, y1, cos, sin, from, to, h, color);
             }
-
-            g.pose().popPose();
             carried += len;
         }
     }
 
-    /** Draws one straight segment as a rotated quad; returns its length. */
-    private float drawSegment(GuiGraphics g, float x1, float y1, float x2, float y2,
-                              float h, int color) {
-        float dx = x2 - x1, dy = y2 - y1;
-        float len = (float) Math.hypot(dx, dy);
-        if (len < 0.5f) return 0f;
-        float angle = (float) Math.atan2(dy, dx);
-        g.pose().pushPose();
-        g.pose().translate(x1, y1, 0);
-        g.pose().mulPose(Axis.ZP.rotation(angle));
-        blitLine(g, 0f, len, h, color);
-        g.pose().popPose();
-        return len;
-    }
-
     /**
-     * Draws a shaft from local x = {@code s} to x = {@code e}, {@code h} pixels tall and centred
-     * on the local x axis. Called inside a rotated pose, so this is a rotated quad.
+     * One stretch of line, from {@code s} to {@code e} along the unit direction (cos, sin)
+     * starting at (ox, oy), {@code h} pixels thick. The rotation is worked out here rather than
+     * with a pose push per dash, which is what lets every dash of every edge share one draw call.
      *
-     * <p>Everything here is a float, right through to the vertex buffer. Both {@code fill} and
-     * {@code blit} take integers, which rounds the thickness to whole pixels <em>before</em> the
-     * pose rotates it — a 1.4 pixel line at an angle simply cannot be expressed, so it either
-     * snaps to two pixels or falls apart. The line texture carries the soft border rows that make
-     * the edge fade instead of stair-stepping, and it is filtered linearly for the same reason.
+     * <p>Everything stays a float right through to the vertex buffer: {@code fill} and
+     * {@code blit} take integers, which rounds the thickness before the rotation and makes a
+     * 1.4 pixel diagonal impossible. The line texture's soft border rows make the edge fade
+     * instead of stair-stepping, and it is filtered linearly for the same reason.
      */
-    private void blitLine(GuiGraphics g, float s, float e, float h, int color) {
+    private static void segmentQuad(Matrix4f matrix, float ox, float oy, float cos, float sin,
+                                    float s, float e, float h, int color) {
         if (e <= s || h <= 0f) return;
-        NodeTextures.quad(g, NodeTextures.line(), s, -h / 2f, e, h / 2f, color);
+        float hh = h / 2f;
+        float sx = ox + s * cos, sy = oy + s * sin;
+        float ex = ox + e * cos, ey = oy + e * sin;
+        // Screen offset of "half the thickness across the line"; the texture's bottom row is +hh.
+        float nx = -hh * sin, ny = hh * cos;
+        EDGE_BATCH.quad(NodeTextures.line(), matrix,
+                sx + nx, sy + ny,
+                ex + nx, ey + ny,
+                ex - nx, ey - ny,
+                sx - nx, sy - ny,
+                color);
     }
 
-    private void blitDot(GuiGraphics g, float x, float y, int r, int color) {
-        NodeTextures.blit(g, NodeTextures.circle(), Math.round(x) - r, Math.round(y) - r, r * 2, r * 2,
-                NodeTextures.SIZE, NodeTextures.SIZE, color);
+    private static void dot(Matrix4f matrix, float x, float y, int r, int color) {
+        int cx = Math.round(x), cy = Math.round(y);
+        EDGE_BATCH.rect(NodeTextures.circle(), matrix, cx - r, cy - r, cx + r, cy + r, color);
     }
 
     /** Draws the arrowhead at (tx,ty), pointing from (fromX,fromY) toward it. */
-    private void drawArrowHead(GuiGraphics g, float tx, float ty, float fromX, float fromY,
-                               float thickness, int color) {
-        float angle = (float) Math.atan2(ty - fromY, tx - fromX);
+    private static void drawArrowHead(Matrix4f matrix, float tx, float ty, float fromX, float fromY,
+                                      float thickness, int color) {
+        float dx = tx - fromX, dy = ty - fromY;
+        float len = (float) Math.hypot(dx, dy);
+        if (len < 1.0e-3f) return;
+        float cos = dx / len, sin = dy / len;
         // Tied to the line it terminates. The old floor of four pixels left an eight-pixel head on
         // a one-pixel line at low zoom, next to nodes barely ten pixels across.
         int ah = Math.max(2, Math.round(2.2f * thickness));
-        g.pose().pushPose();
-        g.pose().translate(tx, ty, 0);
-        g.pose().mulPose(Axis.ZP.rotation(angle));
-        NodeTextures.blit(g, NodeTextures.arrow(), -2 * ah, -ah, 2 * ah, 2 * ah,
-                NodeTextures.SIZE, NodeTextures.SIZE, color);
-        g.pose().popPose();
+        // The texture's tip is on its right edge, so the head runs from 2ah behind the end to it.
+        float bx = tx - 2 * ah * cos, by = ty - 2 * ah * sin;
+        float nx = -ah * sin, ny = ah * cos;
+        EDGE_BATCH.quad(NodeTextures.arrow(), matrix,
+                bx + nx, by + ny,
+                tx + nx, ty + ny,
+                tx - nx, ty - ny,
+                bx - nx, by - ny,
+                color);
     }
 
     /**
@@ -582,10 +635,9 @@ final class GraphRenderer {
         for (int i = drawOrder.size() - 1; i >= 0; i--) {
             Map.Entry<String, StageGraphModel.Node> e = drawOrder.get(i);
             StageGraphModel.Node node = e.getValue();
-            ResolvedStyle style = StageGraphConfig.styleFor(node.stageId(), node.individual(), node.state());
             int cx = camera.screenX(node.pos().x());
             int cy = camera.screenY(node.pos().y());
-            int r = nodeRadius(style) + HIT_PADDING;
+            int r = nodeRadius(style(node)) + HIT_PADDING;
             if (Math.abs(mx - cx) <= r && Math.abs(my - cy) <= r) {
                 return e.getKey();
             }
