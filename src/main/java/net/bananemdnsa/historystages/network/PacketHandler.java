@@ -123,6 +123,12 @@ public class PacketHandler {
         registrar.playToServer(SaveDisguisePacket.TYPE, SaveDisguisePacket.STREAM_CODEC, SaveDisguisePacket::handle);
         registrar.playToServer(PedestalControlPacket.TYPE, PedestalControlPacket.STREAM_CODEC, PedestalControlPacket::handle);
         registrar.playToServer(TakeLecternScrollPacket.TYPE, TakeLecternScrollPacket.STREAM_CODEC, TakeLecternScrollPacket::handle);
+        registrar.playToServer(net.bananemdnsa.historystages.network.serverbound.PruneUnknownEntriesPacket.TYPE,
+                net.bananemdnsa.historystages.network.serverbound.PruneUnknownEntriesPacket.STREAM_CODEC,
+                net.bananemdnsa.historystages.network.serverbound.PruneUnknownEntriesPacket::handle);
+        registrar.playToClient(net.bananemdnsa.historystages.network.clientbound.PruneUnknownPreviewPacket.TYPE,
+                net.bananemdnsa.historystages.network.clientbound.PruneUnknownPreviewPacket.STREAM_CODEC,
+                net.bananemdnsa.historystages.network.clientbound.PruneUnknownPreviewPacket::handle);
 
         // Dependency sync (Server → Client)
         registrar.playToClient(SyncDependencyStatusPacket.TYPE, SyncDependencyStatusPacket.STREAM_CODEC, SyncDependencyStatusPacket::handle);
