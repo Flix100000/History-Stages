@@ -24,7 +24,8 @@
     "MerchantMenuCloseMixin",
     "SelectTradeMixin",
     "jei.RecipeLayoutMixin",
-    "fastsuite.AuxRecipeManagerMixin"
+    "fastsuite.AuxRecipeManagerMixin",
+    "arsnouveau.DrygmyTileMixin"
   ],
   "client": [
     "bettercombat.AttackStartLockMixin",
