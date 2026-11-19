@@ -384,6 +384,17 @@ public class StageLockHelper {
         }
     }
 
+    /**
+     * Catches up on drops for stages relocked while the player was offline. Called on login.
+     * A stage the player got back in the meantime owes nothing.
+     */
+    public static void dropOwedRevokeItems(ServerPlayer player) {
+        var data = net.bananemdnsa.historystages.data.saveddata.IndividualStageData.get(player.serverLevel());
+        for (String owed : data.takePendingRevokeDrops(player.getUUID())) {
+            if (!data.hasStage(player.getUUID(), owed)) dropLockedItemsForPlayer(player, owed);
+        }
+    }
+
     // =============================================
     // ENCHANTMENT LOCK CHECKS
     // =============================================

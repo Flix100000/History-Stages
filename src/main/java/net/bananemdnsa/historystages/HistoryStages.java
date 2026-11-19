@@ -340,6 +340,8 @@ public class HistoryStages {
                     + data.getUnlockedStages().size() + " unlocked stages, "
                     + individualData.getUnlockedStages(player.getUUID()).size() + " individual stages");
 
+            StageLockHelper.dropOwedRevokeItems(player);
+
             // Log locked items in player inventory
             logLockedInventoryItems(player);
 
