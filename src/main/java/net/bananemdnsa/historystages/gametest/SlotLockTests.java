@@ -66,6 +66,12 @@ public final class SlotLockTests {
         }
     }
 
+    /** A second stage beside {@link #lockPlayerSlots}, for tests that need two modes at once. */
+    private static void lockPlayerSlotsIn(String stageName, SlotLockMode mode, Integer... slots) {
+        GameTestStages.global(stageName, stage -> stage.setSlotLocks(new ArrayList<>(List.of(
+                new SlotLockEntry(SlotLockEntry.PLAYER, List.of(slots), mode)))));
+    }
+
     private static void lockContainerSlots(String target, Integer... slots) {
         GameTestStages.global("slot_lock_container", stage -> stage.setSlotLocks(new ArrayList<>(List.of(
                 new SlotLockEntry(target, List.of(slots), SlotLockMode.OVERLAY)))));
@@ -613,6 +619,65 @@ public final class SlotLockTests {
             lockPlayerSlots(SlotLockMode.HIDE, 39);
             if (selector.test(player)) {
                 helper.fail("helmet slot 39 is locked but a dispenser would still put a helmet on");
+                return;
+            }
+            helper.succeed();
+        });
+    }
+
+    // ---- addon api ----------------------------------------------------------------------
+
+    @GameTest(template = "empty")
+    public static void apiReportsPlayerSlotStates(GameTestHelper helper) {
+        run(helper, player -> {
+            lockPlayerSlots(SlotLockMode.HIDE, 3);
+            lockPlayerSlotsIn("slot_api_overlay", SlotLockMode.OVERLAY, 5);
+
+            if (net.bananemdnsa.historystages.api.lock.SlotLockQuery.state(player, 3)
+                    != net.bananemdnsa.historystages.api.lock.SlotState.HIDDEN) {
+                helper.fail("the api did not report hidden slot 3 as hidden");
+                return;
+            }
+            if (net.bananemdnsa.historystages.api.lock.SlotLockQuery.state(player, 5)
+                    != net.bananemdnsa.historystages.api.lock.SlotState.OVERLAY) {
+                helper.fail("the api did not report overlay slot 5 as overlay");
+                return;
+            }
+            if (net.bananemdnsa.historystages.api.lock.SlotLockQuery.isLocked(player, 4)) {
+                helper.fail("the api called open slot 4 locked");
+                return;
+            }
+            player.setGameMode(GameType.CREATIVE);
+            if (net.bananemdnsa.historystages.api.lock.SlotLockQuery.isLocked(player, 3)) {
+                helper.fail("the api called a slot locked for a creative player");
+                return;
+            }
+            helper.succeed();
+        });
+    }
+
+    @GameTest(template = "empty")
+    public static void apiReportsMenuAndContainerSlots(GameTestHelper helper) {
+        run(helper, player -> {
+            lockContainerSlots("minecraft:barrel", 0);
+            var menu = menuOf(helper, player, net.minecraft.world.level.block.Blocks.BARREL);
+
+            if (!"minecraft:barrel".equals(
+                    net.bananemdnsa.historystages.api.lock.SlotLockQuery.targetOf(menu).orElse(null))) {
+                helper.fail("the api did not name the barrel as the menu's target");
+                return;
+            }
+            if (!net.bananemdnsa.historystages.api.lock.SlotLockQuery.isLocked(player, menu.getSlot(0))) {
+                helper.fail("the api called locked barrel slot 0 open");
+                return;
+            }
+            if (net.bananemdnsa.historystages.api.lock.SlotLockQuery.isLocked(player, menu.getSlot(1))) {
+                helper.fail("the api called open barrel slot 1 locked");
+                return;
+            }
+            if (net.bananemdnsa.historystages.api.lock.SlotLockQuery.containerState("minecraft:barrel", 0)
+                    != net.bananemdnsa.historystages.api.lock.SlotState.OVERLAY) {
+                helper.fail("the player-less container query missed barrel slot 0");
                 return;
             }
             helper.succeed();
