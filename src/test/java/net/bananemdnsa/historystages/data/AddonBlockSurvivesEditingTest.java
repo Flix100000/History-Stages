@@ -116,7 +116,7 @@ class AddonBlockSurvivesEditingTest {
         // never silently erase it, only leave it uneditable.
         //
         // "enchantments" and "effects" share one tab with two sections, like trades.
-        List<String> storedByACategoryTab = List.of("items", "fluids", "enchantments", "effects", "tags", "mods", "modExceptions", "recipes", "dimensions", "structures", "biomes", "zones", "entities", "trades");
+        List<String> storedByACategoryTab = List.of("items", "fluids", "enchantments", "effects", "tags", "mods", "modExceptions", "recipes", "dimensions", "structures", "biomes", "crops", "zones", "entities", "trades");
         assertTrue(body.contains("tab.store(newEntry)"),
                 "the snapshot must still run the category tabs store loop");
         unset.removeAll(storedByACategoryTab);

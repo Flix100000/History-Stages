@@ -15,6 +15,7 @@ import net.bananemdnsa.historystages.client.editor.widget.list.SearchableEntityL
 import net.bananemdnsa.historystages.client.editor.widget.list.SearchableItemList;
 import net.bananemdnsa.historystages.client.editor.widget.list.SearchableDimensionList;
 import net.bananemdnsa.historystages.client.editor.widget.list.SearchableBiomeList;
+import net.bananemdnsa.historystages.client.editor.widget.list.SearchableCropList;
 import net.bananemdnsa.historystages.client.editor.widget.list.SearchableFluidList;
 import net.bananemdnsa.historystages.client.editor.widget.list.SearchableModList;
 import net.bananemdnsa.historystages.client.editor.widget.list.SearchableProfessionList;
@@ -179,6 +180,7 @@ public class StageDetailScreen extends Screen {
     private final java.util.LinkedHashMap<Integer, CategoryTab> categoryTabs = new java.util.LinkedHashMap<>();
     /** Typed handle on the biomes tab; the mod-lock chain needs its mod-linked satellite. */
     private final ModLinkedCategoryTab biomeTab;
+    private final ModLinkedCategoryTab cropTab;
     /** Typed handle on the structures tab; it owns the per-entry generation rules. */
     private final StructureCategoryTab structureTab;
     /** Typed handle on the tags tab; its per-entry extras are read from several places. */
@@ -241,6 +243,7 @@ public class StageDetailScreen extends Screen {
     private ModEntitySelectionPopup modEntityPopup;
     private ModEntrySelectionPopup modStructurePopup;
     private ModEntrySelectionPopup modBiomePopup;
+    private ModEntrySelectionPopup modCropPopup;
     private IngredientUsagePopup ingredientUsagePopup;
     /** Kept so the ingredient-usage popup can add recipes the way the recipe picker does. */
     private StringListCategoryTab recipeTab;
@@ -560,6 +563,22 @@ public class StageDetailScreen extends Screen {
         biomeTabLocal.load(e);
         this.biomeTab = biomeTabLocal;
         this.categoryTabs.put(11, biomeTabLocal);
+        // Safe cast: the built-in crops category stores bare ids and #tags. Global only, so the
+        // tab hides itself on individual stages through the category's scopes.
+        @SuppressWarnings("unchecked")
+        LockCategory<String> cropCategory =
+                (LockCategory<String>) LockCategories.byId(CAT_CROPS);
+        ModLinkedCategoryTab cropTabLocal = new ModLinkedCategoryTab(cropCategory,
+                (onSelect, alreadyAdded) -> {
+                    SearchableCropList list = new SearchableCropList(onSelect, alreadyAdded);
+                    list.setMultiSelect(true);
+                    return list;
+                },
+                () -> { hasChanges = true; updateMaxScroll(); },
+                StageEntry::getCropModLinked, StageEntry::setCropModLinked);
+        cropTabLocal.load(e);
+        this.cropTab = cropTabLocal;
+        this.categoryTabs.put(13, cropTabLocal);
         // Beside the biomes, because both answer "where"; the difference is that a zone is drawn
         // rather than named. Its rows open a screen of their own, so the host hands it the way to
         // do that instead of the tab reaching for Minecraft itself.
@@ -949,29 +968,34 @@ public class StageDetailScreen extends Screen {
                 Component.translatable("editor.historystages.popup.kind.structures"),
                 net.bananemdnsa.historystages.client.ClientStructureRegistry::get,
                 selectedIds -> {
-            // In edit mode, drop the previous mod-linked structures for this mod first so
-            // unchecked rows are actually removed.
-            if (editingModId != null) {
-                if (structureTab.replaceModSelection(editingModId, selectedIds))
-                    hasChanges = true;
-            }
-            if (!selectedIds.isEmpty())
+            // The popup only reports the ticks; storing them is ours, when a mod is first added
+            // as much as when it is edited. Replacing (rather than adding) also drops rows that
+            // were unticked in edit mode.
+            if (pendingModId != null && structureTab.replaceModSelection(pendingModId, selectedIds))
                 hasChanges = true;
             updateMaxScroll();
             showModBiomePopup();
-        });
+        }, () -> showModBiomePopup());
 
         modBiomePopup = new ModEntrySelectionPopup(
                 Component.translatable("editor.historystages.popup.kind.biomes"),
                 StageDetailScreen::allKnownBiomeIds,
                 selectedIds -> {
-            if (editingModId != null && biomeTab.replaceModSelection(editingModId, selectedIds))
+            if (pendingModId != null && biomeTab.replaceModSelection(pendingModId, selectedIds))
                 hasChanges = true;
-            else if (!selectedIds.isEmpty())
+            updateMaxScroll();
+            showModCropPopup();
+        }, () -> showModCropPopup());
+
+        modCropPopup = new ModEntrySelectionPopup(
+                Component.translatable("editor.historystages.popup.kind.crops"),
+                SearchableCropList::allPlantIds,
+                selectedIds -> {
+            if (pendingModId != null && cropTab.replaceModSelection(pendingModId, selectedIds))
                 hasChanges = true;
             editingModId = null;
             updateMaxScroll();
-        });
+        }, () -> editingModId = null);
 
         modEntityPopup = new ModEntitySelectionPopup((spawnlockIds, attacklockIds, interactionlockIds) -> {
             // In edit mode, drop the previous mod-linked entity locks for this mod first
@@ -1130,10 +1154,23 @@ public class StageDetailScreen extends Screen {
         return showModBiomePopup();
     }
 
-    /** Final step of the mod-lock chain. Clears the edit marker when there is nothing to show. */
+    /** Third step of the mod-lock chain. Skips to the plants step when the mod adds no biomes. */
     private boolean showModBiomePopup() {
         if (pendingModId != null && modBiomePopup.showForMod(pendingModId, pendingModDisplayName,
                 this.width / 2, this.height / 2, biomeTab.entries())) {
+            return true;
+        }
+        return showModCropPopup();
+    }
+
+    /**
+     * Final step of the mod-lock chain. Only offered on global stages, the only scope plant locks
+     * exist in. Clears the edit marker when there is nothing to show.
+     */
+    private boolean showModCropPopup() {
+        if (pendingModId != null && !isIndividual
+                && modCropPopup.showForMod(pendingModId, pendingModDisplayName,
+                        this.width / 2, this.height / 2, cropTab.entries())) {
             return true;
         }
         editingModId = null;
@@ -1166,6 +1203,7 @@ public class StageDetailScreen extends Screen {
                 || generationLimitPopup.isVisible()
                 || recipePopupVisible
                 || modEntityPopup.isVisible() || modStructurePopup.isVisible() || modBiomePopup.isVisible()
+                || modCropPopup.isVisible()
                 || ingredientUsagePopup.isVisible()
                 || actionOverlay() != null;
     }
@@ -1361,6 +1399,7 @@ public class StageDetailScreen extends Screen {
     private static final String CAT_INTERACT   = "historystages:interactionlock";
     private static final String CAT_STRUCTURES = "historystages:structures";
     private static final String CAT_BIOMES     = "historystages:biomes";
+    private static final String CAT_CROPS      = "historystages:crops";
     private static final String CAT_ZONES      = "historystages:zones";
     /**
      * The item section of the trades tab. Its two sibling sections report ids of their own, which
@@ -1674,7 +1713,8 @@ public class StageDetailScreen extends Screen {
 
         if ((isEntityTab && editModLinked.contains(entry))
                 || (isTab(activeTab, CAT_STRUCTURES) && structureTab.modLinkedEntries().contains(entry))
-                || (isTab(activeTab, CAT_BIOMES) && biomeTab.modLinkedEntries().contains(entry))) {
+                || (isTab(activeTab, CAT_BIOMES) && biomeTab.modLinkedEntries().contains(entry))
+                || (isTab(activeTab, CAT_CROPS) && cropTab.modLinkedEntries().contains(entry))) {
             row.badge(Component.translatable("editor.historystages.badge.mod").getString(), 0x999999);
         }
 
@@ -2137,6 +2177,7 @@ public class StageDetailScreen extends Screen {
         modEntityPopup.render(guiGraphics, this.font, mouseX, mouseY);
         modStructurePopup.render(guiGraphics, this.font, mouseX, mouseY);
         modBiomePopup.render(guiGraphics, this.font, mouseX, mouseY);
+        modCropPopup.render(guiGraphics, this.font, mouseX, mouseY);
         ingredientUsagePopup.render(guiGraphics, this.font, mouseX, mouseY);
         if (recipePopupVisible) renderRecipePopup(guiGraphics, mouseX, mouseY);
         lockActionsPopup.render(guiGraphics, this.font, this.width, this.height, mouseX, mouseY);
@@ -2546,6 +2587,7 @@ public class StageDetailScreen extends Screen {
         if (modEntityPopup.isVisible()) { return modEntityPopup.mouseClicked(mouseX, mouseY); }
         if (modStructurePopup.isVisible()) { return modStructurePopup.mouseClicked(mouseX, mouseY); }
         if (modBiomePopup.isVisible()) { return modBiomePopup.mouseClicked(mouseX, mouseY); }
+        if (modCropPopup.isVisible()) { return modCropPopup.mouseClicked(mouseX, mouseY); }
         if (lockActionsPopup.isVisible()) { return lockActionsPopup.mouseClicked(mouseX, mouseY, button); }
         if (tradeLevelsPopup.isVisible()) { return tradeLevelsPopup.mouseClicked(mouseX, mouseY); }
         if (interactionActionsPopup.isVisible()) { return interactionActionsPopup.mouseClicked(mouseX, mouseY, button); }
@@ -2882,6 +2924,7 @@ public class StageDetailScreen extends Screen {
             editModLinked.removeIf(id -> id.startsWith(prefix));
             structureTab.removeModSelectionByPrefix(prefix);
             biomeTab.removeModSelectionByPrefix(prefix);
+            cropTab.removeModSelectionByPrefix(prefix);
             // Remove mod exceptions belonging to this mod
             modExceptionTab.removeAllFromMod(prefix);
         }
@@ -2912,6 +2955,7 @@ public class StageDetailScreen extends Screen {
             case CAT_ENCHANTMENTS -> UnknownIdCheck.isValidId(entry) && check.isUnknownEnchantment(entry);
             case CAT_EFFECTS -> UnknownIdCheck.isValidId(entry) && check.isUnknownEffect(entry);
             case CAT_RECIPES -> UnknownIdCheck.isValidId(entry) && check.isUnknownRecipe(entry);
+            case CAT_CROPS -> UnknownIdCheck.isValidId(entry) && check.isUnknownBlock(entry);
             case CAT_TRADES -> {
                 // The row reads "gives ← costs"; the ware is what makes it an offer.
                 String gives = section.iconItemId(index);
@@ -3281,6 +3325,8 @@ public class StageDetailScreen extends Screen {
             return true;
         if (modBiomePopup.isVisible() && modBiomePopup.mouseDragged(mouseX, mouseY))
             return true;
+        if (modCropPopup.isVisible() && modCropPopup.mouseDragged(mouseX, mouseY))
+            return true;
         if (modStructurePopup.isVisible() && modStructurePopup.mouseDragged(mouseX, mouseY))
             return true;
         if (scrollBarDragging) {
@@ -3297,6 +3343,8 @@ public class StageDetailScreen extends Screen {
         if (modEntityPopup.isVisible() && modEntityPopup.mouseReleased())
             return true;
         if (modBiomePopup.isVisible() && modBiomePopup.mouseReleased())
+            return true;
+        if (modCropPopup.isVisible() && modCropPopup.mouseReleased())
             return true;
         if (modStructurePopup.isVisible() && modStructurePopup.mouseReleased())
             return true;
@@ -3362,6 +3410,7 @@ public class StageDetailScreen extends Screen {
         if (modEntityPopup.isVisible() && modEntityPopup.mouseScrolled(mouseX, mouseY, scrollX, scrollY)) return true;
         if (modStructurePopup.isVisible() && modStructurePopup.mouseScrolled(mouseX, mouseY, scrollX, scrollY)) return true;
         if (modBiomePopup.isVisible() && modBiomePopup.mouseScrolled(mouseX, mouseY, scrollX, scrollY)) return true;
+        if (modCropPopup.isVisible() && modCropPopup.mouseScrolled(mouseX, mouseY, scrollX, scrollY)) return true;
         // The card shows the whole recipe at once, so there is nothing left to scroll - but the
         // popup still swallows the wheel so the list behind it stays put.
         if (recipePopupVisible) return true;
@@ -3399,6 +3448,7 @@ public class StageDetailScreen extends Screen {
         if (modEntityPopup.isVisible() && modEntityPopup.keyPressed(keyCode)) return true;
         if (modStructurePopup.isVisible() && modStructurePopup.keyPressed(keyCode)) return true;
         if (modBiomePopup.isVisible() && modBiomePopup.keyPressed(keyCode)) return true;
+        if (modCropPopup.isVisible() && modCropPopup.keyPressed(keyCode)) return true;
         if (spawnControlPopup.isVisible() && spawnControlPopup.keyPressed(keyCode)) return true;
         if (generationLimitPopup.isVisible() && generationLimitPopup.keyPressed(keyCode)) return true;
         if (tradeLevelsPopup.isVisible() && tradeLevelsPopup.keyPressed(keyCode)) return true;

@@ -124,6 +124,18 @@ class OpenScrollContentTest {
     }
 
     @Test
+    void cropsAppearInTheWorldGroupAfterTheBiomes() {
+        StageEntry entry = stage();
+        entry.setBiomes(List.of("minecraft:crimson_forest"));
+        entry.setCrops(List.of("minecraft:nether_wart"));
+
+        OpenScrollDocument doc = OpenScrollContent.build("bronze", false, entry, tags(Map.of()));
+
+        assertEquals(List.of(OpenScrollContent.BIOMES_KEY, OpenScrollContent.CROPS_KEY),
+                doc.world().stream().map(OpenScrollWorldGroup::labelKey).toList());
+    }
+
+    @Test
     void zonesAndTradesLandInTheWorldChapterAfterThePlaces() {
         StageEntry entry = stage();
         entry.setBiomes(List.of("minecraft:crimson_forest"));

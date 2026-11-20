@@ -128,6 +128,8 @@ final class BuiltInLockCategories {
                 StageEntry::getBiomes, StageEntry::setBiomes,
                 StageEntry::getBiomes, ID_EQUALS, StageEntry::getBiomes));
 
+        categories.add(new CropLock());
+
         categories.add(new ZoneLock());
 
         return categories;
@@ -538,6 +540,36 @@ final class BuiltInLockCategories {
         @Override public void write(StageEntry stage, List<ZoneEntry> entries) {
             stage.setZones(entries);
         }
+    }
+
+    /**
+     * Plants that do not grow. Global only: growth happens in random ticks with no player to ask.
+     *
+     * <p>Entries are block ids or {@code #tag}; both are their own index key, so the engine asks
+     * once for the block id and once per {@code "#" + tag} the block carries.
+     */
+    private static final class CropLock implements LockCategory<String> {
+        @Override public java.util.Set<StageScope> supportedScopes() {
+            return java.util.EnumSet.of(StageScope.GLOBAL);
+        }
+
+        @Override public String id() { return "historystages:crops"; }
+        @Override public String tabLangKey() { return "editor.historystages.tab.crops"; }
+        @Override public String tooltipLangKey() { return "editor.historystages.tooltip.crops"; }
+
+        @Override public List<String> read(StageEntry stage) { return stage.getCrops(); }
+
+        @Override public void write(StageEntry stage, List<String> entries) {
+            stage.setCrops(entries);
+        }
+
+        @Override public boolean matches(String entry, Object subject) {
+            return ID_EQUALS.test(entry, subject);
+        }
+
+        @Override public List<String> indexKeys(StageEntry stage) { return stage.getCrops(); }
+
+        @Override public String lookupKey(Object subject) { return SUBJECT_IS_THE_KEY.apply(subject); }
     }
 
     /**

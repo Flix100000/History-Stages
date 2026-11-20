@@ -30,6 +30,7 @@ class UnknownEntryPrunerTest {
         @Override public boolean isUnknownEnchantment(String id) { return gone(id); }
         @Override public boolean isUnknownEffect(String id) { return gone(id); }
         @Override public boolean isUnknownRecipe(String id) { return gone(id); }
+        @Override public boolean isUnknownBlock(String id) { return gone(id); }
     };
 
     private static StageEntry stage(String json) {
@@ -87,6 +88,33 @@ class UnknownEntryPrunerTest {
         assertTrue(entry.getStructureModLinked().isEmpty());
         // mod + exception + zombie + tower; the link bookkeeping is not counted.
         assertEquals(4, result.removed());
+    }
+
+    /** A plant typed in by hand, not through the mod popup, still goes when its mod is gone. */
+    @Test
+    void unknownCropGoesKnownCropAndTagStay() {
+        StageEntry entry = stage("""
+                {"crops": ["gone:tomatoes", "#minecraft:crops", "minecraft:wheat"]}
+                """);
+
+        UnknownEntryPruner.Result result = UnknownEntryPruner.prune(entry, GONE);
+
+        assertEquals(List.of("#minecraft:crops", "minecraft:wheat"), entry.getCrops());
+        assertEquals(1, result.removed());
+    }
+
+    @Test
+    void missingModTakesItsLinkedCropsAlong() {
+        StageEntry entry = stage("""
+                {"mods": ["gone"],
+                 "crops": {"crops": ["gone:tomato", "#minecraft:crops", "minecraft:wheat"],
+                           "mod_linked": ["gone:tomato"]}}
+                """);
+
+        UnknownEntryPruner.prune(entry, GONE);
+
+        assertEquals(List.of("#minecraft:crops", "minecraft:wheat"), entry.getCrops());
+        assertTrue(entry.getCropModLinked().isEmpty());
     }
 
     @Test

@@ -29,6 +29,7 @@ public final class OpenScrollContent {
     public static final String DIMENSIONS_KEY = "gui.historystages.open_scroll.world.dimensions";
     public static final String STRUCTURES_KEY = "gui.historystages.open_scroll.world.structures";
     public static final String BIOMES_KEY = "gui.historystages.open_scroll.world.biomes";
+    public static final String CROPS_KEY = "gui.historystages.open_scroll.world.crops";
     /**
      * Fluids sit in the world group rather than beside the items, because the group renders a
      * plain id list and the item list renders icons — a fluid id has no item icon to draw.
@@ -103,6 +104,7 @@ public final class OpenScrollContent {
         addGroup(out, DIMENSIONS_KEY, entry.getDimensions());
         addGroup(out, STRUCTURES_KEY, entry.getStructures());
         addGroup(out, BIOMES_KEY, entry.getBiomes());
+        addGroup(out, CROPS_KEY, entry.getCrops());
         addGroup(out, ZONES_KEY, zoneNames(entry));
         addGroup(out, FLUIDS_KEY, entry.getAllFluidIds());
         addGroup(out, TRADE_PROFESSIONS_KEY, entry.getTradeProfessionEntries().stream()

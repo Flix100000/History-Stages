@@ -69,6 +69,9 @@ public final class UnknownEntryPruner {
                 unknown(check::isUnknownEffect), count, null), entry::setEffectEntries);
         replace(entry.getRecipes(), keep(entry.getRecipes(), Function.identity(),
                 unknown(check::isUnknownRecipe), count, null), entry::setRecipes);
+        // Tags fail isValidId inside unknown(), so "#minecraft:crops" is never taken for a block.
+        replace(entry.getCrops(), keep(entry.getCrops(), Function.identity(),
+                unknown(check::isUnknownBlock), count, null), entry::setCrops);
         replace(entry.getTradeOffers(), keep(entry.getTradeOffers(), TradeOfferEntry::givesId,
                 unknown(check::isUnknownItem), count, null), entry::setTradeOffers);
 
@@ -105,7 +108,7 @@ public final class UnknownEntryPruner {
 
     /**
      * What removing a mod entry by hand takes along in the editor: mod-linked creatures,
-     * structures and biomes with that prefix, the structure generation rules for them, and the
+     * structures, biomes and plants with that prefix, the structure generation rules for them, and the
      * mod's exceptions. Entries the author added one by one are not mod-linked and stay unless
      * they are unknown themselves.
      */
@@ -134,6 +137,12 @@ public final class UnknownEntryPruner {
         if (!biomes.isEmpty()) {
             entry.setBiomes(keep(entry.getBiomes(), Function.identity(), biomes::contains, count, null));
             entry.setBiomeModLinked(without(entry.getBiomeModLinked(), prefix));
+        }
+
+        Set<String> crops = linkedWith(entry.getCropModLinked(), prefix);
+        if (!crops.isEmpty()) {
+            entry.setCrops(keep(entry.getCrops(), Function.identity(), crops::contains, count, null));
+            entry.setCropModLinked(without(entry.getCropModLinked(), prefix));
         }
 
         replace(entry.getModExceptionEntries(), keep(entry.getModExceptionEntries(), ItemEntry::getId,
