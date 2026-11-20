@@ -17,7 +17,7 @@ public enum StageReloadMode {
      * and are slow enough to matter. Here rather than in {@link LightReload} because the config
      * spec is built in tests without Minecraft on the classpath, and this enum needs none.
      *
-     * <p>Measured on Manufactio Reforged (121 mods):
+     * <p>Measured on a modpack with 121 mods:
      * <ul>
      *   <li>Modular Machinery Reborn reads machine definitions and opens the datapacks once per
      *   machine to find where each came from — 10.7 of the 12 seconds a targeted reload held the
