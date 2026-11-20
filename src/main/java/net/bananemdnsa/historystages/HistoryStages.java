@@ -341,6 +341,7 @@ public class HistoryStages {
                     + individualData.getUnlockedStages(player.getUUID()).size() + " individual stages");
 
             StageLockHelper.dropOwedRevokeItems(player);
+            net.bananemdnsa.historystages.util.lock.SlotLockSweeper.sweep(player);
 
             // Log locked items in player inventory
             logLockedInventoryItems(player);

@@ -25,7 +25,21 @@
     "SelectTradeMixin",
     "jei.RecipeLayoutMixin",
     "fastsuite.AuxRecipeManagerMixin",
-    "arsnouveau.DrygmyTileMixin"
+    "arsnouveau.DrygmyTileMixin",
+    "slotlock.SlotMixin",
+    "slotlock.ArmorSlotMixin",
+    "slotlock.SlotLockClickMixin",
+    "slotlock.InventoryMixin",
+    "slotlock.ServerGamePacketListenerSlotMixin",
+    "slotlock.AbstractContainerMenuSlotMixin",
+    "slotlock.CompoundContainerAccessor",
+    "slotlock.HopperBlockEntityMixin",
+    "slotlock.InventoryScrollMixin",
+    "slotlock.InvWrapperMixin",
+    "slotlock.SidedInvWrapperMixin",
+    "slotlock.SlotItemHandlerMixin",
+    "slotlock.MoveItemStackToMixin",
+    "slotlock.ArmorSelectorMixin"
   ],
   "client": [
     "bettercombat.AttackStartLockMixin",
@@ -49,7 +63,10 @@
     "disguise.EntitySoundMixin",
     "disguise.LivingEntitySoundMixin",
     "disguise.MultiPlayerGameModeSoundMixin",
-    "disguise.LevelRendererSoundMixin"
+    "disguise.LevelRendererSoundMixin",
+    "client.slotlock.GuiHotbarMixin",
+    "client.slotlock.AbstractContainerScreenInvoker",
+    "client.slotlock.MenuScreensInvoker"
   ],
   "injectors": {
     "defaultRequire": 1

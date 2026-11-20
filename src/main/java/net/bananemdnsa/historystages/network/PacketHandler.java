@@ -80,6 +80,9 @@ public class PacketHandler {
         // Server → Client
         registrar.playToClient(SyncStagesPacket.TYPE, SyncStagesPacket.STREAM_CODEC, SyncStagesPacket::handle);
         registrar.playToClient(StageUnlockedToastPacket.TYPE, StageUnlockedToastPacket.STREAM_CODEC, StageUnlockedToastPacket::handle);
+        registrar.playToClient(net.bananemdnsa.historystages.network.clientbound.SlotTargetPacket.TYPE,
+                net.bananemdnsa.historystages.network.clientbound.SlotTargetPacket.STREAM_CODEC,
+                net.bananemdnsa.historystages.network.clientbound.SlotTargetPacket::handle);
         registrar.playToClient(EditorSyncPacket.TYPE, EditorSyncPacket.STREAM_CODEC, EditorSyncPacket::handle);
         registrar.playToClient(SyncStageDefinitionsPacket.TYPE, SyncStageDefinitionsPacket.STREAM_CODEC, SyncStageDefinitionsPacket::handle);
         registrar.playToClient(SyncConfigPacket.TYPE, SyncConfigPacket.STREAM_CODEC, SyncConfigPacket::handle);
@@ -97,6 +100,9 @@ public class PacketHandler {
         registrar.playToServer(RequestTemporaryCountsPacket.TYPE, RequestTemporaryCountsPacket.STREAM_CODEC, RequestTemporaryCountsPacket::handle);
         registrar.playToServer(RequestIndividualStatesPacket.TYPE, RequestIndividualStatesPacket.STREAM_CODEC, RequestIndividualStatesPacket::handle);
         registrar.playToServer(SaveStagePacket.TYPE, SaveStagePacket.STREAM_CODEC, SaveStagePacket::handle);
+        registrar.playToServer(net.bananemdnsa.historystages.network.serverbound.SlotPickModePacket.TYPE,
+                net.bananemdnsa.historystages.network.serverbound.SlotPickModePacket.STREAM_CODEC,
+                net.bananemdnsa.historystages.network.serverbound.SlotPickModePacket::handle);
         registrar.playToServer(DeleteStagePacket.TYPE, DeleteStagePacket.STREAM_CODEC, DeleteStagePacket::handle);
         registrar.playToServer(CreateFolderPacket.TYPE, CreateFolderPacket.STREAM_CODEC, CreateFolderPacket::handle);
         registrar.playToServer(RenameFolderPacket.TYPE, RenameFolderPacket.STREAM_CODEC, RenameFolderPacket::handle);

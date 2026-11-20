@@ -594,6 +594,20 @@ public class StageDetailScreen extends Screen {
         // Which of the two stage maps this screen is editing. Read by every tab that has sections,
         // because a section whose category does not serve this scope is greyed rather than shown.
         StageScope loadScope = isIndividual ? StageScope.INDIVIDUAL : StageScope.GLOBAL;
+        // Last of the built-ins: slots are clicked together on a GUI, like a zone is drawn, so
+        // the tab gets the same way to open a screen. It needs the scope because container slots
+        // are global-only while the player's own inventory works per player too.
+        @SuppressWarnings("unchecked")
+        LockCategory<net.bananemdnsa.historystages.data.lock.SlotLockEntry> slotCategory =
+                (LockCategory<net.bananemdnsa.historystages.data.lock.SlotLockEntry>)
+                        LockCategories.byId(CAT_SLOTS);
+        net.bananemdnsa.historystages.client.editor.tab.SlotCategoryTab slotTabLocal =
+                new net.bananemdnsa.historystages.client.editor.tab.SlotCategoryTab(slotCategory,
+                        () -> { hasChanges = true; updateMaxScroll(); },
+                        factory -> this.minecraft.setScreen(factory.apply(this)),
+                        loadScope);
+        slotTabLocal.load(e);
+        this.categoryTabs.put(14, slotTabLocal);
         // Three categories, one tab, sitting where the decision belongs: after the entity locks
         // that gate the merchant itself and before world generation. Structures and biomes moved
         // up a place for it — the index is a position in the strip and nothing reads it as an
@@ -1401,6 +1415,7 @@ public class StageDetailScreen extends Screen {
     private static final String CAT_BIOMES     = "historystages:biomes";
     private static final String CAT_CROPS      = "historystages:crops";
     private static final String CAT_ZONES      = "historystages:zones";
+    private static final String CAT_SLOTS      = "historystages:slots";
     /**
      * The item section of the trades tab. Its two sibling sections report ids of their own, which
      * is what lets {@link #isTab} tell an item row from a profession row inside one tab.
@@ -2752,6 +2767,15 @@ public class StageDetailScreen extends Screen {
                         contextMenu.addEntry(
                                 Component.translatable("editor.historystages.zone.edit").getString(),
                                 () -> zones.openAt(entryIdx));
+                    }
+                    if (isTab(tabIdx, CAT_SLOTS)
+                            && sectionAt(tabIdx) instanceof net.bananemdnsa.historystages.client.editor.tab.SlotCategoryTab slots) {
+                        contextMenu.addEntry(
+                                Component.translatable("editor.historystages.slots.edit").getString(),
+                                () -> slots.openAt(entryIdx));
+                        contextMenu.addEntry(
+                                Component.translatable("editor.historystages.slots.duplicate").getString(),
+                                () -> slots.duplicateAt(entryIdx));
                     }
                     if (isTab(tabIdx, CAT_ITEMS)) {
                         contextMenu.addEntry(Component.translatable("editor.historystages.context.edit_nbt").getString(),

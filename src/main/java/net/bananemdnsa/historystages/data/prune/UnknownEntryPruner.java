@@ -72,6 +72,10 @@ public final class UnknownEntryPruner {
         // Tags fail isValidId inside unknown(), so "#minecraft:crops" is never taken for a block.
         replace(entry.getCrops(), keep(entry.getCrops(), Function.identity(),
                 unknown(check::isUnknownBlock), count, null), entry::setCrops);
+        // "player" has no namespace, so isValidId keeps it out of the check.
+        replace(entry.getSlotLocks(), keep(entry.getSlotLocks(),
+                net.bananemdnsa.historystages.data.lock.SlotLockEntry::target,
+                unknown(check::isUnknownSlotTarget), count, null), entry::setSlotLocks);
         replace(entry.getTradeOffers(), keep(entry.getTradeOffers(), TradeOfferEntry::givesId,
                 unknown(check::isUnknownItem), count, null), entry::setTradeOffers);
 

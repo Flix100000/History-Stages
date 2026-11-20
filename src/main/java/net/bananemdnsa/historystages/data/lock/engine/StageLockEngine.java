@@ -188,6 +188,19 @@ public interface StageLockEngine {
         return List.of();
     }
 
+    /** Fast-out for the slot checks, which run for every slot of every rendered frame. */
+    default boolean anySlotLocks() {
+        return false;
+    }
+
+    /**
+     * Stages of the given scope that name this slot. {@code target} is {@code "player"}, a block
+     * id or a menu type id; {@code slot} is an inventory index for the player, a menu index otherwise.
+     */
+    default List<String> gatingStagesForSlot(String target, int slot, StageScope scope) {
+        return List.of();
+    }
+
     /** Fast-out for the per-tick zone handler: is any area gated at all? */
     default boolean anyZoneLocks() {
         return false;
