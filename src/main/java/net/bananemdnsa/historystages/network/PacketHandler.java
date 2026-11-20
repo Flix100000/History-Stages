@@ -74,8 +74,8 @@ public class PacketHandler {
         // Bumped to "2" when the stage definitions sync went gzipped. A 5.x client reading the
         // new format gets a decoder exception and a dropped connection; a version mismatch gets
         // it the "incompatible mod" screen instead, which is the same information a player can
-        // act on.
-        PayloadRegistrar registrar = event.registrar("2");
+        // act on. "3" for 6.2.0: the lock feedback and visual config packets changed layout.
+        PayloadRegistrar registrar = event.registrar("3");
 
         // Server → Client
         registrar.playToClient(SyncStagesPacket.TYPE, SyncStagesPacket.STREAM_CODEC, SyncStagesPacket::handle);
