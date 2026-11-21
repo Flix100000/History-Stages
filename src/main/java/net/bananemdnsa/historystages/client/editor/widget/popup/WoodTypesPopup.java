@@ -1,7 +1,7 @@
 package net.bananemdnsa.historystages.client.editor.widget.popup;
 
 import com.google.gson.JsonObject;
-import net.bananemdnsa.historystages.data.lock.EntityNbtFilter;
+import net.bananemdnsa.historystages.data.NbtFilter;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -57,7 +57,7 @@ public class WoodTypesPopup {
     private String entityId = "";
     private final List<Wood> woods = new ArrayList<>();
     private final Set<String> selected = new LinkedHashSet<>();
-    private Consumer<EntityNbtFilter> onDone = f -> {};
+    private Consumer<NbtFilter> onDone = f -> {};
     private int cachedX, cachedY, cachedW, cachedH;
 
     public boolean isVisible() { return visible; }
@@ -68,7 +68,7 @@ public class WoodTypesPopup {
      * Opens the popup for one boat row. Marks the woods the current filter names; criteria that
      * are not a plain wood choice are not shown and get replaced on Done.
      */
-    public void show(String entityId, EntityNbtFilter current, Consumer<EntityNbtFilter> onDone) {
+    public void show(String entityId, NbtFilter current, Consumer<NbtFilter> onDone) {
         this.entityId = entityId;
         this.onDone = onDone;
         this.woods.clear();
@@ -108,7 +108,7 @@ public class WoodTypesPopup {
         return wood.icon().isEmpty() ? Component.literal(wood.name()) : wood.icon().getHoverName();
     }
 
-    private EntityNbtFilter result() {
+    private NbtFilter result() {
         List<JsonObject> alts = new ArrayList<>();
         for (Wood wood : woods) {
             if (!selected.contains(wood.name())) continue;
@@ -116,7 +116,7 @@ public class WoodTypesPopup {
             alt.addProperty("Type", wood.name());
             alts.add(alt);
         }
-        return EntityNbtFilter.of(alts);
+        return NbtFilter.of(alts);
     }
 
     public boolean keyPressed(int keyCode) {

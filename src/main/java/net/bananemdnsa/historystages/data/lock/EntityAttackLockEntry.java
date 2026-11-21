@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.data.lock;
 
+import net.bananemdnsa.historystages.data.NbtFilter;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Predicate;
@@ -11,20 +12,20 @@ import java.util.function.Predicate;
 public final class EntityAttackLockEntry {
 
     private final String id;
-    private final EntityNbtFilter nbt;
+    private final NbtFilter nbt;
 
     public EntityAttackLockEntry(String id) {
-        this(id, EntityNbtFilter.NONE);
+        this(id, NbtFilter.NONE);
     }
 
-    public EntityAttackLockEntry(String id, @Nullable EntityNbtFilter nbt) {
+    public EntityAttackLockEntry(String id, @Nullable NbtFilter nbt) {
         this.id = id;
-        this.nbt = nbt != null ? nbt : EntityNbtFilter.NONE;
+        this.nbt = nbt != null ? nbt : NbtFilter.NONE;
     }
 
     public String getId() { return id; }
 
-    public EntityNbtFilter getNbt() { return nbt; }
+    public NbtFilter getNbt() { return nbt; }
 
     public boolean hasNbt() { return !nbt.isEmpty(); }
 

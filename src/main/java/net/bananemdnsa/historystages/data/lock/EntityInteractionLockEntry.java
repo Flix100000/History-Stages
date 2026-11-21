@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.data.lock;
 
+import net.bananemdnsa.historystages.data.NbtFilter;
 import net.bananemdnsa.historystages.data.ItemEntry;
 import net.bananemdnsa.historystages.data.NbtMatcher;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -34,7 +35,7 @@ public class EntityInteractionLockEntry {
     private final String id;
     private final List<String> lockActions; // null = all actions locked, empty = none locked
     private final List<ItemEntry> lockItems; // null/empty = no item filter (lock applies to any held item)
-    private final EntityNbtFilter nbt; // NONE = every entity of this type
+    private final NbtFilter nbt; // NONE = every entity of this type
 
     public EntityInteractionLockEntry(String id) {
         this(id, null, null);
@@ -45,13 +46,13 @@ public class EntityInteractionLockEntry {
     }
 
     public EntityInteractionLockEntry(String id, List<String> lockActions, List<ItemEntry> lockItems) {
-        this(id, lockActions, lockItems, EntityNbtFilter.NONE);
+        this(id, lockActions, lockItems, NbtFilter.NONE);
     }
 
     public EntityInteractionLockEntry(String id, List<String> lockActions, List<ItemEntry> lockItems,
-                                      EntityNbtFilter nbt) {
+                                      NbtFilter nbt) {
         this.id = id;
-        this.nbt = nbt != null ? nbt : EntityNbtFilter.NONE;
+        this.nbt = nbt != null ? nbt : NbtFilter.NONE;
         this.lockActions = lockActions != null ? new ArrayList<>(lockActions) : null;
         this.lockItems = (lockItems != null && !lockItems.isEmpty()) ? new ArrayList<>(lockItems) : null;
     }
@@ -69,8 +70,8 @@ public class EntityInteractionLockEntry {
 
     public boolean hasLockItems() { return lockItems != null && !lockItems.isEmpty(); }
 
-    /** The filter on the target entity's own data; {@link EntityNbtFilter#NONE} for none. */
-    public EntityNbtFilter getNbt() { return nbt; }
+    /** The filter on the target entity's own data; {@link NbtFilter#NONE} for none. */
+    public NbtFilter getNbt() { return nbt; }
 
     public boolean hasNbt() { return !nbt.isEmpty(); }
 
@@ -108,7 +109,7 @@ public class EntityInteractionLockEntry {
             if (heldRl == null || !heldRl.toString().equals(entryId)) return false;
         }
 
-        return !entry.hasNbt() || NbtMatcher.matches(held, entry.getNbt());
+        return !entry.hasNbt() || NbtMatcher.matches(held, entry.getNbtFilter());
     }
 
     public EntityInteractionLockEntry copy() {

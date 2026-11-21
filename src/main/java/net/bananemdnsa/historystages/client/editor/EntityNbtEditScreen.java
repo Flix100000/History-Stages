@@ -26,7 +26,7 @@ import net.bananemdnsa.historystages.client.editor.widget.StyledButton;
 import net.bananemdnsa.historystages.client.editor.widget.list.SearchableEntityNbtKeyList;
 import net.bananemdnsa.historystages.client.editor.widget.list.SearchableItemPropertyList;
 import net.bananemdnsa.historystages.client.editor.widget.popup.WoodTypesPopup;
-import net.bananemdnsa.historystages.data.lock.EntityNbtFilter;
+import net.bananemdnsa.historystages.data.NbtFilter;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
@@ -99,8 +99,8 @@ public class EntityNbtEditScreen extends Screen {
 
     private final Screen parent;
     private final String entityId;
-    private final EntityNbtFilter current;
-    private final Consumer<EntityNbtFilter> onSave;
+    private final NbtFilter current;
+    private final Consumer<NbtFilter> onSave;
 
     /** One criteria list per alternative. Never empty: a filter with no variant still edits one. */
     private final List<List<NbtCriterion>> variants = new ArrayList<>();
@@ -123,12 +123,12 @@ public class EntityNbtEditScreen extends Screen {
     private int maxScroll = 0;
     private final Scrollbar scrollbar = new Scrollbar();
 
-    public EntityNbtEditScreen(Screen parent, String entityId, EntityNbtFilter current,
-                               Consumer<EntityNbtFilter> onSave) {
+    public EntityNbtEditScreen(Screen parent, String entityId, NbtFilter current,
+                               Consumer<NbtFilter> onSave) {
         super(Component.translatable("editor.historystages.entity_nbt.heading"));
         this.parent = parent;
         this.entityId = entityId;
-        this.current = current != null ? current : EntityNbtFilter.NONE;
+        this.current = current != null ? current : NbtFilter.NONE;
         this.onSave = onSave;
     }
 
@@ -200,12 +200,12 @@ public class EntityNbtEditScreen extends Screen {
         return element.isJsonPrimitive() ? element.getAsString() : element.toString();
     }
 
-    private EntityNbtFilter filter() {
+    private NbtFilter filter() {
         List<JsonObject> alternatives = new ArrayList<>();
         for (List<NbtCriterion> variant : variants) {
             alternatives.add(NbtCriteriaCodec.write(variant));
         }
-        return EntityNbtFilter.of(alternatives);
+        return NbtFilter.of(alternatives);
     }
 
     private void refresh() {
@@ -286,7 +286,7 @@ public class EntityNbtEditScreen extends Screen {
         if (variants.isEmpty()) variants.add(new ArrayList<>());
         active = Math.min(active, variants.size() - 1);
 
-        EntityNbtFilter filter = filter();
+        NbtFilter filter = filter();
         onSave.accept(filter);
         savedSnapshot = filter.toJson();
         refresh();

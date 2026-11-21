@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.data.lock;
 
+import net.bananemdnsa.historystages.data.NbtFilter;
 import com.google.gson.annotations.JsonAdapter;
 
 import java.util.AbstractList;
@@ -88,7 +89,7 @@ public class EntityLocks {
      * accident. To change filters, use {@link #setAttacklockEntries}.
      */
     public void setAttacklock(List<String> ids) {
-        Map<String, EntityNbtFilter> filters = new HashMap<>();
+        Map<String, NbtFilter> filters = new HashMap<>();
         for (EntityAttackLockEntry e : getAttacklockEntries()) filters.putIfAbsent(e.getId(), e.getNbt());
         List<EntityAttackLockEntry> entries = new ArrayList<>();
         if (ids != null) {

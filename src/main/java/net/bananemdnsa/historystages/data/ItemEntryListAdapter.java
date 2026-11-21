@@ -29,7 +29,7 @@ public class ItemEntryListAdapter extends TypeAdapter<List<ItemEntry>> {
                 out.name("id").value(entry.getId());
                 if (entry.hasNbt()) {
                     out.name("nbt");
-                    Streams.write(entry.getNbt(), out);
+                    Streams.write(entry.getNbtFilter().toJson(), out);
                 }
                 if (entry.hasLockActions()) {
                     // Compute unlock_actions = all known actions minus the locked ones
@@ -73,7 +73,7 @@ public class ItemEntryListAdapter extends TypeAdapter<List<ItemEntry>> {
             } else {
                 JsonObject obj = JsonParser.parseReader(in).getAsJsonObject();
                 String id = obj.has("id") ? obj.get("id").getAsString() : "";
-                JsonObject nbt = obj.has("nbt") ? obj.getAsJsonObject("nbt") : null;
+                NbtFilter nbt = NbtFilter.fromJsonStrict(obj.get("nbt"));
                 List<String> lockActions = null;
                 if (obj.has("unlock_actions") && obj.get("unlock_actions").isJsonArray()) {
                     // Current format: unlock_actions lists the NOT-locked actions → invert to get locked
@@ -94,7 +94,7 @@ public class ItemEntryListAdapter extends TypeAdapter<List<ItemEntry>> {
                 }
                 String nameText = obj.has("name_text") ? obj.get("name_text").getAsString() : null;
                 String tooltipText = obj.has("tooltip_text") ? obj.get("tooltip_text").getAsString() : null;
-                entries.add(new ItemEntry(id, nbt, lockActions, nameText, tooltipText));
+                entries.add(ItemEntry.withFilter(id, nbt, lockActions, nameText, tooltipText));
             }
         }
         in.endArray();

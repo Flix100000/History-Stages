@@ -394,7 +394,7 @@ public class JadePlugin implements IWailaPlugin {
     private static boolean matchesNbtItem(StageEntry stage, String itemID, ItemStack stack) {
         for (ItemEntry itemEntry : stage.getItemEntries()) {
             if (itemEntry.getId().equals(itemID) && itemEntry.hasNbt()) {
-                if (NbtMatcher.matches(stack, itemEntry.getNbt())) return true;
+                if (NbtMatcher.matches(stack, itemEntry.getNbtFilter())) return true;
             }
         }
         return false;

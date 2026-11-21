@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.data.lock;
 
+import net.bananemdnsa.historystages.data.NbtFilter;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -58,7 +59,7 @@ public class EntityAttackLockEntryListAdapter extends TypeAdapter<List<EntityAtt
             if (!el.isJsonObject()) continue;
             JsonObject obj = el.getAsJsonObject();
             String id = obj.has("id") ? obj.get("id").getAsString() : "";
-            entries.add(new EntityAttackLockEntry(id, EntityNbtFilter.fromJson(obj.get("nbt"))));
+            entries.add(new EntityAttackLockEntry(id, NbtFilter.fromJson(obj.get("nbt"))));
         }
         in.endArray();
         return entries;
