@@ -71,6 +71,8 @@ public final class LegacyConfigMap {
             // Trades were not a lock category before 6.0 either, so a merchant could never come
             // up empty on our account and there was no message to word.
             "VISUAL|lock_messages.tradeLocked",
+            // Plants were not a lock category before 6.2, so bonemeal was never refused.
+            "VISUAL|lock_messages.cropLocked",
             // Same reason: no trade locks before 6.0, so no notice to word and nothing to decide
             // about naming the stages in it.
             "VISUAL|trade_lock.showStagesInWindow",

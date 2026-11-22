@@ -1,7 +1,8 @@
 package net.bananemdnsa.historystages.events.lock;
 
 import net.bananemdnsa.historystages.HistoryStages;
-import net.bananemdnsa.historystages.api.lock.LockFeedbacks;
+import net.bananemdnsa.historystages.util.lock.LockFeedback;
+import net.bananemdnsa.historystages.util.lock.LockMessages;
 import net.bananemdnsa.historystages.api.stage.StageScope;
 import net.bananemdnsa.historystages.data.lock.engine.LockResolution;
 import net.bananemdnsa.historystages.data.lock.engine.StageLocks;
@@ -9,7 +10,6 @@ import net.bananemdnsa.historystages.util.DebugLogger;
 import net.bananemdnsa.historystages.util.HsRuntimeCategories;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.block.state.BlockState;
@@ -67,8 +67,8 @@ public final class CropLockHandler {
         // uses the bonemeal up. Dispensers land here too, with no player.
         event.setCanceled(true);
         if (event.getPlayer() instanceof ServerPlayer player) {
-            LockFeedbacks.actionbar(player, "crop_lock",
-                    Component.translatable("message.historystages.crop_locked"), missing);
+            LockFeedback.sendActionbar(player, "crop_lock",
+                    LockMessages.cropLocked(player, event.getState(), missing));
         }
         // Keyed by plant type, not position: the throttle map is never cleared, and a farm has
         // thousands of positions.

@@ -152,6 +152,17 @@ public final class LockMessages {
                         "stage", stageNames(player, itemActionStages(blockItem, action, player.getUUID()))));
     }
 
+    /**
+     * Bonemeal refused on a locked plant. {@code missingStageIds} is what the crop lock already
+     * worked out, so {stage} names exactly the stages that keep this plant from growing.
+     */
+    public static MutableComponent cropLocked(ServerPlayer player, net.minecraft.world.level.block.state.BlockState plant,
+                                              List<String> missingStageIds) {
+        return resolve(Config.VISUAL.msgCropLocked, "message.historystages.crop_locked",
+                () -> Map.of("block", plant.getBlock().getName(),
+                        "stage", stageNames(player, missingStageIds)));
+    }
+
     /** {@code stack} is the first displayed item that is locked. */
     public static MutableComponent entityItemLocked(ServerPlayer player, ItemStack stack) {
         return resolve(Config.VISUAL.msgEntityItemLocked, "message.historystages.entity_item_locked",
