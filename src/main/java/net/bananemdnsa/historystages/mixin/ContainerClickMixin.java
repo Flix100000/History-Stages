@@ -91,42 +91,42 @@ public class ContainerClickMixin {
         boolean targetIsEquipSlot = historystages$isPlayerEquipmentSlot(slot, serverPlayer)
                 || historystages$isExternalArmorSlot(slot, serverPlayer);
 
+        // If-chains, not a switch: a switch on an enum compiles to a synthetic $SwitchMap class,
+        // and merged into AbstractContainerMenu the method may not reach it. On Forge 1.20.1 the
+        // first click crashed the server with NoSuchFieldError.
         ItemStack candidate = ItemStack.EMPTY;
-        switch (clickType) {
-            case PICKUP -> {
-                if (targetIsEquipSlot) {
-                    candidate = menu.getCarried();
-                }
+        if (clickType == ClickType.PICKUP) {
+            if (targetIsEquipSlot) {
+                candidate = menu.getCarried();
             }
-            case QUICK_MOVE -> {
-                if (!targetIsEquipSlot) {
-                    ItemStack source = slot.getItem();
-                    if (!source.isEmpty()) {
-                        EquipmentSlot natural = serverPlayer.getEquipmentSlotForItem(source);
-                        boolean isArmorOrOffhand = natural.getType() == EquipmentSlot.Type.HUMANOID_ARMOR
-                                || natural == EquipmentSlot.OFFHAND;
-                        // Block shift-click if either the vanilla armor/offhand slot is empty,
-                        // or any non-vanilla ArmorSlot in the open menu (e.g. Accessories' wrapped
-                        // armor slots) would accept the item.
-                        if (isArmorOrOffhand
-                                && (serverPlayer.getItemBySlot(natural).isEmpty()
-                                    || historystages$menuHasExternalArmorTargetFor(menu, source, serverPlayer))) {
-                            candidate = source;
-                        }
+        } else if (clickType == ClickType.QUICK_MOVE) {
+            if (!targetIsEquipSlot) {
+                ItemStack source = slot.getItem();
+                if (!source.isEmpty()) {
+                    EquipmentSlot natural = serverPlayer.getEquipmentSlotForItem(source);
+                    boolean isArmorOrOffhand = natural.getType() == EquipmentSlot.Type.HUMANOID_ARMOR
+                            || natural == EquipmentSlot.OFFHAND;
+                    // Block shift-click if either the vanilla armor/offhand slot is empty,
+                    // or any non-vanilla ArmorSlot in the open menu (e.g. Accessories' wrapped
+                    // armor slots) would accept the item.
+                    if (isArmorOrOffhand
+                            && (serverPlayer.getItemBySlot(natural).isEmpty()
+                                || historystages$menuHasExternalArmorTargetFor(menu, source, serverPlayer))) {
+                        candidate = source;
                     }
                 }
             }
-            case SWAP -> {
-                if (targetIsEquipSlot) {
-                    Inventory inv = serverPlayer.getInventory();
-                    if (button == 40) {
-                        candidate = inv.offhand.get(0);
-                    } else if (button >= 0 && button < inv.items.size()) {
-                        candidate = inv.items.get(button);
-                    }
+        } else if (clickType == ClickType.SWAP) {
+            if (targetIsEquipSlot) {
+                Inventory inv = serverPlayer.getInventory();
+                if (button == 40) {
+                    candidate = inv.offhand.get(0);
+                } else if (button >= 0 && button < inv.items.size()) {
+                    candidate = inv.items.get(button);
                 }
             }
-            default -> { return; }
+        } else {
+            return;
         }
 
         if (candidate.isEmpty()) return;
@@ -153,41 +153,37 @@ public class ContainerClickMixin {
     @Unique
     private static ItemStack historystages$takenFromStorage(AbstractContainerMenu menu, Slot slot,
                                                            ClickType clickType, ServerPlayer player) {
-        switch (clickType) {
-            case PICKUP -> {
-                if (historystages$isPlayerInventory(slot, player)) return ItemStack.EMPTY;
-                ItemStack inSlot = slot.getItem();
-                ItemStack carried = menu.getCarried();
-                // Adding to a stack of the same item puts things in and takes nothing out. Any
-                // other click on a filled slot ends with its item on the cursor.
-                if (ItemStack.isSameItemSameComponents(inSlot, carried) && slot.mayPlace(carried)) {
-                    return ItemStack.EMPTY;
-                }
-                return inSlot;
-            }
-            case QUICK_MOVE, SWAP, CLONE -> {
-                return historystages$isPlayerInventory(slot, player) ? ItemStack.EMPTY : slot.getItem();
-            }
-            case PICKUP_ALL -> {
-                // The double click gathers matching stacks from every slot in the menu, so the
-                // clicked one says nothing - it is usually empty.
-                ItemStack carried = menu.getCarried();
-                if (carried.isEmpty()) return ItemStack.EMPTY;
-                for (Slot other : menu.slots) {
-                    if (!historystages$isPlayerInventory(other, player)
-                            && other.hasItem()
-                            && ItemStack.isSameItemSameComponents(other.getItem(), carried)
-                            && other.mayPickup(player)
-                            && menu.canTakeItemForPickAll(carried, other)) {
-                        return carried;
-                    }
-                }
+        // If-chains for the same reason as above: no enum switch inside a mixin.
+        if (clickType == ClickType.PICKUP) {
+            if (historystages$isPlayerInventory(slot, player)) return ItemStack.EMPTY;
+            ItemStack inSlot = slot.getItem();
+            ItemStack carried = menu.getCarried();
+            // Adding to a stack of the same item puts things in and takes nothing out. Any
+            // other click on a filled slot ends with its item on the cursor.
+            if (ItemStack.isSameItemSameComponents(inSlot, carried) && slot.mayPlace(carried)) {
                 return ItemStack.EMPTY;
             }
-            default -> {
-                return ItemStack.EMPTY;
+            return inSlot;
+        }
+        if (clickType == ClickType.QUICK_MOVE || clickType == ClickType.SWAP || clickType == ClickType.CLONE) {
+            return historystages$isPlayerInventory(slot, player) ? ItemStack.EMPTY : slot.getItem();
+        }
+        if (clickType == ClickType.PICKUP_ALL) {
+            // The double click gathers matching stacks from every slot in the menu, so the
+            // clicked one says nothing - it is usually empty.
+            ItemStack carried = menu.getCarried();
+            if (carried.isEmpty()) return ItemStack.EMPTY;
+            for (Slot other : menu.slots) {
+                if (!historystages$isPlayerInventory(other, player)
+                        && other.hasItem()
+                        && ItemStack.isSameItemSameComponents(other.getItem(), carried)
+                        && other.mayPickup(player)
+                        && menu.canTakeItemForPickAll(carried, other)) {
+                    return carried;
+                }
             }
         }
+        return ItemStack.EMPTY;
     }
 
     @Unique
