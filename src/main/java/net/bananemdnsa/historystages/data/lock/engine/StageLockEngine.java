@@ -75,6 +75,11 @@ public interface StageLockEngine {
         return false;
     }
 
+    /** The stages behind {@link #isFluidActionLocked}, for a message that has to name them. */
+    default List<String> gatingStagesForFluidAction(String fluidId, String action, StageScope scope) {
+        return List.of();
+    }
+
     default List<String> gatingStagesForRecipe(String recipeId, StageScope scope) {
         return List.of();
     }
@@ -94,6 +99,23 @@ public interface StageLockEngine {
     default List<String> gatingStagesForEntityInteraction(String entityId, String action,
                                                           ItemStack held, StageScope scope) {
         return List.of();
+    }
+
+    /**
+     * Attack question with the entity at hand, so entries with an NBT filter can be checked.
+     * {@code targetMatches} tells whether the entity's data matches one set of criteria.
+     */
+    default List<String> gatingStagesForEntityAttack(String entityId,
+                                                     @org.jetbrains.annotations.Nullable java.util.function.Predicate<com.google.gson.JsonObject> targetMatches,
+                                                     StageScope scope) {
+        return gatingStagesForEntityAttack(entityId, scope);
+    }
+
+    /** Interaction question with the entity at hand; see the attack overload. */
+    default List<String> gatingStagesForEntityInteraction(String entityId, String action, ItemStack held,
+                                                          @org.jetbrains.annotations.Nullable java.util.function.Predicate<com.google.gson.JsonObject> targetMatches,
+                                                          StageScope scope) {
+        return gatingStagesForEntityInteraction(entityId, action, held, scope);
     }
 
     /**
@@ -151,6 +173,32 @@ public interface StageLockEngine {
     /** Fast-out for the per-tick biome handler: is any biome gated at all? */
     default boolean anyBiomeLocks() {
         return false;
+    }
+
+    /** Fast-out for the growth handler, which fires on every random tick of every plant. */
+    default boolean anyCropLocks() {
+        return false;
+    }
+
+    /**
+     * Global stages whose crop list names this block, by id or by one of its tags. Crops are
+     * global only, so there is no scope parameter.
+     */
+    default List<String> gatingStagesForCrop(String blockId, java.util.Collection<String> blockTagIds) {
+        return List.of();
+    }
+
+    /** Fast-out for the slot checks, which run for every slot of every rendered frame. */
+    default boolean anySlotLocks() {
+        return false;
+    }
+
+    /**
+     * Stages of the given scope that name this slot. {@code target} is {@code "player"}, a block
+     * id or a menu type id; {@code slot} is an inventory index for the player, a menu index otherwise.
+     */
+    default List<String> gatingStagesForSlot(String target, int slot, StageScope scope) {
+        return List.of();
     }
 
     /** Fast-out for the per-tick zone handler: is any area gated at all? */

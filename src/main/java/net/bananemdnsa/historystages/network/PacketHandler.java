@@ -1,4 +1,8 @@
 package net.bananemdnsa.historystages.network;
+import net.bananemdnsa.historystages.reload.BackgroundReload;
+import net.bananemdnsa.historystages.reload.LightReload;
+import net.bananemdnsa.historystages.reload.StageReloadMode;
+import net.bananemdnsa.historystages.reload.ReloadStats;
 
 import net.bananemdnsa.historystages.network.serverbound.RequestTradeGoodsPacket;
 import net.bananemdnsa.historystages.network.clientbound.SyncTradeGoodsPacket;
@@ -72,8 +76,9 @@ public class PacketHandler {
          * protocol reading the new format gets a decoder exception and a dropped connection; a
          * version mismatch gets it the "incompatible mod" screen instead, which is the same
          * information a player can act on.
+         * "13" for 6.2.0: new slot and prune messages, and the lock feedback carries its subject.
          */
-        private static final String PROTOCOL_VERSION = "12";
+        private static final String PROTOCOL_VERSION = "13";
         public static final SimpleChannel INSTANCE = NetworkRegistry.newSimpleChannel(
                         new ResourceLocation(HistoryStages.MOD_ID, "main"),
                         () -> PROTOCOL_VERSION,
@@ -224,6 +229,22 @@ public class PacketHandler {
                 INSTANCE.registerMessage(id++, TakeLecternScrollPacket.class,
                                 TakeLecternScrollPacket::encode,
                                 TakeLecternScrollPacket::decode, TakeLecternScrollPacket::handle);
+                INSTANCE.registerMessage(id++, net.bananemdnsa.historystages.network.clientbound.PruneUnknownPreviewPacket.class,
+                                net.bananemdnsa.historystages.network.clientbound.PruneUnknownPreviewPacket::encode,
+                                net.bananemdnsa.historystages.network.clientbound.PruneUnknownPreviewPacket::decode,
+                                net.bananemdnsa.historystages.network.clientbound.PruneUnknownPreviewPacket::handle);
+                INSTANCE.registerMessage(id++, net.bananemdnsa.historystages.network.serverbound.PruneUnknownEntriesPacket.class,
+                                net.bananemdnsa.historystages.network.serverbound.PruneUnknownEntriesPacket::encode,
+                                net.bananemdnsa.historystages.network.serverbound.PruneUnknownEntriesPacket::decode,
+                                net.bananemdnsa.historystages.network.serverbound.PruneUnknownEntriesPacket::handle);
+                INSTANCE.registerMessage(id++, net.bananemdnsa.historystages.network.clientbound.SlotTargetPacket.class,
+                                net.bananemdnsa.historystages.network.clientbound.SlotTargetPacket::encode,
+                                net.bananemdnsa.historystages.network.clientbound.SlotTargetPacket::decode,
+                                net.bananemdnsa.historystages.network.clientbound.SlotTargetPacket::handle);
+                INSTANCE.registerMessage(id++, net.bananemdnsa.historystages.network.serverbound.SlotPickModePacket.class,
+                                net.bananemdnsa.historystages.network.serverbound.SlotPickModePacket::encode,
+                                net.bananemdnsa.historystages.network.serverbound.SlotPickModePacket::decode,
+                                net.bananemdnsa.historystages.network.serverbound.SlotPickModePacket::handle);
         }
 
         // Send the locked-structure border BBs to a specific player.
@@ -376,13 +397,32 @@ public class PacketHandler {
                 if (!reloadRequested) return;
                 reloadRequested = false;
 
-                if (!VisibleRecipes.gatedSetChanged(
-                                UngatedRecipes.of(server.getRecipeManager()))) {
-                        resyncRecipes(server);
+                var recipes = UngatedRecipes.of(server.getRecipeManager());
+                int gatedBefore = VisibleRecipes.gatedCount();
+                boolean changed = VisibleRecipes.gatedSetChanged(recipes);
+                int gatedAfter = VisibleRecipes.gatedCount();
+                StageReloadMode mode = LightReload.mode();
+                ReloadStats.begin(changed ? mode.name().toLowerCase(java.util.Locale.ROOT) : "none",
+                                gatedBefore, gatedAfter, recipes.size());
+
+                // The resend only exists to restart JEI; /hsreloadlab jei picks.
+                if (!changed) {
+                        if (LightReload.resendRecipes()) resyncRecipes(server);
+                        ReloadStats.end(null);
+                        return;
+                }
+
+                // FULL is what 6.1 shipped; BACKGROUND the same reload without the freeze;
+                // TARGETED only the mods' listeners, the default.
+                if (mode != StageReloadMode.FULL) {
+                        BackgroundReload.request(server);
+                        // A full reload ends by sending the recipe list itself; the targeted one does not.
+                        if (mode == StageReloadMode.TARGETED && LightReload.resendRecipes()) resyncRecipes(server);
                         return;
                 }
 
                 server.reloadResources(server.getPackRepository().getSelectedIds())
+                                .whenComplete((ignored, e) -> ReloadStats.end(e))
                                 .exceptionally(e -> {
                                         DebugLogger.warn("Recipe Locks",
                                                         "Reloading datapacks after a stage change failed: " + e.getMessage()
@@ -404,7 +444,7 @@ public class PacketHandler {
          * <p>The ungated list, because {@code getRecipes} is gated on the server now and sending
          * it would take the locked recipes off every client and out of their recipe book.
          */
-        private static void resyncRecipes(MinecraftServer server) {
+        public static void resyncRecipes(MinecraftServer server) {
                 ClientboundUpdateRecipesPacket recipePacket = new ClientboundUpdateRecipesPacket(
                                 UngatedRecipes.of(server.getRecipeManager()));
                 for (ServerPlayer p : server.getPlayerList().getPlayers()) {

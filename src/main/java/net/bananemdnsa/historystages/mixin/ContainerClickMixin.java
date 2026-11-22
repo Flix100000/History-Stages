@@ -68,7 +68,8 @@ public class ContainerClickMixin {
             DebugLogger.runtimeThrottled(HsRuntimeCategories.CONTAINER_LOCK, "container_" + serverPlayer.getUUID() + "_" + itemRL,
                     "<" + serverPlayer.getName().getString() + "> Interaction with locked item '" + itemRL + "' in container blocked");
 
-            LockFeedback.sendActionbar(serverPlayer, FEEDBACK_CATEGORY, LockMessages.itemLocked());
+            LockFeedback.sendActionbar(serverPlayer, FEEDBACK_CATEGORY,
+                    LockMessages.itemLocked(serverPlayer, stack, "pickup"));
         }
     }
 
@@ -88,36 +89,35 @@ public class ContainerClickMixin {
         if (slotId < 0 || slotId >= menu.slots.size()) return;
         Slot slot = menu.slots.get(slotId);
 
+        // If-chains, not a switch: a switch on an enum compiles to a synthetic $SwitchMap class
+        // that the merged mixin method cannot reach, and the first click crashed the server.
         ItemStack candidate = ItemStack.EMPTY;
-        switch (clickType) {
-            case PICKUP -> {
-                if (historystages$isPlayerEquipmentSlot(slot, serverPlayer)) {
-                    candidate = menu.getCarried();
+        if (clickType == ClickType.PICKUP) {
+            if (historystages$isPlayerEquipmentSlot(slot, serverPlayer)) {
+                candidate = menu.getCarried();
+            }
+        } else if (clickType == ClickType.QUICK_MOVE) {
+            if (menu instanceof InventoryMenu
+                    && !historystages$isPlayerEquipmentSlot(slot, serverPlayer)) {
+                ItemStack source = slot.getItem();
+                EquipmentSlot natural = serverPlayer.getEquipmentSlotForItem(source);
+                if (!source.isEmpty()
+                        && (natural.getType() == EquipmentSlot.Type.ARMOR || natural == EquipmentSlot.OFFHAND)
+                        && serverPlayer.getItemBySlot(natural).isEmpty()) {
+                    candidate = source;
                 }
             }
-            case QUICK_MOVE -> {
-                if (menu instanceof InventoryMenu
-                        && !historystages$isPlayerEquipmentSlot(slot, serverPlayer)) {
-                    ItemStack source = slot.getItem();
-                    EquipmentSlot natural = serverPlayer.getEquipmentSlotForItem(source);
-                    if (!source.isEmpty()
-                            && (natural.getType() == EquipmentSlot.Type.ARMOR || natural == EquipmentSlot.OFFHAND)
-                            && serverPlayer.getItemBySlot(natural).isEmpty()) {
-                        candidate = source;
-                    }
+        } else if (clickType == ClickType.SWAP) {
+            if (historystages$isPlayerEquipmentSlot(slot, serverPlayer)) {
+                Inventory inv = serverPlayer.getInventory();
+                if (button == 40) {
+                    candidate = inv.offhand.get(0);
+                } else if (button >= 0 && button < inv.items.size()) {
+                    candidate = inv.items.get(button);
                 }
             }
-            case SWAP -> {
-                if (historystages$isPlayerEquipmentSlot(slot, serverPlayer)) {
-                    Inventory inv = serverPlayer.getInventory();
-                    if (button == 40) {
-                        candidate = inv.offhand.get(0);
-                    } else if (button >= 0 && button < inv.items.size()) {
-                        candidate = inv.items.get(button);
-                    }
-                }
-            }
-            default -> { return; }
+        } else {
+            return;
         }
 
         if (candidate.isEmpty()) return;
@@ -129,7 +129,8 @@ public class ContainerClickMixin {
         DebugLogger.runtimeThrottled(HsRuntimeCategories.ITEM_USE_LOCK, "equip_click_" + serverPlayer.getUUID() + "_" + itemRL,
                 "<" + serverPlayer.getName().getString() + "> Equip via container click for '" + itemRL + "' blocked [action: equip]");
 
-        LockFeedback.sendActionbar(serverPlayer, FEEDBACK_CATEGORY, LockMessages.itemLocked());
+        LockFeedback.sendActionbar(serverPlayer, FEEDBACK_CATEGORY,
+                LockMessages.itemLocked(serverPlayer, candidate, "equip"));
     }
 
     /**
@@ -143,41 +144,37 @@ public class ContainerClickMixin {
     @Unique
     private static ItemStack historystages$takenFromStorage(AbstractContainerMenu menu, Slot slot,
                                                            ClickType clickType, ServerPlayer player) {
-        switch (clickType) {
-            case PICKUP -> {
-                if (historystages$isPlayerInventory(slot, player)) return ItemStack.EMPTY;
-                ItemStack inSlot = slot.getItem();
-                ItemStack carried = menu.getCarried();
-                // Adding to a stack of the same item puts things in and takes nothing out. Any
-                // other click on a filled slot ends with its item on the cursor.
-                if (ItemStack.isSameItemSameTags(inSlot, carried) && slot.mayPlace(carried)) {
-                    return ItemStack.EMPTY;
-                }
-                return inSlot;
-            }
-            case QUICK_MOVE, SWAP, CLONE -> {
-                return historystages$isPlayerInventory(slot, player) ? ItemStack.EMPTY : slot.getItem();
-            }
-            case PICKUP_ALL -> {
-                // The double click gathers matching stacks from every slot in the menu, so the
-                // clicked one says nothing - it is usually empty.
-                ItemStack carried = menu.getCarried();
-                if (carried.isEmpty()) return ItemStack.EMPTY;
-                for (Slot other : menu.slots) {
-                    if (!historystages$isPlayerInventory(other, player)
-                            && other.hasItem()
-                            && ItemStack.isSameItemSameTags(other.getItem(), carried)
-                            && other.mayPickup(player)
-                            && menu.canTakeItemForPickAll(carried, other)) {
-                        return carried;
-                    }
-                }
+        // If-chains for the same reason as above: no enum switch inside a mixin.
+        if (clickType == ClickType.PICKUP) {
+            if (historystages$isPlayerInventory(slot, player)) return ItemStack.EMPTY;
+            ItemStack inSlot = slot.getItem();
+            ItemStack carried = menu.getCarried();
+            // Adding to a stack of the same item puts things in and takes nothing out. Any
+            // other click on a filled slot ends with its item on the cursor.
+            if (ItemStack.isSameItemSameTags(inSlot, carried) && slot.mayPlace(carried)) {
                 return ItemStack.EMPTY;
             }
-            default -> {
-                return ItemStack.EMPTY;
+            return inSlot;
+        }
+        if (clickType == ClickType.QUICK_MOVE || clickType == ClickType.SWAP || clickType == ClickType.CLONE) {
+            return historystages$isPlayerInventory(slot, player) ? ItemStack.EMPTY : slot.getItem();
+        }
+        if (clickType == ClickType.PICKUP_ALL) {
+            // The double click gathers matching stacks from every slot in the menu, so the
+            // clicked one says nothing - it is usually empty.
+            ItemStack carried = menu.getCarried();
+            if (carried.isEmpty()) return ItemStack.EMPTY;
+            for (Slot other : menu.slots) {
+                if (!historystages$isPlayerInventory(other, player)
+                        && other.hasItem()
+                        && ItemStack.isSameItemSameTags(other.getItem(), carried)
+                        && other.mayPickup(player)
+                        && menu.canTakeItemForPickAll(carried, other)) {
+                    return carried;
+                }
             }
         }
+        return ItemStack.EMPTY;
     }
 
     @Unique

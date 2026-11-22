@@ -2,8 +2,10 @@ package net.bananemdnsa.historystages.gametest;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import com.google.gson.JsonObject;
+import com.mojang.authlib.GameProfile;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 
 import net.bananemdnsa.historystages.HistoryStages;
@@ -13,18 +15,16 @@ import net.bananemdnsa.historystages.data.TradeProfessionEntry;
 import net.bananemdnsa.historystages.data.lock.TradeGoodsScanner;
 import net.bananemdnsa.historystages.data.saveddata.IndividualStageData;
 import net.bananemdnsa.historystages.data.saveddata.StageData;
+import net.bananemdnsa.historystages.util.lock.TradeIndexMap;
 import net.bananemdnsa.historystages.util.lock.TradeLockHelper;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.Connection;
-import net.minecraft.network.PacketSendListener;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.protocol.game.ClientboundMerchantOffersPacket;
+import net.minecraft.network.protocol.game.ServerboundSelectTradePacket;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.entity.npc.VillagerData;
@@ -53,7 +53,7 @@ import org.jetbrains.annotations.Nullable;
  * and {@code openTradingScreen} sends it packets — the failure would say nothing about trade
  * locks. The filter is asked directly instead, which is the same call the seam makes.
  *
- * <p>The last two are the exception, and the only ones that touch the seam rather than the filter
+ * <p>The last four are the exception, and the only ones that touch the seam rather than the filter
  * behind it. They matter because a mistyped target in {@code MerchantOffersMixin} would leave
  * every trade lock silently off with every other test in this file still green. Those two hand
  * the player a connection that records instead of sending, because the seam sits on the very
@@ -129,33 +129,31 @@ public final class TradeLockTests {
     }
 
     /**
-     * A connection that goes nowhere and keeps the offer list it was asked to send.
+     * A player with a connection that goes nowhere and records every packet it is sent.
      *
-     * <p>{@link GameTestPlayers} builds a player without one, which is fine until something makes
-     * vanilla send it a packet. The seam lives on {@code ServerPlayer.sendMerchantOffers}, whose
-     * body is exactly that, so these two tests need the wire rather than a stand-in for it: a
-     * player that overrode the method would never reach the seam at all.
+     * <p>The menu opens through vanilla's own {@code openMenu}, and the offers are read off the
+     * connection rather than by overriding {@code sendMerchantOffers}: that method is the seam
+     * under test, and an override would walk straight past it.
      */
-    private static final class RecordingConnection extends Connection {
-        private MerchantOffers received;
+    private static final class RecordingPlayer extends ServerPlayer {
+        private final List<Packet<?>> sent = new ArrayList<>();
 
-        RecordingConnection() {
-            super(PacketFlow.CLIENTBOUND);
+        RecordingPlayer(GameTestHelper helper) {
+            super(helper.getLevel().getServer(), helper.getLevel(),
+                    new GameProfile(UUID.randomUUID(), "gametest"));
+            GameTestPlayers.connectCapturing(this, sent);
         }
 
-        @Override
-        public void send(Packet<?> packet, @Nullable PacketSendListener listener) {
-            if (packet instanceof ClientboundMerchantOffersPacket offers) {
-                received = offers.getOffers();
+        /** The offers in the last offer packet, or null if none was sent. */
+        @Nullable
+        MerchantOffers received() {
+            for (int i = sent.size() - 1; i >= 0; i--) {
+                if (sent.get(i) instanceof ClientboundMerchantOffersPacket packet) {
+                    return packet.getOffers();
+                }
             }
+            return null;
         }
-    }
-
-    /** A test player with that connection in place, so every vanilla path runs for real. */
-    private static ServerPlayer wiredPlayer(GameTestHelper helper, RecordingConnection wire) {
-        ServerPlayer player = GameTestPlayers.create(helper);
-        new ServerGamePacketListenerImpl(helper.getLevel().getServer(), wire, player);
-        return player;
     }
 
     /**
@@ -180,7 +178,7 @@ public final class TradeLockTests {
     }
 
     /** Opens the screen for real, menu and packets and all. */
-    private static void openScreen(Villager villager, ServerPlayer player) {
+    private static void openScreen(Villager villager, RecordingPlayer player) {
         villager.openTradingScreen(player, Component.literal("gametest"),
                 TradeLockHelper.levelOf(villager));
     }
@@ -615,8 +613,7 @@ public final class TradeLockTests {
 
             Villager villager = librarian(helper, 1);
             setOffers(villager, twoOffers());
-            RecordingConnection wire = new RecordingConnection();
-            ServerPlayer player = wiredPlayer(helper, wire);
+            RecordingPlayer player = new RecordingPlayer(helper);
 
             openScreen(villager, player);
 
@@ -625,24 +622,102 @@ public final class TradeLockTests {
                         + "was sent into it");
                 return;
             }
-            if (wire.received == null) {
+            if (player.received() == null) {
                 helper.fail("a window opened and no offers followed it at all");
                 return;
             }
-            if (wire.received.size() != 1) {
+            if (player.received().size() != 1) {
                 helper.fail("one of the two offers is named by a locked stage, but the player was "
-                        + "sent " + wire.received.size() + ". Two means the wrap on "
+                        + "sent " + player.received().size() + ". Two means the wrap on "
                         + "sendMerchantOffers is not applying, and every trade lock is off");
                 return;
             }
-            if (!wire.received.get(0).getResult().is(Items.BOOK)) {
+            if (!player.received().get(0).getResult().is(Items.BOOK)) {
                 helper.fail("the wrong offer survived: the player kept "
-                        + wire.received.get(0).getResult() + " rather than the book");
+                        + player.received().get(0).getResult() + " rather than the book");
                 return;
             }
             if (villager.getOffers().size() != 2) {
                 helper.fail("the merchant itself lost an offer — only the copy sent to this "
                         + "player may be short, or an unlock could never give it back");
+                return;
+            }
+            helper.succeed();
+        } finally {
+            GameTestStages.removeAll();
+        }
+    }
+
+    /**
+     * Clicking a row of the shortened list selects that row's offer on the server, not whatever
+     * sits at the same index in the merchant's full list.
+     */
+    @GameTest(template = "empty")
+    public static void aClickedRowSelectsThatRowsOfferOnTheServer(GameTestHelper helper) {
+        try {
+            GameTestStages.global("trade_seam_row", stage -> stage.setTradeOffers(
+                    new ArrayList<>(List.of(paperForEmeraldEntry()))));
+
+            Villager villager = librarian(helper, 1);
+            setOffers(villager, twoOffers());
+            RecordingPlayer player = new RecordingPlayer(helper);
+            villager.setPos(player.position());
+            openScreen(villager, player);
+            player.getInventory().add(new ItemStack(Items.EMERALD, 5));
+            // What startTrading does before opening; the menu checks it on every click.
+            villager.setTradingPlayer(player);
+
+            // Row 0 of what the player sees is the book trade (5 emeralds); index 0 of the
+            // merchant's list is the paper one the stage holds back.
+            player.connection.handleSelectTrade(new ServerboundSelectTradePacket(0));
+
+            if (!player.containerMenu.getSlot(0).getItem().is(Items.EMERALD)) {
+                helper.fail("clicking the only visible trade (emeralds for a book) did not move the "
+                        + "emeralds into the payment slot, so the server picked a different offer");
+                return;
+            }
+            helper.succeed();
+        } finally {
+            GameTestStages.removeAll();
+        }
+    }
+
+    /**
+     * A restock re-sends the offers into the open screen (Villager.resendOffersToTradingPlayer).
+     * That list goes through the same filter, and a click after it still selects the clicked
+     * row's offer.
+     */
+    @GameTest(template = "empty")
+    public static void aRestockSendsTheShortListAndRowsStillMatch(GameTestHelper helper) {
+        try {
+            GameTestStages.global("trade_seam_restock", stage -> stage.setTradeOffers(
+                    new ArrayList<>(List.of(paperForEmeraldEntry()))));
+
+            Villager villager = librarian(helper, 1);
+            setOffers(villager, twoOffers());
+            RecordingPlayer player = new RecordingPlayer(helper);
+            villager.setPos(player.position());
+            openScreen(villager, player);
+            villager.setTradingPlayer(player);
+            player.getInventory().add(new ItemStack(Items.EMERALD, 5));
+
+            villager.restock();
+
+            MerchantOffers resent = player.received();
+            if (resent == null || resent.size() != 1 || !resent.get(0).getResult().is(Items.BOOK)) {
+                helper.fail("after a restock the open screen was sent "
+                        + (resent == null ? "nothing" : resent.size() + " offers")
+                        + " - the gated paper trade leaked into it");
+                return;
+            }
+            player.connection.handleSelectTrade(new ServerboundSelectTradePacket(0));
+            if (!player.containerMenu.getSlot(0).getItem().is(Items.EMERALD)) {
+                helper.fail("after the restock, clicking the book trade selected a different offer");
+                return;
+            }
+            player.closeContainer();
+            if (TradeIndexMap.remembers(player.getUUID())) {
+                helper.fail("the trade screen closed but its rows are still remembered");
                 return;
             }
             helper.succeed();
@@ -665,18 +740,17 @@ public final class TradeLockTests {
 
             Villager villager = librarian(helper, 1);
             setOffers(villager, paperForEmerald());
-            RecordingConnection wire = new RecordingConnection();
-            ServerPlayer player = wiredPlayer(helper, wire);
+            RecordingPlayer player = new RecordingPlayer(helper);
 
             openScreen(villager, player);
 
-            if (wire.received == null) {
+            if (player.received() == null) {
                 helper.fail("every offer this merchant has is gated, and the player was sent no "
                         + "list at all");
                 return;
             }
-            if (!wire.received.isEmpty()) {
-                helper.fail("the only offer is gated, but " + wire.received.size()
+            if (!player.received().isEmpty()) {
+                helper.fail("the only offer is gated, but " + player.received().size()
                         + " came through");
                 return;
             }

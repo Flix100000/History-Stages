@@ -391,6 +391,9 @@ public final class StageStates {
         IndividualStageData data = IndividualStageData.get(server.overworld());
         if (!data.hasStage(playerUuid, stageId)) return false;
         data.removeStage(playerUuid, stageId);
+        // The online path drops the stage's items right away; here there is no inventory to
+        // reach, so the drop is owed until the next login.
+        data.addPendingRevokeDrop(playerUuid, stageId);
         data.setDirty();
         StageEntry entry = StageManager.getIndividualStages().get(stageId);
         String displayName = entry != null ? entry.getDisplayName() : stageId;
@@ -649,6 +652,7 @@ public final class StageStates {
         );
 
         net.bananemdnsa.historystages.util.lock.StageLockHelper.dropLockedItemsForPlayer(player, stageId);
+        net.bananemdnsa.historystages.util.lock.SlotLockSweeper.sweep(player);
 
         // Config-gated "locked" feedback to the affected player.
         // A stage can opt out of its own messages (conditional stages do by default); the

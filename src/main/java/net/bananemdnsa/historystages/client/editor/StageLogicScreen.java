@@ -31,10 +31,10 @@ import java.util.function.Consumer;
 /**
  * The stage's logic blocks: one card per block, "+ Block" to add one.
  *
- * <p>Laid out like {@link NbtItemEditScreen} — header, toolbar, a scrolling list of cards, back
- * and save at the bottom — because it is the same job: a short list of rules, each with its own
- * little editor. Save persists the whole stage through the callback and stays here, like every
- * other sub-screen of the stage editor.
+ * <p>Dressed like the stage editor it is opened from: the same header, and the footer buttons in
+ * the same places — back bottom left, add bottom centre, save bottom right — so going in and out
+ * never moves a button under the cursor. Save persists the whole stage through the callback and
+ * stays here, like every other sub-screen of the stage editor.
  */
 public class StageLogicScreen extends Screen {
 
@@ -59,12 +59,16 @@ public class StageLogicScreen extends Screen {
     private int maxScroll;
     private final Scrollbar scrollbar = new Scrollbar();
 
-    private static final int PADDING = 20;
-    private static final int HEADER_HEIGHT = 58;
-    private static final int TOOLBAR_Y = 30;
-    private static final int TOOLBAR_H = 18;
+    private static final int PADDING = 10;
+    private static final int HEADER_HEIGHT = 40;
+    private static final int HINT_Y = 25;
     private static final int CARD_GAP = 6;
-    private static final int FOOTER_HEIGHT = 40;
+    private static final int FOOTER_HEIGHT = 32;
+    private static final int FOOTER_BTN_Y_OFFSET = 25;
+    private static final int FOOTER_BTN_W = 50;
+    private static final int FOOTER_BTN_H = 18;
+    /** The stage editor's add button is this wide; a longer label widens it rather than clipping. */
+    private static final int ADD_BTN_MIN_W = 120;
 
     public StageLogicScreen(Screen parent, String stageId, String stageName, boolean individual,
                             @Nullable JsonArray logic, Consumer<JsonArray> onSave) {
@@ -86,14 +90,15 @@ public class StageLogicScreen extends Screen {
 
         Component addLabel = Component.literal("+ ")
                 .append(Component.translatable("editor.historystages.logic.add_block")).append(" ▾");
-        int addW = this.font.width(addLabel) + 16;
+        int footerY = this.height - FOOTER_BTN_Y_OFFSET;
+        int addW = Math.max(ADD_BTN_MIN_W, this.font.width(addLabel) + 16);
         addButton = this.addRenderableWidget(StyledButton.of(addLabel, btn -> openAddMenu(),
-                PADDING, TOOLBAR_Y, addW, TOOLBAR_H));
+                (this.width - addW) / 2, footerY, addW, FOOTER_BTN_H));
 
         this.addRenderableWidget(StyledButton.of(Component.translatable("editor.historystages.back"),
-                btn -> this.minecraft.setScreen(parent), PADDING, this.height - 30, 60, 20));
+                btn -> this.minecraft.setScreen(parent), PADDING, footerY, FOOTER_BTN_W, FOOTER_BTN_H));
         this.addRenderableWidget(StyledButton.of(Component.translatable("editor.historystages.save"),
-                btn -> save(), this.width - PADDING - 100, this.height - 30, 100, 20));
+                btn -> save(), this.width - PADDING - FOOTER_BTN_W, footerY, FOOTER_BTN_W, FOOTER_BTN_H));
 
         refresh();
     }
@@ -147,11 +152,11 @@ public class StageLogicScreen extends Screen {
         smoothScroll.settle((float) scrollOffset, 0.5f);
 
         String title = Component.translatable("editor.historystages.logic.title_for", stageName).getString();
-        g.drawCenteredString(this.font, title, this.width / 2, 8, 0xFFCC00);
+        g.drawCenteredString(this.font, title, this.width / 2, 6, 0xFFFFFF);
+        g.fill(PADDING, 19, this.width - PADDING, 20, 0x40FFFFFF);
         String hint = Component.translatable("editor.historystages.logic.hint").getString();
-        g.drawString(this.font, this.font.plainSubstrByWidth(hint, this.width - PADDING * 2 - addButton.getWidth() - 12),
-                PADDING + addButton.getWidth() + 10, TOOLBAR_Y + 5, 0x888888, false);
-        g.fill(PADDING, HEADER_HEIGHT - 6, this.width - PADDING, HEADER_HEIGHT - 5, 0x40FFCC00);
+        g.drawString(this.font, this.font.plainSubstrByWidth(hint, this.width - PADDING * 2),
+                PADDING, HINT_Y, 0x888888, false);
 
         int top = listTop();
         int bottom = listBottom();
@@ -198,8 +203,8 @@ public class StageLogicScreen extends Screen {
         float phase = (System.currentTimeMillis() % (long) Timing.BREATHE_PERIOD_MS) / Timing.BREATHE_PERIOD_MS;
         int alpha = (int) ((0.35f + 0.45f * Ease.breathe(phase)) * 255);
         String label = Component.translatable("editor.historystages.unsaved").getString();
-        int labelX = this.width - PADDING - 100 - 8 - this.font.width(label);
-        int y = this.height - 24;
+        int labelX = this.width - PADDING - FOOTER_BTN_W - 8 - this.font.width(label);
+        int y = this.height - FOOTER_BTN_Y_OFFSET + (FOOTER_BTN_H - 8) / 2;
         g.fill(labelX - 10, y + 1, labelX - 4, y + 7, (alpha << 24) | 0xFFCC00);
         g.drawString(this.font, label, labelX, y, 0xFFCC00, false);
     }

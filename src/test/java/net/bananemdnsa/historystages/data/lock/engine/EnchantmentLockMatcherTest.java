@@ -4,7 +4,9 @@ import java.util.List;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import net.bananemdnsa.historystages.data.ItemEntry;
+import net.bananemdnsa.historystages.data.NbtFilter;
 import net.bananemdnsa.historystages.data.StageEntry;
 import org.junit.jupiter.api.Test;
 
@@ -70,5 +72,17 @@ class EnchantmentLockMatcherTest {
     @Test
     void emptyStageLocksNothing() {
         assertFalse(EnchantmentLockMatcher.locksEnchantment(new StageEntry(), "minecraft:sharpness", 1));
+    }
+
+    @Test
+    void anEnchantmentInTheSecondVariantIsLocked() {
+        NbtFilter variants = NbtFilter.fromJson(JsonParser.parseString(
+                "[{\"StoredEnchantments\":[{\"id\":\"minecraft:sharpness\"}]},"
+                        + "{\"StoredEnchantments\":[{\"id\":\"minecraft:mending\"}]}]"));
+        StageEntry stage = new StageEntry();
+        stage.setItemEntries(List.of(ItemEntry.withFilter("minecraft:enchanted_book", variants, null, null, null)));
+        assertTrue(EnchantmentLockMatcher.locksEnchantment(stage, "minecraft:mending", 1));
+        assertTrue(EnchantmentLockMatcher.locksEnchantment(stage, "minecraft:sharpness", 1));
+        assertFalse(EnchantmentLockMatcher.locksEnchantment(stage, "minecraft:unbreaking", 1));
     }
 }

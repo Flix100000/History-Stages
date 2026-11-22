@@ -23,32 +23,39 @@ public final class EnchantmentLockMatcher {
             if (!itemEntry.hasNbt()) continue;
             if (!itemEntry.getId().equals("minecraft:enchanted_book")) continue;
 
-            JsonObject nbt = itemEntry.getNbt();
-            if (!nbt.has("StoredEnchantments") || !nbt.get("StoredEnchantments").isJsonArray()) continue;
+            // Any variant of the entry may name the enchantment.
+            for (JsonObject nbt : itemEntry.getNbtFilter().alternatives()) {
+                if (locksIn(nbt, enchantmentId, level)) return true;
+            }
+        }
+        return false;
+    }
 
-            JsonArray enchantments = nbt.getAsJsonArray("StoredEnchantments");
-            for (JsonElement el : enchantments) {
-                if (!el.isJsonObject()) continue;
-                JsonObject enchObj = el.getAsJsonObject();
-                if (!enchObj.has("id")) continue;
+    private static boolean locksIn(JsonObject nbt, String enchantmentId, int level) {
+        if (!nbt.has("StoredEnchantments") || !nbt.get("StoredEnchantments").isJsonArray()) return false;
 
-                String lockedId = enchObj.get("id").getAsString();
-                if (!lockedId.equals(enchantmentId)) continue;
+        JsonArray enchantments = nbt.getAsJsonArray("StoredEnchantments");
+        for (JsonElement el : enchantments) {
+            if (!el.isJsonObject()) continue;
+            JsonObject enchObj = el.getAsJsonObject();
+            if (!enchObj.has("id")) continue;
 
-                if (!enchObj.has("lvl")) return true; // no level restriction = all levels locked
+            String lockedId = enchObj.get("id").getAsString();
+            if (!lockedId.equals(enchantmentId)) continue;
 
-                JsonElement lvlEl = enchObj.get("lvl");
-                if (lvlEl.isJsonPrimitive()) {
-                    if (lvlEl.getAsJsonPrimitive().isNumber()) {
-                        if (lvlEl.getAsInt() == level) return true;
-                    } else if (lvlEl.getAsJsonPrimitive().isString()) {
-                        String lvlStr = lvlEl.getAsString();
-                        if (lvlStr.matches("\\d+-\\d+")) {
-                            String[] parts = lvlStr.split("-");
-                            int min = Integer.parseInt(parts[0]);
-                            int max = Integer.parseInt(parts[1]);
-                            if (level >= min && level <= max) return true;
-                        }
+            if (!enchObj.has("lvl")) return true; // no level restriction = all levels locked
+
+            JsonElement lvlEl = enchObj.get("lvl");
+            if (lvlEl.isJsonPrimitive()) {
+                if (lvlEl.getAsJsonPrimitive().isNumber()) {
+                    if (lvlEl.getAsInt() == level) return true;
+                } else if (lvlEl.getAsJsonPrimitive().isString()) {
+                    String lvlStr = lvlEl.getAsString();
+                    if (lvlStr.matches("\\d+-\\d+")) {
+                        String[] parts = lvlStr.split("-");
+                        int min = Integer.parseInt(parts[0]);
+                        int max = Integer.parseInt(parts[1]);
+                        if (level >= min && level <= max) return true;
                     }
                 }
             }

@@ -33,6 +33,7 @@ import net.bananemdnsa.historystages.data.logic.LogicCodec;
 import net.bananemdnsa.historystages.data.saveddata.IndividualStageData;
 import net.bananemdnsa.historystages.data.saveddata.StageData;
 import net.bananemdnsa.historystages.events.StageDefinitionsEventBridge;
+import net.bananemdnsa.historystages.util.lock.StageLockHelper;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -301,6 +302,56 @@ public final class AddonApiTests {
             Config.GAMEPLAY.individualDropOnRevoke.set(original);
             GameTestStages.removeAll();
             data.removeStage(player.getUUID(), id);
+        }
+    }
+
+    @GameTest(template = "empty")
+    public static void anOfflineRelockDropsTheItemsOnLogin(GameTestHelper helper) {
+        String id = P + "api_offline_drop";
+        ServerPlayer player = GameTestPlayers.createConnected(helper);
+        UUID uuid = player.getUUID();
+        var server = helper.getLevel().getServer();
+        IndividualStageData data = IndividualStageData.get(helper.getLevel());
+        boolean original = Config.GAMEPLAY.individualDropOnRevoke.get();
+        try {
+            GameTestStages.individual("api_offline_drop", stage ->
+                    stage.setItemEntries(new ArrayList<>(List.of(new ItemEntry("minecraft:diamond_sword")))));
+            Config.GAMEPLAY.individualDropOnRevoke.set(true);
+            player.getInventory().add(new ItemStack(Items.DIAMOND_SWORD));
+
+            // Test players never join the player list, so the server sees this one as offline.
+            data.addStage(uuid, id);
+            StageStates.relockIndividual(id, uuid, server);
+            if (!player.getInventory().contains(new ItemStack(Items.DIAMOND_SWORD))) {
+                helper.fail("nothing may drop while the player is away");
+                return;
+            }
+
+            StageLockHelper.dropOwedRevokeItems(player);
+            if (player.getInventory().contains(new ItemStack(Items.DIAMOND_SWORD))) {
+                helper.fail("the login must drop what the offline relock still owed");
+                return;
+            }
+
+            // Owed once only, and a stage unlocked again in the meantime owes nothing.
+            player.getInventory().add(new ItemStack(Items.DIAMOND_SWORD));
+            data.addPendingRevokeDrop(uuid, id);
+            data.addStage(uuid, id);
+            StageLockHelper.dropOwedRevokeItems(player);
+            if (!player.getInventory().contains(new ItemStack(Items.DIAMOND_SWORD))) {
+                helper.fail("a stage the player has again must not drop anything");
+                return;
+            }
+            if (!data.takePendingRevokeDrops(uuid).isEmpty()) {
+                helper.fail("the debt must be cleared once the login has looked at it");
+                return;
+            }
+            helper.succeed();
+        } finally {
+            Config.GAMEPLAY.individualDropOnRevoke.set(original);
+            GameTestStages.removeAll();
+            data.removeStage(uuid, id);
+            data.takePendingRevokeDrops(uuid);
         }
     }
 

@@ -71,6 +71,8 @@ public final class LegacyConfigMap {
             // Trades were not a lock category before 6.0 either, so a merchant could never come
             // up empty on our account and there was no message to word.
             "VISUAL|lock_messages.tradeLocked",
+            // Plants were not a lock category before 6.2, so bonemeal was never refused.
+            "VISUAL|lock_messages.cropLocked",
             // Same reason: no trade locks before 6.0, so no notice to word and nothing to decide
             // about naming the stages in it.
             "VISUAL|trade_lock.showStagesInWindow",
@@ -81,6 +83,10 @@ public final class LegacyConfigMap {
             // Zones were not a lock category before 6.0, so there was no area to mark out and no
             // item to pick for marking it.
             "GAMEPLAY|zone_lock.markerItem",
+            // The reload after a stage change had no settings before: it was always the full one.
+            "GAMEPLAY|advanced.reloadAfterStageChange",
+            "GAMEPLAY|advanced.targetedReloadSkip",
+            "GAMEPLAY|advanced.slowListenerHintMs",
             // Same reason: no zones before 6.0, so no force field to draw and nothing to decide
             // about how far it should reach.
             "VISUAL|zone_overlay.zoneBorderDistance",
@@ -88,6 +94,9 @@ public final class LegacyConfigMap {
             "VISUAL|zone_overlay.zoneBorderFullView",
             "VISUAL|zone_overlay.zoneBorderOutline",
             "VISUAL|zone_overlay.zoneBorderColor",
+            // Before 6.2 only JER was spared the recipe lock, and that was not a setting.
+            "VISUAL|jei_hiding.showLockOverlay",
+            "VISUAL|jei_hiding.lockOverlayExemptions",
             // Interchangeable stages arrived in 6.1, so there was no "One of:" group to show.
             "VISUAL|visuals.groupInterchangeableStages",
             "VISUAL|jade.groupInterchangeableStages",
@@ -104,7 +113,11 @@ public final class LegacyConfigMap {
             "GAMEPLAY|stage_logic.warnOnForcedUnlock",
             // Biomes and structures always kept explosions out before 6.1; there was no switch.
             "GAMEPLAY|structure_lock.blockExplosions",
-            "GAMEPLAY|biome_lock.blockExplosions");
+            "GAMEPLAY|biome_lock.blockExplosions",
+            "GAMEPLAY|gameplay.dropItemsFromLockedSlots",
+            "VISUAL|slot_lock.showTooltip",
+            "VISUAL|slot_lock.tooltipLines",
+            "VISUAL|slot_lock.showAllUntilComplete");
 
     private LegacyConfigMap() {}
 

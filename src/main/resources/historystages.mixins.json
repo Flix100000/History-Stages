@@ -8,6 +8,8 @@
     "AttributeLockMixin",
     "RecipeManagerMixin",
     "PlayerListMixin",
+    "SimpleReloadInstanceMixin",
+    "PlayerListReloadMixin",
     "CraftingMenuMixin",
     "StonecutterMenuMixin",
     "SmithingMenuMixin",
@@ -21,9 +23,26 @@
     "MerchantMenuAccessor",
     "CommandSourceStackAccessor",
     "MerchantContainerMixin",
+    "MerchantMenuCloseMixin",
+    "SelectTradeMixin",
     "lootr.ChestDataMixin",
     "fastsuite.AuxRecipeManagerMixin",
-    "disguise.BlockDropsMixin"
+    "disguise.BlockDropsMixin",
+    "arsnouveau.DrygmyTileMixin",
+    "slotlock.SlotMixin",
+    "slotlock.ArmorSlotMixin",
+    "slotlock.SlotLockClickMixin",
+    "slotlock.InventoryMixin",
+    "slotlock.ServerGamePacketListenerSlotMixin",
+    "slotlock.AbstractContainerMenuSlotMixin",
+    "slotlock.CompoundContainerAccessor",
+    "slotlock.HopperBlockEntityMixin",
+    "slotlock.InventoryScrollMixin",
+    "slotlock.InvWrapperMixin",
+    "slotlock.SidedInvWrapperMixin",
+    "slotlock.SlotItemHandlerMixin",
+    "slotlock.MoveItemStackToMixin",
+    "slotlock.ArmorSelectorMixin"
   ],
   "client": [
     "bettercombat.AttackStartLockMixin",
@@ -48,7 +67,10 @@
     "disguise.EntitySoundMixin",
     "disguise.LivingEntitySoundMixin",
     "disguise.MultiPlayerGameModeSoundMixin",
-    "disguise.LevelRendererSoundMixin"
+    "disguise.LevelRendererSoundMixin",
+    "client.slotlock.GuiHotbarMixin",
+    "client.slotlock.AbstractContainerScreenInvoker",
+    "client.slotlock.MenuScreensInvoker"
   ],
   "injectors": {
     "defaultRequire": 1

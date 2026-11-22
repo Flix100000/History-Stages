@@ -1,6 +1,7 @@
 package net.bananemdnsa.historystages.client.editor;
 
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.bananemdnsa.historystages.api.editor.widget.AbstractInputScreen;
 import net.bananemdnsa.historystages.api.editor.widget.InputField;
@@ -22,6 +23,7 @@ import net.bananemdnsa.historystages.client.editor.nbt.NbtPresets;
 import net.bananemdnsa.historystages.client.editor.nbt.TextListCriterion;
 import net.bananemdnsa.historystages.client.editor.nbt.ValueKind;
 import net.bananemdnsa.historystages.client.editor.widget.ConfirmDialog;
+import net.bananemdnsa.historystages.client.editor.widget.ContextMenu;
 import net.bananemdnsa.historystages.client.editor.widget.Scrollbar;
 import net.bananemdnsa.historystages.client.editor.widget.StyledButton;
 import net.bananemdnsa.historystages.client.editor.toast.EditorToast;
@@ -30,6 +32,7 @@ import net.bananemdnsa.historystages.client.editor.widget.list.SearchableEnchant
 import net.bananemdnsa.historystages.client.editor.widget.list.SearchableItemList;
 import net.bananemdnsa.historystages.client.editor.widget.list.SearchableItemPropertyList;
 import net.bananemdnsa.historystages.client.editor.widget.list.SearchableNbtCriterionList;
+import net.bananemdnsa.historystages.data.NbtFilter;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
@@ -61,16 +64,25 @@ import java.util.stream.Collectors;
  * searchable picker. What the picker offers follows {@code NbtMatcher}: data components go into
  * {@code components}, the two enchantment lists stay top-level because the matcher synthesises
  * them, and a free top-level key means "look this up in the item's custom_data".
+ *
+ * <p>Where the caller allows it, the criteria can come in several variants of which any one has to
+ * match, edited one at a time the way the entity editor does it.
  */
 public class NbtItemEditScreen extends Screen {
     private final Screen parent;
     private final String itemId;
     private final boolean tagMode;
-    private final JsonObject currentNbt;
-    private final Consumer<JsonObject> onSave;
+    private final NbtFilter current;
+    private final boolean variantsEnabled;
+    private final Consumer<NbtFilter> onSave;
 
-    /** The criteria being edited. Survives {@link #init()} — see {@link #criteriaLoaded}. */
-    private final List<NbtCriterion> criteria = new ArrayList<>();
+    /**
+     * One criteria list per variant, never empty. Survives {@link #init()} — see
+     * {@link #criteriaLoaded}.
+     */
+    private final List<List<NbtCriterion>> variants = new ArrayList<>();
+    private int active = 0;
+    private ContextMenu chipMenu = new ContextMenu();
     /** One laid-out card per criterion, in the same order. Rebuilt by {@link #refresh()}. */
     private final List<CriterionCard.Built> cards = new ArrayList<>();
     private List<NbtCriteriaValidator.Warning> warnings = List.of();
@@ -78,14 +90,14 @@ public class NbtItemEditScreen extends Screen {
 
     /**
      * Loading happens once, not on every {@link #init()}. The screen is re-initialised whenever a
-     * value dialog closes, and re-reading {@link #currentNbt} there would throw away every edit —
+     * value dialog closes, and re-reading {@link #current} there would throw away every edit —
      * including a deliberate "clear all".
      */
     private boolean criteriaLoaded = false;
 
     private PickerOverlay pickerOverlay;
     /** What the criteria looked like when last saved, so "unsaved" means something. */
-    private JsonObject savedSnapshot = new JsonObject();
+    private JsonElement savedSnapshot;
     private boolean dirty = false;
     private boolean showJson = false;
     private List<FormattedCharSequence> jsonLines = List.of();
@@ -108,6 +120,9 @@ public class NbtItemEditScreen extends Screen {
     private static final int TOOLBAR_H = 18;
     private static final int CARD_GAP = 6;
     private static final int FOOTER_HEIGHT = 40;
+    private static final int CHIP_Y = 13;
+    private static final int CHIP_H = 14;
+    private static final int CHIP_GAP = 4;
 
     // Cached suggestion lists
     private static List<String> potionIds = null;
@@ -116,23 +131,47 @@ public class NbtItemEditScreen extends Screen {
         this(parent, itemId, false, currentNbt, onSave);
     }
 
+    /** Single criteria object, for callers whose data has no room for variants. */
     public NbtItemEditScreen(Screen parent, String itemId, boolean tagMode, JsonObject currentNbt, Consumer<JsonObject> onSave) {
+        this(parent, itemId, tagMode, NbtFilter.single(currentNbt), false, filter -> onSave.accept(filter.first()));
+    }
+
+    /**
+     * @param variantsEnabled whether the "OR variant" button is offered. Variants already present
+     *                        are shown and kept either way, so a hand-written file loses nothing.
+     */
+    public NbtItemEditScreen(Screen parent, String itemId, boolean tagMode, NbtFilter current,
+                             boolean variantsEnabled, Consumer<NbtFilter> onSave) {
         super(Component.translatable("editor.historystages.nbt.title"));
         this.parent = parent;
         this.itemId = itemId;
         this.tagMode = tagMode;
-        this.currentNbt = currentNbt;
+        this.current = current != null ? current : NbtFilter.NONE;
+        this.variantsEnabled = variantsEnabled;
         this.onSave = onSave;
+    }
+
+    private List<NbtCriterion> criteria() {
+        return variants.get(active);
+    }
+
+    private NbtFilter filter() {
+        List<JsonObject> alternatives = new ArrayList<>();
+        for (List<NbtCriterion> variant : variants) alternatives.add(NbtCriteriaCodec.write(variant));
+        return NbtFilter.of(alternatives);
     }
 
     @Override
     protected void init() {
         if (!criteriaLoaded) {
-            criteria.addAll(NbtCriteriaCodec.load(currentNbt));
+            for (JsonObject alternative : current.alternatives()) {
+                variants.add(new ArrayList<>(NbtCriteriaCodec.load(alternative)));
+            }
+            if (variants.isEmpty()) variants.add(new ArrayList<>());
             // The baseline is what the criteria write out to, not the file as it was: loading and
             // writing back can differ harmlessly (a number that had been stored as a string), and
             // flagging that as an unsaved change would cry wolf on every open.
-            savedSnapshot = NbtCriteriaCodec.write(criteria);
+            savedSnapshot = filter().toJson();
             criteriaLoaded = true;
         }
         this.card = new CriterionCard(this.font);
@@ -147,13 +186,22 @@ public class NbtItemEditScreen extends Screen {
         this.addRenderableWidget(StyledButton.of(fromItemLabel, btn -> openItemCriteriaPicker(),
                 PADDING + addW + 6, TOOLBAR_Y, fromItemW, TOOLBAR_H));
 
+        int x = PADDING + addW + fromItemW + 12;
+        if (variantsEnabled) {
+            Component variantLabel = Component.translatable("editor.historystages.entity_nbt.add_variant");
+            int variantW = this.font.width(variantLabel) + 16;
+            this.addRenderableWidget(StyledButton.of(variantLabel, btn -> addVariant(),
+                    x, TOOLBAR_Y, variantW, TOOLBAR_H));
+            x += variantW + 6;
+        }
+
         Component jsonLabel = Component.translatable(showJson
                 ? "editor.historystages.nbt.hide_json"
                 : "editor.historystages.nbt.show_json");
         this.addRenderableWidget(StyledButton.of(jsonLabel, btn -> {
             showJson = !showJson;
             rebuild();
-        }, PADDING + addW + fromItemW + 12, TOOLBAR_Y, this.font.width(jsonLabel) + 16, TOOLBAR_H));
+        }, x, TOOLBAR_Y, this.font.width(jsonLabel) + 16, TOOLBAR_H));
 
         this.addRenderableWidget(StyledButton.of(
                 Component.translatable("editor.historystages.back"),
@@ -182,15 +230,15 @@ public class NbtItemEditScreen extends Screen {
     // ==========================================
 
     /**
-     * Recomputes everything that hangs off {@link #criteria}. Called after every change rather
+     * Recomputes everything that hangs off {@link #criteria()}. Called after every change rather
      * than piecemeal, because warnings, card heights, the JSON preview and the scroll extent all
      * depend on each other — updating them separately is how they drift apart.
      */
     private void refresh() {
         revalidate();
         relayout();
-        JsonObject written = NbtCriteriaCodec.write(criteria);
-        dirty = !written.equals(savedSnapshot);
+        JsonElement written = filter().toJson();
+        dirty = written == null ? savedSnapshot != null : !written.equals(savedSnapshot);
         refreshJson(written);
         updateMaxScroll();
     }
@@ -202,15 +250,15 @@ public class NbtItemEditScreen extends Screen {
             return;
         }
         warnings = new NbtCriteriaValidator(this::maxEnchantmentLevel, this::potionExists)
-                .validate(criteria);
+                .validate(criteria());
     }
 
     private void relayout() {
         cards.clear();
         if (card == null) return;
         int width = contentWidth();
-        for (int i = 0; i < criteria.size(); i++) {
-            cards.add(card.layout(criteria.get(i), width, warningsFor(i)));
+        for (int i = 0; i < criteria().size(); i++) {
+            cards.add(card.layout(criteria().get(i), width, warningsFor(i)));
         }
     }
 
@@ -220,13 +268,13 @@ public class NbtItemEditScreen extends Screen {
                 .collect(Collectors.toList());
     }
 
-    private void refreshJson(JsonObject nbt) {
+    private void refreshJson(JsonElement nbt) {
         if (!showJson) {
             jsonLines = List.of();
             jsonScroll = 0;
             return;
         }
-        String text = nbt.size() == 0
+        String text = nbt == null
                 ? Component.translatable("editor.historystages.nbt.json.empty").getString()
                 : new GsonBuilder().setPrettyPrinting().create().toJson(nbt);
         jsonLines = this.font.split(Component.literal(text), jsonPanelWidth() - 16);
@@ -298,12 +346,13 @@ public class NbtItemEditScreen extends Screen {
         smoothScroll.settle((float) scrollOffset, 0.5f);
 
         renderHeader(g);
+        renderChips(g, mouseX, mouseY);
 
         int listTop = listTop();
         int listBottom = listBottom();
         g.enableScissor(0, listTop, this.width, listBottom);
 
-        if (criteria.isEmpty()) {
+        if (criteria().isEmpty()) {
             renderEmptyState(g, listTop, listBottom);
         } else {
             int y = listTop - Math.round(smoothScroll.value());
@@ -324,6 +373,13 @@ public class NbtItemEditScreen extends Screen {
         if (dirty) renderUnsavedMarker(g);
 
         super.render(g, mouseX, mouseY, partialTick);
+
+        if (chipMenu.isVisible()) {
+            g.pose().pushPose();
+            g.pose().translate(0, 0, 300);
+            chipMenu.render(g, this.font, mouseX, mouseY);
+            g.pose().popPose();
+        }
 
         // Lifted onto its own Z layer and dimmed underneath: text is batched and flushed after the
         // picker's panel fills, so the cards and button labels below would otherwise bleed through
@@ -355,11 +411,11 @@ public class NbtItemEditScreen extends Screen {
             g.drawString(this.font, itemId, PADDING + 22, 28, 0x888888);
         }
 
-        String count = criteria.isEmpty()
+        String count = criteria().isEmpty()
                 ? Component.translatable("editor.historystages.nbt.count.none").getString()
-                : criteria.size() == 1
+                : criteria().size() == 1
                         ? Component.translatable("editor.historystages.nbt.count.one").getString()
-                        : Component.translatable("editor.historystages.nbt.count", criteria.size()).getString();
+                        : Component.translatable("editor.historystages.nbt.count", criteria().size()).getString();
         g.drawString(this.font, count, this.width - PADDING - this.font.width(count),
                 TOOLBAR_Y + (TOOLBAR_H - 8) / 2, 0x888888);
 
@@ -415,7 +471,9 @@ public class NbtItemEditScreen extends Screen {
         String subject = tagMode
                 ? "#" + itemId
                 : itemDisplayName();
-        String title = Component.translatable("editor.historystages.nbt.empty.title", subject).getString();
+        String title = variants.size() > 1
+                ? Component.translatable("editor.historystages.entity_nbt.empty.variant").getString()
+                : Component.translatable("editor.historystages.nbt.empty.title", subject).getString();
         String hint = Component.translatable("editor.historystages.nbt.empty.hint").getString();
 
         int centerY = (listTop + listBottom) / 2;
@@ -451,6 +509,11 @@ public class NbtItemEditScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (chipMenu.isVisible()) {
+            chipMenu.mouseClicked(mouseX, mouseY, button);
+            chipMenu.hide();
+            return true;
+        }
         syncPickerState();
         if (pickerOverlay != null) {
             // The picker owns the pointer while it is up: a click outside its panel dismisses it
@@ -466,6 +529,8 @@ public class NbtItemEditScreen extends Screen {
             closeJson();
             return true;
         }
+
+        if (chipClicked(mouseX, mouseY, button)) return true;
 
         int listTop = listTop();
         int listBottom = listBottom();
@@ -493,10 +558,10 @@ public class NbtItemEditScreen extends Screen {
     }
 
     private void handleHit(int index, CriterionCard.Hit hit) {
-        NbtCriterion criterion = criteria.get(index);
+        NbtCriterion criterion = criteria().get(index);
 
         if (hit instanceof CriterionCard.Hit.Remove) {
-            criteria.remove(index);
+            criteria().remove(index);
             refresh();
         } else if (hit instanceof CriterionCard.Hit.ConvertLegacy) {
             convertLegacy(index, (CustomDataCriterion) criterion);
@@ -588,7 +653,7 @@ public class NbtItemEditScreen extends Screen {
 
         NbtPresets.Preset preset = NbtPresets.byComponentId(componentId);
         String presetName = preset == null ? null : preset.nameKey();
-        criteria.set(index, preset != null && preset.valueKind() == ValueKind.TEXT_LIST
+        criteria().set(index, preset != null && preset.valueKind() == ValueKind.TEXT_LIST
                 ? new TextListCriterion(componentId, presetName)
                 : new ComponentCriterion(componentId, preset == null ? "" : preset.defaultValue(), presetName));
         refresh();
@@ -618,7 +683,7 @@ public class NbtItemEditScreen extends Screen {
                     closePicker();
                     addFromSelection(selection);
                 },
-                () -> criteria.stream().map(NbtCriterion::identity).collect(Collectors.toList()));
+                () -> criteria().stream().map(NbtCriterion::identity).collect(Collectors.toList()));
         pickerOverlay = picker;
         picker.show(this.width / 2, this.height / 2, this.width);
     }
@@ -631,26 +696,26 @@ public class NbtItemEditScreen extends Screen {
             if (preset.valueKind() == ValueKind.TEXT_LIST) {
                 TextListCriterion list = new TextListCriterion(id, preset.nameKey());
                 list.lines.add("");
-                criteria.add(list);
+                criteria().add(list);
             } else {
-                criteria.add(new ComponentCriterion(id, preset.defaultValue(), preset.nameKey()));
+                criteria().add(new ComponentCriterion(id, preset.defaultValue(), preset.nameKey()));
             }
 
         } else if (selection.startsWith(SearchableNbtCriterionList.COMPONENT)) {
             String id = selection.substring(SearchableNbtCriterionList.COMPONENT.length());
             NbtPresets.Preset preset = NbtPresets.byComponentId(id);
-            criteria.add(new ComponentCriterion(id, preset == null ? "" : preset.defaultValue(),
+            criteria().add(new ComponentCriterion(id, preset == null ? "" : preset.defaultValue(),
                     preset == null ? null : preset.nameKey()));
 
         } else if (selection.startsWith(SearchableNbtCriterionList.ENCHANTMENTS)) {
             String key = selection.substring(SearchableNbtCriterionList.ENCHANTMENTS.length());
             EnchantmentListCriterion ench = new EnchantmentListCriterion(key);
             ench.lines.add(new EnchantmentListCriterion.Line("", ""));
-            criteria.add(ench);
+            criteria().add(ench);
 
         } else if (selection.startsWith(SearchableNbtCriterionList.CUSTOM_DATA)) {
             this.minecraft.setScreen(new CustomNbtInputScreen(this, (key, value) -> {
-                criteria.add(new CustomDataCriterion(key, value, NbtPresets.isLegacyKey(key)));
+                criteria().add(new CustomDataCriterion(key, value, NbtPresets.isLegacyKey(key)));
                 refresh();
             }));
             return;
@@ -702,12 +767,12 @@ public class NbtItemEditScreen extends Screen {
                 List.copyOf(byIdentity.values()),
                 identity -> {
                     NbtCriterion picked = byIdentity.get(identity);
-                    if (picked != null && criteria.stream().noneMatch(c -> c.identity().equals(identity))) {
-                        criteria.add(picked);
+                    if (picked != null && criteria().stream().noneMatch(c -> c.identity().equals(identity))) {
+                        criteria().add(picked);
                     }
                     refresh();
                 },
-                () -> criteria.stream().map(NbtCriterion::identity).collect(Collectors.toList()));
+                () -> criteria().stream().map(NbtCriterion::identity).collect(Collectors.toList()));
 
         pickerOverlay = list;
         list.show(this.width / 2, this.height / 2, this.width);
@@ -839,6 +904,10 @@ public class NbtItemEditScreen extends Screen {
             closeJson();
             return true;
         }
+        if (chipMenu.isVisible() && keyCode == GLFW.GLFW_KEY_ESCAPE) {
+            chipMenu.hide();
+            return true;
+        }
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
@@ -883,21 +952,122 @@ public class NbtItemEditScreen extends Screen {
      * they are guesses about registries this client happens to know, not errors.
      */
     private void saveNbt() {
-        JsonObject nbt = NbtCriteriaCodec.write(criteria);
-        onSave.accept(nbt.size() == 0 ? null : nbt);
-        savedSnapshot = nbt;
-        dirty = false;
+        // An empty variant would match every stack and quietly cancel out all the others.
+        variants.removeIf(List::isEmpty);
+        if (variants.isEmpty()) variants.add(new ArrayList<>());
+        active = Math.min(active, variants.size() - 1);
+
+        NbtFilter filter = filter();
+        onSave.accept(filter);
+        savedSnapshot = filter.toJson();
+        refresh();
     }
 
+    /**
+     * Clears the variant on screen. With more than one variant the variant itself goes too, for
+     * the same reason save drops empty ones.
+     */
     private void confirmClearAll() {
-        if (criteria.isEmpty()) return;
+        if (criteria().isEmpty() && variants.size() == 1) return;
         this.minecraft.setScreen(new ConfirmDialog(this,
                 Component.translatable("editor.historystages.nbt.clear_all.confirm.title"),
-                Component.translatable("editor.historystages.nbt.clear_all.confirm.message", criteria.size()),
+                Component.translatable("editor.historystages.nbt.clear_all.confirm.message", criteria().size()),
                 () -> {
-                    criteria.clear();
+                    if (variants.size() > 1) {
+                        variants.remove(active);
+                        active = Math.min(active, variants.size() - 1);
+                    } else {
+                        criteria().clear();
+                    }
                     refresh();
                 }));
+    }
+
+    // ==========================================
+    // Variants
+    // ==========================================
+
+    private void addVariant() {
+        variants.add(new ArrayList<>());
+        switchTo(variants.size() - 1);
+    }
+
+    private void switchTo(int index) {
+        active = index;
+        scrollOffset = 0;
+        smoothScroll.set(0);
+        refresh();
+    }
+
+    /** Drops one variant and keeps the one on screen selected, unless it was the one removed. */
+    private void removeVariant(int index) {
+        if (variants.size() <= 1) return;
+        variants.remove(index);
+        if (index < active || active >= variants.size()) active = Math.max(0, active - 1);
+        scrollOffset = 0;
+        smoothScroll.set(0);
+        refresh();
+    }
+
+    private String chipLabel(int index) {
+        return Component.translatable("editor.historystages.entity_nbt.variant", index + 1).getString();
+    }
+
+    private int chipWidth(int index) {
+        return this.font.width(chipLabel(index)) + 10;
+    }
+
+    /** Left edge of each variant chip, right-aligned in the header. Only drawn with two or more. */
+    private int[] chipXs() {
+        int[] xs = new int[variants.size()];
+        int x = this.width - PADDING;
+        for (int i = variants.size() - 1; i >= 0; i--) {
+            x -= chipWidth(i);
+            xs[i] = x;
+            x -= CHIP_GAP;
+        }
+        return xs;
+    }
+
+    private void renderChips(GuiGraphics g, int mouseX, int mouseY) {
+        if (variants.size() < 2) return;
+        int[] xs = chipXs();
+        String label = Component.translatable("editor.historystages.entity_nbt.variants_label").getString();
+        g.drawString(this.font, label, xs[0] - 6 - this.font.width(label), CHIP_Y + 3, 0x888888);
+        for (int i = 0; i < variants.size(); i++) {
+            int w = chipWidth(i);
+            boolean selected = i == active;
+            boolean hovered = !selected && mouseX >= xs[i] && mouseX < xs[i] + w
+                    && mouseY >= CHIP_Y && mouseY < CHIP_Y + CHIP_H;
+            int border = selected ? 0xFFFFCC00 : hovered ? 0xFF6A6A6A : 0xFF3A3A3A;
+            g.fill(xs[i], CHIP_Y, xs[i] + w, CHIP_Y + CHIP_H, border);
+            g.fill(xs[i] + 1, CHIP_Y + 1, xs[i] + w - 1, CHIP_Y + CHIP_H - 1,
+                    selected ? 0xFF2A2410 : 0xFF181818);
+            g.drawString(this.font, chipLabel(i), xs[i] + 5, CHIP_Y + 3,
+                    selected ? 0xFFCC00 : 0xAAAAAA);
+        }
+    }
+
+    /** Left click switches variant, right click offers removal. False when no chip was hit. */
+    private boolean chipClicked(double mouseX, double mouseY, int button) {
+        if (variants.size() < 2 || mouseY < CHIP_Y || mouseY >= CHIP_Y + CHIP_H) return false;
+        int[] xs = chipXs();
+        for (int i = 0; i < xs.length; i++) {
+            if (mouseX < xs[i] || mouseX >= xs[i] + chipWidth(i)) continue;
+            if (button == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
+                int index = i;
+                chipMenu = new ContextMenu();
+                chipMenu.addEntry(Component.translatable(
+                        "editor.historystages.entity_nbt.variant.remove").getString(),
+                        () -> removeVariant(index));
+                chipMenu.show((int) mouseX, (int) mouseY, this.font);
+            } else if (i != active) {
+                playClick();
+                switchTo(i);
+            }
+            return true;
+        }
+        return false;
     }
 
     // ==========================================

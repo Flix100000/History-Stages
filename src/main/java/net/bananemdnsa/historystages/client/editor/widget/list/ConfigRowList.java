@@ -287,6 +287,15 @@ public class ConfigRowList {
                 guiGraphics.drawString(font, display, controlX, y + 8,
                         listHovered ? 0xFFCC00 : 0xDDDDDD, false);
             }
+            case VIEWER_CATEGORIES -> {
+                int count = entry.value.isBlank() ? 0 : entry.value.split(";").length;
+                String display = Component.translatable(
+                        "editor.historystages.config.viewer_categories_summary", count).getString();
+                boolean listHovered = mouseX >= controlX && mouseX <= right - 5
+                        && mouseY >= y + 2 && mouseY < y + ENTRY_HEIGHT - 2;
+                guiGraphics.drawString(font, display, controlX, y + 8,
+                        listHovered ? 0xFFCC00 : 0xDDDDDD, false);
+            }
             case BOOSTER_LIST -> {
                 int count = entry.value.isEmpty() ? 0 : entry.value.split(";").length;
                 String display = "[" + count + " boosters] §7(click to edit)";

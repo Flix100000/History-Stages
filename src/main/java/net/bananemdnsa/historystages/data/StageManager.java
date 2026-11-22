@@ -90,7 +90,7 @@ public class StageManager {
 
     private static final Set<String> KNOWN_KEYS = Set.of(
             "display_name", "research_time", "items", "fluids", "enchantments", "effects", "tags", "mods",
-            "mod_exceptions", "recipes", "dimensions", "structures", "biomes", "zones", "entities", "trades",
+            "mod_exceptions", "recipes", "dimensions", "structures", "biomes", "crops", "slots", "zones", "entities", "trades",
             "dependencies", "icon",
             "min_pedestal_tier", "pedestal_tier_mode",
             "mode", "auto_trigger", "lock_trigger", "notify", "temporary", "hidden_display", "lose_on_death", "share_with_team", "interchangeable", "logic",
@@ -112,6 +112,9 @@ public class StageManager {
     );
     private static final Set<String> KNOWN_BIOME_KEYS = Set.of(
             "biomes", "mod_linked"
+    );
+    private static final Set<String> KNOWN_CROP_KEYS = Set.of(
+            "crops", "mod_linked"
     );
     /**
      * The union of every category's vocabulary, because this set is used to spot a typo in a
@@ -585,6 +588,15 @@ public class StageManager {
                     }
                 }
             }
+            if (json.has("crops") && json.get("crops").isJsonObject()) {
+                JsonObject crops = json.getAsJsonObject("crops");
+                for (String key : crops.keySet()) {
+                    if (!KNOWN_CROP_KEYS.contains(key)) {
+                        addMessage(MessageLevel.WARN, "Unknown crops key '" + key + "' in stage '" + stageId + "'. Typo?");
+                        DebugLogger.warn("Unknown Keys", "Unknown key 'crops." + key + "' in stage '" + stageId + "'. Known crops keys: " + KNOWN_CROP_KEYS + ".");
+                    }
+                }
+            }
             if (json.has("hidden_display") && json.get("hidden_display").isJsonObject()) {
                 JsonObject hd = json.getAsJsonObject("hidden_display");
                 for (String key : hd.keySet()) {
@@ -617,6 +629,7 @@ public class StageManager {
             DebugLogger.warn("Missing Fields", "Stage '" + stageId + "' has no 'display_name' set. It will show as 'Unknown Stage'.");
         }
 
+        cleanSlotLocks(stageId, entry, false);
         trimDependencyGroups(stageId, entry);
         assignDependencyGroupIds(stageId, entry);
         warnAboutScopeMismatches(stageId, entry, StageScope.GLOBAL);
@@ -1268,6 +1281,8 @@ public class StageManager {
             // longer mode=temporary (e.g. mode flipped via the editor).
             net.bananemdnsa.historystages.data.saveddata.TemporaryStageData.get(server.overworld())
                     .pruneOrphans(temporaryStageIds());
+            // A slot lock saved in the editor takes effect on everyone online right away.
+            net.bananemdnsa.historystages.util.lock.SlotLockSweeper.sweepAll(server);
         }
     }
 
@@ -1727,6 +1742,13 @@ public class StageManager {
         return false;
     }
 
+    private static void cleanSlotLocks(String stageId, StageEntry entry, boolean individual) {
+        for (String msg : net.bananemdnsa.historystages.data.lock.SlotLockValidation.clean(stageId, entry, individual)) {
+            addMessage(MessageLevel.WARN, msg);
+            DebugLogger.warn("Slot Locks", msg);
+        }
+    }
+
     private static void stripUnsupportedIndividualCategories(String stageId, StageEntry entry) {
         if (entry.getEntities().getSpawnlock() != null && !entry.getEntities().getSpawnlock().isEmpty()) {
             String msg = "Individual stage '" + stageId + "' contains 'entities.spawnlock' — not supported for individual stages. Entries removed.";
@@ -1739,6 +1761,15 @@ public class StageManager {
             addMessage(MessageLevel.WARN, msg);
             DebugLogger.warn("Individual Stage Loading", msg);
             entry.setFixedSpawnRule(null);
+        }
+        if (!entry.getCrops().isEmpty()) {
+            // Plants grow in random ticks with no player attached, so a per-player gate has
+            // nobody to ask.
+            String msg = "Individual stage '" + stageId + "' contains 'crops' — plant locks are only supported for global stages. Removed.";
+            addMessage(MessageLevel.WARN, msg);
+            DebugLogger.warn("Individual Stage Loading", msg);
+            entry.setCrops(null);
+            entry.setCropModLinked(null);
         }
     }
 
@@ -1810,6 +1841,7 @@ public class StageManager {
             DebugLogger.warn("Re-lock", msg);
         }
         validateLockTriggers(stageId, entry);
+        cleanSlotLocks(stageId, entry, true);
 
         trimDependencyGroups(stageId, entry);
         assignDependencyGroupIds(stageId, entry);

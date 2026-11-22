@@ -7,7 +7,9 @@ import java.util.Map;
 
 import net.bananemdnsa.historystages.data.ItemEntry;
 import net.bananemdnsa.historystages.data.StageEntry;
+import net.bananemdnsa.historystages.data.lock.EntityAttackLockEntry;
 import net.bananemdnsa.historystages.data.lock.EntityInteractionLockEntry;
+import net.bananemdnsa.historystages.data.NbtFilter;
 import net.bananemdnsa.historystages.data.lock.EntityLocks;
 import net.bananemdnsa.historystages.data.lock.EntitySpawnLockEntry;
 
@@ -22,6 +24,8 @@ import net.bananemdnsa.historystages.data.lock.EntitySpawnLockEntry;
 public final class EntityTabsState {
 
     private final List<String> attacklock = new ArrayList<>();
+    /** NBT filters on attack rows; a missing id means "every entity of this type". */
+    private final Map<String, NbtFilter> attackNbt = new HashMap<>();
 
     private final List<String> spawnlock = new ArrayList<>();
     /** Only entries that differ from a plain lock; a missing id means "block every spawn". */
@@ -30,6 +34,7 @@ public final class EntityTabsState {
     private final List<String> interactionlock = new ArrayList<>();
     private final Map<String, List<String>> interactionActions = new HashMap<>();
     private final Map<String, List<ItemEntry>> interactionItems = new HashMap<>();
+    private final Map<String, NbtFilter> interactionNbt = new HashMap<>();
 
     private final List<String> modLinked = new ArrayList<>();
 
@@ -57,6 +62,21 @@ public final class EntityTabsState {
         return interactionItems;
     }
 
+    public Map<String, NbtFilter> attackNbt() {
+        return attackNbt;
+    }
+
+    public Map<String, NbtFilter> interactionNbt() {
+        return interactionNbt;
+    }
+
+    /** The NBT filter map behind one of the row lists, or null for the spawn list (no filters). */
+    public Map<String, NbtFilter> nbtFor(List<String> rows) {
+        if (rows == attacklock) return attackNbt;
+        if (rows == interactionlock) return interactionNbt;
+        return null;
+    }
+
     /** Entries contributed by a mod selection, across all three lists — the data keeps one list. */
     public List<String> modLinked() {
         return modLinked;
@@ -66,7 +86,11 @@ public final class EntityTabsState {
         EntityLocks locks = stage.getEntities();
 
         attacklock.clear();
-        attacklock.addAll(locks.getAttacklock());
+        attackNbt.clear();
+        for (EntityAttackLockEntry entry : locks.getAttacklockEntries()) {
+            attacklock.add(entry.getId());
+            if (entry.hasNbt()) attackNbt.put(entry.getId(), entry.getNbt());
+        }
 
         spawnlock.clear();
         spawnRules.clear();
@@ -78,8 +102,10 @@ public final class EntityTabsState {
         interactionlock.clear();
         interactionActions.clear();
         interactionItems.clear();
+        interactionNbt.clear();
         for (EntityInteractionLockEntry entry : locks.getInteractionlock()) {
             interactionlock.add(entry.getId());
+            if (entry.hasNbt()) interactionNbt.put(entry.getId(), entry.getNbt());
             if (entry.getLockActions() != null) {
                 interactionActions.put(entry.getId(), new ArrayList<>(entry.getLockActions()));
             }
@@ -102,12 +128,17 @@ public final class EntityTabsState {
      */
     public void store(StageEntry stage) {
         EntityLocks locks = new EntityLocks();
-        locks.setAttacklock(new ArrayList<>(attacklock));
+        List<EntityAttackLockEntry> attackEntries = new ArrayList<>();
+        for (String entityId : attacklock) {
+            attackEntries.add(new EntityAttackLockEntry(entityId, attackNbt.get(entityId)));
+        }
+        locks.setAttacklockEntries(attackEntries);
 
         List<EntityInteractionLockEntry> interactionEntries = new ArrayList<>();
         for (String entityId : interactionlock) {
             interactionEntries.add(new EntityInteractionLockEntry(
-                    entityId, interactionActions.get(entityId), interactionItems.get(entityId)));
+                    entityId, interactionActions.get(entityId), interactionItems.get(entityId),
+                    interactionNbt.get(entityId)));
         }
         locks.setInteractionlock(interactionEntries);
 
@@ -127,9 +158,12 @@ public final class EntityTabsState {
         String entityId = rows.remove(index);
         if (rows == spawnlock) {
             spawnRules.remove(entityId);
+        } else if (rows == attacklock) {
+            attackNbt.remove(entityId);
         } else if (rows == interactionlock) {
             interactionActions.remove(entityId);
             interactionItems.remove(entityId);
+            interactionNbt.remove(entityId);
         }
     }
 }

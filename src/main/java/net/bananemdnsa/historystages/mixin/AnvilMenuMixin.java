@@ -65,11 +65,16 @@ public abstract class AnvilMenuMixin {
                 player.getUUID());
         if (locked == null) return;
 
+        // Taken before the slot is cleared: the message names the item and resolves the stage
+        // against the same item id the check above used.
+        ItemStack refused = result.copy();
         self.getSlot(self.getResultSlot()).set(ItemStack.EMPTY);
         this.cost.set(0);
         DebugLogger.runtimeThrottled(HsRuntimeCategories.ENCHANTMENT_LOCK, "anvil_" + player.getUUID(),
                 "<" + player.getName().getString() + "> Anvil blocked: enchantment " + locked + " is locked");
-        LockFeedback.sendActionbar(player, "anvil", LockMessages.enchantmentLocked());
+        int split = locked.lastIndexOf(' ');
+        LockFeedback.sendActionbar(player, "anvil", LockMessages.enchantmentLocked(player,
+                locked.substring(0, split), Integer.parseInt(locked.substring(split + 1)), "anvil", refused));
     }
 
     @Unique

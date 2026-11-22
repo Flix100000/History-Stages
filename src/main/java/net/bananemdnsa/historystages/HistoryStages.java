@@ -300,6 +300,11 @@ public class HistoryStages {
     @SubscribeEvent
     public void onRegisterCommands(RegisterCommandsEvent event) {
         StageCommand.register(event.getDispatcher());
+        // A measuring tool, not something a player or pack should have: only in the dev runs.
+        // The settings it overrides live in gameplay.toml [advanced] for everyone else.
+        if (!net.minecraftforge.fml.loading.FMLEnvironment.production) {
+            net.bananemdnsa.historystages.commands.ReloadLabCommand.register(event.getDispatcher());
+        }
     }
 
     @SubscribeEvent
@@ -332,6 +337,9 @@ public class HistoryStages {
                     "Synced " + StageManager.getStages().size() + " stage definitions, "
                             + data.getUnlockedStages().size() + " unlocked stages"
                             + ", " + individualData.getUnlockedStages(player.getUUID()).size() + " individual stages");
+
+            net.bananemdnsa.historystages.util.lock.StageLockHelper.dropOwedRevokeItems(player);
+            net.bananemdnsa.historystages.util.lock.SlotLockSweeper.sweep(player);
 
             // Log locked items in player inventory
             logLockedInventoryItems(player);
@@ -442,6 +450,11 @@ public class HistoryStages {
         serverInitialized = false;
         // Rolled from the trade hooks this server registered; the next one may register others.
         net.bananemdnsa.historystages.data.lock.TradeGoodsScanner.clearCache();
+        net.bananemdnsa.historystages.reload.BackgroundReload.forget();
+        net.bananemdnsa.historystages.reload.ReloadStats.forget();
+        net.bananemdnsa.historystages.reload.ReloadBench.stop();
+        // After the bench: stopping it puts its mode back, which would outlive the world.
+        net.bananemdnsa.historystages.reload.LightReload.forgetOverrides();
         DebugLogger.runtime(HsRuntimeCategories.SERVER, "Server stopping — flushing runtime log");
         DebugLogger.flushRuntimeBuffer();
     }
@@ -458,11 +471,13 @@ public class HistoryStages {
         tickCounter++;
 
         // Before anything below can unlock a stage, or the change would already be part of the
-        // baseline it is about to be compared against.
+        // baseline it is about to be compared against. Ungated: on 1.20.1 getRecipes() is already
+        // filtered, and a baseline taken from it holds no locked recipe, so the next change always
+        // looked like one and set off a reload.
         if (event.getServer() != null
                 && net.bananemdnsa.historystages.data.lock.VisibleRecipes.gatedSetNeedsSeeding()) {
             net.bananemdnsa.historystages.data.lock.VisibleRecipes.seedGatedSet(
-                    event.getServer().getRecipeManager().getRecipes());
+                    net.bananemdnsa.historystages.data.lock.UngatedRecipes.of(event.getServer().getRecipeManager()));
         }
 
         net.bananemdnsa.historystages.events.AutoTriggerEventBridge.pollPlayers(event.getServer(), tickCounter);
@@ -501,7 +516,9 @@ public class HistoryStages {
         // it here rather than where it was asked for turns a bundle of unlocks into one piece of
         // work, and keeps it out of the middle of whatever else was ticking.
         if (event.getServer() != null) {
+            net.bananemdnsa.historystages.reload.ReloadBench.onTick(event.getServer());
             net.bananemdnsa.historystages.network.PacketHandler.runRequestedLockReload(event.getServer());
+            net.bananemdnsa.historystages.reload.ReloadStats.onTick();
         }
     }
 

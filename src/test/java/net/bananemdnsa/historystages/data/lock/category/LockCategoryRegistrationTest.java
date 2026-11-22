@@ -35,8 +35,8 @@ class LockCategoryRegistrationTest {
     }
 
     @Test
-    void theEighteenBuiltInsAreThereBeforeAnyoneRegisters() {
-        assertEquals(18, LockCategories.all().size());
+    void theTwentyBuiltInsAreThereBeforeAnyoneRegisters() {
+        assertEquals(20, LockCategories.all().size());
         assertNotNull(LockCategories.byId("historystages:items"));
     }
 
@@ -45,7 +45,7 @@ class LockCategoryRegistrationTest {
         LockCategories.register(tradeCategory("mymod:villagertrades"));
 
         assertNotNull(LockCategories.byId("mymod:villagertrades"));
-        assertEquals(19, LockCategories.all().size());
+        assertEquals(21, LockCategories.all().size());
     }
 
     @Test
@@ -105,7 +105,7 @@ class LockCategoryRegistrationTest {
         LockCategories.resetForTesting();
 
         assertTrue(!LockCategories.isFrozen());
-        assertEquals(18, LockCategories.all().size());
+        assertEquals(20, LockCategories.all().size());
     }
 
     @Test

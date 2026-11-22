@@ -72,5 +72,19 @@ public record SyncVisualConfigPacket(Map<String, String> values) {
         // saved first. Safe to call from here: unlike the common config's apply path, this one only
         // ever runs client-side.
         net.bananemdnsa.historystages.client.editor.ConfigEditorScreen.onVisualConfigSynced();
+
+        // The viewers have to be brought up to date here and not when the editor saves: the save
+        // goes to the server first, so at that moment the client still holds the old values, and
+        // switching hiding on or off left JEI and EMI as they were until the next /reload.
+        if (net.minecraftforge.fml.ModList.get().isLoaded("jei")) {
+            try {
+                net.bananemdnsa.historystages.compat.jei.JEIPlugin.tryApplyDiff();
+            } catch (Throwable ignored) {}
+        }
+        if (net.minecraftforge.fml.ModList.get().isLoaded("emi")) {
+            try {
+                net.bananemdnsa.historystages.compat.emi.EmiReloadBridge.reloadIfViewerSettingsChanged();
+            } catch (Throwable ignored) {}
+        }
     }
 }

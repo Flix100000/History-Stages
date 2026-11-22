@@ -13,21 +13,28 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
 
+/**
+ * A dimension or mob lock, told to the player it refused. {@code subjectId} is the dimension or
+ * entity type id, for the {dimension} and {mob} placeholders.
+ */
 public class LockFeedbackPacket {
 
     public static final byte KIND_DIMENSION = 0;
     public static final byte KIND_MOB = 1;
 
     private final byte kind;
+    private final String subjectId;
     private final List<String> displayNames;
 
-    public LockFeedbackPacket(byte kind, List<String> displayNames) {
+    public LockFeedbackPacket(byte kind, String subjectId, List<String> displayNames) {
         this.kind = kind;
+        this.subjectId = subjectId;
         this.displayNames = displayNames;
     }
 
     public static void encode(LockFeedbackPacket msg, FriendlyByteBuf buffer) {
         buffer.writeByte(msg.kind);
+        buffer.writeUtf(msg.subjectId);
         buffer.writeVarInt(msg.displayNames.size());
         for (String name : msg.displayNames) {
             buffer.writeUtf(name);
@@ -36,12 +43,13 @@ public class LockFeedbackPacket {
 
     public static LockFeedbackPacket decode(FriendlyByteBuf buffer) {
         byte kind = buffer.readByte();
+        String subjectId = buffer.readUtf();
         int size = buffer.readVarInt();
         List<String> names = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
             names.add(buffer.readUtf());
         }
-        return new LockFeedbackPacket(kind, names);
+        return new LockFeedbackPacket(kind, subjectId, names);
     }
 
     public static void handle(LockFeedbackPacket msg, Supplier<NetworkEvent.Context> ctx) {
@@ -84,8 +92,8 @@ public class LockFeedbackPacket {
 
             if (useActionbar) {
                 MutableComponent actionbarMsg = isDimension
-                        ? net.bananemdnsa.historystages.util.lock.LockMessages.dimensionUnknown()
-                        : net.bananemdnsa.historystages.util.lock.LockMessages.mobUnknown();
+                        ? net.bananemdnsa.historystages.util.lock.LockMessages.dimensionUnknown(msg.subjectId, msg.displayNames)
+                        : net.bananemdnsa.historystages.util.lock.LockMessages.mobUnknown(msg.subjectId, msg.displayNames);
                 mc.player.displayClientMessage(
                         actionbarMsg.withStyle(ChatFormatting.DARK_RED, ChatFormatting.ITALIC),
                         true

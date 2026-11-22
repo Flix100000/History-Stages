@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.data.lock;
 
+import net.bananemdnsa.historystages.data.NbtFilter;
 import com.google.gson.*;
 import com.google.gson.internal.Streams;
 import com.google.gson.stream.JsonReader;
@@ -41,8 +42,9 @@ public class EntityInteractionLockEntryListAdapter extends TypeAdapter<List<Enti
             }
             boolean hasActionFilter = !unlockedActions.isEmpty();
             boolean hasItemFilter = entry.hasLockItems();
+            JsonElement nbt = entry.getNbt().toJson();
 
-            if (!hasActionFilter && !hasItemFilter) {
+            if (!hasActionFilter && !hasItemFilter && nbt == null) {
                 out.value(entry.getId());
                 continue;
             }
@@ -64,11 +66,15 @@ public class EntityInteractionLockEntryListAdapter extends TypeAdapter<List<Enti
                         out.beginObject();
                         out.name("id").value(item.getId());
                         out.name("nbt");
-                        Streams.write(item.getNbt(), out);
+                        Streams.write(item.getNbtFilter().toJson(), out);
                         out.endObject();
                     }
                 }
                 out.endArray();
+            }
+            if (nbt != null) {
+                out.name("nbt");
+                Streams.write(nbt, out);
             }
             out.endObject();
         }
@@ -114,12 +120,13 @@ public class EntityInteractionLockEntryListAdapter extends TypeAdapter<List<Enti
                         } else if (el.isJsonObject()) {
                             JsonObject itemObj = el.getAsJsonObject();
                             String itemId = itemObj.has("id") ? itemObj.get("id").getAsString() : "";
-                            JsonObject nbt = itemObj.has("nbt") ? itemObj.getAsJsonObject("nbt") : null;
-                            lockItems.add(new ItemEntry(itemId, nbt));
+                            lockItems.add(ItemEntry.withFilter(itemId,
+                                    NbtFilter.fromJsonStrict(itemObj.get("nbt")), null, null, null));
                         }
                     }
                 }
-                entries.add(new EntityInteractionLockEntry(id, lockActions, lockItems));
+                entries.add(new EntityInteractionLockEntry(id, lockActions, lockItems,
+                        NbtFilter.fromJson(obj.get("nbt"))));
             }
         }
         in.endArray();

@@ -6,6 +6,7 @@ import java.util.List;
 import net.bananemdnsa.historystages.HistoryStages;
 import com.google.gson.JsonObject;
 import net.bananemdnsa.historystages.data.ItemEntry;
+import net.bananemdnsa.historystages.data.NbtFilter;
 import net.bananemdnsa.historystages.data.lock.NamedLockEntry;
 import net.bananemdnsa.historystages.data.lock.engine.StageLocks;
 import net.bananemdnsa.historystages.api.stage.StageScope;
@@ -231,6 +232,70 @@ public final class LockTests {
             if (!StageLockHelper.isItemLockedForPlayer(tagged, player.getUUID())) {
                 helper.fail("the tagged sword matches the stage's NBT criterion and must be "
                         + "locked — it was answered from the plain sword's result");
+                return;
+            }
+            helper.succeed();
+        } finally {
+            GameTestStages.removeAll();
+        }
+    }
+
+    /** Two NBT variants on one entry, the Tinkers' "parts of cobalt or manyullyn" case. */
+    private static NbtFilter materialVariants() {
+        return NbtFilter.fromJson(com.google.gson.JsonParser.parseString(
+                "[{\"Material\":\"cobalt\"},{\"Material\":\"manyullyn\"}]"));
+    }
+
+    private static ItemStack withMaterial(net.minecraft.world.item.Item item, String material) {
+        ItemStack stack = new ItemStack(item);
+        if (material != null) {
+            CompoundTag tag = new CompoundTag();
+            tag.putString("Material", material);
+            stack.setTag(tag);
+        }
+        return stack;
+    }
+
+    /** Both variants locked, a third material and the bare item free. Null when it holds. */
+    private static String checkVariants(net.minecraft.world.item.Item item, ServerPlayer player) {
+        for (String material : new String[]{"cobalt", "manyullyn"}) {
+            if (!StageLockHelper.isItemLockedForPlayer(withMaterial(item, material), player.getUUID())) {
+                return material + " matches one of the two variants and must be locked";
+            }
+        }
+        if (StageLockHelper.isItemLockedForPlayer(withMaterial(item, "iron"), player.getUUID())) {
+            return "iron matches neither variant and must stay free";
+        }
+        if (StageLockHelper.isItemLockedForPlayer(withMaterial(item, null), player.getUUID())) {
+            return "an item without data matches neither variant and must stay free";
+        }
+        return null;
+    }
+
+    @GameTest(template = "empty")
+    public static void anItemEntryWithTwoNbtVariantsLocksBothAndNotAThird(GameTestHelper helper) {
+        try {
+            GameTestStages.global("nbt_variants_item", stage -> stage.setItemEntries(new ArrayList<>(List.of(
+                    ItemEntry.withFilter("minecraft:paper", materialVariants(), null, null, null)))));
+            String problem = checkVariants(Items.PAPER, GameTestPlayers.create(helper));
+            if (problem != null) {
+                helper.fail(problem);
+                return;
+            }
+            helper.succeed();
+        } finally {
+            GameTestStages.removeAll();
+        }
+    }
+
+    @GameTest(template = "empty")
+    public static void aTagEntryWithTwoNbtVariantsLocksBothAndNotAThird(GameTestHelper helper) {
+        try {
+            GameTestStages.global("nbt_variants_tag", stage -> stage.setTagEntries(new ArrayList<>(List.of(
+                    NamedLockEntry.withFilter("minecraft:bookshelf_books", null, null, null, materialVariants())))));
+            String problem = checkVariants(Items.BOOK, GameTestPlayers.create(helper));
+            if (problem != null) {
+                helper.fail(problem);
                 return;
             }
             helper.succeed();
@@ -521,6 +586,53 @@ public final class LockTests {
             return;
         }
         helper.succeed();
+    }
+
+    // An NBT filter on entity locks is checked against the entity's real saved data, which a unit
+    // test cannot produce. A stage locks oak boats only; a birch boat must stay free.
+
+    @GameTest(template = "empty")
+    public static void anEntityNbtFilterLocksOnlyMatchingBoats(GameTestHelper helper) {
+        try {
+            com.google.gson.JsonObject oak = new com.google.gson.JsonObject();
+            oak.addProperty("Type", "oak");
+            var filter = net.bananemdnsa.historystages.data.NbtFilter.of(List.of(oak));
+            GameTestStages.global("oak_boats", stage -> {
+                stage.getEntities().setInteractionlock(new ArrayList<>(List.of(
+                        new net.bananemdnsa.historystages.data.lock.EntityInteractionLockEntry(
+                                "minecraft:boat", null, null, filter))));
+                stage.getEntities().setAttacklockEntries(List.of(
+                        new net.bananemdnsa.historystages.data.lock.EntityAttackLockEntry("minecraft:boat", filter)));
+            });
+
+            var oakBoat = helper.spawn(net.minecraft.world.entity.EntityType.BOAT, 1, 2, 1);
+            oakBoat.setVariant(net.minecraft.world.entity.vehicle.Boat.Type.OAK);
+            var birchBoat = helper.spawn(net.minecraft.world.entity.EntityType.BOAT, 3, 2, 1);
+            birchBoat.setVariant(net.minecraft.world.entity.vehicle.Boat.Type.BIRCH);
+
+            var engine = StageLocks.engine();
+            var oakMatches = net.bananemdnsa.historystages.data.lock.EntityNbt.matcherFor(oakBoat);
+            var birchMatches = net.bananemdnsa.historystages.data.lock.EntityNbt.matcherFor(birchBoat);
+
+            if (engine.gatingStagesForEntityInteraction("minecraft:boat", "mount", ItemStack.EMPTY,
+                    oakMatches, StageScope.GLOBAL).isEmpty()) {
+                helper.fail("the oak boat matches the filter, but mounting it was not locked");
+                return;
+            }
+            if (!engine.gatingStagesForEntityInteraction("minecraft:boat", "mount", ItemStack.EMPTY,
+                    birchMatches, StageScope.GLOBAL).isEmpty()) {
+                helper.fail("the birch boat does not match the filter, but mounting it was locked");
+                return;
+            }
+            if (engine.gatingStagesForEntityAttack("minecraft:boat", oakMatches, StageScope.GLOBAL).isEmpty()
+                    || !engine.gatingStagesForEntityAttack("minecraft:boat", birchMatches, StageScope.GLOBAL).isEmpty()) {
+                helper.fail("the attack lock did not follow the NBT filter");
+                return;
+            }
+            helper.succeed();
+        } finally {
+            GameTestStages.removeAll();
+        }
     }
 
     /** An individual stage locking the whole {@code minecraft} namespace, for the named actions. */

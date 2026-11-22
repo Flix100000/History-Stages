@@ -10,6 +10,7 @@ import java.util.function.Function;
 
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.api.stage.StageScope;
+import net.bananemdnsa.historystages.data.lock.EntityAttackLockEntry;
 import net.bananemdnsa.historystages.data.lock.EntityInteractionLockEntry;
 import net.bananemdnsa.historystages.data.lock.NamedLockEntry;
 import net.bananemdnsa.historystages.data.lock.EntitySpawnLockEntry;
@@ -127,7 +128,11 @@ final class BuiltInLockCategories {
                 StageEntry::getBiomes, StageEntry::setBiomes,
                 StageEntry::getBiomes, ID_EQUALS, StageEntry::getBiomes));
 
+        categories.add(new CropLock());
+
         categories.add(new ZoneLock());
+
+        categories.add(new SlotLock());
 
         return categories;
     }
@@ -379,6 +384,27 @@ final class BuiltInLockCategories {
                     enchantments ? item.contents().allEnchantments() : item.contents().effects(),
                     item.itemId());
         }
+
+        /**
+         * {@link #matches} has no stage, so it cannot see the actions the stage settings fix.
+         * Every engine check comes through here, and here they are applied.
+         */
+        @Override
+        public boolean gates(StageEntry stage, Object subject) {
+            if (!(subject instanceof LockSubjects.ItemSubject item)) return false;
+            var carried = enchantments ? item.contents().allEnchantments() : item.contents().effects();
+            if (carried.isEmpty()) return false;
+            for (net.bananemdnsa.historystages.data.LevelledLockEntry entry : read(stage)) {
+                List<String> actions = enchantments
+                        ? stage.effectiveEnchantmentLockActions(entry.getLockActions())
+                        : stage.effectiveEffectLockActions(entry.getLockActions());
+                if (net.bananemdnsa.historystages.data.lock.engine.LevelledMatching.locksItem(
+                        entry, actions, carried, item.itemId())) {
+                    return true;
+                }
+            }
+            return false;
+        }
     }
 
     /**
@@ -440,8 +466,30 @@ final class BuiltInLockCategories {
 
         @Override public String dualPhaseLabel() { return "attacklock entity"; }
 
+        /**
+         * A bare id matches only entries without an NBT filter: whether a filtered entry applies
+         * cannot be told without the entity. {@link #gates} is where filters are honoured.
+         */
         @Override public boolean matches(String entry, Object subject) {
             return subject instanceof String entityId && entry.equals(entityId);
+        }
+
+        @Override public boolean gates(StageEntry stage, Object subject) {
+            String entityId;
+            java.util.function.Predicate<com.google.gson.JsonObject> targetMatches;
+            if (subject instanceof LockSubjects.AttackSubject attack) {
+                entityId = attack.entityId();
+                targetMatches = attack.targetMatches();
+            } else if (subject instanceof String id) {
+                entityId = id;
+                targetMatches = null;
+            } else {
+                return false;
+            }
+            for (EntityAttackLockEntry entry : stage.getEntities().getAttacklockEntries()) {
+                if (entry.matches(entityId, targetMatches)) return true;
+            }
+            return false;
         }
 
         /**
@@ -463,8 +511,42 @@ final class BuiltInLockCategories {
         }
 
         @Override public String lookupKey(Object subject) {
+            if (subject instanceof LockSubjects.AttackSubject attack) return attack.entityId();
             return subject instanceof String entityId ? entityId : null;
         }
+    }
+
+    /**
+     * Inventory and container slots, asked about by {@code "<target>#<slot>"} keys.
+     *
+     * <p>Both scopes, even though container entries are global-only: player slots are exactly
+     * the kind of thing a per-player stage gates. Loading strips container entries from
+     * individual stages instead, see {@code SlotLockValidation}.
+     */
+    private static final class SlotLock implements LockCategory<net.bananemdnsa.historystages.data.lock.SlotLockEntry> {
+        @Override public String id() { return "historystages:slots"; }
+        @Override public String tabLangKey() { return "editor.historystages.tab.slots"; }
+        @Override public String tooltipLangKey() { return "editor.historystages.tooltip.slots"; }
+
+        @Override public List<net.bananemdnsa.historystages.data.lock.SlotLockEntry> read(StageEntry stage) {
+            return stage.getSlotLocks();
+        }
+
+        @Override public void write(StageEntry stage, List<net.bananemdnsa.historystages.data.lock.SlotLockEntry> entries) {
+            stage.setSlotLocks(entries);
+        }
+
+        @Override public boolean matches(net.bananemdnsa.historystages.data.lock.SlotLockEntry entry, Object subject) {
+            return subject instanceof String key && entry.indexKeys().contains(key);
+        }
+
+        @Override public List<String> indexKeys(StageEntry stage) {
+            List<String> keys = new ArrayList<>();
+            for (var entry : stage.getSlotLocks()) keys.addAll(entry.indexKeys());
+            return keys;
+        }
+
+        @Override public String lookupKey(Object subject) { return SUBJECT_IS_THE_KEY.apply(subject); }
     }
 
     /**
@@ -493,6 +575,36 @@ final class BuiltInLockCategories {
         @Override public void write(StageEntry stage, List<ZoneEntry> entries) {
             stage.setZones(entries);
         }
+    }
+
+    /**
+     * Plants that do not grow. Global only: growth happens in random ticks with no player to ask.
+     *
+     * <p>Entries are block ids or {@code #tag}; both are their own index key, so the engine asks
+     * once for the block id and once per {@code "#" + tag} the block carries.
+     */
+    private static final class CropLock implements LockCategory<String> {
+        @Override public java.util.Set<StageScope> supportedScopes() {
+            return java.util.EnumSet.of(StageScope.GLOBAL);
+        }
+
+        @Override public String id() { return "historystages:crops"; }
+        @Override public String tabLangKey() { return "editor.historystages.tab.crops"; }
+        @Override public String tooltipLangKey() { return "editor.historystages.tooltip.crops"; }
+
+        @Override public List<String> read(StageEntry stage) { return stage.getCrops(); }
+
+        @Override public void write(StageEntry stage, List<String> entries) {
+            stage.setCrops(entries);
+        }
+
+        @Override public boolean matches(String entry, Object subject) {
+            return ID_EQUALS.test(entry, subject);
+        }
+
+        @Override public List<String> indexKeys(StageEntry stage) { return stage.getCrops(); }
+
+        @Override public String lookupKey(Object subject) { return SUBJECT_IS_THE_KEY.apply(subject); }
     }
 
     /**
@@ -583,7 +695,8 @@ final class BuiltInLockCategories {
             if (!(subject instanceof LockSubjects.InteractionSubject interaction)) return false;
             return entry.getId().equals(interaction.entityId())
                     && entry.blocksAction(interaction.action())
-                    && entry.matchesItem(interaction.held());
+                    && entry.matchesItem(interaction.held())
+                    && entry.getNbt().matches(interaction.targetMatches());
         }
 
         /**
@@ -596,7 +709,8 @@ final class BuiltInLockCategories {
                 if (!entry.getId().equals(interaction.entityId())) continue;
                 List<String> actions = stage.effectiveInteractionLockActions(entry.getLockActions());
                 boolean blocks = actions == null || actions.contains(interaction.action());
-                if (blocks && entry.matchesItem(interaction.held())) return true;
+                if (blocks && entry.matchesItem(interaction.held())
+                        && entry.getNbt().matches(interaction.targetMatches())) return true;
             }
             return false;
         }

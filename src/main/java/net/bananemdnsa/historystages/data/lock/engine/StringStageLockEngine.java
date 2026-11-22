@@ -305,6 +305,12 @@ public class StringStageLockEngine implements StageLockEngine {
     public boolean isFluidActionLocked(String fluidId, String action, StageScope scope,
                                        StageStateView state) {
         if (fluidId == null) return false;
+        return LockResolution.isLocked(scope, gatingStagesForFluidAction(fluidId, action, scope), state);
+    }
+
+    @Override
+    public List<String> gatingStagesForFluidAction(String fluidId, String action, StageScope scope) {
+        if (fluidId == null) return List.of();
 
         // Empty item id and mod id on purpose: no stage lists those, so the item and mod halves
         // of the narrowing contribute nothing and the fluid half is the whole answer. The same
@@ -314,13 +320,11 @@ public class StringStageLockEngine implements StageLockEngine {
         Collection<String> candidates = global
                 ? CategoryLockIndexes.globalCandidates("", "", null, fluidId)
                 : CategoryLockIndexes.individualCandidates("", "", null, fluidId);
-        if (candidates.isEmpty()) return false;
+        if (candidates.isEmpty()) return List.of();
 
-        Map<String, StageEntry> stages = stagesOf(scope);
         LockSubjects.ItemSubject subject =
                 new LockSubjects.ItemSubject("", "", null, null, fluidId);
-
-        return LockResolution.isLocked(scope, actionGating(candidates, stages, subject, action), state);
+        return actionGating(candidates, stagesOf(scope), subject, action);
     }
 
     /**
@@ -367,6 +371,22 @@ public class StringStageLockEngine implements StageLockEngine {
                                                          ItemStack held, StageScope scope) {
         return narrowed("historystages:interactionlock",
                 new LockSubjects.InteractionSubject(entityId, action, held), scope);
+    }
+
+    @Override
+    public List<String> gatingStagesForEntityAttack(String entityId,
+                                                    @Nullable java.util.function.Predicate<com.google.gson.JsonObject> targetMatches,
+                                                    StageScope scope) {
+        return narrowed("historystages:attacklock",
+                new LockSubjects.AttackSubject(entityId, targetMatches), scope);
+    }
+
+    @Override
+    public List<String> gatingStagesForEntityInteraction(String entityId, String action, ItemStack held,
+                                                         @Nullable java.util.function.Predicate<com.google.gson.JsonObject> targetMatches,
+                                                         StageScope scope) {
+        return narrowed("historystages:interactionlock",
+                new LockSubjects.InteractionSubject(entityId, action, held, targetMatches), scope);
     }
 
     @Override
@@ -450,6 +470,32 @@ public class StringStageLockEngine implements StageLockEngine {
     @Override
     public boolean anyBiomeLocks() {
         return CategoryLockIndexes.anyStageUses("historystages:biomes");
+    }
+
+    @Override
+    public boolean anyCropLocks() {
+        return CategoryLockIndexes.anyStageUses("historystages:crops");
+    }
+
+    @Override
+    public List<String> gatingStagesForCrop(String blockId, java.util.Collection<String> blockTagIds) {
+        java.util.LinkedHashSet<String> gating =
+                new java.util.LinkedHashSet<>(narrowed("historystages:crops", blockId, StageScope.GLOBAL));
+        for (String tag : blockTagIds) {
+            gating.addAll(narrowed("historystages:crops", "#" + tag, StageScope.GLOBAL));
+        }
+        return new ArrayList<>(gating);
+    }
+
+    @Override
+    public boolean anySlotLocks() {
+        return CategoryLockIndexes.anyStageUses("historystages:slots");
+    }
+
+    @Override
+    public List<String> gatingStagesForSlot(String target, int slot, StageScope scope) {
+        return narrowed("historystages:slots",
+                net.bananemdnsa.historystages.data.lock.SlotLockEntry.key(target, slot), scope);
     }
 
     @Override

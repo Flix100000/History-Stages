@@ -55,7 +55,9 @@ class CategoryRoundTripTest {
     @Test
     void dualPhaseIdsAreEmptyForTheCategoriesThatOptOut() {
         for (String optedOut : List.of("historystages:mod_exceptions",
-                                       "historystages:spawnlock")) {
+                                       "historystages:spawnlock",
+                                       "historystages:crops",
+                                       "historystages:slots")) {
             StageEntry stage = new StageEntry();
             LockCategory<?> category = LockCategories.byId(optedOut);
             writeSample(category, stage);
@@ -115,7 +117,7 @@ class CategoryRoundTripTest {
                     ((LockCategory<NamedLockEntry>) category)
                             .write(stage, List.of(new NamedLockEntry("minecraft:logs")));
             case "historystages:recipes", "historystages:dimensions",
-                 "historystages:structures", "historystages:biomes",
+                 "historystages:structures", "historystages:biomes", "historystages:crops",
                  "historystages:attacklock" ->
                     ((LockCategory<String>) category).write(stage, List.of("minecraft:sample"));
             case "historystages:trade_professions" ->
@@ -148,6 +150,11 @@ class CategoryRoundTripTest {
                 zone.setShapes(List.of(ZoneShape.cube(0, 0, 0, 10, 10, 10, false)));
                 ((LockCategory<ZoneEntry>) category).write(stage, List.of(zone));
             }
+            case "historystages:slots" ->
+                    ((LockCategory<net.bananemdnsa.historystages.data.lock.SlotLockEntry>) category)
+                            .write(stage, List.of(new net.bananemdnsa.historystages.data.lock.SlotLockEntry(
+                                    "minecraft:barrel", List.of(0, 1),
+                                    net.bananemdnsa.historystages.data.lock.SlotLockMode.HIDE)));
             default -> throw new AssertionError("no sample defined for " + category.id());
         }
         return 1;

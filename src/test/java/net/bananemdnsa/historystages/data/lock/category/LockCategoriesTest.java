@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class LockCategoriesTest {
 
     @Test
-    void theEighteenBuiltInsAreRegisteredInEditorTabOrder() {
+    void theTwentyBuiltInsAreRegisteredInEditorTabOrder() {
         List<String> ids = LockCategories.all().stream().map(LockCategory::id).toList();
         assertEquals(List.of(
                 "historystages:items",
@@ -40,9 +40,11 @@ class LockCategoriesTest {
                 "historystages:trade_levels",
                 "historystages:structures",
                 "historystages:biomes",
+                "historystages:crops",
                 // Last, and unlike every neighbour it gates a place rather than a thing: there is
                 // no id to match, so the handler asks its own index with a position instead.
-                "historystages:zones"), ids);
+                "historystages:zones",
+                "historystages:slots"), ids);
     }
 
     @Test

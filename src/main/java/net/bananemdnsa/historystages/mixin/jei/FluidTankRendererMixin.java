@@ -5,11 +5,10 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.fluids.FluidStack;
+import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Pseudo;
-import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
  * Draws the lock overlay on gated fluids in JEI.
@@ -30,15 +29,21 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * <p>{@code @Pseudo} with {@code require = 0} for the same reason as
  * {@link RecipeLayoutMixin}: JEI may not be installed, and then this is silently skipped. That
  * silence is also why a wrong descriptor here fails invisibly, which is exactly what happened.
+ *
+ * <p><strong>Wrapped, not injected at the tail (#145).</strong> JEI 15.74.x compiles this method
+ * so that it reuses local slot 0 ({@code this}) for the tank width. An injected handler loads
+ * {@code this} from that slot and the verifier rejects the whole class, which took world loading
+ * down. {@code @WrapMethod} leaves JEI's body untouched and draws after it returns.
  */
 @Pseudo
 @Mixin(targets = "mezz.jei.library.render.FluidTankRenderer", remap = false)
 public abstract class FluidTankRendererMixin {
 
-    @Inject(method = "render(Lnet/minecraft/client/gui/GuiGraphics;Ljava/lang/Object;II)V",
-            at = @At("TAIL"), require = 0)
+    @WrapMethod(method = "render(Lnet/minecraft/client/gui/GuiGraphics;Ljava/lang/Object;II)V",
+            require = 0)
     private void historystages$drawFluidLockIcon(GuiGraphics guiGraphics, Object ingredient,
-                                                 int x, int y, CallbackInfo ci) {
+                                                 int x, int y, Operation<Void> original) {
+        original.call(guiGraphics, ingredient, x, y);
         try {
             if (!(ingredient instanceof FluidStack fluid) || fluid.isEmpty()) return;
             ResourceLocation id = BuiltInRegistries.FLUID.getKey(fluid.getFluid());

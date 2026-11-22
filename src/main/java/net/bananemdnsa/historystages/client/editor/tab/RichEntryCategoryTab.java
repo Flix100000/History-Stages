@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.google.gson.JsonObject;
+import net.bananemdnsa.historystages.data.NbtFilter;
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.api.lock.LockCategory;
 import org.jetbrains.annotations.Nullable;
@@ -31,7 +32,7 @@ public class RichEntryCategoryTab<T> extends AbstractCategoryTab {
         String id(T entry);
 
         @Nullable
-        JsonObject nbt(T entry);
+        NbtFilter nbt(T entry);
 
         @Nullable
         List<String> lockActions(T entry);
@@ -42,14 +43,14 @@ public class RichEntryCategoryTab<T> extends AbstractCategoryTab {
         @Nullable
         String tooltipText(T entry);
 
-        T build(String id, @Nullable JsonObject nbt, @Nullable List<String> lockActions,
+        T build(String id, @Nullable NbtFilter nbt, @Nullable List<String> lockActions,
                 @Nullable String nameText, @Nullable String tooltipText);
     }
 
     private final LockCategory<T> category;
     private final EntryAdapter<T> adapter;
 
-    private final Map<Integer, JsonObject> nbt = new HashMap<>();
+    private final Map<Integer, NbtFilter> nbt = new HashMap<>();
     private final Map<Integer, List<String>> lockActions = new HashMap<>();
     private final Map<Integer, String> nameText = new HashMap<>();
     private final Map<Integer, String> tooltipText = new HashMap<>();
@@ -109,10 +110,10 @@ public class RichEntryCategoryTab<T> extends AbstractCategoryTab {
      */
     public void addEntryWithNbt(String id, @Nullable JsonObject entryNbt) {
         entries().add(id);
-        if (entryNbt != null && entryNbt.size() > 0) nbt.put(entries().size() - 1, entryNbt);
+        if (entryNbt != null && entryNbt.size() > 0) nbt.put(entries().size() - 1, NbtFilter.single(entryNbt));
     }
 
-    public Map<Integer, JsonObject> nbtByIndex() {
+    public Map<Integer, NbtFilter> nbtByIndex() {
         return nbt;
     }
 
@@ -137,7 +138,7 @@ public class RichEntryCategoryTab<T> extends AbstractCategoryTab {
 
     private static <V> void put(Map<Integer, V> target, int index, @Nullable V value) {
         if (value == null) return;
-        if (value instanceof JsonObject json && json.size() == 0) return;
+        if (value instanceof NbtFilter filter && filter.isEmpty()) return;
         if (value instanceof String text && text.isEmpty()) return;
         // An empty list is not dropped: for the action map it is the entry the maintainer
         // narrowed down to nothing, and dropping it would reload as "locks everything".

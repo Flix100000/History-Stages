@@ -6,6 +6,7 @@ import net.bananemdnsa.historystages.network.PacketHandler;
 import net.bananemdnsa.historystages.network.clientbound.TradeLockedPacket;
 import net.bananemdnsa.historystages.util.DebugLogger;
 import net.bananemdnsa.historystages.util.HsRuntimeCategories;
+import net.bananemdnsa.historystages.util.lock.TradeIndexMap;
 import net.bananemdnsa.historystages.util.lock.TradeLockHelper;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.inventory.MerchantMenu;
@@ -16,27 +17,24 @@ import org.spongepowered.asm.mixin.Mixin;
 /**
  * The first trade seam: the player is shown only the offers they may see.
  *
- * <p>On the send rather than on {@code Merchant.openTradingScreen}, and that is the whole point.
- * Every merchant — villager, wandering trader, or one another mod wrote — ends up here, because
- * this is the one place an offer list leaves the server for a player. It also happens to be the
- * only option: Mixin cannot inject into an interface, which is where {@code openTradingScreen}
- * lives.
+ * <p>On the one method every offer list passes through on its way to a player. Opening the
+ * screen and {@code Villager.resendOffersToTradingPlayer} (restock, catching up on demand) both
+ * end here, and so does any modded merchant, whether or not it overrides
+ * {@code openTradingScreen}. Wrapping only the call inside {@code openTradingScreen}, as this did
+ * before, let a restock send the full list into the open screen, locked offers included.
  *
- * <p><strong>The method is wrapped, not taken over.</strong> Cancelling it and sending the packet
- * ourselves would take it away from everyone else who injected into it, every time a stage
- * happens to gate an offer — the same shape as the Polymorph report (#127) — and would leave a
- * copy of one Minecraft version's code sitting in the mod for the next port to get wrong.
+ * <p>The rows the player was sent are remembered ({@link TradeIndexMap}) so a click selects the
+ * offer that row stands for, not whatever sits at that index in the merchant's full list.
+ *
+ * <p>The merchant comes from the open menu: every caller sends the offers for the menu that is
+ * open. Anything else goes through untouched.
  *
  * <p><strong>The merchant keeps its real list.</strong> Only the copy sent to this player is
  * short. {@code overrideOffers} would change the merchant permanently, and a stage that is later
- * unlocked could not give the offer back — the one-way behaviour this whole category was designed
- * to avoid.
+ * unlocked could not give the offer back.
  *
- * <p>Nothing is drawn as locked, because there is no locked trade to draw: it is simply absent.
- * A merchant with one offer instead of two is unremarkable. A merchant with <em>none</em> is not,
- * so that case — and only that case — says why, and it says it inside the window the player is
- * looking at rather than in the actionbar under it. The player is staring at an empty list; the
- * explanation belongs where they are looking.
+ * <p>Nothing is drawn as locked: the offer is simply absent. A merchant with <em>none</em> left
+ * says why, inside the trade window the player is looking at.
  *
  * <p>This seam is about what the player sees. It is not the security boundary: a modified client
  * could ask to pay for an offer it was never sent, which is what {@link MerchantContainerMixin}
@@ -46,23 +44,22 @@ import org.spongepowered.asm.mixin.Mixin;
 public abstract class MerchantOffersMixin {
 
     @WrapMethod(method = "sendMerchantOffers")
-    private void historystages$sendOnlyWhatIsUnlocked(int containerId, MerchantOffers offers,
-                                                      int level, int xp, boolean showProgress,
-                                                      boolean canRestock, Operation<Void> original) {
-        Merchant merchant = historystages$tradingWith();
-        if (merchant == null || offers.isEmpty()) {
-            original.call(containerId, offers, level, xp, showProgress, canRestock);
-            return;
-        }
-
+    private void historystages$sendOnlyWhatIsUnlocked(int containerId, MerchantOffers offers, int level, int xp,
+                                                      boolean showProgress, boolean canRestock,
+                                                      Operation<Void> original) {
         ServerPlayer player = (ServerPlayer) (Object) this;
-        TradeLockHelper.Filtered filtered =
-                TradeLockHelper.filterForPlayer(offers, merchant, level, player);
-        if (!filtered.removedAnything()) {
+        if (!(player.containerMenu instanceof MerchantMenu menu) || menu.containerId != containerId) {
             original.call(containerId, offers, level, xp, showProgress, canRestock);
             return;
         }
-
+        Merchant merchant = ((MerchantMenuAccessor) menu).historystages$trader();
+        TradeLockHelper.Filtered filtered = TradeLockHelper.filterForPlayer(offers, merchant, level, player);
+        if (!filtered.removedAnything()) {
+            TradeIndexMap.shown(player.getUUID(), containerId, null);
+            original.call(containerId, offers, level, xp, showProgress, canRestock);
+            return;
+        }
+        TradeIndexMap.shown(player.getUUID(), containerId, filtered.keptIndices());
         MerchantOffers shown = new MerchantOffers();
         for (int index : filtered.keptIndices()) {
             shown.add(offers.get(index));
@@ -84,19 +81,5 @@ public abstract class MerchantOffersMixin {
                             TradeLockHelper.kindOf(filtered.gatingStages())),
                     player);
         }
-    }
-
-    /**
-     * Who this player is trading with, read off the menu that was opened a moment earlier.
-     *
-     * <p>Vanilla opens the menu before it sends the offers, so it is already in place. Anything
-     * that sends an offer list without one is left alone rather than guessed at — the payment
-     * seam still refuses what it must.
-     */
-    private Merchant historystages$tradingWith() {
-        ServerPlayer player = (ServerPlayer) (Object) this;
-        return player.containerMenu instanceof MerchantMenu menu
-                ? ((MerchantMenuAccessor) menu).historystages$getTrader()
-                : null;
     }
 }

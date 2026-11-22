@@ -5,13 +5,10 @@ import net.minecraft.world.item.trading.Merchant;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 
-/**
- * Read access to the merchant behind an open trading menu. {@link MerchantOffersMixin} needs to
- * know who is trading, and the menu is the only thing that still holds it by the time the offers
- * are sent.
- */
+/** The merchant behind an open trade screen, for the offer filter. */
 @Mixin(MerchantMenu.class)
 public interface MerchantMenuAccessor {
+
     @Accessor("trader")
-    Merchant historystages$getTrader();
+    Merchant historystages$trader();
 }

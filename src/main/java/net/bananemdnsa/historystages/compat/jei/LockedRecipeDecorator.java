@@ -25,7 +25,8 @@ public class LockedRecipeDecorator<T> implements IRecipeCategoryDecorator<T> {
     @Override
     public void draw(T recipe, IRecipeCategory<T> category, IRecipeSlotsView recipeSlotsView,
                      GuiGraphics guiGraphics, double mouseX, double mouseY) {
-        if (JerCategories.isJer(category) || !isRecipeLocked(recipe, recipeSlotsView)) return;
+        if (!net.bananemdnsa.historystages.Config.VISUAL.showLockOverlay.get()
+                || ExemptCategories.isExempt(category) || !isRecipeLocked(recipe, recipeSlotsView)) return;
 
         int width = category.getWidth();
         int height = category.getHeight();
@@ -39,7 +40,9 @@ public class LockedRecipeDecorator<T> implements IRecipeCategoryDecorator<T> {
 
         // "Locked" text centered
         Font font = Minecraft.getInstance().font;
-        String text = "\u00A7c\u00A7l\u2716 Locked";
+        net.minecraft.network.chat.Component text = net.minecraft.network.chat.Component
+                .translatable("jei.historystages.recipe_locked")
+                .withStyle(net.minecraft.ChatFormatting.RED, net.minecraft.ChatFormatting.BOLD);
         int textWidth = font.width(text);
         guiGraphics.drawString(font, text, (width - textWidth) / 2, height / 2 - 4, 0xFFFFFF, true);
 

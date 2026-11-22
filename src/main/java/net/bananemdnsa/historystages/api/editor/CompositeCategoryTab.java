@@ -106,6 +106,11 @@ public final class CompositeCategoryTab implements CategoryTab {
         return labels;
     }
 
+    /** The tab behind a section, whether it is on screen or not. */
+    public CategoryTab section(int index) {
+        return sections.get(index).tab();
+    }
+
     public int activeIndex() {
         return active;
     }

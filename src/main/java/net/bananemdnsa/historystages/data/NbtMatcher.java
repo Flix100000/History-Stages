@@ -23,8 +23,22 @@ public class NbtMatcher {
 
         CompoundTag tag = stack.getTag();
         if (tag == null) return false;
-
         return matchesCompound(tag, nbtCriteria);
+    }
+
+    /** True when the stack matches any variant of the filter; an empty filter matches every stack. */
+    public static boolean matches(ItemStack stack, NbtFilter filter) {
+        if (filter == null || filter.isEmpty()) return true;
+        return filter.matches(criteria -> matches(stack, criteria));
+    }
+
+    /**
+     * Matches an already built tag — an entity's saved data, say — against the same criteria
+     * language items use: exact values, numeric ranges, nested objects and list members.
+     */
+    public static boolean matchesTag(CompoundTag tag, JsonObject nbtCriteria) {
+        if (nbtCriteria == null || nbtCriteria.size() == 0) return true;
+        return tag != null && matchesCompound(tag, nbtCriteria);
     }
 
     private static boolean matchesCompound(CompoundTag tag, JsonObject criteria) {

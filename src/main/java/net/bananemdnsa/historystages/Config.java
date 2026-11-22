@@ -41,6 +41,9 @@ public class Config {
         public final ForgeConfigSpec.BooleanValue mobUseActionbar;
         public final ForgeConfigSpec.BooleanValue mobShowChat;
         public final ForgeConfigSpec.BooleanValue mobShowStagesInChat;
+        public final ForgeConfigSpec.BooleanValue slotShowTooltip;
+        public final ForgeConfigSpec.ConfigValue<List<? extends String>> slotTooltipLines;
+        public final ForgeConfigSpec.BooleanValue slotShowAllUntilComplete;
         public final ForgeConfigSpec.BooleanValue tradeShowStagesInWindow;
 
         // Individual Stages
@@ -54,6 +57,8 @@ public class Config {
         public final ForgeConfigSpec.BooleanValue hideLockedItemsInViewers;
         public final ForgeConfigSpec.BooleanValue hideLockedRecipesInViewers;
         public final ForgeConfigSpec.EnumValue<MultiStagePolicy> lockedItemMultiStagePolicy;
+        public final ForgeConfigSpec.BooleanValue showLockOverlay;
+        public final ForgeConfigSpec.ConfigValue<List<? extends String>> lockOverlayExemptions;
 
         // Central notifications (chat, actionbar, sounds, texts)
         public final ForgeConfigSpec.BooleanValue broadcastChat;
@@ -77,6 +82,7 @@ public class Config {
         public final ForgeConfigSpec.ConfigValue<String> msgFluidLocked;
         public final ForgeConfigSpec.ConfigValue<String> msgTradeLocked;
         public final ForgeConfigSpec.ConfigValue<String> msgBlockLocked;
+        public final ForgeConfigSpec.ConfigValue<String> msgCropLocked;
         public final ForgeConfigSpec.ConfigValue<String> msgEntityItemLocked;
         public final ForgeConfigSpec.ConfigValue<String> msgEnchantmentLocked;
         public final ForgeConfigSpec.ConfigValue<String> msgRecipeLocked;
@@ -288,6 +294,26 @@ public class Config {
 
             builder.pop();
 
+            builder.comment("Tooltip shown when hovering a locked slot in overlay mode").push("slot_lock");
+
+            slotShowTooltip = builder
+                    .comment("Show a tooltip when hovering a locked slot? [Default: true]")
+                    .define("showTooltip", true);
+
+            slotTooltipLines = builder
+                    .comment("The tooltip lines, in render order: id|enabled|blank line before|style|text.",
+                            "Unknown ids are ignored and missing ones fall back to their default.",
+                            "Easiest way to edit this is the in-game config editor.")
+                    .defineList("tooltipLines",
+                            net.bananemdnsa.historystages.data.tooltip.SlotTooltipLayout.defaultsEncoded(),
+                            entry -> entry instanceof String);
+
+            slotShowAllUntilComplete = builder
+                    .comment("While several stages gate a slot, list all of them with their status, not only the missing ones? [Default: true]")
+                    .define("showAllUntilComplete", true);
+
+            builder.pop();
+
             builder.comment("Settings for the trade lock notice shown in an empty merchant window")
                     .push("trade_lock");
 
@@ -344,6 +370,18 @@ public class Config {
                             "STRICT  = locked while ANY assigned stage is still locked (default).",
                             "LENIENT = unlocked as soon as ANY assigned stage is unlocked.")
                     .defineEnum("lockedItemMultiStagePolicy", MultiStagePolicy.STRICT);
+
+            showLockOverlay = builder
+                    .comment("Darken locked recipes in JEI and EMI and block hovering their slots?",
+                            "Off, locked recipes look like any other; hiding them is the switch above. [Default: true]")
+                    .define("showLockOverlay", true);
+
+            lockOverlayExemptions = builder
+                    .comment("JEI and EMI categories the recipe lock leaves alone: no dark overlay, hover works,",
+                            "and nothing is hidden there. A category id (create:mixing) names one category,",
+                            "a mod id (create) names all of that mod's categories.",
+                            "For pages that only show where things come from. JER is always left alone. [Default: none]")
+                    .defineListAllowEmpty("lockOverlayExemptions", List.of(), o -> o instanceof String);
 
             builder.pop();
 
@@ -405,25 +443,25 @@ public class Config {
 
             // --- LOCK MESSAGES SECTION ---
             builder.comment(
-                    "Override the displayed text for the six 'is locked' / 'unknown' messages.",
+                    "Override the displayed text for the 'is locked' / 'unknown' messages.",
                     "Leave a value empty (\"\") to fall back to the default messages.",
                     "Use & for color codes (e.g. &c for red)."
             ).push("lock_messages");
 
             msgDimensionUnknown = builder
-                    .comment("Actionbar message when entering a locked dimension. Lang key: message.historystages.dimension_unknown")
+                    .comment("Actionbar message when entering a locked dimension. {dimension} is the dimension ID, {stage} the missing stage. Lang key: message.historystages.dimension_unknown")
                     .define("dimensionUnknown", "");
 
             msgMobUnknown = builder
-                    .comment("Actionbar message when attacking a locked mob. Lang key: message.historystages.mob_unknown")
+                    .comment("Actionbar message when attacking a locked mob. {mob} is the creature, {stage} the missing stage. Lang key: message.historystages.mob_unknown")
                     .define("mobUnknown", "");
 
             msgItemLocked = builder
-                    .comment("Actionbar message when interacting with a locked item. Lang key: message.historystages.item_locked")
+                    .comment("Actionbar message when interacting with a locked item. {item} is the item, {stage} the missing stage. Lang key: message.historystages.item_locked")
                     .define("itemLocked", "");
 
             msgFluidLocked = builder
-                    .comment("Actionbar message when taking a locked fluid out of the world. Lang key: message.historystages.fluid_locked")
+                    .comment("Actionbar message when taking a locked fluid out of the world. {fluid} is the fluid, {stage} the missing stage. Lang key: message.historystages.fluid_locked")
                     .define("fluidLocked", "");
 
             msgTradeLocked = builder
@@ -431,19 +469,23 @@ public class Config {
                     .define("tradeLocked", "");
 
             msgBlockLocked = builder
-                    .comment("Actionbar message when interacting with a locked block. Lang key: message.historystages.block_locked")
+                    .comment("Actionbar message when interacting with a locked block. {block} is the block, {stage} the missing stage. Lang key: message.historystages.block_locked")
                     .define("blockLocked", "");
 
+            msgCropLocked = builder
+                    .comment("Actionbar message when bonemeal is refused on a locked plant. {block} is the plant, {stage} the missing stage. Lang key: message.historystages.crop_locked")
+                    .define("cropLocked", "");
+
             msgEntityItemLocked = builder
-                    .comment("Actionbar message when interacting with armor stands / item frames holding locked items. Lang key: message.historystages.entity_item_locked")
+                    .comment("Actionbar message when interacting with armor stands / item frames holding locked items. {item} is the displayed item, {stage} the missing stage. Lang key: message.historystages.entity_item_locked")
                     .define("entityItemLocked", "");
 
             msgEnchantmentLocked = builder
-                    .comment("Actionbar message when applying a locked enchantment. Lang key: message.historystages.enchantment_locked")
+                    .comment("Actionbar message when applying a locked enchantment. {enchantment} is the enchantment, {item} the item, {stage} the missing stage. Lang key: message.historystages.enchantment_locked")
                     .define("enchantmentLocked", "");
 
             msgRecipeLocked = builder
-                    .comment("Actionbar message when clicking a locked recipe in the recipe book. Lang key: message.historystages.recipe_locked")
+                    .comment("Actionbar message when clicking a locked recipe in the recipe book. {item} is what the recipe makes, {stage} the missing stage. Lang key: message.historystages.recipe_locked")
                     .define("recipeLocked", "");
 
             msgStageBlocked = builder
@@ -594,6 +636,7 @@ public class Config {
         public final ForgeConfigSpec.BooleanValue lockBlockInteraction;
         public final ForgeConfigSpec.BooleanValue lockContainerInteraction;
         public final ForgeConfigSpec.BooleanValue lockEnchanting;
+        public final ForgeConfigSpec.BooleanValue dropItemsFromLockedSlots;
 
         // Forschungsstation
         public final ForgeConfigSpec.IntValue researchTimeInSeconds;
@@ -650,6 +693,11 @@ public class Config {
         public final ForgeConfigSpec.BooleanValue biomeBlockProjectiles;
         public final ForgeConfigSpec.BooleanValue biomeBlockExplosions;
         public final ForgeConfigSpec.ConfigValue<String> zoneMarkerItem;
+
+        // Advanced: the reload a stage change sets off
+        public final ForgeConfigSpec.EnumValue<net.bananemdnsa.historystages.reload.StageReloadMode> reloadAfterStageChange;
+        public final ForgeConfigSpec.ConfigValue<List<? extends String>> targetedReloadSkip;
+        public final ForgeConfigSpec.IntValue slowListenerHintMs;
 
         // Stage logic
         public final ForgeConfigSpec.EnumValue<ResearchWhenBlocked> researchWhenBlocked;
@@ -712,6 +760,10 @@ public class Config {
             lockEnchanting = builder
                     .comment("Prevent applying locked enchantments via anvil (locked enchanted books) and enchanting table? [Default: true]")
                     .define("lockEnchanting", true);
+
+            dropItemsFromLockedSlots = builder
+                    .comment("Drop items lying in an inventory slot when that slot becomes locked? When false they stay but the slot is frozen. [Default: true]")
+                    .define("dropItemsFromLockedSlots", true);
 
             builder.pop(); // gameplay
 
@@ -1007,6 +1059,51 @@ public class Config {
                     .define("markerItem", "minecraft:stick");
 
             builder.pop(); // zone_lock
+
+            // Last on purpose: nothing below the warning should look like an everyday setting.
+            builder.comment(
+                    "ADVANCED SETTINGS - only change these if you know exactly what they do.",
+                    "The defaults are right for almost every pack. If you are unsure, leave this section alone.",
+                    "The History Stages wiki explains each setting and how to measure its effect on your pack.",
+                    "",
+                    "When a stage change alters which recipes are locked, machines that keep their own copy",
+                    "of the recipe list have to be told to drop it. These settings decide how that happens."
+            ).push("advanced");
+
+            reloadAfterStageChange = builder
+                    .comment(
+                            "What a stage change that alters locked recipes sets off:",
+                            "TARGETED   = only re-run the parts of mods that react to a reload; the server keeps",
+                            "             running (default). Fastest by far on large packs.",
+                            "BACKGROUND = the full datapack reload, with the server running on while it loads.",
+                            "             Every mod sees it like /reload, but each still finishes in one go.",
+                            "FULL       = the full datapack reload with the server waiting for it, as History",
+                            "             Stages 6.x always did. Freezes large packs for many seconds; only",
+                            "             as a fallback if something misbehaves with the other two.",
+                            "[Default: TARGETED]")
+                    .defineEnum("reloadAfterStageChange",
+                            net.bananemdnsa.historystages.reload.StageReloadMode.TARGETED);
+
+            targetedReloadSkip = builder
+                    .comment(
+                            "Reload listeners the TARGETED reload leaves out, by full class name.",
+                            "Only for listeners that load their own data and keep no recipes - leaving out one",
+                            "that does keep recipes makes its machines miss stage changes until /reload.",
+                            "The server log names the slowest listeners after each targeted reload.",
+                            "KubeJS and CraftTweaker scripts are always left out and need no entry here.",
+                            "[Default: Modular Machinery Reborn's machine loader, The Hordes' spawn tables]")
+                    .defineListAllowEmpty("targetedReloadSkip",
+                            net.bananemdnsa.historystages.reload.StageReloadMode.DEFAULT_TARGETED_SKIP,
+                            o -> o instanceof String);
+
+            slowListenerHintMs = builder
+                    .comment(
+                            "After a TARGETED reload, log the listeners that held the server for at least",
+                            "this many milliseconds, so they can be checked for targetedReloadSkip.",
+                            "0 turns the hint off. [Default: 250]")
+                    .defineInRange("slowListenerHintMs", 250, 0, 60000);
+
+            builder.pop(); // advanced
         }
     }
 

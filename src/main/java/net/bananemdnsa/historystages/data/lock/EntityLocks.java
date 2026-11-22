@@ -1,14 +1,19 @@
 package net.bananemdnsa.historystages.data.lock;
 
+import net.bananemdnsa.historystages.data.NbtFilter;
 import com.google.gson.annotations.JsonAdapter;
 
+import java.util.AbstractList;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class EntityLocks {
     @JsonAdapter(EntitySpawnLockEntryListAdapter.class)
     private List<EntitySpawnLockEntry> spawnlock;
-    private List<String> attacklock;
+    @JsonAdapter(EntityAttackLockEntryListAdapter.class)
+    private List<EntityAttackLockEntry> attacklock;
     @JsonAdapter(EntityInteractionLockEntryListAdapter.class)
     private List<EntityInteractionLockEntry> interactionlock;
     private List<String> modLinked;
@@ -24,8 +29,33 @@ public class EntityLocks {
         return spawnlock != null ? spawnlock : new ArrayList<>();
     }
 
+    /**
+     * The attack-locked entity ids, as a live view: removing or replacing an id here changes the
+     * entries underneath. Validation edits the list this way, which is why it is a view and not
+     * a copy. Adding an id adds an entry without a filter.
+     */
     public List<String> getAttacklock() {
-        return attacklock != null ? attacklock : new ArrayList<>();
+        if (attacklock == null) attacklock = new ArrayList<>();
+        List<EntityAttackLockEntry> backing = attacklock;
+        return new AbstractList<>() {
+            @Override public String get(int index) { return backing.get(index).getId(); }
+            @Override public int size() { return backing.size(); }
+            @Override public String set(int index, String id) {
+                String old = backing.get(index).getId();
+                backing.set(index, new EntityAttackLockEntry(id, backing.get(index).getNbt()));
+                return old;
+            }
+            @Override public void add(int index, String id) {
+                backing.add(index, new EntityAttackLockEntry(id));
+            }
+            @Override public String remove(int index) { return backing.remove(index).getId(); }
+        };
+    }
+
+    /** The attack entries with their filters. */
+    public List<EntityAttackLockEntry> getAttacklockEntries() {
+        if (attacklock == null) attacklock = new ArrayList<>();
+        return attacklock;
     }
 
     public List<EntityInteractionLockEntry> getInteractionlock() {
@@ -53,8 +83,27 @@ public class EntityLocks {
         this.spawnlock = copy;
     }
 
-    public void setAttacklock(List<String> attacklock) {
-        this.attacklock = attacklock != null ? new ArrayList<>(attacklock) : new ArrayList<>();
+    /**
+     * Replaces the attack list by ids. An id that was already listed keeps its NBT filter, so
+     * code that only knows ids (an addon writing the category, say) cannot wipe filters by
+     * accident. To change filters, use {@link #setAttacklockEntries}.
+     */
+    public void setAttacklock(List<String> ids) {
+        Map<String, NbtFilter> filters = new HashMap<>();
+        for (EntityAttackLockEntry e : getAttacklockEntries()) filters.putIfAbsent(e.getId(), e.getNbt());
+        List<EntityAttackLockEntry> entries = new ArrayList<>();
+        if (ids != null) {
+            for (String id : ids) entries.add(new EntityAttackLockEntry(id, filters.get(id)));
+        }
+        this.attacklock = entries;
+    }
+
+    public void setAttacklockEntries(List<EntityAttackLockEntry> entries) {
+        List<EntityAttackLockEntry> copy = new ArrayList<>();
+        if (entries != null) {
+            for (EntityAttackLockEntry e : entries) copy.add(e.copy());
+        }
+        this.attacklock = copy;
     }
 
     public void setInteractionlock(List<EntityInteractionLockEntry> interactionlock) {

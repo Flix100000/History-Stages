@@ -31,6 +31,7 @@ public final class ConfigDerivedCaches {
     /** Rebuilds what the visual spec feeds. */
     public static void rebuildVisual() {
         ScrollTooltipLayout.rebuildFromConfig(Config.VISUAL.scrollTooltipLines.get());
+        net.bananemdnsa.historystages.data.tooltip.SlotTooltipLayout.rebuildFromConfig(Config.VISUAL.slotTooltipLines.get());
     }
 
     /**

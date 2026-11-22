@@ -44,7 +44,7 @@ public class EntityItemLockHandler {
                 if (!isClient) {
                     DebugLogger.runtimeThrottled(HsRuntimeCategories.ENTITY_ITEM_LOCK, "frame_interact_" + event.getEntity().getUUID(),
                             "<" + event.getEntity().getName().getString() + "> Interaction with item frame (locked item) blocked");
-                    showMessage(event.getEntity());
+                    showMessage(event.getEntity(), displayedItem);
                 }
             }
         }
@@ -62,12 +62,13 @@ public class EntityItemLockHandler {
         boolean isClient = event.getEntity().level().isClientSide();
 
         if (event.getTarget() instanceof ArmorStand armorStand) {
-            if (hasLockedItem(armorStand, event.getEntity(), isClient)) {
+            ItemStack lockedItem = firstLockedItem(armorStand, event.getEntity(), isClient);
+            if (!lockedItem.isEmpty()) {
                 event.setCanceled(true);
                 if (!isClient) {
                     DebugLogger.runtimeThrottled(HsRuntimeCategories.ENTITY_ITEM_LOCK, "stand_interact_" + event.getEntity().getUUID(),
                             "<" + event.getEntity().getName().getString() + "> Interaction with armor stand (locked item) blocked");
-                    showMessage(event.getEntity());
+                    showMessage(event.getEntity(), lockedItem);
                 }
             }
         }
@@ -90,33 +91,35 @@ public class EntityItemLockHandler {
                 if (!isClient) {
                     DebugLogger.runtimeThrottled(HsRuntimeCategories.ENTITY_ITEM_LOCK, "frame_attack_" + event.getEntity().getUUID(),
                             "<" + event.getEntity().getName().getString() + "> Attack on item frame (locked item) blocked");
-                    showMessage(event.getEntity());
+                    showMessage(event.getEntity(), displayedItem);
                 }
             }
         } else if (event.getTarget() instanceof ArmorStand armorStand) {
-            if (hasLockedItem(armorStand, event.getEntity(), isClient)) {
+            ItemStack lockedItem = firstLockedItem(armorStand, event.getEntity(), isClient);
+            if (!lockedItem.isEmpty()) {
                 event.setCanceled(true);
                 if (!isClient) {
                     DebugLogger.runtimeThrottled(HsRuntimeCategories.ENTITY_ITEM_LOCK, "stand_attack_" + event.getEntity().getUUID(),
                             "<" + event.getEntity().getName().getString() + "> Attack on armor stand (locked item) blocked");
-                    showMessage(event.getEntity());
+                    showMessage(event.getEntity(), lockedItem);
                 }
             }
         }
     }
 
-    static boolean hasLockedItem(ArmorStand armorStand, Player player, boolean isClient) {
+    /** The first armour or hand item on the stand that is locked, or empty when there is none. */
+    static ItemStack firstLockedItem(ArmorStand armorStand, Player player, boolean isClient) {
         for (ItemStack stack : armorStand.getArmorSlots()) {
             if (!stack.isEmpty() && isItemLockedForContext(stack, player, isClient)) {
-                return true;
+                return stack;
             }
         }
         for (ItemStack stack : armorStand.getHandSlots()) {
             if (!stack.isEmpty() && isItemLockedForContext(stack, player, isClient)) {
-                return true;
+                return stack;
             }
         }
-        return false;
+        return ItemStack.EMPTY;
     }
 
     /**
@@ -133,7 +136,7 @@ public class EntityItemLockHandler {
                 || StageLockHelper.isActionLockedByIndividualStage(item, player.getUUID(), "pickup");
     }
 
-    private static void showMessage(Player player) {
+    private static void showMessage(Player player, ItemStack lockedItem) {
         if (!(player instanceof ServerPlayer sp)) return;
 
         long now = System.currentTimeMillis();
@@ -142,7 +145,7 @@ public class EntityItemLockHandler {
         MESSAGE_COOLDOWNS.put(sp.getUUID(), now);
 
         sp.displayClientMessage(
-                net.bananemdnsa.historystages.util.lock.LockMessages.entityItemLocked()
+                net.bananemdnsa.historystages.util.lock.LockMessages.entityItemLocked(sp, lockedItem)
                         .withStyle(ChatFormatting.DARK_RED, ChatFormatting.ITALIC),
                 true
         );

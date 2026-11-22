@@ -178,7 +178,7 @@ public final class HiddenDisplayResolver {
     private static ItemEntry matchedItemEntry(StageEntry stage, String itemId, ItemStack stack) {
         for (ItemEntry ie : stage.getItemEntries()) {
             if (!ie.getId().equals(itemId)) continue;
-            if (!ie.hasNbt() || NbtMatcher.matches(stack, ie.getNbt())) return ie;
+            if (!ie.hasNbt() || NbtMatcher.matches(stack, ie.getNbtFilter())) return ie;
         }
         return null;
     }

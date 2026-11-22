@@ -15,6 +15,7 @@ import net.bananemdnsa.historystages.client.editor.widget.list.SearchableEntityL
 import net.bananemdnsa.historystages.client.editor.widget.list.SearchableItemList;
 import net.bananemdnsa.historystages.client.editor.widget.list.SearchableDimensionList;
 import net.bananemdnsa.historystages.client.editor.widget.list.SearchableBiomeList;
+import net.bananemdnsa.historystages.client.editor.widget.list.SearchableCropList;
 import net.bananemdnsa.historystages.client.editor.widget.list.SearchableFluidList;
 import net.bananemdnsa.historystages.client.editor.widget.list.SearchableModList;
 import net.bananemdnsa.historystages.client.editor.widget.list.SearchableProfessionList;
@@ -46,6 +47,8 @@ import net.bananemdnsa.historystages.data.lock.FluidRecipeScanner;
 import net.bananemdnsa.historystages.client.editor.recipe.RecipeTypeMetas;
 import net.bananemdnsa.historystages.client.editor.tab.CategoryEditors;
 import net.bananemdnsa.historystages.api.editor.CompositeCategoryTab;
+import net.bananemdnsa.historystages.data.prune.RegistryUnknownIdCheck;
+import net.bananemdnsa.historystages.data.prune.UnknownIdCheck;
 import net.bananemdnsa.historystages.api.editor.widget.CountInputScreen;
 import net.bananemdnsa.historystages.client.editor.tab.LevelledEntryCategoryTab;
 import net.bananemdnsa.historystages.client.editor.widget.list.SearchableEffectList;
@@ -178,6 +181,7 @@ public class StageDetailScreen extends Screen {
     private final java.util.LinkedHashMap<Integer, CategoryTab> categoryTabs = new java.util.LinkedHashMap<>();
     /** Typed handle on the biomes tab; the mod-lock chain needs its mod-linked satellite. */
     private final ModLinkedCategoryTab biomeTab;
+    private final ModLinkedCategoryTab cropTab;
     /** Typed handle on the structures tab; it owns the per-entry generation rules. */
     private final StructureCategoryTab structureTab;
     /** Typed handle on the tags tab; its per-entry extras are read from several places. */
@@ -240,6 +244,7 @@ public class StageDetailScreen extends Screen {
     private ModEntitySelectionPopup modEntityPopup;
     private ModEntrySelectionPopup modStructurePopup;
     private ModEntrySelectionPopup modBiomePopup;
+    private ModEntrySelectionPopup modCropPopup;
     private IngredientUsagePopup ingredientUsagePopup;
     /** Kept so the ingredient-usage popup can add recipes the way the recipe picker does. */
     private StringListCategoryTab recipeTab;
@@ -247,6 +252,8 @@ public class StageDetailScreen extends Screen {
     private SpawnControlPopup spawnControlPopup;
     private TradeLevelsPopup tradeLevelsPopup;
     private net.bananemdnsa.historystages.client.editor.widget.popup.InteractionActionsPopup interactionActionsPopup;
+    private final net.bananemdnsa.historystages.client.editor.widget.popup.WoodTypesPopup woodTypesPopup =
+            new net.bananemdnsa.historystages.client.editor.widget.popup.WoodTypesPopup();
     private net.bananemdnsa.historystages.client.editor.widget.popup.InteractionItemsPopup interactionItemsPopup;
     private SearchableItemList filterItemSearch;
     private SearchableTagList filterTagSearch;
@@ -557,6 +564,22 @@ public class StageDetailScreen extends Screen {
         biomeTabLocal.load(e);
         this.biomeTab = biomeTabLocal;
         this.categoryTabs.put(11, biomeTabLocal);
+        // Safe cast: the built-in crops category stores bare ids and #tags. Global only, so the
+        // tab hides itself on individual stages through the category's scopes.
+        @SuppressWarnings("unchecked")
+        LockCategory<String> cropCategory =
+                (LockCategory<String>) LockCategories.byId(CAT_CROPS);
+        ModLinkedCategoryTab cropTabLocal = new ModLinkedCategoryTab(cropCategory,
+                (onSelect, alreadyAdded) -> {
+                    SearchableCropList list = new SearchableCropList(onSelect, alreadyAdded);
+                    list.setMultiSelect(true);
+                    return list;
+                },
+                () -> { hasChanges = true; updateMaxScroll(); },
+                StageEntry::getCropModLinked, StageEntry::setCropModLinked);
+        cropTabLocal.load(e);
+        this.cropTab = cropTabLocal;
+        this.categoryTabs.put(13, cropTabLocal);
         // Beside the biomes, because both answer "where"; the difference is that a zone is drawn
         // rather than named. Its rows open a screen of their own, so the host hands it the way to
         // do that instead of the tab reaching for Minecraft itself.
@@ -572,6 +595,20 @@ public class StageDetailScreen extends Screen {
         // Which of the two stage maps this screen is editing. Read by every tab that has sections,
         // because a section whose category does not serve this scope is greyed rather than shown.
         StageScope loadScope = isIndividual ? StageScope.INDIVIDUAL : StageScope.GLOBAL;
+        // Last of the built-ins: slots are clicked together on a GUI, like a zone is drawn, so
+        // the tab gets the same way to open a screen. It needs the scope because container slots
+        // are global-only while the player's own inventory works per player too.
+        @SuppressWarnings("unchecked")
+        LockCategory<net.bananemdnsa.historystages.data.lock.SlotLockEntry> slotCategory =
+                (LockCategory<net.bananemdnsa.historystages.data.lock.SlotLockEntry>)
+                        LockCategories.byId(CAT_SLOTS);
+        net.bananemdnsa.historystages.client.editor.tab.SlotCategoryTab slotTabLocal =
+                new net.bananemdnsa.historystages.client.editor.tab.SlotCategoryTab(slotCategory,
+                        () -> { hasChanges = true; updateMaxScroll(); },
+                        factory -> this.minecraft.setScreen(factory.apply(this)),
+                        loadScope);
+        slotTabLocal.load(e);
+        this.categoryTabs.put(14, slotTabLocal);
         // Three categories, one tab, sitting where the decision belongs: after the entity locks
         // that gate the merchant itself and before world generation. Structures and biomes moved
         // up a place for it — the index is a position in the strip and nothing reads it as an
@@ -716,7 +753,7 @@ public class StageDetailScreen extends Screen {
                 entityState, entityState.spawnlock());
         CategoryTab interactionTab = new EntityCategoryTab(
                 LockCategories.byId("historystages:interactionlock"),
-                (onSelect, alreadyAdded) -> createEntityPicker(onSelect, alreadyAdded),
+                (onSelect, alreadyAdded) -> createEntityPicker(onSelect, alreadyAdded).includeVehicles(),
                 () -> { hasChanges = true; updateMaxScroll(); },
                 entityState, entityState.interactionlock());
         // One tab, three sections — the same shape as trades, and for the same reason: three
@@ -906,6 +943,11 @@ public class StageDetailScreen extends Screen {
         categorySearchBox.setFocused(false);
         categorySearchBox.setPosition(cSearchX, 22, categorySearchBoxW);
 
+        // Right of the search, left of the stage type badge; only there while it has work.
+        pruneButton = this.addRenderableWidget(StyledButton.of(Component.empty(),
+                btn -> onPruneButton(), 0, 22, 10, FIELD_HEIGHT));
+        refreshPruneButton();
+
         // --- Text-override popup widgets (children; rendered manually on top of the popup) ---
         overrideNameField = new EditBox(this.font, 0, 0, 10, FIELD_HEIGHT,
                 Component.translatable("editor.historystages.text_override.name"));
@@ -941,29 +983,34 @@ public class StageDetailScreen extends Screen {
                 Component.translatable("editor.historystages.popup.kind.structures"),
                 net.bananemdnsa.historystages.client.ClientStructureRegistry::get,
                 selectedIds -> {
-            // In edit mode, drop the previous mod-linked structures for this mod first so
-            // unchecked rows are actually removed.
-            if (editingModId != null) {
-                if (structureTab.replaceModSelection(editingModId, selectedIds))
-                    hasChanges = true;
-            }
-            if (!selectedIds.isEmpty())
+            // The popup only reports the ticks; storing them is ours, when a mod is first added
+            // as much as when it is edited. Replacing (rather than adding) also drops rows that
+            // were unticked in edit mode.
+            if (pendingModId != null && structureTab.replaceModSelection(pendingModId, selectedIds))
                 hasChanges = true;
             updateMaxScroll();
             showModBiomePopup();
-        });
+        }, () -> showModBiomePopup());
 
         modBiomePopup = new ModEntrySelectionPopup(
                 Component.translatable("editor.historystages.popup.kind.biomes"),
                 StageDetailScreen::allKnownBiomeIds,
                 selectedIds -> {
-            if (editingModId != null && biomeTab.replaceModSelection(editingModId, selectedIds))
+            if (pendingModId != null && biomeTab.replaceModSelection(pendingModId, selectedIds))
                 hasChanges = true;
-            else if (!selectedIds.isEmpty())
+            updateMaxScroll();
+            showModCropPopup();
+        }, () -> showModCropPopup());
+
+        modCropPopup = new ModEntrySelectionPopup(
+                Component.translatable("editor.historystages.popup.kind.crops"),
+                SearchableCropList::allPlantIds,
+                selectedIds -> {
+            if (pendingModId != null && cropTab.replaceModSelection(pendingModId, selectedIds))
                 hasChanges = true;
             editingModId = null;
             updateMaxScroll();
-        });
+        }, () -> editingModId = null);
 
         modEntityPopup = new ModEntitySelectionPopup((spawnlockIds, attacklockIds, interactionlockIds) -> {
             // In edit mode, drop the previous mod-linked entity locks for this mod first
@@ -1122,10 +1169,23 @@ public class StageDetailScreen extends Screen {
         return showModBiomePopup();
     }
 
-    /** Final step of the mod-lock chain. Clears the edit marker when there is nothing to show. */
+    /** Third step of the mod-lock chain. Skips to the plants step when the mod adds no biomes. */
     private boolean showModBiomePopup() {
         if (pendingModId != null && modBiomePopup.showForMod(pendingModId, pendingModDisplayName,
                 this.width / 2, this.height / 2, biomeTab.entries())) {
+            return true;
+        }
+        return showModCropPopup();
+    }
+
+    /**
+     * Final step of the mod-lock chain. Only offered on global stages, the only scope plant locks
+     * exist in. Clears the edit marker when there is nothing to show.
+     */
+    private boolean showModCropPopup() {
+        if (pendingModId != null && !isIndividual
+                && modCropPopup.showForMod(pendingModId, pendingModDisplayName,
+                        this.width / 2, this.height / 2, cropTab.entries())) {
             return true;
         }
         editingModId = null;
@@ -1153,11 +1213,12 @@ public class StageDetailScreen extends Screen {
         return (iconSearch != null && iconSearch.isVisible())
                 || anyCategoryPickerVisible()
                 || lockActionsPopup.isVisible() || spawnControlPopup.isVisible()
-                || tradeLevelsPopup.isVisible() || interactionActionsPopup.isVisible()
+                || tradeLevelsPopup.isVisible() || interactionActionsPopup.isVisible() || woodTypesPopup.isVisible()
                 || interactionItemsPopup.isVisible() || filterItemSearch.isVisible() || filterTagSearch.isVisible()
                 || generationLimitPopup.isVisible()
                 || recipePopupVisible
                 || modEntityPopup.isVisible() || modStructurePopup.isVisible() || modBiomePopup.isVisible()
+                || modCropPopup.isVisible()
                 || ingredientUsagePopup.isVisible()
                 || actionOverlay() != null;
     }
@@ -1262,14 +1323,14 @@ public class StageDetailScreen extends Screen {
     private static final RichEntryCategoryTab.EntryAdapter<net.bananemdnsa.historystages.data.ItemEntry>
             ITEM_ENTRY_ADAPTER = new RichEntryCategoryTab.EntryAdapter<>() {
         @Override public String id(net.bananemdnsa.historystages.data.ItemEntry e) { return e.getId(); }
-        @Override public com.google.gson.JsonObject nbt(net.bananemdnsa.historystages.data.ItemEntry e) { return e.getNbt(); }
+        @Override public net.bananemdnsa.historystages.data.NbtFilter nbt(net.bananemdnsa.historystages.data.ItemEntry e) { return e.getNbtFilter(); }
         @Override public List<String> lockActions(net.bananemdnsa.historystages.data.ItemEntry e) { return e.getLockActions(); }
         @Override public String nameText(net.bananemdnsa.historystages.data.ItemEntry e) { return e.getNameTextOverride(); }
         @Override public String tooltipText(net.bananemdnsa.historystages.data.ItemEntry e) { return e.getTooltipTextOverride(); }
         @Override public net.bananemdnsa.historystages.data.ItemEntry build(
-                String id, com.google.gson.JsonObject nbt, List<String> lockActions,
+                String id, net.bananemdnsa.historystages.data.NbtFilter nbt, List<String> lockActions,
                 String nameText, String tooltipText) {
-            return new net.bananemdnsa.historystages.data.ItemEntry(id, nbt, lockActions, nameText, tooltipText);
+            return net.bananemdnsa.historystages.data.ItemEntry.withFilter(id, nbt, lockActions, nameText, tooltipText);
         }
     };
 
@@ -1277,12 +1338,12 @@ public class StageDetailScreen extends Screen {
     private static final RichEntryCategoryTab.EntryAdapter<net.bananemdnsa.historystages.data.FluidEntry>
             FLUID_ENTRY_ADAPTER = new RichEntryCategoryTab.EntryAdapter<>() {
         @Override public String id(net.bananemdnsa.historystages.data.FluidEntry e) { return e.getId(); }
-        @Override public com.google.gson.JsonObject nbt(net.bananemdnsa.historystages.data.FluidEntry e) { return null; }
+        @Override public net.bananemdnsa.historystages.data.NbtFilter nbt(net.bananemdnsa.historystages.data.FluidEntry e) { return null; }
         @Override public List<String> lockActions(net.bananemdnsa.historystages.data.FluidEntry e) { return e.getLockActions(); }
         @Override public String nameText(net.bananemdnsa.historystages.data.FluidEntry e) { return e.getNameTextOverride(); }
         @Override public String tooltipText(net.bananemdnsa.historystages.data.FluidEntry e) { return e.getTooltipTextOverride(); }
         @Override public net.bananemdnsa.historystages.data.FluidEntry build(
-                String id, com.google.gson.JsonObject nbt, List<String> lockActions,
+                String id, net.bananemdnsa.historystages.data.NbtFilter nbt, List<String> lockActions,
                 String nameText, String tooltipText) {
             return new net.bananemdnsa.historystages.data.FluidEntry(id, lockActions, nameText, tooltipText);
         }
@@ -1293,14 +1354,14 @@ public class StageDetailScreen extends Screen {
     private static final RichEntryCategoryTab.EntryAdapter<net.bananemdnsa.historystages.data.lock.NamedLockEntry>
             NAMED_LOCK_ENTRY_ADAPTER = new RichEntryCategoryTab.EntryAdapter<>() {
         @Override public String id(net.bananemdnsa.historystages.data.lock.NamedLockEntry e) { return e.getId(); }
-        @Override public com.google.gson.JsonObject nbt(net.bananemdnsa.historystages.data.lock.NamedLockEntry e) { return e.getNbt(); }
+        @Override public net.bananemdnsa.historystages.data.NbtFilter nbt(net.bananemdnsa.historystages.data.lock.NamedLockEntry e) { return e.getNbtFilter(); }
         @Override public List<String> lockActions(net.bananemdnsa.historystages.data.lock.NamedLockEntry e) { return e.getLockActions(); }
         @Override public String nameText(net.bananemdnsa.historystages.data.lock.NamedLockEntry e) { return e.getNameTextOverride(); }
         @Override public String tooltipText(net.bananemdnsa.historystages.data.lock.NamedLockEntry e) { return e.getTooltipTextOverride(); }
         @Override public net.bananemdnsa.historystages.data.lock.NamedLockEntry build(
-                String id, com.google.gson.JsonObject nbt, List<String> lockActions,
+                String id, net.bananemdnsa.historystages.data.NbtFilter nbt, List<String> lockActions,
                 String nameText, String tooltipText) {
-            return new net.bananemdnsa.historystages.data.lock.NamedLockEntry(
+            return net.bananemdnsa.historystages.data.lock.NamedLockEntry.withFilter(
                     id, lockActions, nameText, tooltipText, nbt);
         }
     };
@@ -1353,7 +1414,9 @@ public class StageDetailScreen extends Screen {
     private static final String CAT_INTERACT   = "historystages:interactionlock";
     private static final String CAT_STRUCTURES = "historystages:structures";
     private static final String CAT_BIOMES     = "historystages:biomes";
+    private static final String CAT_CROPS      = "historystages:crops";
     private static final String CAT_ZONES      = "historystages:zones";
+    private static final String CAT_SLOTS      = "historystages:slots";
     /**
      * The item section of the trades tab. Its two sibling sections report ids of their own, which
      * is what lets {@link #isTab} tell an item row from a profession row inside one tab.
@@ -1361,6 +1424,8 @@ public class StageDetailScreen extends Screen {
     private static final String CAT_TRADES     = "historystages:trades";
     /** The profession section of the trades tab. */
     private static final String CAT_TRADE_PROFESSIONS = "historystages:trade_professions";
+    private static final String CAT_ENCHANTMENTS = "historystages:enchantments";
+    private static final String CAT_EFFECTS    = "historystages:effects";
 
     /**
      * The tab at this index, or — when it has sections — the section that is showing.
@@ -1514,6 +1579,9 @@ public class StageDetailScreen extends Screen {
                     } catch (Exception ignored) {
                     }
                 });
+            } else {
+                ItemStack icon = EntityPreviewRenderer.iconFor(entry);
+                if (!icon.isEmpty()) row.leading(14, (g, x, y, w, h) -> renderStackIcon(g, icon, x, y));
             }
         } else {
             // A tab that paints the zone itself has already accounted for its own icon, so the
@@ -1534,7 +1602,9 @@ public class StageDetailScreen extends Screen {
         // Badges, rightmost first
         if (isItemsTab && itemTab.nbtByIndex().containsKey(index)
                 || isTagsTab && tagTab.nbtByIndex().containsKey(index)
-                || isExceptionsTab && modExceptionTab.nbtByIndex().containsKey(index)) {
+                || isExceptionsTab && modExceptionTab.nbtByIndex().containsKey(index)
+                || isTab(activeTab, CAT_ATTACK) && entityState.attackNbt().containsKey(entry)
+                || isTab(activeTab, CAT_INTERACT) && entityState.interactionNbt().containsKey(entry)) {
             row.badge(Component.translatable("editor.historystages.badge.nbt").getString(), 0xFFCC00);
         }
 
@@ -1659,7 +1729,8 @@ public class StageDetailScreen extends Screen {
 
         if ((isEntityTab && editModLinked.contains(entry))
                 || (isTab(activeTab, CAT_STRUCTURES) && structureTab.modLinkedEntries().contains(entry))
-                || (isTab(activeTab, CAT_BIOMES) && biomeTab.modLinkedEntries().contains(entry))) {
+                || (isTab(activeTab, CAT_BIOMES) && biomeTab.modLinkedEntries().contains(entry))
+                || (isTab(activeTab, CAT_CROPS) && cropTab.modLinkedEntries().contains(entry))) {
             row.badge(Component.translatable("editor.historystages.badge.mod").getString(), 0x999999);
         }
 
@@ -1699,7 +1770,12 @@ public class StageDetailScreen extends Screen {
         // because KubeJS renumbers them whenever the script is reordered.
         boolean missingRecipe = isTab(activeTab, CAT_RECIPES)
                 && net.bananemdnsa.historystages.data.lock.MissingRecipeIds.isMissing(entry);
-        if (missingRecipe && row.isHovered()) {
+        // Its mod is not installed: the button at the top removes these in one go.
+        boolean unknown = isUnknownRow(sectionAt(activeTab), index, entry, unknownIdCheck());
+        if (unknown && row.isHovered()) {
+            currentTooltipKey = "unknown-entry:" + entry;
+            currentTooltipText = Component.translatable("editor.historystages.unknown_entry.tooltip").getString();
+        } else if (missingRecipe && row.isHovered()) {
             currentTooltipKey = "missing-recipe:" + entry;
             currentTooltipText = Component.translatable("editor.historystages.recipes.missing").getString();
         }
@@ -1708,7 +1784,7 @@ public class StageDetailScreen extends Screen {
         // copies; a tab may say the row should read as something friendlier.
         String shown = activeTabObject() == null ? null : activeTabObject().displayText(index, entry);
         if (shown == null) shown = entry;
-        row.text((missingRecipe ? "§c" : "") + shown + (dual ? " [Dual]" : ""));
+        row.text((missingRecipe || unknown ? "§c" : "") + shown + (dual ? " [Dual]" : ""));
     }
 
     private CategoryTab activeTabObject() {
@@ -1735,6 +1811,10 @@ public class StageDetailScreen extends Screen {
      */
     @Nullable
     private StyledButton addButton;
+    /** "Remove unknown (n)"; hidden while n is 0. */
+    private StyledButton pruneButton;
+    private int unknownEntryCount;
+    private int pruneRefreshTicks;
 
     /** Hides the Add button for a tab with nothing to add to — the merchant levels are five switches. */
     private void updateAddButton() {
@@ -1829,6 +1909,13 @@ public class StageDetailScreen extends Screen {
     }
 
     @Override
+    public void tick() {
+        super.tick();
+        // Every half second rather than per frame: the count walks every tab.
+        if (++pruneRefreshTicks % 10 == 0) refreshPruneButton();
+    }
+
+    @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
         guiGraphics.fill(0, 0, this.width, this.height, 0xE0101010);
 
@@ -1841,9 +1928,7 @@ public class StageDetailScreen extends Screen {
         guiGraphics.fill(10, 19, this.width - 10, 20, 0x40FFFFFF);
 
         // Right-side indicators inline with the button row (y=22..40)
-        String typeLabel = Component.translatable(isIndividual
-                ? "editor.historystages.stage_type.individual"
-                : "editor.historystages.stage_type.global").getString();
+        String typeLabel = stageTypeLabel();
         Badge.draw(guiGraphics, this.font, typeLabel,
                 this.width - 10 - Badge.width(this.font, typeLabel),
                 22 + (FIELD_HEIGHT - Badge.HEIGHT) / 2, 0xBBBBBB);
@@ -1951,6 +2036,10 @@ public class StageDetailScreen extends Screen {
         if (!overlayOpen && iconPickerBtn != null && iconPickerBtn.isHoveredOrFocused()) {
             currentTooltipKey = "field.icon";
             currentTooltipText = Component.translatable("editor.historystages.icon.tooltip").getString();
+        }
+        if (!overlayOpen && pruneButton != null && pruneButton.visible && pruneButton.isHovered()) {
+            currentTooltipKey = "field.prune";
+            currentTooltipText = Component.translatable("editor.historystages.prune.stage_button.tooltip").getString();
         }
 
         // Sliding gold underline indicator
@@ -2104,11 +2193,13 @@ public class StageDetailScreen extends Screen {
         modEntityPopup.render(guiGraphics, this.font, mouseX, mouseY);
         modStructurePopup.render(guiGraphics, this.font, mouseX, mouseY);
         modBiomePopup.render(guiGraphics, this.font, mouseX, mouseY);
+        modCropPopup.render(guiGraphics, this.font, mouseX, mouseY);
         ingredientUsagePopup.render(guiGraphics, this.font, mouseX, mouseY);
         if (recipePopupVisible) renderRecipePopup(guiGraphics, mouseX, mouseY);
         lockActionsPopup.render(guiGraphics, this.font, this.width, this.height, mouseX, mouseY);
         tradeLevelsPopup.render(guiGraphics, this.font, mouseX, mouseY);
         interactionActionsPopup.render(guiGraphics, this.font, mouseX, mouseY);
+        woodTypesPopup.render(guiGraphics, this.font, this.width, this.height, mouseX, mouseY);
         // Skip the popup while one of its pickers is up: text is batched and flushed after the
         // picker's panel fills, so drawing it underneath makes it bleed through the picker.
         if (!filterItemSearch.isVisible() && !filterTagSearch.isVisible()) {
@@ -2512,9 +2603,11 @@ public class StageDetailScreen extends Screen {
         if (modEntityPopup.isVisible()) { return modEntityPopup.mouseClicked(mouseX, mouseY); }
         if (modStructurePopup.isVisible()) { return modStructurePopup.mouseClicked(mouseX, mouseY); }
         if (modBiomePopup.isVisible()) { return modBiomePopup.mouseClicked(mouseX, mouseY); }
+        if (modCropPopup.isVisible()) { return modCropPopup.mouseClicked(mouseX, mouseY); }
         if (lockActionsPopup.isVisible()) { return lockActionsPopup.mouseClicked(mouseX, mouseY, button); }
         if (tradeLevelsPopup.isVisible()) { return tradeLevelsPopup.mouseClicked(mouseX, mouseY); }
         if (interactionActionsPopup.isVisible()) { return interactionActionsPopup.mouseClicked(mouseX, mouseY, button); }
+        if (woodTypesPopup.isVisible()) { return woodTypesPopup.mouseClicked(mouseX, mouseY, button); }
         if (filterItemSearch.isVisible()) { if (filterItemSearch.mouseClicked(mouseX, mouseY)) return true; }
         if (filterTagSearch.isVisible()) { if (filterTagSearch.mouseClicked(mouseX, mouseY)) return true; }
         // The row menu sits on top of the popup, so let it consume the click first (its own
@@ -2676,6 +2769,15 @@ public class StageDetailScreen extends Screen {
                                 Component.translatable("editor.historystages.zone.edit").getString(),
                                 () -> zones.openAt(entryIdx));
                     }
+                    if (isTab(tabIdx, CAT_SLOTS)
+                            && sectionAt(tabIdx) instanceof net.bananemdnsa.historystages.client.editor.tab.SlotCategoryTab slots) {
+                        contextMenu.addEntry(
+                                Component.translatable("editor.historystages.slots.edit").getString(),
+                                () -> slots.openAt(entryIdx));
+                        contextMenu.addEntry(
+                                Component.translatable("editor.historystages.slots.duplicate").getString(),
+                                () -> slots.duplicateAt(entryIdx));
+                    }
                     if (isTab(tabIdx, CAT_ITEMS)) {
                         contextMenu.addEntry(Component.translatable("editor.historystages.context.edit_nbt").getString(),
                                 () -> openNbtEditScreen(entryIdx, entryValue));
@@ -2708,6 +2810,25 @@ public class StageDetailScreen extends Screen {
                         contextMenu.addEntry(Component.translatable("editor.historystages.context.spawn_control").getString(),
                                 () -> spawnControlPopup.show(entryValue, editSpawnRules.get(entryValue), editFixedSpawnRule,
                                         this.width / 2, this.height / 2));
+                    }
+                    if (isAnyTab(tabIdx, CAT_ATTACK, CAT_INTERACT)) {
+                        java.util.Map<String, net.bananemdnsa.historystages.data.NbtFilter> nbtMap =
+                                isTab(tabIdx, CAT_ATTACK) ? entityState.attackNbt() : entityState.interactionNbt();
+                        contextMenu.addEntry(Component.translatable("editor.historystages.context.edit_nbt").getString(),
+                                () -> this.minecraft.setScreen(new EntityNbtEditScreen(
+                                        this, entryValue, nbtMap.get(entryValue), filter -> {
+                                            if (filter.isEmpty()) nbtMap.remove(entryValue);
+                                            else nbtMap.put(entryValue, filter);
+                                            hasChanges = true;
+                                        })));
+                        if (net.bananemdnsa.historystages.client.editor.widget.popup.WoodTypesPopup.supports(entryValue)) {
+                            contextMenu.addEntry(Component.translatable("editor.historystages.context.wood_types").getString(),
+                                    () -> woodTypesPopup.show(entryValue, nbtMap.get(entryValue), filter -> {
+                                        if (filter.isEmpty()) nbtMap.remove(entryValue);
+                                        else nbtMap.put(entryValue, filter);
+                                        hasChanges = true;
+                                    }));
+                        }
                     }
                     if (isTab(tabIdx, CAT_INTERACT)) {
                         contextMenu.addEntry(Component.translatable("editor.historystages.context.interaction_actions").getString(),
@@ -2777,42 +2898,7 @@ public class StageDetailScreen extends Screen {
                     addDeclaredEntryActions(tabIdx, entryIdx);
                     contextMenu.addEntry(Component.translatable("editor.historystages.copy_id").getString(), () -> { Minecraft.getInstance().keyboardHandler.setClipboard(entryValue); EditorToastHandler.copiedToClipboard(entryValue); });
                     contextMenu.addEntry(Component.translatable("editor.historystages.remove").getString(), () -> {
-                        String removedValue = getListForSection(tabIdx).get(entryIdx);
-                        // A migrated tab owns its extras, including renumbering them.
-                        CategoryTab migratedTab = categoryTabs.get(tabIdx);
-                        if (migratedTab != null) migratedTab.removeAt(entryIdx);
-                        else getListForSection(tabIdx).remove(entryIdx);
-                        // When removing an item, shift NBT and lockActions indices
-                        // When removing a tag, shift NBT, lockActions + override indices
-                        // When removing a mod, shift lockActions + override indices
-                        // When removing a spawnlock entry, drop its spawn rule (keyed by entity ID)
-                        // When removing an interactionlock entry, drop its action + item filters (keyed by entity ID)
-                        // When removing a mod exception, shift NBT indices
-                        // When removing a mod, also remove mod-linked entities and exceptions from that mod
-                        if (isTab(tabIdx, CAT_MODS) && removedValue != null) {
-                            String prefix = removedValue + ":";
-                            editSpawnlock.removeIf(id -> {
-                                if (id.startsWith(prefix) && editModLinked.contains(id)) {
-                                    editSpawnRules.remove(id);
-                                    return true;
-                                }
-                                return false;
-                            });
-                            editAttacklock.removeIf(id -> id.startsWith(prefix) && editModLinked.contains(id));
-                            editInteractionlock.removeIf(id -> {
-                                if (id.startsWith(prefix) && editModLinked.contains(id)) {
-                                    editInteractionlockActions.remove(id);
-                                    editInteractionlockItems.remove(id);
-                                    return true;
-                                }
-                                return false;
-                            });
-                            editModLinked.removeIf(id -> id.startsWith(prefix));
-                            structureTab.removeModSelectionByPrefix(prefix);
-                            biomeTab.removeModSelectionByPrefix(prefix);
-                            // Remove mod exceptions belonging to this mod
-                            modExceptionTab.removeAllFromMod(prefix);
-                        }
+                        removeEntryAt(tabIdx, entryIdx);
                         hasChanges = true; updateMaxScroll();
                     });
                     contextMenu.show((int) mouseX, (int) mouseY, this.font);
@@ -2822,6 +2908,232 @@ public class StageDetailScreen extends Screen {
         }
 
         return false;
+    }
+
+    /**
+     * Removes one row the way the right-click "Remove" does. Acts on the section on screen, like
+     * every row index here.
+     */
+    private void removeEntryAt(int tabIdx, int entryIdx) {
+        String removedValue = getListForSection(tabIdx).get(entryIdx);
+        // A migrated tab owns its extras, including renumbering them.
+        CategoryTab migratedTab = categoryTabs.get(tabIdx);
+        if (migratedTab != null) migratedTab.removeAt(entryIdx);
+        else getListForSection(tabIdx).remove(entryIdx);
+        // When removing a mod, also remove mod-linked entities and exceptions from that mod
+        if (isTab(tabIdx, CAT_MODS) && removedValue != null) {
+            String prefix = removedValue + ":";
+            editSpawnlock.removeIf(id -> {
+                if (id.startsWith(prefix) && editModLinked.contains(id)) {
+                    editSpawnRules.remove(id);
+                    return true;
+                }
+                return false;
+            });
+            editAttacklock.removeIf(id -> {
+                if (id.startsWith(prefix) && editModLinked.contains(id)) {
+                    entityState.attackNbt().remove(id);
+                    return true;
+                }
+                return false;
+            });
+            editInteractionlock.removeIf(id -> {
+                if (id.startsWith(prefix) && editModLinked.contains(id)) {
+                    editInteractionlockActions.remove(id);
+                    editInteractionlockItems.remove(id);
+                    entityState.interactionNbt().remove(id);
+                    return true;
+                }
+                return false;
+            });
+            editModLinked.removeIf(id -> id.startsWith(prefix));
+            structureTab.removeModSelectionByPrefix(prefix);
+            biomeTab.removeModSelectionByPrefix(prefix);
+            cropTab.removeModSelectionByPrefix(prefix);
+            // Remove mod exceptions belonging to this mod
+            modExceptionTab.removeAllFromMod(prefix);
+        }
+    }
+
+    // --- Entries of mods that are not installed (#142) ---
+
+    /** Built per call: cheap, and the level can change under an open screen. */
+    @Nullable
+    private UnknownIdCheck unknownIdCheck() {
+        var level = Minecraft.getInstance().level;
+        return level == null ? null : new RegistryUnknownIdCheck(level.registryAccess(), level.getRecipeManager());
+    }
+
+    /**
+     * Whether a row points at something the game does not have. Asks the client's registries,
+     * which is what the pickers show. Tags, malformed ids and categories without a registry
+     * behind them never count.
+     */
+    private boolean isUnknownRow(CategoryTab section, int index, String entry, @Nullable UnknownIdCheck check) {
+        if (section == null || check == null || entry == null) return false;
+        return switch (section.categoryId()) {
+            case CAT_MODS -> UnknownIdCheck.isValidModId(entry) && check.isUnknownMod(entry);
+            case CAT_ITEMS, CAT_EXCEPTIONS -> UnknownIdCheck.isValidId(entry) && check.isUnknownItem(entry);
+            case CAT_ATTACK, CAT_SPAWN, CAT_INTERACT ->
+                    UnknownIdCheck.isValidId(entry) && check.isUnknownEntity(entry);
+            case CAT_FLUIDS -> UnknownIdCheck.isValidId(entry) && check.isUnknownFluid(entry);
+            case CAT_ENCHANTMENTS -> UnknownIdCheck.isValidId(entry) && check.isUnknownEnchantment(entry);
+            case CAT_EFFECTS -> UnknownIdCheck.isValidId(entry) && check.isUnknownEffect(entry);
+            case CAT_RECIPES -> UnknownIdCheck.isValidId(entry) && check.isUnknownRecipe(entry);
+            case CAT_CROPS -> UnknownIdCheck.isValidId(entry) && check.isUnknownBlock(entry);
+            case CAT_TRADES -> {
+                // The row reads "gives ← costs"; the ware is what makes it an offer.
+                String gives = section.iconItemId(index);
+                yield UnknownIdCheck.isValidId(gives) && check.isUnknownItem(gives);
+            }
+            default -> false;
+        };
+    }
+
+    /** Unknown items in an interaction filter. Tags start with '#' and never count. */
+    private int unknownFilterItems(String entityId, UnknownIdCheck check) {
+        List<net.bananemdnsa.historystages.data.ItemEntry> filter = editInteractionlockItems.get(entityId);
+        if (filter == null) return 0;
+        int n = 0;
+        for (net.bananemdnsa.historystages.data.ItemEntry e : filter) {
+            if (UnknownIdCheck.isValidId(e.getId()) && check.isUnknownItem(e.getId())) n++;
+        }
+        return n;
+    }
+
+    /** Every section of every tab that can be edited here, without switching what is on screen. */
+    private List<CategoryTab> editableSections() {
+        List<CategoryTab> out = new ArrayList<>();
+        for (Map.Entry<Integer, CategoryTab> e : categoryTabs.entrySet()) {
+            if (isTabDisabled(e.getKey())) continue;
+            if (e.getValue() instanceof CompositeCategoryTab composite) {
+                for (int i = 0; i < composite.sectionLabels().size(); i++) {
+                    if (composite.sectionEnabled(i)) out.add(composite.section(i));
+                }
+            } else {
+                out.add(e.getValue());
+            }
+        }
+        return out;
+    }
+
+    /** What the button offers to remove: red rows plus unknown items inside interaction filters. */
+    private int countUnknownEntries() {
+        UnknownIdCheck check = unknownIdCheck();
+        if (check == null) return 0;
+        int n = 0;
+        for (CategoryTab section : editableSections()) {
+            List<String> rows = section.entries();
+            for (int i = 0; i < rows.size(); i++) {
+                if (isUnknownRow(section, i, rows.get(i), check)) n++;
+            }
+        }
+        for (String entityId : editInteractionlock) {
+            int gone = unknownFilterItems(entityId, check);
+            n += gone;
+            // A filter left empty takes its row along, see pruneUnknownEntries.
+            List<net.bananemdnsa.historystages.data.ItemEntry> filter = editInteractionlockItems.get(entityId);
+            boolean rowUnknown = UnknownIdCheck.isValidId(entityId) && check.isUnknownEntity(entityId);
+            if (gone > 0 && filter != null && gone == filter.size() && !rowUnknown) n++;
+        }
+        return n;
+    }
+
+    /**
+     * Takes every unknown entry out of what is being edited. Nothing is saved; Back without saving
+     * brings it all back.
+     *
+     * <p>A filter that loses its last item takes its row along: an empty filter means "any held
+     * item" and would lock more than the author asked for. Same rule as the server's prune.
+     */
+    private int pruneUnknownEntries() {
+        UnknownIdCheck check = unknownIdCheck();
+        if (check == null) return 0;
+        int removed = 0;
+
+        Set<String> emptiedFilters = new HashSet<>();
+        for (String entityId : editInteractionlock) {
+            List<net.bananemdnsa.historystages.data.ItemEntry> filter = editInteractionlockItems.get(entityId);
+            if (filter == null || filter.isEmpty()) continue;
+            int before = filter.size();
+            filter.removeIf(e -> UnknownIdCheck.isValidId(e.getId()) && check.isUnknownItem(e.getId()));
+            removed += before - filter.size();
+            if (filter.isEmpty()) emptiedFilters.add(entityId);
+        }
+
+        // removeEntryAt works on the section on screen, so each section is shown in turn and the
+        // original one put back. Back to front, so the indices still to visit do not move.
+        for (Map.Entry<Integer, CategoryTab> e : categoryTabs.entrySet()) {
+            int tabIdx = e.getKey();
+            if (isTabDisabled(tabIdx)) continue;
+            if (e.getValue() instanceof CompositeCategoryTab composite) {
+                int shown = composite.activeIndex();
+                for (int s = 0; s < composite.sectionLabels().size(); s++) {
+                    if (!composite.sectionEnabled(s)) continue;
+                    if (s != shown) composite.setActiveIndex(s);
+                    removed += pruneSection(tabIdx, check, emptiedFilters);
+                }
+                composite.setActiveIndex(shown);
+            } else {
+                removed += pruneSection(tabIdx, check, emptiedFilters);
+            }
+        }
+
+        if (removed > 0) {
+            hasChanges = true;
+            updateMaxScroll();
+        }
+        return removed;
+    }
+
+    private int pruneSection(int tabIdx, UnknownIdCheck check, Set<String> emptiedFilters) {
+        CategoryTab section = sectionAt(tabIdx);
+        List<String> rows = getListForSection(tabIdx);
+        boolean interaction = isTab(tabIdx, CAT_INTERACT);
+        int removed = 0;
+        for (int i = rows.size() - 1; i >= 0; i--) {
+            String entry = rows.get(i);
+            boolean emptied = interaction && emptiedFilters.contains(entry);
+            if (!emptied && !isUnknownRow(section, i, entry, check)) continue;
+            removeEntryAt(tabIdx, i);
+            removed++;
+        }
+        return removed;
+    }
+
+    private void refreshPruneButton() {
+        if (pruneButton == null) return;
+        unknownEntryCount = countUnknownEntries();
+        Component label = Component.translatable("editor.historystages.prune.stage_button", unknownEntryCount);
+        int w = this.font.width(label) + 12;
+        pruneButton.setMessage(label);
+        pruneButton.setWidth(w);
+        pruneButton.setX(this.width - 10 - Badge.width(this.font, stageTypeLabel()) - 6 - w);
+        pruneButton.visible = unknownEntryCount > 0;
+        // The category search sits between the icon button and whatever is on the right.
+        int searchRight = pruneButton.visible ? pruneButton.getX() - 6 : this.width - 80;
+        categorySearchBoxW = Math.max(40, Math.min(140, searchRight - categorySearchBoxX));
+        categorySearchBox.setPosition(categorySearchBoxX, 22, categorySearchBoxW);
+    }
+
+    private void onPruneButton() {
+        // Told as the drop in the button's own count, so the toast never says another number
+        // than the button did. A mod row takes linked rows along that the count never showed.
+        int before = countUnknownEntries();
+        pruneUnknownEntries();
+        refreshPruneButton();
+        int removed = before - unknownEntryCount;
+        if (removed > 0) {
+            EditorToastHandler.show(net.bananemdnsa.historystages.client.editor.toast.EditorToast.Level.SUCCESS,
+                    Component.translatable("editor.historystages.toast.pruned.title"),
+                    Component.translatable("editor.historystages.toast.pruned_stage.message", removed));
+        }
+    }
+
+    private String stageTypeLabel() {
+        return Component.translatable(isIndividual
+                ? "editor.historystages.stage_type.individual"
+                : "editor.historystages.stage_type.global").getString();
     }
 
     private void openAddDialog() {
@@ -2909,11 +3221,11 @@ public class StageDetailScreen extends Screen {
         if (list == null || index < 0 || index >= list.size()) return;
         net.bananemdnsa.historystages.data.ItemEntry entry = list.get(index);
         interactionItemsTarget = entityId;
-        this.minecraft.setScreen(new NbtItemEditScreen(this, entry.getId(), entry.getNbt(), nbt -> {
+        this.minecraft.setScreen(new NbtItemEditScreen(this, entry.getId(), false, entry.getNbtFilter(), false, nbt -> {
             List<net.bananemdnsa.historystages.data.ItemEntry> target = editInteractionlockItems.get(entityId);
             if (target == null || index >= target.size()) return;
-            target.set(index, new net.bananemdnsa.historystages.data.ItemEntry(entry.getId(),
-                    (nbt != null && nbt.size() > 0) ? nbt : null));
+            target.set(index, net.bananemdnsa.historystages.data.ItemEntry.withFilter(entry.getId(),
+                    nbt, null, null, null));
             hasChanges = true;
             saveStage();
         }));
@@ -2943,9 +3255,9 @@ public class StageDetailScreen extends Screen {
     }
 
     private void openNbtEditScreen(int entryIdx, String itemId) {
-        com.google.gson.JsonObject currentNbt = itemTab.nbtByIndex().get(entryIdx);
-        this.minecraft.setScreen(new NbtItemEditScreen(this, itemId, currentNbt, nbt -> {
-            if (nbt != null) {
+        net.bananemdnsa.historystages.data.NbtFilter currentNbt = itemTab.nbtByIndex().get(entryIdx);
+        this.minecraft.setScreen(new NbtItemEditScreen(this, itemId, false, currentNbt, true, nbt -> {
+            if (!nbt.isEmpty()) {
                 itemTab.nbtByIndex().put(entryIdx, nbt);
             } else {
                 itemTab.nbtByIndex().remove(entryIdx);
@@ -2975,9 +3287,9 @@ public class StageDetailScreen extends Screen {
     }
 
     private void openTagNbtEditScreen(int entryIdx, String tagId) {
-        com.google.gson.JsonObject currentNbt = tagTab.nbtByIndex().get(entryIdx);
-        this.minecraft.setScreen(new NbtItemEditScreen(this, tagId, true, currentNbt, nbt -> {
-            if (nbt != null) {
+        net.bananemdnsa.historystages.data.NbtFilter currentNbt = tagTab.nbtByIndex().get(entryIdx);
+        this.minecraft.setScreen(new NbtItemEditScreen(this, tagId, true, currentNbt, true, nbt -> {
+            if (!nbt.isEmpty()) {
                 tagTab.nbtByIndex().put(entryIdx, nbt);
             } else {
                 tagTab.nbtByIndex().remove(entryIdx);
@@ -2988,9 +3300,9 @@ public class StageDetailScreen extends Screen {
     }
 
     private void openModExceptionNbtEditScreen(int entryIdx, String itemId) {
-        com.google.gson.JsonObject currentNbt = modExceptionTab.nbtByIndex().get(entryIdx);
-        this.minecraft.setScreen(new NbtItemEditScreen(this, itemId, currentNbt, nbt -> {
-            if (nbt != null) {
+        net.bananemdnsa.historystages.data.NbtFilter currentNbt = modExceptionTab.nbtByIndex().get(entryIdx);
+        this.minecraft.setScreen(new NbtItemEditScreen(this, itemId, false, currentNbt, true, nbt -> {
+            if (!nbt.isEmpty()) {
                 modExceptionTab.nbtByIndex().put(entryIdx, nbt);
             } else {
                 modExceptionTab.nbtByIndex().remove(entryIdx);
@@ -3038,6 +3350,8 @@ public class StageDetailScreen extends Screen {
             return true;
         if (modBiomePopup.isVisible() && modBiomePopup.mouseDragged(mouseX, mouseY))
             return true;
+        if (modCropPopup.isVisible() && modCropPopup.mouseDragged(mouseX, mouseY))
+            return true;
         if (modStructurePopup.isVisible() && modStructurePopup.mouseDragged(mouseX, mouseY))
             return true;
         if (scrollBarDragging) {
@@ -3054,6 +3368,8 @@ public class StageDetailScreen extends Screen {
         if (modEntityPopup.isVisible() && modEntityPopup.mouseReleased())
             return true;
         if (modBiomePopup.isVisible() && modBiomePopup.mouseReleased())
+            return true;
+        if (modCropPopup.isVisible() && modCropPopup.mouseReleased())
             return true;
         if (modStructurePopup.isVisible() && modStructurePopup.mouseReleased())
             return true;
@@ -3119,6 +3435,7 @@ public class StageDetailScreen extends Screen {
         if (modEntityPopup.isVisible() && modEntityPopup.mouseScrolled(mouseX, mouseY, scrollY)) return true;
         if (modStructurePopup.isVisible() && modStructurePopup.mouseScrolled(mouseX, mouseY, scrollY)) return true;
         if (modBiomePopup.isVisible() && modBiomePopup.mouseScrolled(mouseX, mouseY, scrollY)) return true;
+        if (modCropPopup.isVisible() && modCropPopup.mouseScrolled(mouseX, mouseY, scrollY)) return true;
         // The card shows the whole recipe at once, so there is nothing left to scroll - but the
         // popup still swallows the wheel so the list behind it stays put.
         if (recipePopupVisible) return true;
@@ -3156,10 +3473,12 @@ public class StageDetailScreen extends Screen {
         if (modEntityPopup.isVisible() && modEntityPopup.keyPressed(keyCode)) return true;
         if (modStructurePopup.isVisible() && modStructurePopup.keyPressed(keyCode)) return true;
         if (modBiomePopup.isVisible() && modBiomePopup.keyPressed(keyCode)) return true;
+        if (modCropPopup.isVisible() && modCropPopup.keyPressed(keyCode)) return true;
         if (spawnControlPopup.isVisible() && spawnControlPopup.keyPressed(keyCode)) return true;
         if (generationLimitPopup.isVisible() && generationLimitPopup.keyPressed(keyCode)) return true;
         if (tradeLevelsPopup.isVisible() && tradeLevelsPopup.keyPressed(keyCode)) return true;
         if (interactionActionsPopup.isVisible() && interactionActionsPopup.keyPressed(keyCode)) return true;
+        if (woodTypesPopup.isVisible() && woodTypesPopup.keyPressed(keyCode)) return true;
         if (filterItemSearch.isVisible() && filterItemSearch.keyPressed(keyCode)) return true;
         if (filterTagSearch.isVisible() && filterTagSearch.keyPressed(keyCode)) return true;
         if (interactionItemsPopup.isVisible() && interactionItemsPopup.keyPressed(keyCode)) {

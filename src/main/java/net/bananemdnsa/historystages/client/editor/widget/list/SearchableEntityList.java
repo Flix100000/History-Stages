@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.client.editor.widget.list;
 
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.bananemdnsa.historystages.api.editor.widget.PickerOverlay;
 import net.bananemdnsa.historystages.client.editor.widget.SearchPanelChrome;
 import net.bananemdnsa.historystages.api.editor.widget.SearchBar;
@@ -138,6 +139,23 @@ public class SearchableEntityList implements PickerOverlay {
         }
         allEntities.sort((a, b) -> a.displayName.compareToIgnoreCase(b.displayName));
         filteredEntities.addAll(allEntities);
+    }
+
+    /**
+     * Adds boats, minecarts and other vehicles to the registry list. Only the interaction lock
+     * can do anything with them — they neither spawn naturally nor fight back.
+     */
+    public SearchableEntityList includeVehicles() {
+        for (EntityType<?> entityType : BuiltInRegistries.ENTITY_TYPE) {
+            ResourceLocation key = BuiltInRegistries.ENTITY_TYPE.getKey(entityType);
+            if (key != null && EntityPreviewRenderer.isVehicleType(entityType)) {
+                String displayName = entityType.getDescription().getString();
+                allEntities.add(new EntityEntry(key.toString(), displayName, displayName.toLowerCase()));
+            }
+        }
+        allEntities.sort((a, b) -> a.displayName.compareToIgnoreCase(b.displayName));
+        applyFilter(searchBar.getText().toLowerCase());
+        return this;
     }
 
     /** Enables multi-select: toggle entries across tabs, review them on the
@@ -632,6 +650,9 @@ public class SearchableEntityList implements PickerOverlay {
                 guiGraphics.disableScissor();
             } catch (Exception ignored) {
             }
+        } else {
+            ItemStack icon = EntityPreviewRenderer.iconFor(id);
+            if (!icon.isEmpty()) guiGraphics.renderItem(icon, listX + 1, rowY + 2);
         }
 
         String text = displayName + " §7(" + id + ")";

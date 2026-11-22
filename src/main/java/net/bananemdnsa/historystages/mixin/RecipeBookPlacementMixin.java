@@ -41,6 +41,6 @@ public class RecipeBookPlacementMixin {
                 () -> RecipeHandler.isRecipeIdLocked(packet.getRecipe(), false));
         if (!locked) return;
 
-        LockFeedback.sendActionbar(this.player, FEEDBACK_CATEGORY, LockMessages.recipeLocked());
+        LockFeedback.sendActionbar(this.player, FEEDBACK_CATEGORY, LockMessages.recipeLocked(this.player, packet.getRecipe()));
     }
 }

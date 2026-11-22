@@ -76,6 +76,14 @@ public class JEIPlugin implements IModPlugin {
 
     @Override
     public void onRuntimeAvailable(IJeiRuntime jeiRuntime) {
+        // For the exemption picker in the config editor. Hidden categories too: an admin may want
+        // to exempt one before another mod shows it again.
+        net.bananemdnsa.historystages.compat.ViewerCategoryCatalog.register("jei", () ->
+                jeiRuntime.getRecipeManager().createRecipeCategoryLookup().includeHidden().get()
+                        .map(category -> new net.bananemdnsa.historystages.compat.ViewerCategoryCatalog.Category(
+                                category.getRecipeType().getUid().toString(), category.getTitle()))
+                        .toList());
+
         // Add one scroll variant per stage so they appear in JEI
         List<ItemStack> scrolls = ScrollVariants.buildAllStageScrolls();
 
@@ -96,11 +104,8 @@ public class JEIPlugin implements IModPlugin {
             // nothing looks identical in the log to one that worked, and telling those two apart
             // is the whole question when items come back after a stage unlock.
             java.util.concurrent.atomic.AtomicInteger lockedCount = new java.util.concurrent.atomic.AtomicInteger(-1);
-            REFRESHER.applyInitial(hideItems, () -> {
-                Set<ItemStack> locked = computeLockedItems(jeiRuntime.getIngredientManager());
-                lockedCount.set(locked.size());
-                return locked;
-            });
+            REFRESHER.applyInitial(hideItems, jeiRuntime.getIngredientManager().getAllItemStacks(), lockPredicate());
+            lockedCount.set(REFRESHER.currentlyHiddenItems().size());
             applyRecipeHiding(hideRecipes, jeiRuntime);
             // Seed the name-affected baseline without churn (items were already added with the
             // replaced name in effect).
@@ -122,18 +127,19 @@ public class JEIPlugin implements IModPlugin {
         if (r == null || runtime == null) return;
         applyHiddenScrolls(runtime);
 
+        long startNanos = System.nanoTime();
         try {
             boolean hideItems = Config.VISUAL.hideLockedItemsInViewers.get();
             boolean hideRecipes = Config.VISUAL.hideLockedRecipesInViewers.get();
-            r.applyDiff(hideItems, () -> computeLockedItems(runtime.getIngredientManager()));
+            r.applyDiff(hideItems, runtime.getIngredientManager().getAllItemStacks(), lockPredicate());
             applyRecipeHiding(hideRecipes, runtime);
             // Re-read items whose hidden-display name just changed (e.g. a stage unlocked),
             // so JEI's cached names + search index reflect the new name.
             refreshNameChangedItems(runtime);
             // Kept from the debugging round: says outright how much is hidden after a stage
             // change, which is the number nobody had when JEI last misbehaved here.
-            LOGGER.info("[HistoryStages/JEI] Stage change applied (items={}, stillHidden={}).",
-                    hideItems, r.currentlyHiddenItems().size());
+            LOGGER.info("[HistoryStages/JEI] Stage change applied (items={}, stillHidden={}) in {} ms.",
+                    hideItems, r.currentlyHiddenItems().size(), (System.nanoTime() - startNanos) / 1_000_000);
         } catch (Exception e) {
             LOGGER.warn("[HistoryStages/JEI] applyDiff failed", e);
         }
@@ -212,6 +218,10 @@ public class JEIPlugin implements IModPlugin {
         }
     }
 
+    private static java.util.function.Predicate<ItemStack> lockPredicate() {
+        return LockedJeiVisibility.lockPredicate(Config.VISUAL.lockedItemMultiStagePolicy.get());
+    }
+
     private static Set<ItemStack> computeLockedItems(IIngredientManager mgr) {
         List<ItemStack> all = new ArrayList<>(mgr.getAllItemStacks());
         return LockedJeiVisibility.computeLockedItems(all, Config.VISUAL.lockedItemMultiStagePolicy.get());
@@ -254,8 +264,11 @@ public class JEIPlugin implements IModPlugin {
         // result it built out of an empty world.
         RegistryAccess registryAccess = CurrentRegistries.orEmpty();
 
-        runtime.getJeiHelpers().getAllRecipeTypes().forEach(type ->
-                hideForType(rm, (RecipeType) type, lockedFinal, registryAccess));
+        runtime.getJeiHelpers().getAllRecipeTypes().forEach(type -> {
+            // Pages the pack exempted keep every recipe, same as they keep them unshaded.
+            if (ExemptCategories.isExempt(type.getUid().toString())) return;
+            hideForType(rm, (RecipeType) type, lockedFinal, registryAccess);
+        });
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})

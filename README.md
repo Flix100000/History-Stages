@@ -14,10 +14,24 @@ Stages can unlock **server-wide** (global), **per player** (individual), or use 
 
 | Minecraft | Loader   | Status                         |
 | --------- | -------- | ------------------------------ |
+| 26.2      | NeoForge | Actively maintained            |
+| 26.2      | Fabric   | Actively maintained            |
 | 1.21      | Fabric   | Actively maintained            |
 | 1.21      | NeoForge | Actively maintained            |
 | 1.20      | Forge    | Actively maintained            |
 | 1.19      | Forge    | Legacy — no further updates    |
+
+### Requirements
+
+| Minecraft | Loader   | Required mods                       | Optional integrations                                                                                         | Java |
+| --------- | -------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------- | ---- |
+| 26.2      | NeoForge | Architectury API, Lootr             | JEI, Jade, Curios, Spell Engine, Better Combat                                                                | 25   |
+| 26.2      | Fabric   | Fabric API, Architectury API, Lootr | JEI, Jade, Spell Engine, Better Combat                                                                        | 25   |
+| 1.21.1    | Fabric   | Fabric API, Lootr                   | JEI, EMI, Jade, FTB Quests, FTB Teams, Accessories, Spell Engine, Better Combat                               | 21   |
+| 1.21.1    | NeoForge | Lootr                               | JEI, EMI, Jade, FTB Quests, FTB Teams, Curios, Accessories, Spell Engine, Better Combat, KubeJS, CraftTweaker | 21   |
+| 1.20.1    | Forge    | Lootr                               | JEI, EMI, Jade, FTB Quests, FTB Teams, Curios, Accessories, Spell Engine, Better Combat, KubeJS, CraftTweaker | 17   |
+
+Links: [Lootr](https://modrinth.com/mod/lootr), [Architectury API](https://modrinth.com/mod/architectury-api), [Fabric API](https://modrinth.com/mod/fabric-api).
 
 ## Downloads
 

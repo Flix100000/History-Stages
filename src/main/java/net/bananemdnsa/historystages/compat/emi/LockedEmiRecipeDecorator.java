@@ -35,7 +35,8 @@ public class LockedEmiRecipeDecorator implements EmiRecipeDecorator {
             guiGraphics.fill(0, 0, width, height, 0xBB000000);
 
             Font font = Minecraft.getInstance().font;
-            String text = "§c§l✖ Locked";
+            Component text = Component.translatable("jei.historystages.recipe_locked")
+                    .withStyle(net.minecraft.ChatFormatting.RED, net.minecraft.ChatFormatting.BOLD);
             int textWidth = font.width(text);
             guiGraphics.drawString(font, text, (width - textWidth) / 2, height / 2 - 4, 0xFFFFFF, true);
 
@@ -52,7 +53,13 @@ public class LockedEmiRecipeDecorator implements EmiRecipeDecorator {
         );
     }
 
+    /**
+     * The overlay's question, asked by the decorator and both hover mixins. Answers no while the
+     * overlay is switched off, so the hover stays usable whenever nothing is drawn over the page.
+     * Hiding goes through the other overload and keeps its own switch.
+     */
     public static boolean isRecipeLocked(EmiRecipe recipe) {
+        if (!net.bananemdnsa.historystages.Config.VISUAL.showLockOverlay.get()) return false;
         return isRecipeLocked(recipe, stack -> StageLockHelper.isActionLockedForClient(stack, "recipe")
                 || StageLockHelper.isActionLockedByIndividualStageClient(stack, "recipe"));
     }
@@ -62,9 +69,12 @@ public class LockedEmiRecipeDecorator implements EmiRecipeDecorator {
      * {@code lockedItemMultiStagePolicy}; the overlay has always been strict.
      */
     public static boolean isRecipeLocked(EmiRecipe recipe, Predicate<ItemStack> outputLocked) {
-        // JER pages come through EMI's JEI bridge under JER's own category ids; see JerCategories
+        // JER pages come through EMI's JEI bridge under JER's own category ids, so one rule
+        // covers both viewers; see ViewerCategoryExemptions.
         if (recipe.getCategory() != null
-                && "jeresources".equals(recipe.getCategory().getId().getNamespace())) {
+                && net.bananemdnsa.historystages.compat.ViewerCategoryExemptions.isExempt(
+                        recipe.getCategory().getId().toString(),
+                        net.bananemdnsa.historystages.Config.VISUAL.lockOverlayExemptions.get())) {
             return false;
         }
 

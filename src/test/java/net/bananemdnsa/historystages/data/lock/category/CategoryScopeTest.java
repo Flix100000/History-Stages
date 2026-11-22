@@ -59,10 +59,11 @@ class CategoryScopeTest {
     }
 
     @Test
-    void spawnLocksAreTheOnlyGlobalOnlyBuiltIn() {
-        assertEquals(Set.of(StageScope.GLOBAL),
-                LockCategories.byId("historystages:spawnlock").supportedScopes(),
-                "historystages:spawnlock should be global-only");
+    void spawnLocksAndCropsAreTheOnlyGlobalOnlyBuiltIns() {
+        for (String id : java.util.List.of("historystages:spawnlock", "historystages:crops")) {
+            assertEquals(Set.of(StageScope.GLOBAL), LockCategories.byId(id).supportedScopes(),
+                    id + " should be global-only");
+        }
     }
 
     @Test
@@ -75,7 +76,8 @@ class CategoryScopeTest {
     @Test
     void everyOtherBuiltInMeansSomethingInBothScopes() {
         for (LockCategory<?> category : LockCategories.builtIns()) {
-            if (category.id().equals("historystages:spawnlock")) continue;
+            if (category.id().equals("historystages:spawnlock")
+                    || category.id().equals("historystages:crops")) continue;
             assertEquals(EnumSet.allOf(StageScope.class), category.supportedScopes(),
                     category.id() + " changed scope unexpectedly");
         }

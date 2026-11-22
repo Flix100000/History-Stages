@@ -112,7 +112,7 @@ public class DepositDependencyPacket {
                     if (!invStack.isEmpty()) {
                         ResourceLocation invRl = ForgeRegistries.ITEMS.getKey(invStack.getItem());
                         if (rl.equals(invRl)
-                                && (!matched.hasNbt() || NbtMatcher.matches(invStack, matched.getNbt()))) {
+                                && (!matched.hasNbt() || NbtMatcher.matches(invStack, matched.getNbtFilter()))) {
                             int toRemove = Math.min(needed - consumed, invStack.getCount());
                             invStack.shrink(toRemove);
                             consumed += toRemove;

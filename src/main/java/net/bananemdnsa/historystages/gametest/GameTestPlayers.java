@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.gametest;
 
+import java.util.List;
 import java.util.UUID;
 
 import com.mojang.authlib.GameProfile;
@@ -47,16 +48,27 @@ final class GameTestPlayers {
      */
     static ServerPlayer createConnected(GameTestHelper helper) {
         ServerPlayer player = create(helper);
-        new ServerGamePacketListenerImpl(helper.getLevel().getServer(), new SilentConnection(), player);
+        new ServerGamePacketListenerImpl(helper.getLevel().getServer(), new SilentConnection(null), player);
         return player;
     }
 
+    /** Gives a player built elsewhere (a test's own subclass) a connection that records what it is sent. */
+    static void connectCapturing(ServerPlayer player, List<Packet<?>> sink) {
+        new ServerGamePacketListenerImpl(player.getServer(), new SilentConnection(sink), player);
+    }
+
+    /** Forge's channels send through the connection like any vanilla packet, so one sink sees both. */
     private static final class SilentConnection extends Connection {
-        SilentConnection() {
+        private final @Nullable List<Packet<?>> sink;
+
+        SilentConnection(@Nullable List<Packet<?>> sink) {
             super(PacketFlow.CLIENTBOUND);
+            this.sink = sink;
         }
 
         @Override
-        public void send(Packet<?> packet, @Nullable PacketSendListener listener) {}
+        public void send(Packet<?> packet, @Nullable PacketSendListener listener) {
+            if (sink != null) sink.add(packet);
+        }
     }
 }

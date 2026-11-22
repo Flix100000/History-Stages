@@ -116,6 +116,14 @@ public class StageEntry {
     @JsonAdapter(BiomeLocksAdapter.class)
     private BiomeLocks biomes;
 
+    /** Plants that do not grow while this stage is locked. Global stages only. */
+    @JsonAdapter(net.bananemdnsa.historystages.data.lock.CropLocksAdapter.class)
+    private net.bananemdnsa.historystages.data.lock.CropLocks crops;
+
+    /** Inventory and container slots kept shut while this stage is locked. Null when empty. */
+    @SerializedName("slots")
+    private List<net.bananemdnsa.historystages.data.lock.SlotLockEntry> slotLocks;
+
     /**
      * Gated areas in the world. Unlike every other category these carry their own rules rather
      * than reading them from the common config — one zone can burn, the next only block
@@ -396,7 +404,7 @@ public class StageEntry {
         for (ItemEntry exEntry : modExceptions) {
             if (exEntry.getId().equals(itemId)) {
                 if (exEntry.hasNbt()) {
-                    if (stack != null && NbtMatcher.matches(stack, exEntry.getNbt())) {
+                    if (stack != null && NbtMatcher.matches(stack, exEntry.getNbtFilter())) {
                         return true;
                     }
                 } else {
@@ -870,6 +878,34 @@ public class StageEntry {
         this.biomes.setModLinked(modLinked);
     }
 
+    public List<String> getCrops() {
+        return crops != null ? crops.getCrops() : new ArrayList<>();
+    }
+
+    public List<String> getCropModLinked() {
+        return crops != null ? crops.getModLinked() : new ArrayList<>();
+    }
+
+    public void setCrops(List<String> crops) {
+        if (this.crops == null) this.crops = new net.bananemdnsa.historystages.data.lock.CropLocks();
+        this.crops.setCrops(crops);
+    }
+
+    public void setCropModLinked(List<String> modLinked) {
+        if (this.crops == null) this.crops = new net.bananemdnsa.historystages.data.lock.CropLocks();
+        this.crops.setModLinked(modLinked);
+    }
+
+    /** Live list when present; an empty stage hands out a fresh list that is not stored. */
+    public List<net.bananemdnsa.historystages.data.lock.SlotLockEntry> getSlotLocks() {
+        return slotLocks != null ? slotLocks : new ArrayList<>();
+    }
+
+    public void setSlotLocks(List<net.bananemdnsa.historystages.data.lock.SlotLockEntry> slotLocks) {
+        // Null rather than empty, so stages without slot locks keep their files unchanged.
+        this.slotLocks = slotLocks == null || slotLocks.isEmpty() ? null : new ArrayList<>(slotLocks);
+    }
+
     public void setZones(List<ZoneEntry> zones) {
         this.zones = zones != null ? new ArrayList<>(zones) : new ArrayList<>();
     }
@@ -941,9 +977,14 @@ public class StageEntry {
         copy.setStructureGenerationRules(getStructureGenerationRules());
         copy.setBiomes(getBiomes());
         copy.setBiomeModLinked(getBiomeModLinked());
+        copy.setCrops(getCrops());
+        copy.setCropModLinked(getCropModLinked());
+        copy.setSlotLocks(getSlotLocks().stream()
+                .map(net.bananemdnsa.historystages.data.lock.SlotLockEntry::copy)
+                .collect(Collectors.toList()));
         copy.setZones(getZones().stream().map(ZoneEntry::copy).collect(Collectors.toList()));
         EntityLocks locksCopy = new EntityLocks();
-        locksCopy.setAttacklock(getEntities().getAttacklock());
+        locksCopy.setAttacklockEntries(getEntities().getAttacklockEntries());
         locksCopy.setInteractionlock(getEntities().getInteractionlock());
         locksCopy.setSpawnlock(getEntities().getSpawnlock());
         locksCopy.setModLinked(getEntities().getModLinked());

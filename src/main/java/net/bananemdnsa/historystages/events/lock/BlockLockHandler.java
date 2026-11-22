@@ -60,7 +60,7 @@ public class BlockLockHandler {
             if (hasGui && event.getEntity() instanceof ServerPlayer sp) {
                 DebugLogger.runtimeThrottled(HsRuntimeCategories.BLOCK_LOCK, "gui_" + sp.getUUID() + "_" + ForgeRegistries.BLOCKS.getKey(block),
                         "<" + sp.getName().getString() + "> GUI open of '" + ForgeRegistries.BLOCKS.getKey(block) + "' at " + pos.toShortString() + " blocked [action: gui]");
-                LockFeedback.sendActionbar(sp, FEEDBACK_CATEGORY, LockMessages.blockLocked());
+                LockFeedback.sendActionbar(sp, FEEDBACK_CATEGORY, LockMessages.blockLocked(sp, blockItem, "gui"));
             }
         }
     }
