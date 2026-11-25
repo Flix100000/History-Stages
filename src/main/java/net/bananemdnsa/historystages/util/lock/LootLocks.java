@@ -45,6 +45,30 @@ public final class LootLocks {
     }
 
     /**
+     * Swaps every locked stack in a freshly rolled loot list for its replacement, or drops it
+     * when there is none. The list is changed in place.
+     *
+     * @return how many stacks were locked
+     */
+    public static int stripLocked(List<ItemStack> loot, @Nullable UUID playerUuid) {
+        int replacedCount = 0;
+        for (int i = loot.size() - 1; i >= 0; i--) {
+            ItemStack stack = loot.get(i);
+            if (stack.isEmpty() || !isLocked(stack, playerUuid)) continue;
+
+            ItemStack replacement = replacementFor(stack.getCount());
+            // Callers count slots or pick entries at random, so an empty leftover would still cost one.
+            if (replacement.isEmpty()) {
+                loot.remove(i);
+            } else {
+                loot.set(i, replacement);
+            }
+            replacedCount++;
+        }
+        return replacedCount;
+    }
+
+    /**
      * What a locked stack of this size turns into: an empty stack unless the pack asked for
      * replacements.
      */

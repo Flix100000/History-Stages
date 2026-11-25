@@ -16,6 +16,11 @@ public class IndividualStageData extends SavedData {
     private final Map<UUID, Set<String>> playerStages = new HashMap<>();
     /** Game time per player and stage; see {@code StageData.unlockTimes}. */
     private final Map<UUID, Map<String, Long>> unlockTimes = new HashMap<>();
+    /**
+     * Stages relocked while their owner was offline. The inventory can only be emptied once
+     * the player is back, so the drop waits here until the next login.
+     */
+    private final Map<UUID, Set<String>> pendingRevokeDrops = new HashMap<>();
     private static final String DATA_NAME = "historystages_individual";
 
     public static final Map<UUID, Set<String>> SERVER_CACHE = new ConcurrentHashMap<>();
@@ -76,6 +81,20 @@ public class IndividualStageData extends SavedData {
             SERVER_CACHE.get(uuid).addAll(stages);
             VERSION.incrementAndGet();
         }
+
+        CompoundTag pendingTag = nbt.getCompound("pendingRevokeDrops");
+        for (String uuidStr : pendingTag.getAllKeys()) {
+            UUID uuid;
+            try {
+                uuid = UUID.fromString(uuidStr);
+            } catch (IllegalArgumentException e) {
+                continue;
+            }
+            ListTag list = pendingTag.getList(uuidStr, Tag.TAG_STRING);
+            Set<String> stages = new HashSet<>();
+            for (int i = 0; i < list.size(); i++) stages.add(list.getString(i));
+            if (!stages.isEmpty()) data.pendingRevokeDrops.put(uuid, stages);
+        }
         return data;
     }
 
@@ -99,6 +118,15 @@ public class IndividualStageData extends SavedData {
             allTimes.put(entry.getKey().toString(), times);
         }
         nbt.put("unlockTimes", allTimes);
+
+        CompoundTag pendingTag = new CompoundTag();
+        for (Map.Entry<UUID, Set<String>> entry : pendingRevokeDrops.entrySet()) {
+            if (entry.getValue().isEmpty()) continue;
+            ListTag list = new ListTag();
+            for (String stage : entry.getValue()) list.add(StringTag.valueOf(stage));
+            pendingTag.put(entry.getKey().toString(), list);
+        }
+        nbt.put("pendingRevokeDrops", pendingTag);
         return nbt;
     }
 
@@ -153,6 +181,18 @@ public class IndividualStageData extends SavedData {
             return true;
         }
         return false;
+    }
+
+    public void addPendingRevokeDrop(UUID player, String stage) {
+        if (pendingRevokeDrops.computeIfAbsent(player, k -> new HashSet<>()).add(stage)) setDirty();
+    }
+
+    /** Hands out and forgets what was owed to this player. Never null. */
+    public Set<String> takePendingRevokeDrops(UUID player) {
+        Set<String> owed = pendingRevokeDrops.remove(player);
+        if (owed == null) return new HashSet<>();
+        setDirty();
+        return owed;
     }
 
     public boolean hasStage(UUID player, String stage) {
