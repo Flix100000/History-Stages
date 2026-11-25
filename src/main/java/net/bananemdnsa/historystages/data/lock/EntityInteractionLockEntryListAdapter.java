@@ -41,8 +41,9 @@ public class EntityInteractionLockEntryListAdapter extends TypeAdapter<List<Enti
             }
             boolean hasActionFilter = !unlockedActions.isEmpty();
             boolean hasItemFilter = entry.hasLockItems();
+            JsonElement nbt = entry.getNbt().toJson();
 
-            if (!hasActionFilter && !hasItemFilter) {
+            if (!hasActionFilter && !hasItemFilter && nbt == null) {
                 out.value(entry.getId());
                 continue;
             }
@@ -69,6 +70,10 @@ public class EntityInteractionLockEntryListAdapter extends TypeAdapter<List<Enti
                     }
                 }
                 out.endArray();
+            }
+            if (nbt != null) {
+                out.name("nbt");
+                Streams.write(nbt, out);
             }
             out.endObject();
         }
@@ -119,7 +124,8 @@ public class EntityInteractionLockEntryListAdapter extends TypeAdapter<List<Enti
                         }
                     }
                 }
-                entries.add(new EntityInteractionLockEntry(id, lockActions, lockItems));
+                entries.add(new EntityInteractionLockEntry(id, lockActions, lockItems,
+                        EntityNbtFilter.fromJson(obj.get("nbt"))));
             }
         }
         in.endArray();

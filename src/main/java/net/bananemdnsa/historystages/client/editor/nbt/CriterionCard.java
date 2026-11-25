@@ -67,9 +67,19 @@ public final class CriterionCard {
     private static final int ADD_COLOR = 0xFF888888;
 
     private final Font font;
+    /**
+     * Entity filters only ever hold free keys, and those are read off the entity's saved data
+     * rather than an item's custom_data, so the badge and the description must not say otherwise.
+     */
+    private final boolean entityMode;
 
     public CriterionCard(Font font) {
+        this(font, false);
+    }
+
+    public CriterionCard(Font font, boolean entityMode) {
         this.font = font;
+        this.entityMode = entityMode;
     }
 
     // =============================================
@@ -94,7 +104,9 @@ public final class CriterionCard {
     }
 
     private int layoutHeader(List<Piece> pieces, NbtCriterion criterion, int available, int y) {
-        String badge = badgeText(criterion);
+        String badge = entityMode
+                ? Component.translatable("editor.historystages.entity_nbt.badge").getString()
+                : badgeText(criterion);
         int badgeW = Badge.width(font, badge);
         pieces.add(new Piece(PAD_X, y, badgeW, HEADER_H, PieceKind.BADGE,
                 badge, null, badgeColor(criterion), null));
@@ -146,7 +158,13 @@ public final class CriterionCard {
             return y + LINE_H + 2;
         }
 
-        return layoutWrapped(pieces, description(criterion), available, y, DESC_COLOR) + 2;
+        Component desc = entityMode
+                ? Component.translatable(criterion instanceof CustomDataCriterion custom
+                        && custom.presetDescription != null
+                        ? custom.presetDescription
+                        : "editor.historystages.entity_nbt.desc")
+                : description(criterion);
+        return layoutWrapped(pieces, desc, available, y, DESC_COLOR) + 2;
     }
 
     private int layoutValue(List<Piece> pieces, NbtCriterion criterion, int available, int y,
@@ -392,6 +410,7 @@ public final class CriterionCard {
             return Component.translatable(NbtPresets.enchantmentNameKey(ench.key())).getString();
         }
         if (criterion instanceof CustomDataCriterion custom) {
+            if (custom.presetName != null) return Component.translatable(custom.presetName).getString();
             return custom.key.isEmpty() ? "…" : custom.key;
         }
         if (criterion instanceof ComponentCriterion comp) {
@@ -408,6 +427,7 @@ public final class CriterionCard {
     /** The technical id, shown next to a friendly preset name so nobody has to guess. */
     private static String subtitle(NbtCriterion criterion) {
         if (criterion instanceof EnchantmentListCriterion ench) return ench.key();
+        if (criterion instanceof CustomDataCriterion custom && custom.presetName != null) return custom.key;
         if (criterion instanceof ComponentCriterion comp && comp.presetName != null) {
             return comp.componentId();
         }

@@ -102,6 +102,23 @@ public interface StageLockEngine {
     }
 
     /**
+     * Attack question with the entity at hand, so entries with an NBT filter can be checked.
+     * {@code targetMatches} tells whether the entity's data matches one set of criteria.
+     */
+    default List<String> gatingStagesForEntityAttack(String entityId,
+                                                     @org.jetbrains.annotations.Nullable java.util.function.Predicate<com.google.gson.JsonObject> targetMatches,
+                                                     StageScope scope) {
+        return gatingStagesForEntityAttack(entityId, scope);
+    }
+
+    /** Interaction question with the entity at hand; see the attack overload. */
+    default List<String> gatingStagesForEntityInteraction(String entityId, String action, ItemStack held,
+                                                          @org.jetbrains.annotations.Nullable java.util.function.Predicate<com.google.gson.JsonObject> targetMatches,
+                                                          StageScope scope) {
+        return gatingStagesForEntityInteraction(entityId, action, held, scope);
+    }
+
+    /**
      * Spawn locks are global-only today — there is no individual counterpart in the data model.
      * The scope parameter exists so the signature does not have to change when that gap is
      * closed; {@link StringStageLockEngine} returns an empty list for

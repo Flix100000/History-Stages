@@ -10,6 +10,7 @@ import java.util.function.Function;
 
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.api.stage.StageScope;
+import net.bananemdnsa.historystages.data.lock.EntityAttackLockEntry;
 import net.bananemdnsa.historystages.data.lock.EntityInteractionLockEntry;
 import net.bananemdnsa.historystages.data.lock.NamedLockEntry;
 import net.bananemdnsa.historystages.data.lock.EntitySpawnLockEntry;
@@ -461,8 +462,30 @@ final class BuiltInLockCategories {
 
         @Override public String dualPhaseLabel() { return "attacklock entity"; }
 
+        /**
+         * A bare id matches only entries without an NBT filter: whether a filtered entry applies
+         * cannot be told without the entity. {@link #gates} is where filters are honoured.
+         */
         @Override public boolean matches(String entry, Object subject) {
             return subject instanceof String entityId && entry.equals(entityId);
+        }
+
+        @Override public boolean gates(StageEntry stage, Object subject) {
+            String entityId;
+            java.util.function.Predicate<com.google.gson.JsonObject> targetMatches;
+            if (subject instanceof LockSubjects.AttackSubject attack) {
+                entityId = attack.entityId();
+                targetMatches = attack.targetMatches();
+            } else if (subject instanceof String id) {
+                entityId = id;
+                targetMatches = null;
+            } else {
+                return false;
+            }
+            for (EntityAttackLockEntry entry : stage.getEntities().getAttacklockEntries()) {
+                if (entry.matches(entityId, targetMatches)) return true;
+            }
+            return false;
         }
 
         /**
@@ -484,6 +507,7 @@ final class BuiltInLockCategories {
         }
 
         @Override public String lookupKey(Object subject) {
+            if (subject instanceof LockSubjects.AttackSubject attack) return attack.entityId();
             return subject instanceof String entityId ? entityId : null;
         }
     }
@@ -604,7 +628,8 @@ final class BuiltInLockCategories {
             if (!(subject instanceof LockSubjects.InteractionSubject interaction)) return false;
             return entry.getId().equals(interaction.entityId())
                     && entry.blocksAction(interaction.action())
-                    && entry.matchesItem(interaction.held());
+                    && entry.matchesItem(interaction.held())
+                    && entry.getNbt().matches(interaction.targetMatches());
         }
 
         /**
@@ -617,7 +642,8 @@ final class BuiltInLockCategories {
                 if (!entry.getId().equals(interaction.entityId())) continue;
                 List<String> actions = stage.effectiveInteractionLockActions(entry.getLockActions());
                 boolean blocks = actions == null || actions.contains(interaction.action());
-                if (blocks && entry.matchesItem(interaction.held())) return true;
+                if (blocks && entry.matchesItem(interaction.held())
+                        && entry.getNbt().matches(interaction.targetMatches())) return true;
             }
             return false;
         }

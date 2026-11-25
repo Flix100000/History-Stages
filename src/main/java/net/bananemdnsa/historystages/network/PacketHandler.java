@@ -1,4 +1,6 @@
 package net.bananemdnsa.historystages.network;
+import net.bananemdnsa.historystages.network.clientbound.PruneUnknownPreviewPacket;
+import net.bananemdnsa.historystages.network.serverbound.PruneUnknownEntriesPacket;
 import net.bananemdnsa.historystages.network.clientbound.EditorFeedbackPacket;
 import net.bananemdnsa.historystages.network.clientbound.EditorSyncPacket;
 import net.bananemdnsa.historystages.network.clientbound.LockFeedbackPacket;
@@ -113,7 +115,8 @@ public class PacketHandler {
             new Clientbound<>(SyncLockBordersPacket.TYPE, SyncLockBordersPacket.STREAM_CODEC, SyncLockBordersPacket::handle),
             new Clientbound<>(SyncZoneSelectionPacket.TYPE, SyncZoneSelectionPacket.STREAM_CODEC, SyncZoneSelectionPacket::handle),
             new Clientbound<>(SyncZoneShapesPacket.TYPE, SyncZoneShapesPacket.STREAM_CODEC, SyncZoneShapesPacket::handle),
-            new Clientbound<>(SyncLostStagesPacket.TYPE, SyncLostStagesPacket.STREAM_CODEC, SyncLostStagesPacket::handle));
+            new Clientbound<>(SyncLostStagesPacket.TYPE, SyncLostStagesPacket.STREAM_CODEC, SyncLostStagesPacket::handle),
+            new Clientbound<>(PruneUnknownPreviewPacket.TYPE, PruneUnknownPreviewPacket.STREAM_CODEC, PruneUnknownPreviewPacket::handle));
 
     public static final List<Serverbound<?>> SERVERBOUND = List.of(
             new Serverbound<>(RequestEditorDataPacket.TYPE, RequestEditorDataPacket.STREAM_CODEC, RequestEditorDataPacket::handle),
@@ -147,7 +150,8 @@ public class PacketHandler {
             new Serverbound<>(RequestZoneSelectionPacket.TYPE, RequestZoneSelectionPacket.STREAM_CODEC, RequestZoneSelectionPacket::handle),
             new Serverbound<>(SaveStylePresetPacket.TYPE, SaveStylePresetPacket.STREAM_CODEC, SaveStylePresetPacket::handle),
             new Serverbound<>(DeleteStylePresetPacket.TYPE, DeleteStylePresetPacket.STREAM_CODEC, DeleteStylePresetPacket::handle),
-            new Serverbound<>(AssignStylePresetPacket.TYPE, AssignStylePresetPacket.STREAM_CODEC, AssignStylePresetPacket::handle));
+            new Serverbound<>(AssignStylePresetPacket.TYPE, AssignStylePresetPacket.STREAM_CODEC, AssignStylePresetPacket::handle),
+            new Serverbound<>(PruneUnknownEntriesPacket.TYPE, PruneUnknownEntriesPacket.STREAM_CODEC, PruneUnknownEntriesPacket::handle));
 
     /**
      * Registers every codec, and the receivers for packets arriving at the server.

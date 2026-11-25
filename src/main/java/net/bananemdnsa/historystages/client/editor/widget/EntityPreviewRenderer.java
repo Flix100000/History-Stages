@@ -13,6 +13,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.vehicle.VehicleEntity;
+import net.minecraft.world.item.ItemStack;
 import org.joml.Matrix4fStack;
 import org.joml.Quaternionf;
 
@@ -53,6 +55,47 @@ public final class EntityPreviewRenderer {
         }
         CACHE.put(entityId, null);
         return null;
+    }
+
+    private static final Map<String, ItemStack> ICON_CACHE = new HashMap<>();
+
+    /**
+     * Item icon for entity types that have no living model to spin, such as boats and
+     * minecarts. Uses the entity's own pick-block item; empty when there is none.
+     */
+    public static ItemStack iconFor(String entityId) {
+        ItemStack cached = ICON_CACHE.get(entityId);
+        if (cached != null) return cached;
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null) return ItemStack.EMPTY;
+        ItemStack icon = ItemStack.EMPTY;
+        try {
+            ResourceLocation rl = ResourceLocation.tryParse(entityId);
+            EntityType<?> type = rl == null ? null : BuiltInRegistries.ENTITY_TYPE.get(rl);
+            Entity entity = type == null ? null : type.create(mc.level);
+            if (entity != null) {
+                ItemStack pick = entity.getPickResult();
+                if (pick != null) icon = pick;
+                entity.discard();
+            }
+        } catch (Exception ignored) {
+        }
+        ICON_CACHE.put(entityId, icon);
+        return icon;
+    }
+
+    /** True for rideable vehicles (boats, minecarts) — no living model, but interactable. */
+    public static boolean isVehicleType(EntityType<?> type) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null) return false;
+        try {
+            Entity entity = type.create(mc.level);
+            boolean vehicle = entity instanceof VehicleEntity;
+            if (entity != null) entity.discard();
+            return vehicle;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     /** Renders {@code entity} spinning around the Y axis at screen position (x, y). */

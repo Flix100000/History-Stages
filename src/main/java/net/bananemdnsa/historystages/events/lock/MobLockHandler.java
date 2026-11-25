@@ -1,5 +1,7 @@
 package net.bananemdnsa.historystages.events.lock;
 
+import net.bananemdnsa.historystages.data.lock.EntityNbt;
+
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.StageManager;
@@ -40,10 +42,11 @@ public class MobLockHandler {
 
         String entityId = entityType.toString();
 
+        var targetMatches = EntityNbt.matcherFor(event.getEntity());
         List<String> requiredStageIds =
-                StageLocks.engine().gatingStagesForEntityAttack(entityId, StageScope.GLOBAL);
+                StageLocks.engine().gatingStagesForEntityAttack(entityId, targetMatches, StageScope.GLOBAL);
         List<String> individualStageIds =
-                StageLocks.engine().gatingStagesForEntityAttack(entityId, StageScope.INDIVIDUAL);
+                StageLocks.engine().gatingStagesForEntityAttack(entityId, targetMatches, StageScope.INDIVIDUAL);
 
         List<String> lockedStages =
                 new ArrayList<>(LockResolution.missingStages(StageScope.GLOBAL, requiredStageIds, StageLocks.serverGlobal()));

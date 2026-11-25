@@ -927,7 +927,7 @@ public class StageEntry {
         copy.setIcon(getIcon());
         copy.setScrollCompletion(getScrollCompletion());
         EntityLocks locksCopy = new EntityLocks();
-        locksCopy.setAttacklock(getEntities().getAttacklock());
+        locksCopy.setAttacklockEntries(getEntities().getAttacklockEntries());
         locksCopy.setInteractionlock(getEntities().getInteractionlock());
         locksCopy.setSpawnlock(getEntities().getSpawnlock());
         locksCopy.setModLinked(getEntities().getModLinked());

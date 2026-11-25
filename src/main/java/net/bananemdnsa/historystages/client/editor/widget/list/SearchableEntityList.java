@@ -132,6 +132,23 @@ public class SearchableEntityList implements PickerOverlay {
         filteredEntities.addAll(allEntities);
     }
 
+    /**
+     * Adds boats, minecarts and other vehicles to the registry list. Only the interaction lock
+     * can do anything with them — they neither spawn naturally nor fight back.
+     */
+    public SearchableEntityList includeVehicles() {
+        for (EntityType<?> entityType : BuiltInRegistries.ENTITY_TYPE) {
+            ResourceLocation key = BuiltInRegistries.ENTITY_TYPE.getKey(entityType);
+            if (key != null && EntityPreviewRenderer.isVehicleType(entityType)) {
+                String displayName = entityType.getDescription().getString();
+                allEntities.add(new EntityEntry(key.toString(), displayName, displayName.toLowerCase()));
+            }
+        }
+        allEntities.sort((a, b) -> a.displayName.compareToIgnoreCase(b.displayName));
+        applyFilter(searchBar.getText().toLowerCase());
+        return this;
+    }
+
     /** Enables multi-select: toggle entries across tabs, review them on the
      *  "Selected" tab, and emit one {@link #onSelect} per entity on confirm. */
     public void setMultiSelect(boolean multi) {
@@ -605,6 +622,9 @@ public class SearchableEntityList implements PickerOverlay {
                 guiGraphics.disableScissor();
             } catch (Exception ignored) {
             }
+        } else {
+            ItemStack icon = EntityPreviewRenderer.iconFor(id);
+            if (!icon.isEmpty()) guiGraphics.renderItem(icon, listX + 1, rowY + 2);
         }
 
         String text = displayName + " §7(" + id + ")";
