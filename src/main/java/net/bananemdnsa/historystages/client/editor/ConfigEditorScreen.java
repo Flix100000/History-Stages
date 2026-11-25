@@ -447,6 +447,8 @@ public class ConfigEditorScreen extends Screen {
                 Config.VISUAL.msgTradeLocked.get(), true, ""));
         lockMessages.add(new ConfigEntry("lock_messages.blockLocked", "msgBlockLocked", ConfigType.RICH_TEXT,
                 Config.VISUAL.msgBlockLocked.get(), true, ""));
+        lockMessages.add(new ConfigEntry("lock_messages.cropLocked", "msgCropLocked", ConfigType.RICH_TEXT,
+                Config.VISUAL.msgCropLocked.get(), true, ""));
         lockMessages.add(new ConfigEntry("lock_messages.entityItemLocked", "msgEntityItemLocked", ConfigType.RICH_TEXT,
                 Config.VISUAL.msgEntityItemLocked.get(), true, ""));
         lockMessages.add(new ConfigEntry("lock_messages.enchantmentLocked", "msgEnchantmentLocked", ConfigType.RICH_TEXT,
@@ -1473,6 +1475,7 @@ public class ConfigEditorScreen extends Screen {
             Map.entry("lock_messages.itemLocked", List.of("{item}", "{stage}")),
             Map.entry("lock_messages.fluidLocked", List.of("{fluid}", "{stage}")),
             Map.entry("lock_messages.blockLocked", List.of("{block}", "{stage}")),
+            Map.entry("lock_messages.cropLocked", List.of("{block}", "{stage}")),
             Map.entry("lock_messages.entityItemLocked", List.of("{item}", "{stage}")),
             Map.entry("lock_messages.enchantmentLocked", List.of("{enchantment}", "{item}", "{stage}")),
             Map.entry("lock_messages.recipeLocked", List.of("{item}", "{stage}")),

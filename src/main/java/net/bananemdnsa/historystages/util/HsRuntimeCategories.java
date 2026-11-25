@@ -26,6 +26,7 @@ public final class HsRuntimeCategories {
     public static final RuntimeCategory LOOT_LOCK = hs("loot_lock", "Loot Lock", Kind.LOCK);
     public static final RuntimeCategory STRUCTURE_LOCK = hs("structure_lock", "Structure Lock", Kind.LOCK);
     public static final RuntimeCategory BIOME_LOCK = hs("biome_lock", "Biome Lock", Kind.LOCK);
+    public static final RuntimeCategory CROP_LOCK = hs("crop_lock", "Crop Lock", Kind.LOCK);
     public static final RuntimeCategory DIMENSION_LOCK = hs("dimension_lock", "Dimension Lock", Kind.LOCK);
     public static final RuntimeCategory ZONE_LOCK = hs("zone_lock", "Zone Lock", Kind.LOCK);
     public static final RuntimeCategory CURIOS_LOCK = hs("curios_lock", "Curios Lock", Kind.LOCK);

@@ -79,6 +79,7 @@ public class Config {
         public final ModConfigSpec.ConfigValue<String> msgFluidLocked;
         public final ModConfigSpec.ConfigValue<String> msgTradeLocked;
         public final ModConfigSpec.ConfigValue<String> msgBlockLocked;
+        public final ModConfigSpec.ConfigValue<String> msgCropLocked;
         public final ModConfigSpec.ConfigValue<String> msgEntityItemLocked;
         public final ModConfigSpec.ConfigValue<String> msgEnchantmentLocked;
         public final ModConfigSpec.ConfigValue<String> msgRecipeLocked;
@@ -419,7 +420,7 @@ public class Config {
 
             // --- LOCK MESSAGES SECTION ---
             builder.comment(
-                    "Override the displayed text for the six 'is locked' / 'unknown' messages.",
+                    "Override the displayed text for the 'is locked' / 'unknown' messages.",
                     "Leave a value empty (\"\") to fall back to the default messages.",
                     "Use & for color codes (e.g. &c for red)."
             ).push("lock_messages");
@@ -447,6 +448,10 @@ public class Config {
             msgBlockLocked = builder
                     .comment("Actionbar message when interacting with a locked block. {block} is the block, {stage} the missing stage. Lang key: message.historystages.block_locked")
                     .define("blockLocked", "");
+
+            msgCropLocked = builder
+                    .comment("Actionbar message when bonemeal is refused on a locked plant. {block} is the plant, {stage} the missing stage. Lang key: message.historystages.crop_locked")
+                    .define("cropLocked", "");
 
             msgEntityItemLocked = builder
                     .comment("Actionbar message when interacting with armor stands / item frames holding locked items. {item} is the displayed item, {stage} the missing stage. Lang key: message.historystages.entity_item_locked")

@@ -5,6 +5,11 @@
   "compatibilityLevel": "JAVA_21",
   "refmap": "historystages.refmap.json",
   "mixins": [
+    "event.BonemealMixin",
+    "event.FungusGrowFeatureMixin",
+    "event.MushroomGrowFeatureMixin",
+    "event.PlantRandomTickMixin",
+    "event.TreeGrowFeatureMixin",
     "event.ServerUseItemOnMixin",
     "event.ProjectileImpactMixin",
     "event.MobEffectAddedMixin",

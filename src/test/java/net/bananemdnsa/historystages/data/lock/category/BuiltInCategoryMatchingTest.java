@@ -116,6 +116,36 @@ class BuiltInCategoryMatchingTest {
         assertFalse(category("historystages:biomes").gates(stage, "minecraft:jungle"));
     }
 
+    // ---- crops ---------------------------------------------------------------------
+
+    @Test
+    void aListedCropIsGated() {
+        StageEntry stage = new StageEntry();
+        stage.setCrops(List.of("minecraft:wheat"));
+        assertTrue(category("historystages:crops").gates(stage, "minecraft:wheat"));
+    }
+
+    /** Tag entries are matched under their "#" key, which the engine asks for one tag at a time. */
+    @Test
+    void aListedCropTagIsGatedUnderItsHashKey() {
+        StageEntry stage = new StageEntry();
+        stage.setCrops(List.of("#minecraft:crops"));
+        assertTrue(category("historystages:crops").gates(stage, "#minecraft:crops"));
+    }
+
+    @Test
+    void anUnlistedCropIsNotGated() {
+        StageEntry stage = new StageEntry();
+        stage.setCrops(List.of("minecraft:wheat"));
+        assertFalse(category("historystages:crops").gates(stage, "minecraft:carrots"));
+    }
+
+    @Test
+    void cropsAreGlobalOnly() {
+        assertEquals(java.util.EnumSet.of(net.bananemdnsa.historystages.api.stage.StageScope.GLOBAL),
+                category("historystages:crops").supportedScopes());
+    }
+
     // ---- recipes -------------------------------------------------------------------
 
     @Test

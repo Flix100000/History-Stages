@@ -50,6 +50,11 @@ public final class RegistryUnknownIdCheck implements UnknownIdCheck {
     }
 
     @Override
+    public boolean isUnknownBlock(String id) {
+        return !BuiltInRegistries.BLOCK.containsKey(ResourceLocation.parse(id));
+    }
+
+    @Override
     public boolean isUnknownEffect(String id) {
         return !BuiltInRegistries.MOB_EFFECT.containsKey(ResourceLocation.parse(id));
     }

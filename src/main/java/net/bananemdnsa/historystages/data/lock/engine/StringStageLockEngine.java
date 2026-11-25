@@ -473,6 +473,21 @@ public class StringStageLockEngine implements StageLockEngine {
     }
 
     @Override
+    public boolean anyCropLocks() {
+        return CategoryLockIndexes.anyStageUses("historystages:crops");
+    }
+
+    @Override
+    public List<String> gatingStagesForCrop(String blockId, java.util.Collection<String> blockTagIds) {
+        java.util.LinkedHashSet<String> gating =
+                new java.util.LinkedHashSet<>(narrowed("historystages:crops", blockId, StageScope.GLOBAL));
+        for (String tag : blockTagIds) {
+            gating.addAll(narrowed("historystages:crops", "#" + tag, StageScope.GLOBAL));
+        }
+        return new ArrayList<>(gating);
+    }
+
+    @Override
     public boolean anyZoneLocks() {
         return CategoryLockIndexes.anyStageUses("historystages:zones");
     }

@@ -175,6 +175,19 @@ public interface StageLockEngine {
         return false;
     }
 
+    /** Fast-out for the growth handler, which fires on every random tick of every plant. */
+    default boolean anyCropLocks() {
+        return false;
+    }
+
+    /**
+     * Global stages whose crop list names this block, by id or by one of its tags. Crops are
+     * global only, so there is no scope parameter.
+     */
+    default List<String> gatingStagesForCrop(String blockId, java.util.Collection<String> blockTagIds) {
+        return List.of();
+    }
+
     /** Fast-out for the per-tick zone handler: is any area gated at all? */
     default boolean anyZoneLocks() {
         return false;
