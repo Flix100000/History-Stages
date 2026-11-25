@@ -23,12 +23,13 @@ import java.util.Map;
 /**
  * Every style preset of the pack, with how many stages use it, and the ways to edit, rename,
  * delete and create one. Opened from the stage graph's top bar. Built like
- * {@link DisguiseListScreen}: a plain screen with the editor's card rows.
+ * {@link DisguiseListScreen}: a plain screen with the editor's card rows, and the same footer —
+ * back bottom left, add bottom centre.
  */
 public class StylePresetsScreen extends Screen {
 
     private static final int MARGIN = 10;
-    private static final int LIST_TOP = 48;
+    private static final int LIST_TOP = 28;
     private static final int GREY_TEXT = 0xFF777777;
     private static final int USAGE_COLOR = 0x999999;
 
@@ -46,13 +47,13 @@ public class StylePresetsScreen extends Screen {
 
     @Override
     protected void init() {
+        addRenderableWidget(StyledButton.of(Component.translatable("editor.historystages.back"),
+                b -> onClose(), MARGIN, this.height - 30, 60, 20));
         addRenderableWidget(StyledButton.of(Component.translatable("editor.historystages.graph.preset.new"),
                 b -> this.minecraft.setScreen(new StylePresetNameScreen(this,
                         Component.translatable("editor.historystages.graph.preset.new.title"),
                         null, null, this::create)),
-                this.width - MARGIN - 110, 22, 110, 20));
-        addRenderableWidget(StyledButton.of(Component.translatable("editor.historystages.back"),
-                b -> onClose(), MARGIN, this.height - 28, 60, 20));
+                this.width / 2 - 50, this.height - 30, 100, 20));
     }
 
     // --- rendering ---
@@ -92,7 +93,6 @@ public class StylePresetsScreen extends Screen {
                     presets.size(), (row, i) -> describe(row, presets.get(i)));
             g.disableScissor();
         }
-        g.fill(MARGIN, listBottom + 1, this.width - MARGIN, listBottom + 2, 0xFF555555);
 
         super.render(g, mouseX, mouseY, partialTick);
     }

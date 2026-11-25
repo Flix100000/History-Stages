@@ -15,7 +15,13 @@ import net.bananemdnsa.historystages.platform.IPayloadContext;
 import java.util.ArrayList;
 import java.util.List;
 
-public record LockFeedbackPacket(byte kind, List<String> displayNames) implements CustomPacketPayload {
+/**
+ * A dimension or mob lock, told to the player it refused.
+ *
+ * @param subjectId    the dimension or entity type id, for the {dimension} and {mob} placeholders
+ * @param displayNames the missing stages' names as this player may see them
+ */
+public record LockFeedbackPacket(byte kind, String subjectId, List<String> displayNames) implements CustomPacketPayload {
 
     public static final byte KIND_DIMENSION = 0;
     public static final byte KIND_MOB = 1;
@@ -27,6 +33,7 @@ public record LockFeedbackPacket(byte kind, List<String> displayNames) implement
             StreamCodec.of(
                     (buf, msg) -> {
                         buf.writeByte(msg.kind);
+                        buf.writeUtf(msg.subjectId);
                         buf.writeVarInt(msg.displayNames.size());
                         for (String name : msg.displayNames) {
                             buf.writeUtf(name);
@@ -34,12 +41,13 @@ public record LockFeedbackPacket(byte kind, List<String> displayNames) implement
                     },
                     buf -> {
                         byte kind = buf.readByte();
+                        String subjectId = buf.readUtf();
                         int size = buf.readVarInt();
                         List<String> names = new ArrayList<>(size);
                         for (int i = 0; i < size; i++) {
                             names.add(buf.readUtf());
                         }
-                        return new LockFeedbackPacket(kind, names);
+                        return new LockFeedbackPacket(kind, subjectId, names);
                     }
             );
 
@@ -75,8 +83,8 @@ public record LockFeedbackPacket(byte kind, List<String> displayNames) implement
 
             if (useActionbar) {
                 MutableComponent actionbarMsg = isDimension
-                        ? net.bananemdnsa.historystages.util.lock.LockMessages.dimensionUnknown()
-                        : net.bananemdnsa.historystages.util.lock.LockMessages.mobUnknown();
+                        ? net.bananemdnsa.historystages.util.lock.LockMessages.dimensionUnknown(msg.subjectId, msg.displayNames)
+                        : net.bananemdnsa.historystages.util.lock.LockMessages.mobUnknown(msg.subjectId, msg.displayNames);
                 mc.player.displayClientMessage(
                         actionbarMsg.withStyle(ChatFormatting.DARK_RED, ChatFormatting.ITALIC),
                         true

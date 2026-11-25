@@ -75,6 +75,11 @@ public interface StageLockEngine {
         return false;
     }
 
+    /** The stages behind {@link #isFluidActionLocked}, for a message that has to name them. */
+    default List<String> gatingStagesForFluidAction(String fluidId, String action, StageScope scope) {
+        return List.of();
+    }
+
     default List<String> gatingStagesForRecipe(String recipeId, StageScope scope) {
         return List.of();
     }

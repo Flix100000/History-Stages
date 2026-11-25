@@ -38,6 +38,7 @@ import net.bananemdnsa.historystages.client.editor.anim.Timing;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.bananemdnsa.historystages.client.editor.dialog.EffectValuesDialog;
+import net.bananemdnsa.historystages.client.editor.dialog.BoosterValuesDialog;
 import net.bananemdnsa.historystages.client.editor.widget.StyledButton;
 import net.bananemdnsa.historystages.api.editor.widget.FormattedTextScreen;
 import net.minecraft.client.gui.components.EditBox;
@@ -387,6 +388,11 @@ public class ConfigEditorScreen extends Screen {
                 Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, null,
                 java.util.Arrays.stream(Config.Visual.MultiStagePolicy.values()).map(Enum::name).toList(),
                 Config.Visual.MultiStagePolicy.class.getSimpleName()));
+        viewerHiding.add(new ConfigEntry("jei_hiding.showLockOverlay", "showLockOverlay", ConfigType.BOOLEAN,
+                Config.VISUAL.showLockOverlay.get().toString(), true, "true"));
+        viewerHiding.add(new ConfigEntry("jei_hiding.lockOverlayExemptions", "lockOverlayExemptions",
+                ConfigType.VIEWER_CATEGORIES,
+                String.join(ConfigSpecCodec.LIST_SEPARATOR, Config.VISUAL.lockOverlayExemptions.get()), true, ""));
         visualSections.add(viewerHiding);
 
         ConfigSection notifications = new ConfigSection("editor.historystages.config.notifications");
@@ -1430,6 +1436,9 @@ public class ConfigEditorScreen extends Screen {
             case ITEM -> openItemPicker(entry);
             case BOOSTER_LIST -> this.minecraft.setScreen(new BoosterListEditorScreen(this, entry));
             case EFFECT_LIST -> this.minecraft.setScreen(new EffectListEditorScreen(this, entry));
+            case VIEWER_CATEGORIES -> openPicker(entry, new net.bananemdnsa.historystages.client.editor.widget.popup
+                    .ViewerCategoriesPopup(splitList(entry.value),
+                            list -> entry.value = String.join(ConfigSpecCodec.LIST_SEPARATOR, list)));
             case ENUM -> openEnumDropdown(entry, contentLeft, rowY);
             case COLOR -> this.minecraft.setScreen(new ColorInputScreen(this, entry));
             case SUBSCREEN -> {
@@ -1454,12 +1463,22 @@ public class ConfigEditorScreen extends Screen {
      * in place of literal text, and the mod's own key is the one an admin wants back after trying
      * something else. Offering it as a chip beats retyping it from the config comment.
      */
-    private static final Map<String, List<String>> RICH_TEXT_PLACEHOLDERS = Map.of(
-            "notifications.unlockMessageFormat", List.of("{stage}"),
-            "individual_stages.unlockMessageFormat", List.of("{stage}", "{player}"),
-            "structure_lock.messageFormat", List.of("{structure}", "{stage}"),
-            "biome_lock.messageFormat", List.of("{biome}", "{stage}"),
-            "graph.general.title", List.of(GraphConfig.GRAPH.title.getDefault()));
+    private static final Map<String, List<String>> RICH_TEXT_PLACEHOLDERS = Map.ofEntries(
+            Map.entry("notifications.unlockMessageFormat", List.of("{stage}")),
+            Map.entry("notifications.individual.unlockMessageFormat", List.of("{stage}", "{player}")),
+            Map.entry("structure_lock.messageFormat", List.of("{structure}", "{stage}")),
+            Map.entry("biome_lock.messageFormat", List.of("{biome}", "{stage}")),
+            Map.entry("lock_messages.dimensionUnknown", List.of("{dimension}", "{stage}")),
+            Map.entry("lock_messages.mobUnknown", List.of("{mob}", "{stage}")),
+            Map.entry("lock_messages.itemLocked", List.of("{item}", "{stage}")),
+            Map.entry("lock_messages.fluidLocked", List.of("{fluid}", "{stage}")),
+            Map.entry("lock_messages.blockLocked", List.of("{block}", "{stage}")),
+            Map.entry("lock_messages.entityItemLocked", List.of("{item}", "{stage}")),
+            Map.entry("lock_messages.enchantmentLocked", List.of("{enchantment}", "{item}", "{stage}")),
+            Map.entry("lock_messages.recipeLocked", List.of("{item}", "{stage}")),
+            Map.entry("lock_messages.stageBlocked", List.of("{stage}")),
+            Map.entry("lock_messages.stageRevoked", List.of("{stage}")),
+            Map.entry("graph.general.title", List.of(GraphConfig.GRAPH.title.getDefault())));
 
     /**
      * Opens the screen an addon registered for this field.
@@ -1500,6 +1519,14 @@ public class ConfigEditorScreen extends Screen {
             entry.value = texture;
             closePicker();
         }));
+    }
+
+    private static List<String> splitList(String value) {
+        List<String> out = new ArrayList<>();
+        for (String part : value.split(ConfigSpecCodec.LIST_SEPARATOR)) {
+            if (!part.isBlank()) out.add(part.trim());
+        }
+        return out;
     }
 
     private void openPicker(ConfigEntry entry, PickerOverlay picker) {
@@ -1723,6 +1750,8 @@ public class ConfigEditorScreen extends Screen {
 
     public enum ConfigType {
         BOOLEAN, INTEGER, DOUBLE, STRING, ITEM_LIST, TAG_LIST, ITEM, BOOSTER_LIST, EFFECT_LIST,
+        /** JEI/EMI category ids, ticked in a picker of the installed categories. */
+        VIEWER_CATEGORIES,
         ENUM, COLOR, TEXTURE,
         /**
          * A string carrying {@code &} format codes, placeholders, or both. Opens the rich text
@@ -2942,27 +2971,32 @@ public class ConfigEditorScreen extends Screen {
         }
     }
 
+    /**
+     * The research boosters, as a list of cards like the editor's other item lists.
+     *
+     * <p>A row's values are edited in {@link BoosterValuesDialog}. The buttons sit where the
+     * config editor and its other sub-screens keep them — back bottom left, add bottom centre —
+     * so moving between those screens never moves the button under the cursor.
+     */
     static class BoosterListEditorScreen extends Screen {
+        private static final int MARGIN = 10;
+        private static final int LIST_TOP = 28;
+        private static final int GREY_TEXT = 0xFF777777;
+        private static final int SPEED_COLOUR = 0x88CC88;
+        private static final int COST_COLOUR = 0xCCAA66;
+        private static final int TIER_COLOUR = 0xAACCFF;
+
         private final ConfigEditorScreen parent;
         private final ConfigEntry entry;
         private final List<BoosterRow> rows = new ArrayList<>();
+        private final net.bananemdnsa.historystages.api.editor.widget.EditorRowList rowList =
+                new net.bananemdnsa.historystages.api.editor.widget.EditorRowList();
+        private net.bananemdnsa.historystages.client.editor.widget.ContextMenu contextMenu =
+                new net.bananemdnsa.historystages.client.editor.widget.ContextMenu();
         private SearchableItemList itemOverlay;
         private net.minecraft.client.gui.components.Button backButton;
         private net.minecraft.client.gui.components.Button addButton;
-        private double scrollOffset = 0;
-    /** Sub-pixel scroll chasing {@link #scrollOffset}; render and the click paths both read it. */
-    private final Anim smoothScroll = new Anim();
-    /** Per-row hover progress, keyed by row index. */
-    private final Map<Integer, Anim> rowHover = new HashMap<>();
-        private int maxScroll = 0;
-        private boolean draggingScrollbar = false;
-        private static final int ROW_HEIGHT = 26;
-        private static final int LIST_TOP = 50;
-        private static final int FIELD_W = 30;
-        private static final long MARQUEE_DELAY_MS = Timing.MARQUEE_DELAY_MS;
-        private static final float MARQUEE_SPEED = Timing.MARQUEE_SPEED;
-        private int hoveredRow = -1;
-        private long hoverStartTime = 0L;
+        private double scroll = 0;
 
         BoosterListEditorScreen(ConfigEditorScreen parent, ConfigEntry entry) {
             super(Component.translatable(entry.labelKey));
@@ -3009,7 +3043,7 @@ public class ConfigEditorScreen extends Screen {
         protected void init() {
             backButton = StyledButton.of(
                     Component.translatable("editor.historystages.back"),
-                    btn -> saveAndClose(), 10, this.height - 30, 60, 20);
+                    btn -> saveAndClose(), MARGIN, this.height - 30, 60, 20);
             this.addRenderableWidget(backButton);
 
             addButton = StyledButton.of(
@@ -3017,115 +3051,50 @@ public class ConfigEditorScreen extends Screen {
                     btn -> openPicker(),
                     this.width / 2 - 50, this.height - 30, 100, 20);
             this.addRenderableWidget(addButton);
-
-            rebuildEditBoxes();
-            updateMaxScroll();
         }
 
         /**
          * Drops the picker reference once it has hidden itself. Clicking outside the panel
          * makes the list hide and still report the click as consumed, so without this the
-         * screen would keep a non-null but invisible overlay — leaving the dim layer up and
-         * the header hidden for good.
+         * screen would keep a non-null but invisible overlay — leaving the dim layer up for good.
          */
         private void syncOverlayState() {
             if (itemOverlay != null && !itemOverlay.isVisible()) itemOverlay = null;
         }
 
-        /** Closes the picker and reports the click as consumed. */
-        private boolean clearOverlay() {
-            itemOverlay = null;
-            return true;
-        }
-
-        /**
-         * Open the block picker, after clearing any focus and hiding the EditBoxes
-         * so they don't visually leak through (or accept input behind) the modal overlay.
-         */
         private void openPicker() {
             this.setFocused(null);
-            for (BoosterRow r : rows) {
-                if (r.editButton != null) r.editButton.visible = false;
-            }
             itemOverlay = new SearchableItemList(blockId -> {
                 if (rows.stream().noneMatch(r -> r.blockId.equals(blockId))) {
-                    BoosterRow nr = new BoosterRow(blockId, 5, 0, 1,
-                            net.bananemdnsa.historystages.research.TierMode.MIN);
-                    rows.add(nr);
-                    rebuildEditBoxes();
-                    updateMaxScroll();
+                    rows.add(new BoosterRow(blockId, 5, 0, 1,
+                            net.bananemdnsa.historystages.research.TierMode.MIN));
                 }
                 itemOverlay = null;
             });
             itemOverlay.show(this.width / 2, this.height / 2, this.width);
         }
 
-        private void rebuildEditBoxes() {
-            for (BoosterRow r : rows) {
-                if (r.editButton != null) this.removeWidget(r.editButton);
-            }
-            for (BoosterRow r : rows) {
-                final BoosterRow rRef = r;
-                r.editButton = StyledButton.of(
-                        Component.translatable("editor.historystages.edit"),
-                        btn -> this.minecraft.setScreen(new BoosterEditScreen(this, rRef)),
-                        0, 0, 50, 18);
-                this.addRenderableWidget(r.editButton);
-            }
+        private void openDialog(BoosterRow row) {
+            this.minecraft.setScreen(new BoosterValuesDialog(this, blockName(row.blockId),
+                    row.speed, row.cost, row.tier, row.mode, (speed, cost, tier, mode) -> {
+                        row.speed = speed;
+                        row.cost = cost;
+                        row.tier = tier;
+                        row.mode = mode;
+                    }));
         }
 
-        /**
-         * Truncate-with-"..." until the row is hovered for {@link #MARQUEE_DELAY_MS}, then
-         * scroll the full ID horizontally. Inlined from {@code AbstractSearchableList} so
-         * this Screen-based editor doesn't have to inherit it.
-         */
-        private void drawIdMaybeMarquee(GuiGraphics g, String text, int x, int y,
-                                        int w, int h, boolean hovered, int rowIndex) {
-            int textW = this.font.width(text);
-            int textColor = hovered ? 0xFFFFFF : 0xCCCCCC;
-            if (hovered) {
-                if (hoveredRow != rowIndex) {
-                    hoveredRow = rowIndex;
-                    hoverStartTime = System.currentTimeMillis();
-                }
-            }
-            if (textW <= w) {
-                g.drawString(this.font, text, x, y, textColor, false);
-                return;
-            }
-            if (hovered && hoveredRow == rowIndex) {
-                long elapsed = System.currentTimeMillis() - hoverStartTime;
-                if (elapsed > MARQUEE_DELAY_MS) {
-                    float scrollProg = (elapsed - MARQUEE_DELAY_MS) / 1000.0f * MARQUEE_SPEED;
-                    int maxMarquee = textW - w + 10;
-                    float cycle = maxMarquee * 2f;
-                    float pos = scrollProg % cycle;
-                    int scrollOff = pos <= maxMarquee ? (int) pos : (int) (cycle - pos);
-                    g.enableScissor(x, y - 4, x + w, y + h);
-                    g.drawString(this.font, text, x - scrollOff, y, textColor, false);
-                    g.disableScissor();
-                    return;
-                }
-            }
-            g.drawString(this.font, this.font.plainSubstrByWidth(text, w - 6) + "...",
-                    x, y, textColor, false);
+        private static ItemStack stackFor(String blockId) {
+            ResourceLocation rl = ResourceLocation.tryParse(blockId);
+            if (rl == null) return ItemStack.EMPTY;
+            Item item = BuiltInRegistries.ITEM.get(rl);
+            return item == null ? ItemStack.EMPTY : new ItemStack(item);
         }
 
-        /** "Speed +5% · Cost +0% · Tier II+" */
-        private static String formatSummary(BoosterRow r) {
-            String roman = net.bananemdnsa.historystages.research.TierMatcher.roman(r.tier);
-            String tierStr = r.mode == net.bananemdnsa.historystages.research.TierMode.EXACT
-                    ? roman
-                    : roman + "+";
-            return "Speed +" + r.speed + "%  ·  Cost +" + r.cost + "%  ·  Tier " + tierStr;
-        }
-
-        private void updateMaxScroll() {
-            int listBottom = this.height - 40;
-            int contentHeight = rows.size() * ROW_HEIGHT;
-            int visibleHeight = listBottom - LIST_TOP;
-            maxScroll = Math.max(0, contentHeight - visibleHeight);
-            scrollOffset = Math.min(scrollOffset, maxScroll);
+        /** The block's own name; the raw id when the block is not installed. */
+        private static Component blockName(String blockId) {
+            ItemStack stack = stackFor(blockId);
+            return stack.isEmpty() ? Component.literal(blockId) : stack.getHoverName();
         }
 
         private void saveAndClose() {
@@ -3140,112 +3109,81 @@ public class ConfigEditorScreen extends Screen {
             this.minecraft.setScreen(parent);
         }
 
-        @Override
-        public void renderBackground(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {}
+        private int listBottom() {
+            return this.height - 36;
+        }
 
         @Override
-        public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-            smoothScroll.approach((float) scrollOffset, Timing.SCROLL_HALF_LIFE_MS);
-            smoothScroll.settle((float) scrollOffset, 0.5f);
+        public void renderBackground(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+            // Drawn in render(); leaving this empty keeps 1.21's blur out of the editor.
+        }
+
+        @Override
+        public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
             syncOverlayState();
-            guiGraphics.fill(0, 0, this.width, this.height, 0xE0101010);
             boolean overlayOpen = itemOverlay != null;
-            // Skip the title/subtitle/separators while the picker is up so they don't bleed
-            // through the dim layer above the picker panel. The footer buttons need the same
-            // treatment: vanilla batches text and flushes it late, so their labels would draw
-            // on top of the panel even though the panel is painted after them.
-            if (backButton != null) backButton.visible = !overlayOpen;
-            if (addButton != null) addButton.visible = !overlayOpen;
-            if (!overlayOpen) {
-                guiGraphics.drawCenteredString(this.font, this.title, this.width / 2, 10, 0xFFFFFF);
-                guiGraphics.drawCenteredString(this.font, rows.size() + " boosters", this.width / 2, 25, 0x999999);
-                guiGraphics.fill(30, LIST_TOP - 4, this.width - 30, LIST_TOP - 3, 0xFF555555);
+            g.fill(0, 0, this.width, this.height, 0xE0101010);
+            g.drawCenteredString(this.font, this.title, this.width / 2, 6, 0xFFFFFF);
+            g.fill(MARGIN, 19, this.width - MARGIN, 20, 0x40FFFFFF);
+
+            int listBottom = listBottom();
+            int maxScroll = Math.max(0,
+                    net.bananemdnsa.historystages.api.editor.widget.EditorRowList.heightFor(rows.size())
+                            - (listBottom - LIST_TOP));
+            scroll = Math.max(0, Math.min(maxScroll, scroll));
+
+            if (rows.isEmpty()) {
+                g.drawCenteredString(this.font, Component.translatable("editor.historystages.booster.empty"),
+                        this.width / 2, LIST_TOP + 20, GREY_TEXT);
+            } else {
+                boolean blocked = overlayOpen || contextMenu.isVisible();
+                g.enableScissor(0, LIST_TOP, this.width, listBottom);
+                rowList.render(new net.bananemdnsa.historystages.api.editor.TabRenderContext(g, this.font,
+                                MARGIN, LIST_TOP - (int) scroll, this.width - MARGIN * 2, LIST_TOP, listBottom,
+                                blocked ? -1 : mouseX, blocked ? -1 : mouseY, blocked, (a, b) -> {}),
+                        rows.size(), (row, i) -> describe(row, rows.get(i)));
+                g.disableScissor();
             }
+            // Vanilla batches button text and flushes it late, so the labels would draw on top of
+            // the picker panel even though the panel is painted after them.
+            backButton.visible = !overlayOpen;
+            addButton.visible = !overlayOpen;
+            super.render(g, mouseX, mouseY, partialTick);
+            contextMenu.render(g, this.font, mouseX, mouseY);
 
-            int listBottom = this.height - 40;
-            int contentLeft = 40;
-            int contentRight = this.width - 40;
-
-            int removeX = contentRight - 14;
-            int editButtonX = removeX - 8 - 50; // edit button width 50
-            int summaryRightX = editButtonX - 8;
-
-            // Buttons render via super.render() outside the scissor — toggle visible based on row clipping.
-            guiGraphics.enableScissor(contentLeft - 5, LIST_TOP, contentRight + 5, listBottom);
-
-            int y = LIST_TOP - Math.round(smoothScroll.value());
-            boolean anyHover = false;
-            for (int i = 0; i < rows.size(); i++) {
-                BoosterRow r = rows.get(i);
-                boolean fullyVisible = !overlayOpen && y >= LIST_TOP && y + ROW_HEIGHT <= listBottom;
-                if (r.editButton != null) r.editButton.visible = fullyVisible;
-                if (y + ROW_HEIGHT > LIST_TOP - 10 && y < listBottom + 10) {
-                    boolean hovered = mouseX >= contentLeft && mouseX <= contentRight
-                            && mouseY >= y && mouseY < y + ROW_HEIGHT
-                            && mouseY >= LIST_TOP && mouseY <= listBottom;
-                    if (hovered) {
-                        anyHover = true;
-                    }
-                    // Advanced unconditionally — running it only while hovered would leave the
-                    // highlight stuck on the last row the cursor touched.
-                    float rh = Ease.outCubic(rowHover.computeIfAbsent(i, k -> new Anim())
-                            .ramp(hovered, Timing.HOVER_IN_MS, Timing.HOVER_OUT_MS));
-                    if (rh > 0.001f) {
-                        guiGraphics.fill(contentLeft, y, contentRight, y + ROW_HEIGHT, Fade.rgba(0xFFFFFF, 0.125f * rh));
-                        guiGraphics.fill(contentLeft, y, contentLeft + 1, y + ROW_HEIGHT, Fade.rgba(0xFFCC00, rh * 0.8f));
-                    }
-
-                    // Block icon
-                    ResourceLocation rl = ResourceLocation.tryParse(r.blockId);
-                    if (rl != null) {
-                        Item item = BuiltInRegistries.ITEM.get(rl);
-                        if (item != null) {
-                            guiGraphics.renderItem(new ItemStack(item), contentLeft + 2, y + 5);
-                        }
-                    }
-
-                    // Right-aligned summary, then ID gets the remaining space.
-                    String summary = formatSummary(r);
-                    int summaryW = this.font.width(summary);
-                    int summaryX = summaryRightX - summaryW;
-                    guiGraphics.drawString(this.font, summary, summaryX, y + 9, 0xAACCFF, false);
-
-                    int idX = contentLeft + 22;
-                    int maxIdWidth = summaryX - idX - 8;
-                    drawIdMaybeMarquee(guiGraphics, r.blockId, idX, y + 9,
-                            maxIdWidth, ROW_HEIGHT - 2, hovered, i);
-
-                    // Position Edit button
-                    r.editButton.setX(editButtonX); r.editButton.setY(y + 4);
-
-                    // Remove ×
-                    boolean removeHovered = mouseX >= removeX && mouseX <= removeX + 12
-                            && mouseY >= y + 2 && mouseY < y + ROW_HEIGHT - 2
-                            && mouseY >= LIST_TOP && mouseY <= listBottom;
-                    guiGraphics.drawString(this.font, "×", removeX + 2, y + 8,
-                            removeHovered ? 0xFF5555 : 0x888888, false);
-                }
-                y += ROW_HEIGHT;
+            if (overlayOpen) {
+                g.fill(0, 0, this.width, this.height, 0x80000000);
+                itemOverlay.render(g, this.font, mouseX, mouseY);
             }
-            if (!anyHover) hoveredRow = -1;
-            guiGraphics.disableScissor();
+        }
 
-            if (maxScroll > 0) {
-                int scrollAreaHeight = listBottom - LIST_TOP;
-                int barHeight = Math.max(20, (int) ((float) scrollAreaHeight / (maxScroll + scrollAreaHeight) * scrollAreaHeight));
-                int barY = LIST_TOP + Math.round(smoothScroll.value() / maxScroll * (scrollAreaHeight - barHeight));
-                // Track + thumb, 6px wide for an easier hit target.
-                guiGraphics.fill(contentRight + 2, LIST_TOP, contentRight + 8, listBottom, 0x40000000);
-                guiGraphics.fill(contentRight + 2, barY, contentRight + 8, barY + barHeight, 0xC0FFFFFF);
+        private void describe(net.bananemdnsa.historystages.api.editor.widget.EditorRowList.Row row, BoosterRow r) {
+            ItemStack stack = stackFor(r.blockId);
+            if (!stack.isEmpty()) {
+                row.leading(14, (g, x, y, w, h) -> {
+                    g.pose().pushPose();
+                    g.pose().translate(x, y, 0);
+                    g.pose().scale(0.85f, 0.85f, 1.0f);
+                    g.renderItem(stack, 0, 0);
+                    g.pose().popPose();
+                });
             }
-            guiGraphics.fill(30, listBottom + 1, this.width - 30, listBottom + 2, 0xFF555555);
+            row.text(blockName(r.blockId).getString());
+            row.subtitle(r.blockId);
+            row.badge(Component.translatable("editor.historystages.booster.badge.speed", r.speed).getString(),
+                    SPEED_COLOUR);
+            row.badge(Component.translatable("editor.historystages.booster.badge.cost", r.cost).getString(),
+                    COST_COLOUR);
+            String roman = net.bananemdnsa.historystages.research.TierMatcher.roman(r.tier);
+            row.badge(Component.translatable(r.mode == net.bananemdnsa.historystages.research.TierMode.EXACT
+                            ? "editor.historystages.booster.badge.tier_exact"
+                            : "editor.historystages.booster.badge.tier_min", roman).getString(),
+                    TIER_COLOUR);
+        }
 
-            super.render(guiGraphics, mouseX, mouseY, partialTick);
-
-            if (itemOverlay != null) {
-                guiGraphics.fill(0, 0, this.width, this.height, 0x80000000);
-                itemOverlay.render(guiGraphics, this.font, mouseX, mouseY);
-            }
+        private net.bananemdnsa.historystages.api.editor.TabInputContext input(double mouseX, double mouseY) {
+            return new net.bananemdnsa.historystages.api.editor.TabInputContext(MARGIN, LIST_TOP - (int) scroll,
+                    this.width - MARGIN * 2, LIST_TOP, listBottom(), mouseX, mouseY);
         }
 
         @Override
@@ -3254,72 +3192,40 @@ public class ConfigEditorScreen extends Screen {
             if (itemOverlay != null) {
                 boolean consumed = itemOverlay.mouseClicked(mouseX, mouseY);
                 syncOverlayState();
-                return consumed || clearOverlay();
-            }
-
-            int listBottom = this.height - 40;
-            int contentLeft = 40;
-            int contentRight = this.width - 40;
-            int removeX = contentRight - 14;
-
-            // Scrollbar takes precedence over EditBoxes/buttons so a click on it always wins.
-            if (maxScroll > 0 && mouseX >= contentRight + 1 && mouseX <= contentRight + 9
-                    && mouseY >= LIST_TOP && mouseY <= listBottom) {
-                draggingScrollbar = true;
-                updateScrollFromMouse(mouseY, LIST_TOP, listBottom);
+                if (!consumed) itemOverlay = null;
                 return true;
             }
-
+            if (contextMenu.isVisible()) {
+                contextMenu.mouseClicked(mouseX, mouseY, button);
+                return true;
+            }
             if (super.mouseClicked(mouseX, mouseY, button)) return true;
 
-            if (mouseX < contentLeft || mouseX > contentRight || mouseY < LIST_TOP || mouseY > listBottom)
-                return false;
-
-            int y = LIST_TOP - Math.round(smoothScroll.value());
-            for (int i = 0; i < rows.size(); i++) {
-                if (mouseY >= y && mouseY < y + ROW_HEIGHT) {
-                    if (mouseX >= removeX && mouseX <= removeX + 12) {
-                        BoosterRow removed = rows.remove(i);
-                        if (removed.editButton != null) this.removeWidget(removed.editButton);
-                        updateMaxScroll();
-                        return true;
-                    }
-                }
-                y += ROW_HEIGHT;
-            }
-            return false;
-        }
-
-        @Override
-        public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
-            if (draggingScrollbar) {
-                updateScrollFromMouse(mouseY, LIST_TOP, this.height - 40);
+            int index = rowList.rowAt(input(mouseX, mouseY), rows.size());
+            if (index < 0) return false;
+            BoosterRow row = rows.get(index);
+            if (button == 0) {
+                openDialog(row);
                 return true;
             }
-            return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
-        }
-
-        @Override
-        public boolean mouseReleased(double mouseX, double mouseY, int button) {
-            if (draggingScrollbar) { draggingScrollbar = false; return true; }
-            return super.mouseReleased(mouseX, mouseY, button);
-        }
-
-        private void updateScrollFromMouse(double mouseY, int listTop, int listBottom) {
-            int scrollAreaHeight = listBottom - listTop;
-            float ratio = (float) Math.max(0, Math.min(1, (mouseY - listTop) / (double) scrollAreaHeight));
-            scrollOffset = Math.round(ratio * maxScroll);
-            scrollOffset = Math.max(0, Math.min(maxScroll, scrollOffset));
-            // Snapped, not eased: while the thumb is held the list must track the
-            // cursor exactly, or the thumb drifts from where the pointer is.
-            smoothScroll.set((float) scrollOffset);
+            if (button == 1) {
+                contextMenu = new net.bananemdnsa.historystages.client.editor.widget.ContextMenu();
+                contextMenu.addEntry(Component.translatable("editor.historystages.edit").getString(),
+                        () -> openDialog(row));
+                contextMenu.addEntry(Component.translatable("editor.historystages.remove").getString(),
+                        () -> rows.remove(row));
+                contextMenu.show((int) mouseX, (int) mouseY, this.font);
+                return true;
+            }
+            return false;
         }
 
         @Override
         public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
             syncOverlayState();
             if (itemOverlay != null) return itemOverlay.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
-            scrollOffset = Math.max(0, Math.min(maxScroll, scrollOffset - scrollY * 16));
+            scroll -= scrollY * (net.bananemdnsa.historystages.api.editor.widget.EditorRowList.CARD_HEIGHT
+                    + net.bananemdnsa.historystages.api.editor.widget.EditorRowList.CARD_GAP);
             return true;
         }
 
@@ -3327,12 +3233,22 @@ public class ConfigEditorScreen extends Screen {
         public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
             syncOverlayState();
             if (itemOverlay != null) {
-                if (keyCode == 256) return clearOverlay();
+                if (keyCode == 256) {
+                    itemOverlay = null;
+                    return true;
+                }
                 boolean consumed = itemOverlay.keyPressed(keyCode);
                 syncOverlayState();
                 return consumed;
             }
-            if (keyCode == 256) { saveAndClose(); return true; }
+            if (keyCode == 256 && contextMenu.isVisible()) {
+                contextMenu.hide();
+                return true;
+            }
+            if (keyCode == 256) {
+                saveAndClose();
+                return true;
+            }
             return super.keyPressed(keyCode, scanCode, modifiers);
         }
 
@@ -3355,7 +3271,6 @@ public class ConfigEditorScreen extends Screen {
             int cost;
             int tier;
             net.bananemdnsa.historystages.research.TierMode mode;
-            net.minecraft.client.gui.components.Button editButton;
             BoosterRow(String blockId, int speed, int cost, int tier,
                        net.bananemdnsa.historystages.research.TierMode mode) {
                 this.blockId = blockId;
@@ -3365,147 +3280,5 @@ public class ConfigEditorScreen extends Screen {
                 this.mode = mode;
             }
         }
-    }
-
-    /**
-     * Detail screen for a single BoosterRow: speed/cost EditBoxes, tier dropdown,
-     * mode toggle. Mutates the row in place on Save and returns to the list.
-     */
-    static class BoosterEditScreen extends Screen {
-        private final BoosterListEditorScreen parent;
-        private final BoosterListEditorScreen.BoosterRow row;
-
-        private EditBox speedField;
-        private EditBox costField;
-        private net.bananemdnsa.historystages.client.editor.widget.dropdown.PedestalTierDropdown tierDropdown;
-        private net.minecraft.client.gui.components.Button modeButton;
-
-        // Working copies — only written back on Save.
-        private int editSpeed;
-        private int editCost;
-        private int editTier;
-        private net.bananemdnsa.historystages.research.TierMode editMode;
-
-        BoosterEditScreen(BoosterListEditorScreen parent, BoosterListEditorScreen.BoosterRow row) {
-            super(Component.translatable("editor.historystages.booster.edit_title"));
-            this.parent = parent;
-            this.row = row;
-            this.editSpeed = row.speed;
-            this.editCost = row.cost;
-            this.editTier = row.tier;
-            this.editMode = row.mode;
-        }
-
-        @Override
-        protected void init() {
-            int labelX = 30;
-            String labelSpeed = "Speed %";
-            String labelCost  = "Cost %";
-            String labelTier  = Component.translatable("editor.historystages.field.min_pedestal_tier").getString();
-            String labelMode  = Component.translatable("editor.historystages.field.pedestal_tier_mode").getString();
-            int maxLabelW = Math.max(Math.max(this.font.width(labelSpeed), this.font.width(labelCost)),
-                    Math.max(this.font.width(labelTier), this.font.width(labelMode)));
-            int fieldX = labelX + maxLabelW + 10;
-
-            speedField = new EditBox(this.font, fieldX, 44, 60, 18, Component.literal("speed"));
-            speedField.setMaxLength(2);
-            speedField.setValue(String.valueOf(editSpeed));
-            speedField.setFilter(s -> s.isEmpty() || s.matches("\\d+"));
-            speedField.setResponder(v -> {
-                try { editSpeed = Math.max(0, Math.min(90, Integer.parseInt(v))); }
-                catch (NumberFormatException ignored) { editSpeed = 0; }
-            });
-            this.addRenderableWidget(speedField);
-
-            costField = new EditBox(this.font, fieldX, 66, 60, 18, Component.literal("cost"));
-            costField.setMaxLength(2);
-            costField.setValue(String.valueOf(editCost));
-            costField.setFilter(s -> s.isEmpty() || s.matches("\\d+"));
-            costField.setResponder(v -> {
-                try { editCost = Math.max(0, Math.min(90, Integer.parseInt(v))); }
-                catch (NumberFormatException ignored) { editCost = 0; }
-            });
-            this.addRenderableWidget(costField);
-
-            tierDropdown = new net.bananemdnsa.historystages.client.editor.widget.dropdown.PedestalTierDropdown(
-                    editTier, 160, picked -> editTier = picked);
-            tierDropdown.setPosition(fieldX, 88);
-
-            modeButton = StyledButton.of(
-                    Component.translatable(modeKey(editMode)),
-                    btn -> {
-                        editMode = (editMode == net.bananemdnsa.historystages.research.TierMode.MIN)
-                                ? net.bananemdnsa.historystages.research.TierMode.EXACT
-                                : net.bananemdnsa.historystages.research.TierMode.MIN;
-                        btn.setMessage(Component.translatable(modeKey(editMode)));
-                    },
-                    fieldX, 110, 160, 18);
-            this.addRenderableWidget(modeButton);
-
-            this.addRenderableWidget(StyledButton.of(
-                    Component.translatable("editor.historystages.back"),
-                    btn -> this.minecraft.setScreen(parent),
-                    10, this.height - 25, 50, 18));
-            this.addRenderableWidget(StyledButton.of(
-                    Component.translatable("editor.historystages.save"),
-                    btn -> save(), this.width - 60, this.height - 25, 50, 18));
-        }
-
-        private void save() {
-            row.speed = editSpeed;
-            row.cost = editCost;
-            row.tier = editTier;
-            row.mode = editMode;
-            this.minecraft.setScreen(parent);
-        }
-
-        private static String modeKey(net.bananemdnsa.historystages.research.TierMode m) {
-            return m == net.bananemdnsa.historystages.research.TierMode.EXACT
-                    ? "editor.historystages.tier_mode.exact"
-                    : "editor.historystages.tier_mode.min";
-        }
-
-        @Override
-        public void renderBackground(GuiGraphics g, int mx, int my, float pt) {}
-
-        @Override
-        public void render(GuiGraphics g, int mouseX, int mouseY, float pt) {
-            g.fill(0, 0, this.width, this.height, 0xC0000000);
-            super.render(g, mouseX, mouseY, pt);
-
-            g.drawCenteredString(this.font,
-                    Component.translatable("editor.historystages.booster.edit_title"),
-                    this.width / 2, 8, 0xFFFFFF);
-
-            // Block icon + ID header
-            ResourceLocation rl = ResourceLocation.tryParse(row.blockId);
-            if (rl != null) {
-                Item item = BuiltInRegistries.ITEM.get(rl);
-                if (item != null) g.renderItem(new ItemStack(item), 30, 22);
-            }
-            g.drawString(this.font, row.blockId, 52, 26, 0xCCCCCC, false);
-
-            int labelX = 30;
-            g.drawString(this.font, "Speed %", labelX, 49, 0xAAAAAA, false);
-            g.drawString(this.font, "Cost %",  labelX, 71, 0xAAAAAA, false);
-            g.drawString(this.font,
-                    Component.translatable("editor.historystages.field.min_pedestal_tier").getString(),
-                    labelX, 93, 0xAAAAAA, false);
-            g.drawString(this.font,
-                    Component.translatable("editor.historystages.field.pedestal_tier_mode").getString(),
-                    labelX, 115, 0xAAAAAA, false);
-
-            tierDropdown.renderButton(g, this.font, mouseX, mouseY);
-            tierDropdown.renderPopup(g, this.font, mouseX, mouseY);
-        }
-
-        @Override
-        public boolean mouseClicked(double mouseX, double mouseY, int button) {
-            if (tierDropdown != null && tierDropdown.mouseClicked(mouseX, mouseY)) return true;
-            return super.mouseClicked(mouseX, mouseY, button);
-        }
-
-        @Override
-        public boolean isPauseScreen() { return true; }
     }
 }

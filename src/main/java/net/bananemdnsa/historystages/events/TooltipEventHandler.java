@@ -1,14 +1,10 @@
 package net.bananemdnsa.historystages.events;
 
-import net.bananemdnsa.historystages.data.lock.category.BuiltInLockMatching;
 import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.HistoryStages;
-import net.bananemdnsa.historystages.data.ItemEntry;
-import net.bananemdnsa.historystages.data.NbtMatcher;
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.StageManager;
 import net.bananemdnsa.historystages.data.StagePaths;
-import net.bananemdnsa.historystages.data.lock.engine.CategoryLockIndexes;
 import net.bananemdnsa.historystages.research.BoosterUtil;
 import net.bananemdnsa.historystages.research.ResearchBooster;
 import net.bananemdnsa.historystages.research.ResearchBoosterRegistry;
@@ -20,10 +16,10 @@ import net.bananemdnsa.historystages.client.cache.ClientStageStates;
 import net.bananemdnsa.historystages.client.display.BlockedLines;
 import net.bananemdnsa.historystages.client.display.RequiredStageLines;
 import net.bananemdnsa.historystages.data.lock.engine.LockResolution;
+import net.bananemdnsa.historystages.data.lock.engine.StageLocks;
 import net.bananemdnsa.historystages.util.lock.StageLockHelper;
 import net.bananemdnsa.historystages.util.SearchHiddenContents;
 import net.minecraft.world.item.BlockItem;
-import net.minecraft.world.item.Item;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -145,16 +141,12 @@ public class TooltipEventHandler {
         String itemID = itemLocation.toString();
         String modID = itemLocation.getNamespace();
 
-        // Both scopes ask the same question about the same item, so both go through the
-        // relevance index first: it names the handful of stages that mention this item at all,
-        // and only those get the exact test. Walking every stage instead cost three fresh
-        // ArrayLists per stage per tooltip frame - getMods, getItems and getNbtFreeTags each
-        // rebuild theirs from a stream on every call.
-        Item item = stack.getItem();
-
+        // Ask the lock engine, the same one that draws the padlock. The tooltip used to run its
+        // own copy of the item test, which only knew mods, items, tags and NBT - a locked
+        // Sharpness V book got the padlock but no "needs stage X" line.
         List<GatingStage> totalRequiredStages = gatingStages(
-                CategoryLockIndexes.globalCandidates(itemID, modID, item),
-                StageManager.getStages(), false, itemID, modID, stack);
+                StageLocks.engine().gatingStagesForItem(itemID, modID, stack, StageScope.GLOBAL),
+                StageManager.getStages(), false);
         boolean isCurrentlyLocked = isLocked(StageScope.GLOBAL, totalRequiredStages, ClientStageStates.global());
 
         // Dual-phase phase-1 indicator
@@ -174,8 +166,8 @@ public class TooltipEventHandler {
 
         // --- INDIVIDUAL STAGES TOOLTIP ---
         List<GatingStage> individualRequiredStages = gatingStages(
-                CategoryLockIndexes.individualCandidates(itemID, modID, item),
-                StageManager.getIndividualStages(), true, itemID, modID, stack);
+                StageLocks.engine().gatingStagesForItem(itemID, modID, stack, StageScope.INDIVIDUAL),
+                StageManager.getIndividualStages(), true);
         boolean isIndividuallyLocked = isLocked(StageScope.INDIVIDUAL, individualRequiredStages,
                 ClientStageStates.individual());
 
@@ -190,23 +182,15 @@ public class TooltipEventHandler {
     /** A stage that gates this item, carried with its id so nothing has to look the id up again. */
     private record GatingStage(String id, StageEntry stage) {}
 
-    /**
-     * The candidate stages that really list this item.
-     *
-     * <p>{@code candidateIds} is the relevance index's over-approximation: it may name a stage
-     * that turns out not to match, never omit one that does. {@link #listsItem} settles it.
-     */
-    private static List<GatingStage> gatingStages(Collection<String> candidateIds,
-                                                  Map<String, StageEntry> stages, boolean individual,
-                                                  String itemID, String modID, ItemStack stack) {
-        if (candidateIds.isEmpty()) return List.of();
+    /** The engine's gating ids paired with their stages, in overview order. */
+    private static List<GatingStage> gatingStages(Collection<String> gatingIds,
+                                                  Map<String, StageEntry> stages, boolean individual) {
+        if (gatingIds.isEmpty()) return List.of();
 
-        List<GatingStage> found = new ArrayList<>(candidateIds.size());
-        for (String stageID : candidateIds) {
+        List<GatingStage> found = new ArrayList<>(gatingIds.size());
+        for (String stageID : gatingIds) {
             StageEntry stage = stages.get(stageID);
-            if (stage != null && listsItem(stage, itemID, modID, stack)) {
-                found.add(new GatingStage(stageID, stage));
-            }
+            if (stage != null) found.add(new GatingStage(stageID, stage));
         }
         // The candidates come in hash-map order, which would reshuffle the "you still need"
         // lines after a reload. Show them in the order the overview lists them.
@@ -215,16 +199,6 @@ public class TooltipEventHandler {
                     StageManager.getStageFolder(entry.id(), individual), entry.id())));
         }
         return found;
-    }
-
-    /** The exact "does this stage gate this item" test, unchanged from the old inline version. */
-    private static boolean listsItem(StageEntry stage, String itemID, String modID, ItemStack stack) {
-        return (stage.getMods().contains(modID) && !stage.isModExcepted(itemID, stack))
-                || stage.getItems().contains(itemID)
-                || matchesNbtItem(stage, itemID, stack)
-                || stack.getItem().builtInRegistryHolder().tags()
-                        .anyMatch(tag -> stage.getNbtFreeTags().contains(tag.location().toString()))
-                || matchesNbtTag(stage, stack);
     }
 
     private static boolean isLocked(StageScope scope, List<GatingStage> gating, StageStateView state) {
@@ -290,22 +264,5 @@ public class TooltipEventHandler {
                 tooltip.add(Component.literal(line).withStyle(ChatFormatting.GRAY));
             }
         }
-    }
-
-    private static boolean matchesNbtItem(StageEntry stage, String itemID, ItemStack stack) {
-        for (ItemEntry itemEntry : stage.getItemEntries()) {
-            if (itemEntry.getId().equals(itemID) && itemEntry.hasNbt()) {
-                if (NbtMatcher.matches(stack, itemEntry.getNbt())) return true;
-            }
-        }
-        return false;
-    }
-
-    private static boolean matchesNbtTag(StageEntry stage, ItemStack stack) {
-        net.minecraft.world.item.Item item = stack.getItem();
-        for (net.bananemdnsa.historystages.data.lock.NamedLockEntry tagEntry : stage.getTagEntries()) {
-            if (tagEntry.hasNbt() && BuiltInLockMatching.tagEntryMatches(tagEntry, stack, item)) return true;
-        }
-        return false;
     }
 }

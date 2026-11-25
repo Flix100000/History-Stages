@@ -118,7 +118,7 @@ public class InteractionLockHandler {
         }
 
         PacketHandler.sendLockFeedbackToPlayer(
-                new LockFeedbackPacket(LockFeedbackPacket.KIND_MOB, displayNames),
+                new LockFeedbackPacket(LockFeedbackPacket.KIND_MOB, entityId, displayNames),
                 player
         );
     }

@@ -69,7 +69,7 @@ public class MobLockHandler {
             }
 
             PacketHandler.sendLockFeedbackToPlayer(
-                    new LockFeedbackPacket(LockFeedbackPacket.KIND_MOB, displayNames),
+                    new LockFeedbackPacket(LockFeedbackPacket.KIND_MOB, entityId, displayNames),
                     player
             );
         }

@@ -33,7 +33,17 @@ public final class LevelledMatching {
      */
     public static boolean locksItem(LevelledLockEntry entry, List<StackContents.Levelled> carried,
                                     String itemId) {
-        return locksAnyItemAction(entry.getLockActions())
+        return locksItem(entry, entry.getLockActions(), carried, itemId);
+    }
+
+    /**
+     * The item path with the stage's fixed actions applied. {@code effectiveActions} decides
+     * whether any item action is locked at all, so a stage that fixes "use" as locked reaches
+     * station-only entries, and one that fixes every item action as allowed frees them.
+     */
+    public static boolean locksItem(LevelledLockEntry entry, @Nullable List<String> effectiveActions,
+                                    List<StackContents.Levelled> carried, String itemId) {
+        return locksAnyItemAction(effectiveActions)
                 && !entry.excludes(itemId)
                 && matches(entry, carried);
     }

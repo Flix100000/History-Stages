@@ -67,7 +67,8 @@ public class ContainerClickMixin {
             DebugLogger.runtimeThrottled(HsRuntimeCategories.CONTAINER_LOCK, "container_" + serverPlayer.getUUID() + "_" + itemRL,
                     "<" + serverPlayer.getName().getString() + "> Interaction with locked item '" + itemRL + "' in container blocked");
 
-            LockFeedback.sendActionbar(serverPlayer, FEEDBACK_CATEGORY, LockMessages.itemLocked());
+            LockFeedback.sendActionbar(serverPlayer, FEEDBACK_CATEGORY,
+                    LockMessages.itemLocked(serverPlayer, stack, "pickup"));
         }
     }
 
@@ -137,7 +138,8 @@ public class ContainerClickMixin {
         DebugLogger.runtimeThrottled(HsRuntimeCategories.ITEM_USE_LOCK, "equip_click_" + serverPlayer.getUUID() + "_" + itemRL,
                 "<" + serverPlayer.getName().getString() + "> Equip via container click for '" + itemRL + "' blocked [action: equip]");
 
-        LockFeedback.sendActionbar(serverPlayer, FEEDBACK_CATEGORY, LockMessages.itemLocked());
+        LockFeedback.sendActionbar(serverPlayer, FEEDBACK_CATEGORY,
+                LockMessages.itemLocked(serverPlayer, candidate, "equip"));
     }
 
     /**
