@@ -30,6 +30,8 @@
     "event.LivingDropsMixin",
     "AttributeLockMixin",
     "RecipeManagerMixin",
+    "SimpleReloadInstanceMixin",
+    "PlayerListReloadMixin",
     "CraftingMenuMixin",
     "StonecutterMenuMixin",
     "SmithingMenuMixin",
@@ -41,6 +43,9 @@
     "BrewingStandMixin",
     "MerchantOffersMixin",
     "MerchantContainerMixin",
+    "MerchantMenuAccessor",
+    "MerchantMenuCloseMixin",
+    "SelectTradeMixin",
     "jei.RecipeLayoutMixin",
     "disguise.DisguiseProgressMixin",
     "disguise.DisguiseDropsMixin"

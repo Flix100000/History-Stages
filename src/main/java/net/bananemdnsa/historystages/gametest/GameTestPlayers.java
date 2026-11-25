@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.gametest;
 
+import java.util.List;
 import java.util.UUID;
 
 import com.mojang.authlib.GameProfile;
@@ -9,6 +10,7 @@ import net.minecraft.network.Connection;
 import net.minecraft.network.PacketSendListener;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.PacketFlow;
+import net.minecraft.network.protocol.common.ClientboundCustomPayloadPacket;
 import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -53,15 +55,38 @@ final class GameTestPlayers {
         return player;
     }
 
+    /** Gives a player built elsewhere (a test's own subclass) a connection that records what it is sent. */
+    static void connectCapturing(ServerPlayer player, List<Packet<?>> sink) {
+        new SilentListener(player, sink);
+    }
+
     /**
      * Overridden on the listener, not only the connection: NeoForge checks a mod payload against
      * the channels the client negotiated before it ever reaches the connection, and a player
      * built without a login negotiated none.
      */
     private static final class SilentListener extends ServerGamePacketListenerImpl {
+        private final @Nullable List<Packet<?>> sink;
+
         SilentListener(ServerPlayer player) {
-            super(player.getServer(), new Connection(PacketFlow.SERVERBOUND), player,
+            this(player, null);
+        }
+
+        SilentListener(ServerPlayer player, @Nullable List<Packet<?>> sink) {
+            super(player.getServer(), recordingConnection(sink), player,
                     CommonListenerCookie.createInitial(player.getGameProfile(), false));
+            this.sink = sink;
+        }
+
+        /** Hands vanilla packets to the sink as they would go on the wire. */
+        private static Connection recordingConnection(@Nullable List<Packet<?>> sink) {
+            if (sink == null) return new Connection(PacketFlow.SERVERBOUND);
+            return new Connection(PacketFlow.SERVERBOUND) {
+                @Override
+                public void send(Packet<?> packet, @Nullable PacketSendListener listener, boolean flush) {
+                    sink.add(packet);
+                }
+            };
         }
 
         // A pearl only teleports a thrower whose connection is live.
@@ -71,9 +96,23 @@ final class GameTestPlayers {
         }
 
         @Override
-        public void send(Packet<?> packet) {}
+        public void send(Packet<?> packet) {
+            send(packet, null);
+        }
 
+        /**
+         * A capturing player sends vanilla packets down the real path into the recording
+         * connection. Mod payloads are recorded here: NeoForge refuses them for a player that
+         * negotiated no channels.
+         */
         @Override
-        public void send(Packet<?> packet, @Nullable PacketSendListener listener) {}
+        public void send(Packet<?> packet, @Nullable PacketSendListener listener) {
+            if (sink == null) return;
+            if (packet instanceof ClientboundCustomPayloadPacket) {
+                sink.add(packet);
+            } else {
+                super.send(packet, listener);
+            }
+        }
     }
 }
