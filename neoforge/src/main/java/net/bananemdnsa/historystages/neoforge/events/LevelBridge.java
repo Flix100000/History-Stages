@@ -28,6 +28,9 @@ public final class LevelBridge {
         Bridges.listenCancellable(bus, BlockEvent.EntityPlaceEvent.class, LevelBridge::entityPlace);
         Bridges.listenCancellable(bus, BlockDropsEvent.class, LevelBridge::blockDrops);
         Bridges.listen(bus, ExplosionEvent.Detonate.class, LevelBridge::detonate);
+        Bridges.listen(bus, net.neoforged.neoforge.event.level.block.CropGrowEvent.Pre.class, LevelBridge::cropGrowPre);
+        Bridges.listenCancellable(bus, net.neoforged.neoforge.event.entity.player.BonemealEvent.class, LevelBridge::bonemeal);
+        Bridges.listenCancellable(bus, net.neoforged.neoforge.event.level.BlockGrowFeatureEvent.class, LevelBridge::growFeature);
         Bridges.listen(bus, LevelEvent.Load.class, LevelBridge::levelLoad);
         Bridges.listen(bus, LevelEvent.PotentialSpawns.class, LevelBridge::potentialSpawns);
         Bridges.listen(bus, ServerStoppingEvent.class, LevelBridge::serverStopping);
@@ -131,6 +134,36 @@ public final class LevelBridge {
         if (Bridges.wanted(net.bananemdnsa.historystages.platform.event.BuildCreativeModeTabContentsEvent.class, priority)) {
             EventBus.post(new net.bananemdnsa.historystages.platform.event.BuildCreativeModeTabContentsEvent(
                     event.getTabKey(), event::accept), priority);
+        }
+    }
+
+    /** The result travels both ways, so a mod that already decided keeps its say. */
+    private static void cropGrowPre(net.neoforged.neoforge.event.level.block.CropGrowEvent.Pre event,
+                                    EventPriority priority) {
+        if (!Bridges.wanted(net.bananemdnsa.historystages.platform.event.level.CropGrowEvent.Pre.class, priority)) {
+            return;
+        }
+        var platform = new net.bananemdnsa.historystages.platform.event.level.CropGrowEvent.Pre(
+                event.getLevel(), event.getPos(), event.getState());
+        platform.setResult(net.bananemdnsa.historystages.platform.event.level.CropGrowEvent.Pre.Result.valueOf(
+                event.getResult().name()));
+        EventBus.post(platform, priority);
+        event.setResult(net.neoforged.neoforge.event.level.block.CropGrowEvent.Pre.Result.valueOf(
+                platform.getResult().name()));
+    }
+
+    private static void bonemeal(net.neoforged.neoforge.event.entity.player.BonemealEvent event, EventPriority priority) {
+        if (Bridges.wanted(net.bananemdnsa.historystages.platform.event.entity.player.BonemealEvent.class, priority)) {
+            Bridges.post(event, new net.bananemdnsa.historystages.platform.event.entity.player.BonemealEvent(
+                    event.getPlayer(), event.getLevel(), event.getPos(), event.getState(), event.getStack()), priority);
+        }
+    }
+
+    private static void growFeature(net.neoforged.neoforge.event.level.BlockGrowFeatureEvent event,
+                                    EventPriority priority) {
+        if (Bridges.wanted(net.bananemdnsa.historystages.platform.event.level.BlockGrowFeatureEvent.class, priority)) {
+            Bridges.post(event, new net.bananemdnsa.historystages.platform.event.level.BlockGrowFeatureEvent(
+                    event.getLevel(), event.getRandom(), event.getPos(), event.getFeature()), priority);
         }
     }
 }

@@ -24,6 +24,7 @@ import net.bananemdnsa.historystages.client.cache.ClientStageStates;
 import net.bananemdnsa.historystages.client.display.BlockedLines;
 import net.bananemdnsa.historystages.client.display.RequiredStageLines;
 import net.bananemdnsa.historystages.data.lock.engine.LockResolution;
+import net.bananemdnsa.historystages.data.lock.CropMatching;
 import net.bananemdnsa.historystages.util.lock.StageLockHelper;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -45,6 +46,7 @@ import java.util.Map;
 public class JadePlugin implements IWailaPlugin {
 
     private static final Identifier LOCKED_BLOCK = Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "locked_block");
+    private static final Identifier LOCKED_CROP = Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "locked_crop");
     private static final Identifier LOCKED_ENTITY_ITEM = Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "locked_entity_item");
     private static final Identifier PEDESTAL_BOOSTER = Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "pedestal_booster");
     private static final Identifier SCROLL_SHELF = Identifier.fromNamespaceAndPath(HistoryStages.MOD_ID, "scroll_shelf");
@@ -52,6 +54,7 @@ public class JadePlugin implements IWailaPlugin {
     @Override
     public void registerClient(IWailaClientRegistration registration) {
         registration.registerBlockComponent(LockedBlockProvider.INSTANCE, Block.class);
+        registration.registerBlockComponent(LockedCropProvider.INSTANCE, Block.class);
         registration.registerBlockComponent(PedestalBoosterProvider.INSTANCE, ResearchPedestalBlock.class);
         registration.registerBlockComponent(PedestalBoosterProvider.INSTANCE, MultiBlockResearchPedestalBlock.class);
         registration.registerBlockComponent(ScrollShelfProvider.INSTANCE, ScrollShelfBlock.class);
@@ -223,6 +226,44 @@ public class JadePlugin implements IWailaPlugin {
         @Override
         public Identifier getUid() {
             return LOCKED_BLOCK;
+        }
+    }
+
+    /**
+     * "Does not grow yet" on a plant a locked global stage holds back. Separate from the locked
+     * block lines because those are about the block's item form, which a growing wheat block
+     * does not even have, and the two can be switched off on their own in Jade's config.
+     */
+    public enum LockedCropProvider implements IBlockComponentProvider {
+        INSTANCE;
+
+        @Override
+        public void appendTooltip(ITooltip tooltip, BlockAccessor accessor, IPluginConfig config) {
+            if (!Config.VISUAL.jadeShowInfo.get()) return;
+            // Runs for every block looked at; most packs lock no plant at all.
+            if (StageManager.getStages().values().stream().allMatch(s -> s.getCrops().isEmpty())) return;
+            var realState = accessor.getLevel().getBlockState(accessor.getPosition());
+            if (ClientDisguises.isDisguised(realState)
+                    && ClientDisguises.hidesHints(new ItemStack(realState.getBlock().asItem()))) return;
+
+            String blockId = BuiltInRegistries.BLOCK.getKey(realState.getBlock()).toString();
+            List<String> tags = new ArrayList<>();
+            realState.typeHolder().tags().forEach(tag -> tags.add(tag.location().toString()));
+
+            List<String> gating = new ArrayList<>();
+            for (Map.Entry<String, StageEntry> entry : StageManager.getStages().entrySet()) {
+                if (CropMatching.matches(entry.getValue().getCrops(), blockId, tags)) gating.add(entry.getKey());
+            }
+            if (gating.isEmpty()
+                    || !LockResolution.isLocked(StageScope.GLOBAL, gating, ClientStageStates.global())) return;
+
+            tooltip.add(Component.translatable("jade.historystages.crop_locked").withStyle(ChatFormatting.RED));
+            appendStageTooltip(tooltip, gating, false);
+        }
+
+        @Override
+        public Identifier getUid() {
+            return LOCKED_CROP;
         }
     }
 

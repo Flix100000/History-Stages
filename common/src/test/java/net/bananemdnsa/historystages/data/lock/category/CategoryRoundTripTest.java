@@ -55,7 +55,8 @@ class CategoryRoundTripTest {
     @Test
     void dualPhaseIdsAreEmptyForTheCategoriesThatOptOut() {
         for (String optedOut : List.of("historystages:mod_exceptions",
-                                       "historystages:spawnlock")) {
+                                       "historystages:spawnlock",
+                                       "historystages:crops")) {
             StageEntry stage = new StageEntry();
             LockCategory<?> category = LockCategories.byId(optedOut);
             writeSample(category, stage);
@@ -115,7 +116,7 @@ class CategoryRoundTripTest {
                     ((LockCategory<NamedLockEntry>) category)
                             .write(stage, List.of(new NamedLockEntry("minecraft:logs")));
             case "historystages:recipes", "historystages:dimensions",
-                 "historystages:structures", "historystages:biomes",
+                 "historystages:structures", "historystages:biomes", "historystages:crops",
                  "historystages:attacklock" ->
                     ((LockCategory<String>) category).write(stage, List.of("minecraft:sample"));
             case "historystages:trade_professions" ->

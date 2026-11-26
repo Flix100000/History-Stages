@@ -107,6 +107,10 @@ public class StageEntry {
     @JsonAdapter(BiomeLocksAdapter.class)
     private BiomeLocks biomes;
 
+    /** Plants that do not grow while this stage is locked. Global stages only. */
+    @JsonAdapter(net.bananemdnsa.historystages.data.lock.CropLocksAdapter.class)
+    private net.bananemdnsa.historystages.data.lock.CropLocks crops;
+
     /**
      * Gated areas in the world. Unlike every other category these carry their own rules rather
      * than reading them from the common config — one zone can burn, the next only block
@@ -848,6 +852,24 @@ public class StageEntry {
         this.biomes.setModLinked(modLinked);
     }
 
+    public List<String> getCrops() {
+        return crops != null ? crops.getCrops() : new ArrayList<>();
+    }
+
+    public List<String> getCropModLinked() {
+        return crops != null ? crops.getModLinked() : new ArrayList<>();
+    }
+
+    public void setCrops(List<String> crops) {
+        if (this.crops == null) this.crops = new net.bananemdnsa.historystages.data.lock.CropLocks();
+        this.crops.setCrops(crops);
+    }
+
+    public void setCropModLinked(List<String> modLinked) {
+        if (this.crops == null) this.crops = new net.bananemdnsa.historystages.data.lock.CropLocks();
+        this.crops.setModLinked(modLinked);
+    }
+
     public void setZones(List<ZoneEntry> zones) {
         this.zones = zones != null ? new ArrayList<>(zones) : new ArrayList<>();
     }
@@ -923,6 +945,8 @@ public class StageEntry {
         copy.setStructureGenerationRules(getStructureGenerationRules());
         copy.setBiomes(getBiomes());
         copy.setBiomeModLinked(getBiomeModLinked());
+        copy.setCrops(getCrops());
+        copy.setCropModLinked(getCropModLinked());
         copy.setZones(getZones().stream().map(ZoneEntry::copy).collect(Collectors.toList()));
         copy.setIcon(getIcon());
         copy.setScrollCompletion(getScrollCompletion());

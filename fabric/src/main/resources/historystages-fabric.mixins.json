@@ -10,6 +10,7 @@
     "event.BabyEntitySpawnMixin",
     "event.BlockDropsMixin",
     "event.BlockPlaceMixin",
+    "event.BonemealMixin",
     "event.BreakSpeedMixin",
     "event.BreakingBlockScopeMixin",
     "event.DimensionTravelMixin",
@@ -18,6 +19,7 @@
     "event.ExperienceCaptureMixin",
     "event.ExplosionDetonateMixin",
     "event.FinalizeSpawnMixin",
+    "event.FungusGrowFeatureMixin",
     "event.GetProjectileMixin",
     "event.HarvestCheckMixin",
     "event.ItemEntityPickupMixin",
@@ -25,6 +27,8 @@
     "event.LivingDropsMixin",
     "event.MobEffectAddedMixin",
     "event.MobSpawnChecksMixin",
+    "event.MushroomGrowFeatureMixin",
+    "event.PlantRandomTickMixin",
     "event.PlayerTickMixin",
     "event.PopResourceProbeMixin",
     "event.PotentialSpawnsMixin",
@@ -33,7 +37,8 @@
     "event.ServerDestroyBlockScopeMixin",
     "event.ServerPlayerDimensionTravelMixin",
     "event.ServerUseItemOnMixin",
-    "event.SpawnPlacementCheckMixin"
+    "event.SpawnPlacementCheckMixin",
+    "event.TreeGrowFeatureMixin"
   ],
   "client": [
     "client.ClientCommandTreeMixin",

@@ -44,6 +44,8 @@ public class ModEntrySelectionPopup {
     private final Component kindLabel;
     private final Supplier<Collection<String>> idSupplier;
     private final Consumer<List<String>> onConfirm;
+    /** Runs after "Skip", so a chain of these popups goes on to its next step. */
+    private final Runnable onSkip;
 
     private int panelX, panelY, panelW, panelH;
     private boolean visible = false;
@@ -66,10 +68,11 @@ public class ModEntrySelectionPopup {
      * @param idSupplier all known IDs of that kind; filtered by mod namespace on show
      */
     public ModEntrySelectionPopup(Component kindLabel, Supplier<Collection<String>> idSupplier,
-                                  Consumer<List<String>> onConfirm) {
+                                  Consumer<List<String>> onConfirm, Runnable onSkip) {
         this.kindLabel = kindLabel;
         this.idSupplier = idSupplier;
         this.onConfirm = onConfirm;
+        this.onSkip = onSkip;
     }
 
     /**
@@ -320,6 +323,7 @@ public class ModEntrySelectionPopup {
                 Minecraft.getInstance().getSoundManager()
                         .play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
                 hide();
+                onSkip.run();
                 return true;
             }
         }

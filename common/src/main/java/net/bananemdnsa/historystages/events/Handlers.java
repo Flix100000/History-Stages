@@ -4,6 +4,7 @@ import net.bananemdnsa.historystages.data.team.TeamStageSharing;
 import net.bananemdnsa.historystages.events.lock.AttributeRefreshHandler;
 import net.bananemdnsa.historystages.events.lock.BiomeLockHandler;
 import net.bananemdnsa.historystages.events.lock.BlockLockHandler;
+import net.bananemdnsa.historystages.events.lock.CropLockHandler;
 import net.bananemdnsa.historystages.events.lock.DimensionLockHandler;
 import net.bananemdnsa.historystages.events.lock.DisguiseBreakHandler;
 import net.bananemdnsa.historystages.events.lock.EnchantmentLockHandler;
@@ -43,6 +44,7 @@ public final class Handlers {
             AttributeRefreshHandler.class,
             BiomeLockHandler.class,
             BlockLockHandler.class,
+            CropLockHandler.class,
             DimensionLockHandler.class,
             DisguiseBreakHandler.class,
             EnchantmentLockHandler.class,

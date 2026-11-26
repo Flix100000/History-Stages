@@ -25,6 +25,8 @@ public interface UnknownIdCheck {
     /** A recipe only counts as unknown when its namespace is no loaded mod, see the spec. */
     boolean isUnknownRecipe(String id);
 
+    boolean isUnknownBlock(String id);
+
     /**
      * Same character rules as a Identifier with an explicit namespace, written out so this
      * stays free of Minecraft classes. Tags ({@code #...}) fail here on purpose.
