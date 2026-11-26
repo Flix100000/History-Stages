@@ -351,7 +351,7 @@ public class StageEntry {
         for (ItemEntry exEntry : modExceptions) {
             if (exEntry.getId().equals(itemId)) {
                 if (exEntry.hasNbt()) {
-                    if (stack != null && NbtMatcher.matches(stack, exEntry.getNbt())) {
+                    if (stack != null && NbtMatcher.matches(stack, exEntry.getNbtFilter())) {
                         return true;
                     }
                 } else {

@@ -175,6 +175,49 @@ public class ItemTagDepositTests {
         }
     }
 
+    /**
+     * Two NBT variants on one requirement, the Tinkers' "parts of cobalt or manyullyn" case: both
+     * count toward the same total, a third material counts for nothing.
+     */
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public static void aTwoVariantRequirementAcceptsBothTowardOneCount(GameTestHelper helper) {
+        try {
+            DependencyGroup group = new DependencyGroup();
+            group.setItems(new ArrayList<>(List.of(DependencyItem.withFilter("minecraft:paper", 2,
+                    net.bananemdnsa.historystages.data.NbtFilter.fromJson(com.google.gson.JsonParser.parseString(
+                            "[{\"Material\":\"cobalt\"},{\"Material\":\"manyullyn\"}]"))))));
+            GameTestStages.global("nbtvariants", group);
+            ResearchPedestalBlockEntity pedestal = pedestalWithScroll(helper, "nbtvariants");
+            String key = DependencyProgress.key("0", DependencyProgress.itemSuffix("minecraft:paper"));
+
+            pedestal.offerDeposit(paperOf("iron"));
+            if (depositedOf(pedestal).getInt(key) != 0) {
+                helper.fail("iron paper matches neither variant but was counted");
+                return;
+            }
+            pedestal.offerDeposit(paperOf("cobalt"));
+            pedestal.offerDeposit(paperOf("manyullyn"));
+            int counted = depositedOf(pedestal).getInt(key);
+            if (counted != 2) {
+                helper.fail("one cobalt and one manyullyn paper were handed in, but the counter reads "
+                        + counted);
+                return;
+            }
+            helper.succeed();
+        } finally {
+            GameTestStages.removeAll();
+        }
+    }
+
+    private static ItemStack paperOf(String material) {
+        ItemStack stack = new ItemStack(Items.PAPER, 1);
+        CompoundTag tag = new CompoundTag();
+        tag.putString("Material", material);
+        stack.set(net.minecraft.core.component.DataComponents.CUSTOM_DATA,
+                net.minecraft.world.item.component.CustomData.of(tag));
+        return stack;
+    }
+
     // --- Shared ---
 
     private static DependencyGroup tagGroup(int count) {

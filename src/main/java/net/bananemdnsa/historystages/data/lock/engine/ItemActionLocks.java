@@ -31,7 +31,7 @@ public final class ItemActionLocks {
         for (ItemEntry entry : stage.getItemEntries()) {
             if (!entry.getId().equals(subject.itemId())) continue;
             boolean nbtMatch = !entry.hasNbt()
-                    || (subject.stack() != null && NbtMatcher.matches(subject.stack(), entry.getNbt()));
+                    || (subject.stack() != null && NbtMatcher.matches(subject.stack(), entry.getNbtFilter()));
             if (nbtMatch) return isActionInList(stage.effectiveItemLockActions(entry.getLockActions()), action);
         }
 

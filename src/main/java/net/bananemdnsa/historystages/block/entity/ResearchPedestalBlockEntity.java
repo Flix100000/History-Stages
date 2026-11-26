@@ -490,7 +490,7 @@ public class ResearchPedestalBlockEntity extends BlockEntity
                 var candidates = pass == DepositPass.ITEMS ? group.getItems() : group.getItemTags();
 
                 for (var reqItem : candidates) {
-                    if (reqItem.hasNbt() && !NbtMatcher.matches(depositStack, reqItem.getNbt())) continue;
+                    if (reqItem.hasNbt() && !NbtMatcher.matches(depositStack, reqItem.getNbtFilter())) continue;
 
                     String countKey;
                     String choiceToWrite = null;

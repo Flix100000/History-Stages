@@ -1,6 +1,7 @@
 package net.bananemdnsa.historystages.data.lock;
 
 import com.google.gson.JsonObject;
+import net.bananemdnsa.historystages.data.NbtFilter;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
@@ -35,7 +36,7 @@ public class NamedLockEntry implements net.bananemdnsa.historystages.data.displa
 
     private final String id;
     private final List<String> lockActions; // null = all actions locked, empty = none locked
-    private final JsonObject nbt; // optional component/NBT criterion; null = none (tags only)
+    private final NbtFilter nbt; // optional component/NBT variants; NONE = none (tags only)
 
     // Per-entry REPLACE text overrides for the stage's hidden-display config.
     // null = no override → fall back to the stage default text.
@@ -54,15 +55,21 @@ public class NamedLockEntry implements net.bananemdnsa.historystages.data.displa
     }
 
     public NamedLockEntry(String id, List<String> lockActions, String nameTextOverride, String tooltipTextOverride) {
-        this(id, lockActions, nameTextOverride, tooltipTextOverride, null);
+        this(id, lockActions, nameTextOverride, tooltipTextOverride, (JsonObject) null);
     }
 
     public NamedLockEntry(String id, List<String> lockActions, String nameTextOverride, String tooltipTextOverride, JsonObject nbt) {
+        this(id, lockActions, nameTextOverride, tooltipTextOverride, NbtFilter.single(nbt));
+    }
+
+    // Private so a caller writing `null` for nbt still reaches the public JsonObject constructor unambiguously.
+    private NamedLockEntry(String id, List<String> lockActions, String nameTextOverride, String tooltipTextOverride,
+                           NbtFilter nbt) {
         this.id = id;
         this.lockActions = lockActions != null ? new ArrayList<>(lockActions) : null;
         this.nameTextOverride = (nameTextOverride != null && !nameTextOverride.isEmpty()) ? nameTextOverride : null;
         this.tooltipTextOverride = (tooltipTextOverride != null && !tooltipTextOverride.isEmpty()) ? tooltipTextOverride : null;
-        this.nbt = nbt;
+        this.nbt = nbt != null ? nbt : NbtFilter.NONE;
     }
 
     public String getId() { return id; }
@@ -73,9 +80,22 @@ public class NamedLockEntry implements net.bananemdnsa.historystages.data.displa
     /** Whether the entry names an action list at all — an empty one still counts as narrowed. */
     public boolean hasLockActions() { return lockActions != null; }
 
-    public JsonObject getNbt() { return nbt; }
+    /** An entry whose NBT may hold several variants, any one of which matches. */
+    public static NamedLockEntry withFilter(String id, List<String> lockActions, String nameTextOverride,
+                                            String tooltipTextOverride, NbtFilter nbt) {
+        return new NamedLockEntry(id, lockActions, nameTextOverride, tooltipTextOverride, nbt);
+    }
 
-    public boolean hasNbt() { return nbt != null && nbt.size() > 0; }
+    public NbtFilter getNbtFilter() { return nbt; }
+
+    /**
+     * The first NBT variant only. Kept for addons written before variants; anything that matches
+     * stacks must use {@link #getNbtFilter()} or it ignores every other variant.
+     */
+    @Deprecated
+    public JsonObject getNbt() { return nbt.first(); }
+
+    public boolean hasNbt() { return !nbt.isEmpty(); }
 
     @Override
     public String getNameTextOverride() { return nameTextOverride; }
@@ -94,7 +114,7 @@ public class NamedLockEntry implements net.bananemdnsa.historystages.data.displa
     }
 
     public NamedLockEntry copy() {
-        return new NamedLockEntry(id, lockActions != null ? new ArrayList<>(lockActions) : null,
-                nameTextOverride, tooltipTextOverride, nbt != null ? nbt.deepCopy() : null);
+        return withFilter(id, lockActions != null ? new ArrayList<>(lockActions) : null,
+                nameTextOverride, tooltipTextOverride, nbt);
     }
 }

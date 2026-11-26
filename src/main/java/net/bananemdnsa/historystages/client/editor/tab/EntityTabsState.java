@@ -9,7 +9,7 @@ import net.bananemdnsa.historystages.data.ItemEntry;
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.lock.EntityAttackLockEntry;
 import net.bananemdnsa.historystages.data.lock.EntityInteractionLockEntry;
-import net.bananemdnsa.historystages.data.lock.EntityNbtFilter;
+import net.bananemdnsa.historystages.data.NbtFilter;
 import net.bananemdnsa.historystages.data.lock.EntityLocks;
 import net.bananemdnsa.historystages.data.lock.EntitySpawnLockEntry;
 
@@ -25,7 +25,7 @@ public final class EntityTabsState {
 
     private final List<String> attacklock = new ArrayList<>();
     /** NBT filters on attack rows; a missing id means "every entity of this type". */
-    private final Map<String, EntityNbtFilter> attackNbt = new HashMap<>();
+    private final Map<String, NbtFilter> attackNbt = new HashMap<>();
 
     private final List<String> spawnlock = new ArrayList<>();
     /** Only entries that differ from a plain lock; a missing id means "block every spawn". */
@@ -34,7 +34,7 @@ public final class EntityTabsState {
     private final List<String> interactionlock = new ArrayList<>();
     private final Map<String, List<String>> interactionActions = new HashMap<>();
     private final Map<String, List<ItemEntry>> interactionItems = new HashMap<>();
-    private final Map<String, EntityNbtFilter> interactionNbt = new HashMap<>();
+    private final Map<String, NbtFilter> interactionNbt = new HashMap<>();
 
     private final List<String> modLinked = new ArrayList<>();
 
@@ -62,16 +62,16 @@ public final class EntityTabsState {
         return interactionItems;
     }
 
-    public Map<String, EntityNbtFilter> attackNbt() {
+    public Map<String, NbtFilter> attackNbt() {
         return attackNbt;
     }
 
-    public Map<String, EntityNbtFilter> interactionNbt() {
+    public Map<String, NbtFilter> interactionNbt() {
         return interactionNbt;
     }
 
     /** The NBT filter map behind one of the row lists, or null for the spawn list (no filters). */
-    public Map<String, EntityNbtFilter> nbtFor(List<String> rows) {
+    public Map<String, NbtFilter> nbtFor(List<String> rows) {
         if (rows == attacklock) return attackNbt;
         if (rows == interactionlock) return interactionNbt;
         return null;

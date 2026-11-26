@@ -8,9 +8,9 @@ import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
-import com.google.gson.JsonObject;
 
 import net.bananemdnsa.historystages.data.DependencyGroup;
+import net.bananemdnsa.historystages.data.NbtFilter;
 import net.bananemdnsa.historystages.data.dependency.DependencyItem;
 import net.bananemdnsa.historystages.data.dependency.ItemTagResolution;
 import net.bananemdnsa.historystages.api.dependency.Requirement;
@@ -91,16 +91,14 @@ public final class ItemRequirementTab extends AbstractDependencyTab {
         markChanged();
     }
 
-    @Nullable
-    public JsonObject nbtAt(int index) {
-        if (index < 0 || index >= items.size()) return null;
-        DependencyItem item = items.get(index);
-        return item.hasNbt() ? item.getNbt().deepCopy() : null;
+    public NbtFilter nbtAt(int index) {
+        if (index < 0 || index >= items.size()) return NbtFilter.NONE;
+        return items.get(index).getNbtFilter();
     }
 
-    public void setNbtAt(int index, @Nullable JsonObject nbt) {
+    public void setNbtAt(int index, @Nullable NbtFilter nbt) {
         if (index < 0 || index >= items.size()) return;
-        items.get(index).setNbt(nbt);
+        items.get(index).setNbtFilter(nbt);
         refreshRows();
         markChanged();
     }
