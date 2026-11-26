@@ -58,20 +58,7 @@ public final class StageLootFilter implements ILootrFilter {
         Player player = state.player();
         UUID playerUuid = player != null ? player.getUUID() : null;
 
-        int replacedCount = 0;
-        for (int i = loot.size() - 1; i >= 0; i--) {
-            ItemStack stack = loot.get(i);
-            if (stack.isEmpty() || !LootLocks.isLocked(stack, playerUuid)) continue;
-
-            ItemStack replacement = LootLocks.replacementFor(stack.getCount());
-            // An empty stack still costs a slot in LootTable.fill, so drop the entry instead.
-            if (replacement.isEmpty()) {
-                loot.remove(i);
-            } else {
-                loot.set(i, replacement);
-            }
-            replacedCount++;
-        }
+        int replacedCount = LootLocks.stripLocked(loot, playerUuid);
 
         if (replacedCount > 0) {
             DebugLogger.runtime(HsRuntimeCategories.LOOT_LOCK, player != null ? player.getName().getString() : "-",

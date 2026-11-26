@@ -66,6 +66,13 @@ final class GraphRenderer {
     /** Accent used for the focused-node highlight ring, matching the editor's gold accent. */
     private static final int FOCUS_RING_COLOR = 0xFFFFCC00;
 
+    /**
+     * Styles resolved this frame. Every node's style is asked for several times a frame (edges,
+     * shape, label, hit test), and the shared cache behind styleFor builds a string key on every
+     * call - with a few thousand edges that alone was a noticeable share of the frame.
+     */
+    private final Map<StageGraphModel.Node, ResolvedStyle> frameStyles = new java.util.IdentityHashMap<>();
+
     /** Shared hover-lift progress (0..1), applied only to whichever node is under the cursor. */
     private final Anim hoverAnim = new Anim();
 
@@ -80,6 +87,7 @@ final class GraphRenderer {
 
     void setModel(StageGraphModel model) {
         this.model = model;
+        frameStyles.clear();
         refreshDrawOrder();
     }
 
@@ -118,6 +126,7 @@ final class GraphRenderer {
         }
 
         if (model != null) {
+            frameStyles.clear();
             String hoverKey = camera.within(mouseX, mouseY) ? nodeAt(mouseX, mouseY) : null;
             float hover = animationsEnabled()
                     ? hoverAnim.ramp(hoverKey != null, Timing.HOVER_IN_MS, Timing.HOVER_OUT_MS)
@@ -156,7 +165,17 @@ final class GraphRenderer {
 
     /** Drawn radius of {@code node} at the current zoom, before hover lift. */
     int nodeRadiusFor(StageGraphModel.Node node) {
-        return nodeRadius(StageGraphConfig.styleFor(node.stageId(), node.individual(), node.state()));
+        return nodeRadius(style(node));
+    }
+
+    /** The node's resolved style, looked up once per frame. */
+    private ResolvedStyle style(StageGraphModel.Node node) {
+        ResolvedStyle style = frameStyles.get(node);
+        if (style == null) {
+            style = StageGraphConfig.styleFor(node.stageId(), node.individual(), node.state());
+            frameStyles.put(node, style);
+        }
+        return style;
     }
 
     private static boolean animationsEnabled() {
@@ -247,7 +266,7 @@ final class GraphRenderer {
 
 
     private void drawNodeShape(GuiGraphicsExtractor g, StageGraphModel.Node node, float hoverT) {
-        ResolvedStyle style = StageGraphConfig.styleFor(node.stageId(), node.individual(), node.state());
+        ResolvedStyle style = style(node);
         int cx = camera.screenX(node.pos().x());
         int cy = camera.screenY(node.pos().y());
         int r = nodeRadius(style);
@@ -305,7 +324,7 @@ final class GraphRenderer {
     }
 
     private void drawLabel(GuiGraphicsExtractor g, Font font, StageGraphModel.Node node) {
-        ResolvedStyle style = StageGraphConfig.styleFor(node.stageId(), node.individual(), node.state());
+        ResolvedStyle style = style(node);
         if ("NONE".equals(style.label())) return;
         String text = "ID".equals(style.label()) ? node.stageId() : node.label();
         if (text == null || text.isEmpty()) return;
@@ -321,7 +340,7 @@ final class GraphRenderer {
     }
 
     private void drawFocusHighlight(GuiGraphicsExtractor g, StageGraphModel.Node node) {
-        ResolvedStyle style = StageGraphConfig.styleFor(node.stageId(), node.individual(), node.state());
+        ResolvedStyle style = style(node);
         int cx = camera.screenX(node.pos().x());
         int cy = camera.screenY(node.pos().y());
         int r = nodeRadius(style);
@@ -341,8 +360,8 @@ final class GraphRenderer {
         StageGraphModel.Node to = model.nodes().get(edge.toKey());
         if (from == null || to == null) return; // StageGraphModel guarantees both exist; defensive only
 
-        ResolvedStyle fromStyle = StageGraphConfig.styleFor(from.stageId(), from.individual(), from.state());
-        ResolvedStyle toStyle = StageGraphConfig.styleFor(to.stageId(), to.individual(), to.state());
+        ResolvedStyle fromStyle = style(from);
+        ResolvedStyle toStyle = style(to);
 
         float fx = camera.screenX(from.pos().x());
         float fy = camera.screenY(from.pos().y());
@@ -583,7 +602,7 @@ final class GraphRenderer {
         for (int i = drawOrder.size() - 1; i >= 0; i--) {
             Map.Entry<String, StageGraphModel.Node> e = drawOrder.get(i);
             StageGraphModel.Node node = e.getValue();
-            ResolvedStyle style = StageGraphConfig.styleFor(node.stageId(), node.individual(), node.state());
+            ResolvedStyle style = style(node);
             int cx = camera.screenX(node.pos().x());
             int cy = camera.screenY(node.pos().y());
             int r = nodeRadius(style) + HIT_PADDING;

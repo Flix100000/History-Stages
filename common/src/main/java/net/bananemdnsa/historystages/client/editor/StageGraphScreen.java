@@ -267,13 +267,14 @@ public class StageGraphScreen extends Screen {
             legend = null;
         }
 
+        // Both views get a way out that does not depend on knowing about ESC. The player view
+        // goes back to whatever opened it (the pause screen), same as ESC would.
+        this.addRenderableWidget(StyledButton.of(
+                Component.translatable("editor.historystages.back"),
+                btn -> onClose(),
+                BACK_BUTTON_X, BACK_BUTTON_Y, BACK_BUTTON_W, BACK_BUTTON_H));
         if (editorView) {
-            // Player view relies on ESC (its parent is the pause screen) and must not offer any
-            // editor-style navigation or authoring control.
-            this.addRenderableWidget(StyledButton.of(
-                    Component.translatable("editor.historystages.back"),
-                    btn -> this.minecraft.gui.setScreen(parent),
-                    BACK_BUTTON_X, BACK_BUTTON_Y, BACK_BUTTON_W, BACK_BUTTON_H));
+            // The authoring controls stay editor-only.
             this.addRenderableWidget(StyledButton.of(
                     Component.translatable("editor.historystages.graph.rearrange"),
                     btn -> confirmRearrange(),
