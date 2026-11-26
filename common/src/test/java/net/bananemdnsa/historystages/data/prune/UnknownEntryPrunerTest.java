@@ -31,6 +31,7 @@ class UnknownEntryPrunerTest {
         @Override public boolean isUnknownEffect(String id) { return gone(id); }
         @Override public boolean isUnknownRecipe(String id) { return gone(id); }
         @Override public boolean isUnknownBlock(String id) { return gone(id); }
+        @Override public boolean isUnknownSlotTarget(String id) { return gone(id); }
     };
 
     private static StageEntry stage(String json) {
@@ -88,6 +89,22 @@ class UnknownEntryPrunerTest {
         assertTrue(entry.getStructureModLinked().isEmpty());
         // mod + exception + zombie + tower; the link bookkeeping is not counted.
         assertEquals(4, result.removed());
+    }
+
+    /** A slot lock on a removed mod's machine goes; the player's own inventory never counts as unknown. */
+    @Test
+    void slotLockOfMissingModGoesPlayerAndKnownStay() {
+        StageEntry entry = stage("""
+                {"slots": [{"target": "gone:machine", "slots": [0]},
+                           {"target": "player", "slots": [1]},
+                           {"target": "minecraft:barrel", "slots": [2]}]}
+                """);
+
+        UnknownEntryPruner.Result result = UnknownEntryPruner.prune(entry, GONE);
+
+        assertEquals(List.of("player", "minecraft:barrel"),
+                entry.getSlotLocks().stream().map(net.bananemdnsa.historystages.data.lock.SlotLockEntry::target).toList());
+        assertEquals(1, result.removed());
     }
 
     /** A plant typed in by hand, not through the mod popup, still goes when its mod is gone. */

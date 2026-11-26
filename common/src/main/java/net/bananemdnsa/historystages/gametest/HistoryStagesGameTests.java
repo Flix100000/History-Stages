@@ -66,6 +66,7 @@ public final class HistoryStagesGameTests {
             BackgroundReloadTests.class,
             JeiRefresherTests.class,
             CropLockTests.class,
+            SlotLockTests.class,
             TradeLockTests.class,
             ZoneLockTests.class,
             ZoneMarkingTests.class);

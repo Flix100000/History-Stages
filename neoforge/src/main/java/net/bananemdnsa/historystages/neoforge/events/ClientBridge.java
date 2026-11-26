@@ -30,6 +30,8 @@ public final class ClientBridge {
         Bridges.listen(bus, ScreenEvent.Init.Post.class, ClientBridge::screenInitPost);
         Bridges.listen(bus, ScreenEvent.Render.Post.class, ClientBridge::screenRenderPost);
         Bridges.listenCancellable(bus, ScreenEvent.MouseButtonPressed.Pre.class, ClientBridge::mousePressedPre);
+        Bridges.listenCancellable(bus, ScreenEvent.KeyPressed.Pre.class, ClientBridge::keyPressedPre);
+        Bridges.listenCancellable(bus, ScreenEvent.Opening.class, ClientBridge::screenOpening);
     }
 
     private static void loggingOut(ClientPlayerNetworkEvent.LoggingOut event, EventPriority priority) {
@@ -95,7 +97,8 @@ public final class ClientBridge {
     private static void screenRenderPost(ScreenEvent.Render.Post event, EventPriority priority) {
         if (Bridges.wanted(net.bananemdnsa.historystages.platform.event.client.ScreenEvent.Render.Post.class, priority)) {
             EventBus.post(new net.bananemdnsa.historystages.platform.event.client.ScreenEvent.Render.Post(
-                    event.getScreen(), event.getGuiGraphics()), priority);
+                    event.getScreen(), event.getGuiGraphics(), event.getMouseX(), event.getMouseY(),
+                    event.getPartialTick()), priority);
         }
     }
 
@@ -103,6 +106,20 @@ public final class ClientBridge {
         if (Bridges.wanted(net.bananemdnsa.historystages.platform.event.client.ScreenEvent.MouseButtonPressed.Pre.class, priority)) {
             Bridges.post(event, new net.bananemdnsa.historystages.platform.event.client.ScreenEvent.MouseButtonPressed.Pre(
                     event.getScreen(), event.getMouseX(), event.getMouseY(), event.getButton()), priority);
+        }
+    }
+
+    private static void keyPressedPre(ScreenEvent.KeyPressed.Pre event, EventPriority priority) {
+        if (Bridges.wanted(net.bananemdnsa.historystages.platform.event.client.ScreenEvent.KeyPressed.Pre.class, priority)) {
+            Bridges.post(event, new net.bananemdnsa.historystages.platform.event.client.ScreenEvent.KeyPressed.Pre(
+                    event.getScreen(), event.getKeyCode(), event.getScanCode(), event.getModifiers()), priority);
+        }
+    }
+
+    private static void screenOpening(ScreenEvent.Opening event, EventPriority priority) {
+        if (Bridges.wanted(net.bananemdnsa.historystages.platform.event.client.ScreenEvent.Opening.class, priority)) {
+            Bridges.post(event, new net.bananemdnsa.historystages.platform.event.client.ScreenEvent.Opening(
+                    event.getCurrentScreen(), event.getNewScreen()), priority);
         }
     }
 }

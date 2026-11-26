@@ -146,6 +146,25 @@ class BuiltInCategoryMatchingTest {
                 category("historystages:crops").supportedScopes());
     }
 
+    // ---- slots ---------------------------------------------------------------------
+
+    @Test
+    void aListedSlotIsGatedUnderItsKey() {
+        StageEntry stage = new StageEntry();
+        stage.setSlotLocks(List.of(new net.bananemdnsa.historystages.data.lock.SlotLockEntry(
+                "player", List.of(3), net.bananemdnsa.historystages.data.lock.SlotLockMode.HIDE)));
+        assertTrue(category("historystages:slots").gates(stage, "player#3"));
+        assertFalse(category("historystages:slots").gates(stage, "player#4"));
+        assertFalse(category("historystages:slots").gates(stage, "minecraft:chest#3"));
+    }
+
+    /** Container entries are global-only, but player slots work per player, so the category spans both. */
+    @Test
+    void slotsSupportBothScopes() {
+        assertEquals(java.util.EnumSet.allOf(net.bananemdnsa.historystages.api.stage.StageScope.class),
+                category("historystages:slots").supportedScopes());
+    }
+
     // ---- recipes -------------------------------------------------------------------
 
     @Test

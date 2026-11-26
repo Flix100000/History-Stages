@@ -13,6 +13,7 @@
     "event.BonemealMixin",
     "event.BreakSpeedMixin",
     "event.BreakingBlockScopeMixin",
+    "event.ContainerOpenMixin",
     "event.DimensionTravelMixin",
     "event.EnderPearlTeleportMixin",
     "event.EntityJoinLevelMixin",
@@ -38,7 +39,10 @@
     "event.ServerPlayerDimensionTravelMixin",
     "event.ServerUseItemOnMixin",
     "event.SpawnPlacementCheckMixin",
-    "event.TreeGrowFeatureMixin"
+    "event.SwapHandsMixin",
+    "event.TreeGrowFeatureMixin",
+    "slotlock.ContainerSlotWrapperMixin",
+    "slotlock.ContainerStorageImplAccessor"
   ],
   "client": [
     "client.ClientCommandTreeMixin",
@@ -47,7 +51,8 @@
     "client.DisguiseLevelEventSoundMixin",
     "client.DisguiseMiningSoundMixin",
     "client.DisguiseStepSoundMixin",
-    "client.ItemDecorationsMixin"
+    "client.ItemDecorationsMixin",
+    "client.ScreenOpeningMixin"
   ],
   "injectors": {
     "defaultRequire": 1

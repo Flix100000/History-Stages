@@ -41,6 +41,9 @@ public class Config {
         public final ModConfigSpec.BooleanValue mobUseActionbar;
         public final ModConfigSpec.BooleanValue mobShowChat;
         public final ModConfigSpec.BooleanValue mobShowStagesInChat;
+        public final ModConfigSpec.BooleanValue slotShowTooltip;
+        public final ModConfigSpec.ConfigValue<List<? extends String>> slotTooltipLines;
+        public final ModConfigSpec.BooleanValue slotShowAllUntilComplete;
         public final ModConfigSpec.BooleanValue tradeShowStagesInWindow;
 
         // Individual Stages
@@ -288,6 +291,26 @@ public class Config {
             mobShowStagesInChat = builder
                     .comment("If mobShowChat is true, should the required stages also be listed? [Default: true]")
                     .define("showStagesInChat", true);
+
+            builder.pop();
+
+            builder.comment("Tooltip shown when hovering a locked slot in overlay mode").push("slot_lock");
+
+            slotShowTooltip = builder
+                    .comment("Show a tooltip when hovering a locked slot? [Default: true]")
+                    .define("showTooltip", true);
+
+            slotTooltipLines = builder
+                    .comment("The tooltip lines, in render order: id|enabled|blank line before|style|text.",
+                            "Unknown ids are ignored and missing ones fall back to their default.",
+                            "Easiest way to edit this is the in-game config editor.")
+                    .defineList("tooltipLines",
+                            net.bananemdnsa.historystages.data.tooltip.SlotTooltipLayout.defaultsEncoded(),
+                            entry -> entry instanceof String);
+
+            slotShowAllUntilComplete = builder
+                    .comment("While several stages gate a slot, list all of them with their status, not only the missing ones? [Default: true]")
+                    .define("showAllUntilComplete", true);
 
             builder.pop();
 
@@ -613,6 +636,7 @@ public class Config {
         public final ModConfigSpec.BooleanValue lockBlockInteraction;
         public final ModConfigSpec.BooleanValue lockContainerInteraction;
         public final ModConfigSpec.BooleanValue lockEnchanting;
+        public final ModConfigSpec.BooleanValue dropItemsFromLockedSlots;
 
         // Forschungsstation
         public final ModConfigSpec.IntValue researchTimeInSeconds;
@@ -736,6 +760,10 @@ public class Config {
             lockEnchanting = builder
                     .comment("Prevent applying locked enchantments via anvil (locked enchanted books) and enchanting table? [Default: true]")
                     .define("lockEnchanting", true);
+
+            dropItemsFromLockedSlots = builder
+                    .comment("Drop items lying in an inventory slot when that slot becomes locked? When false they stay but the slot is frozen. [Default: true]")
+                    .define("dropItemsFromLockedSlots", true);
 
             builder.pop(); // gameplay
 

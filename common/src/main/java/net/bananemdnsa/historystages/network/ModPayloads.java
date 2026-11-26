@@ -145,6 +145,12 @@ public final class ModPayloads {
         clientbound(net.bananemdnsa.historystages.network.clientbound.PruneUnknownPreviewPacket.TYPE,
                 net.bananemdnsa.historystages.network.clientbound.PruneUnknownPreviewPacket.STREAM_CODEC,
                 net.bananemdnsa.historystages.network.clientbound.PruneUnknownPreviewPacket::handle);
+        clientbound(net.bananemdnsa.historystages.network.clientbound.SlotTargetPacket.TYPE,
+                net.bananemdnsa.historystages.network.clientbound.SlotTargetPacket.STREAM_CODEC,
+                net.bananemdnsa.historystages.network.clientbound.SlotTargetPacket::handle);
+        serverbound(net.bananemdnsa.historystages.network.serverbound.SlotPickModePacket.TYPE,
+                net.bananemdnsa.historystages.network.serverbound.SlotPickModePacket.STREAM_CODEC,
+                net.bananemdnsa.historystages.network.serverbound.SlotPickModePacket::handle);
     }
 
     // Receivers for clientbound payloads only exist on the client; the server just needs the codec.

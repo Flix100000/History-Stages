@@ -20,6 +20,8 @@ public final class ClientHandlers {
 
     public static final List<Class<?>> CLIENT = List.of(
             ClientApiEvents.class,
+            net.bananemdnsa.historystages.client.slotlock.ClientSlotPick.class,
+            net.bananemdnsa.historystages.client.slotlock.SlotLockClient.class,
             ClientDisconnectHandler.class,
             ClientFluidRecipeIndex.class,
             ClientDisguises.class,

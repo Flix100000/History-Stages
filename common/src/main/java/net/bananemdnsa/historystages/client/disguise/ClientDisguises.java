@@ -83,6 +83,10 @@ public final class ClientDisguises {
 
     @SubscribeEvent
     public static void onClientTick(ClientTickEvent.Post event) {
+        // Not before a world: on the title screen item components are not bound yet, and building
+        // a disguised ItemStack there throws. The versions stay unseen, so the table is built on
+        // the first tick in a world.
+        if (Minecraft.getInstance().level == null) return;
         int rules = DisguiseData.version();
         int global = ClientStageCache.version();
         int individual = ClientIndividualStageCache.version();

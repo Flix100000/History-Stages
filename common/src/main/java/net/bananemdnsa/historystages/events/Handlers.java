@@ -45,6 +45,7 @@ public final class Handlers {
             BiomeLockHandler.class,
             BlockLockHandler.class,
             CropLockHandler.class,
+            net.bananemdnsa.historystages.events.lock.SlotLockHandler.class,
             DimensionLockHandler.class,
             DisguiseBreakHandler.class,
             EnchantmentLockHandler.class,

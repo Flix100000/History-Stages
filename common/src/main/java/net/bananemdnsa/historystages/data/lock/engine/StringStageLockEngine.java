@@ -488,6 +488,17 @@ public class StringStageLockEngine implements StageLockEngine {
     }
 
     @Override
+    public boolean anySlotLocks() {
+        return CategoryLockIndexes.anyStageUses("historystages:slots");
+    }
+
+    @Override
+    public List<String> gatingStagesForSlot(String target, int slot, StageScope scope) {
+        return narrowed("historystages:slots",
+                net.bananemdnsa.historystages.data.lock.SlotLockEntry.key(target, slot), scope);
+    }
+
+    @Override
     public boolean anyZoneLocks() {
         return CategoryLockIndexes.anyStageUses("historystages:zones");
     }

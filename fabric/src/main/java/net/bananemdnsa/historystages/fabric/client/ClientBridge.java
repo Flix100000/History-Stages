@@ -102,9 +102,18 @@ public final class ClientBridge {
         ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
             Phases.listen(ScreenEvents.afterExtract(screen), priority -> (rendered, graphics, mouseX, mouseY, delta) -> {
                 if (Phases.wanted(ScreenEvent.Render.Post.class, priority)) {
-                    EventBus.post(new ScreenEvent.Render.Post(rendered, graphics), priority);
+                    EventBus.post(new ScreenEvent.Render.Post(rendered, graphics, mouseX, mouseY, delta), priority);
                 }
             });
+            // Same for a key: false keeps it from the screen.
+            Phases.listen(net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents.allowKeyPress(screen),
+                    priority -> (pressed, key) -> {
+                        if (!Phases.wanted(ScreenEvent.KeyPressed.Pre.class, priority)) {
+                            return true;
+                        }
+                        return !Phases.postCancellable(new ScreenEvent.KeyPressed.Pre(
+                                pressed, key.key(), key.scancode(), key.modifiers()), priority);
+                    });
             // Answering false is what keeps the click from the screen.
             Phases.listen(ScreenMouseEvents.allowMouseClick(screen), priority -> (clicked, click) -> {
                 if (!Phases.wanted(ScreenEvent.MouseButtonPressed.Pre.class, priority)) {

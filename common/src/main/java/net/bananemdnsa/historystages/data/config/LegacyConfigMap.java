@@ -113,7 +113,11 @@ public final class LegacyConfigMap {
             "GAMEPLAY|stage_logic.warnOnForcedUnlock",
             // Biomes and structures always kept explosions out before 6.1; there was no switch.
             "GAMEPLAY|structure_lock.blockExplosions",
-            "GAMEPLAY|biome_lock.blockExplosions");
+            "GAMEPLAY|biome_lock.blockExplosions",
+            "GAMEPLAY|gameplay.dropItemsFromLockedSlots",
+            "VISUAL|slot_lock.showTooltip",
+            "VISUAL|slot_lock.tooltipLines",
+            "VISUAL|slot_lock.showAllUntilComplete");
 
     private LegacyConfigMap() {}
 

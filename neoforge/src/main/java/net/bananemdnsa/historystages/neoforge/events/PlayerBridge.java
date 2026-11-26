@@ -37,6 +37,10 @@ public final class PlayerBridge {
         Bridges.listen(bus, PlayerEvent.PlayerChangedDimensionEvent.class, PlayerBridge::changedDimension);
         Bridges.listen(bus, PlayerTickEvent.Post.class, PlayerBridge::tickPost);
         Bridges.listen(bus, AdvancementEvent.AdvancementEarnEvent.class, PlayerBridge::advancementEarned);
+        Bridges.listen(bus, net.neoforged.neoforge.event.entity.player.PlayerContainerEvent.Open.class,
+                PlayerBridge::containerOpen);
+        Bridges.listenCancellable(bus, net.neoforged.neoforge.event.entity.living.LivingSwapItemsEvent.Hands.class,
+                PlayerBridge::swapHands);
     }
 
     private static void rightClickBlock(PlayerInteractEvent.RightClickBlock event, EventPriority priority) {
@@ -239,6 +243,22 @@ public final class PlayerBridge {
         if (Bridges.wanted(net.bananemdnsa.historystages.platform.event.entity.player.AdvancementEvent.AdvancementEarnEvent.class, priority)) {
             EventBus.post(new net.bananemdnsa.historystages.platform.event.entity.player.AdvancementEvent.AdvancementEarnEvent(
                     event.getEntity(), event.getAdvancement()), priority);
+        }
+    }
+
+    private static void containerOpen(net.neoforged.neoforge.event.entity.player.PlayerContainerEvent.Open event,
+                                      EventPriority priority) {
+        if (Bridges.wanted(net.bananemdnsa.historystages.platform.event.entity.player.PlayerContainerEvent.Open.class, priority)) {
+            EventBus.post(new net.bananemdnsa.historystages.platform.event.entity.player.PlayerContainerEvent.Open(
+                    event.getEntity(), event.getContainer()), priority);
+        }
+    }
+
+    private static void swapHands(net.neoforged.neoforge.event.entity.living.LivingSwapItemsEvent.Hands event,
+                                  EventPriority priority) {
+        if (Bridges.wanted(net.bananemdnsa.historystages.platform.event.entity.living.LivingSwapItemsEvent.Hands.class, priority)) {
+            Bridges.post(event, new net.bananemdnsa.historystages.platform.event.entity.living.LivingSwapItemsEvent.Hands(
+                    event.getEntity()), priority);
         }
     }
 }

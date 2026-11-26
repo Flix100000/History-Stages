@@ -91,7 +91,7 @@ public class StageManager {
 
     private static final Set<String> KNOWN_KEYS = Set.of(
             "display_name", "research_time", "items", "fluids", "enchantments", "effects", "tags", "mods",
-            "mod_exceptions", "recipes", "dimensions", "structures", "biomes", "crops", "zones", "entities", "trades",
+            "mod_exceptions", "recipes", "dimensions", "structures", "biomes", "crops", "slots", "zones", "entities", "trades",
             "dependencies", "icon",
             "min_pedestal_tier", "pedestal_tier_mode",
             "mode", "auto_trigger", "lock_trigger", "notify", "temporary", "hidden_display", "lose_on_death", "share_with_team", "interchangeable", "logic",
@@ -641,6 +641,7 @@ public class StageManager {
             DebugLogger.warn("Missing Fields", "Stage '" + stageId + "' has no 'display_name' set. It will show as 'Unknown Stage'.");
         }
 
+        cleanSlotLocks(stageId, entry, false);
         trimDependencyGroups(stageId, entry);
         dropSelfDependencies(stageId, entry, false);
         assignDependencyGroupIds(stageId, entry);
@@ -1293,6 +1294,8 @@ public class StageManager {
             // longer mode=temporary (e.g. mode flipped via the editor).
             net.bananemdnsa.historystages.data.saveddata.TemporaryStageData.get(server.overworld())
                     .pruneOrphans(temporaryStageIds());
+            // A slot lock saved in the editor takes effect on everyone online right away.
+            net.bananemdnsa.historystages.util.lock.SlotLockSweeper.sweepAll(server);
         }
     }
 
@@ -1763,6 +1766,13 @@ public class StageManager {
         return false;
     }
 
+    private static void cleanSlotLocks(String stageId, StageEntry entry, boolean individual) {
+        for (String msg : net.bananemdnsa.historystages.data.lock.SlotLockValidation.clean(stageId, entry, individual)) {
+            addMessage(MessageLevel.WARN, msg);
+            DebugLogger.warn("Slot Locks", msg);
+        }
+    }
+
     private static void stripUnsupportedIndividualCategories(String stageId, StageEntry entry) {
         if (entry.getEntities().getSpawnlock() != null && !entry.getEntities().getSpawnlock().isEmpty()) {
             String msg = "Individual stage '" + stageId + "' contains 'entities.spawnlock' — not supported for individual stages. Entries removed.";
@@ -1855,6 +1865,7 @@ public class StageManager {
             DebugLogger.warn("Re-lock", msg);
         }
         validateLockTriggers(stageId, entry);
+        cleanSlotLocks(stageId, entry, true);
 
         trimDependencyGroups(stageId, entry);
         dropSelfDependencies(stageId, entry, true);

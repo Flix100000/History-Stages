@@ -203,7 +203,9 @@ public class CropLockTests {
         }
     }
 
-    @HsGameTest
+    // Own batch: the stage list is global, and the locked and the free cactus test would see each
+    // other's stage when run side by side.
+    @HsGameTest(batch = "crop_cactus_locked")
     public static void gatedCactusDoesNotGrowOnRandomTicks(GameTestHelper helper) {
         try {
             cropStage("crop_cactus", List.of("minecraft:cactus"));
@@ -217,7 +219,9 @@ public class CropLockTests {
         }
     }
 
-    @HsGameTest
+    // Own batch: the stage list is global, and the locked and the free cactus test would see each
+    // other's stage when run side by side.
+    @HsGameTest(batch = "crop_cactus_free")
     public static void ungatedCactusGrowsOnRandomTicks(GameTestHelper helper) {
         try {
             // A crop lock exists, so the random-tick hook is active, but not for cactus.

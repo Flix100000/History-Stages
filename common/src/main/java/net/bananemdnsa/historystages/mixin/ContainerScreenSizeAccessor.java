@@ -18,4 +18,20 @@ public interface ContainerScreenSizeAccessor {
     @Mutable
     @Accessor("imageHeight")
     void historystages$setImageHeight(int height);
+
+    // Getters NeoForge 1.21.1 added to the screen itself; vanilla keeps these protected.
+    @Accessor("leftPos")
+    int historystages$leftPos();
+
+    @Accessor("topPos")
+    int historystages$topPos();
+
+    @Accessor("imageWidth")
+    int historystages$imageWidth();
+
+    @Accessor("imageHeight")
+    int historystages$imageHeight();
+
+    @Accessor("hoveredSlot")
+    net.minecraft.world.inventory.Slot historystages$hoveredSlot();
 }

@@ -132,6 +132,8 @@ final class BuiltInLockCategories {
 
         categories.add(new ZoneLock());
 
+        categories.add(new SlotLock());
+
         return categories;
     }
 
@@ -512,6 +514,39 @@ final class BuiltInLockCategories {
             if (subject instanceof LockSubjects.AttackSubject attack) return attack.entityId();
             return subject instanceof String entityId ? entityId : null;
         }
+    }
+
+    /**
+     * Inventory and container slots, asked about by {@code "<target>#<slot>"} keys.
+     *
+     * <p>Both scopes, even though container entries are global-only: player slots are exactly
+     * the kind of thing a per-player stage gates. Loading strips container entries from
+     * individual stages instead, see {@code SlotLockValidation}.
+     */
+    private static final class SlotLock implements LockCategory<net.bananemdnsa.historystages.data.lock.SlotLockEntry> {
+        @Override public String id() { return "historystages:slots"; }
+        @Override public String tabLangKey() { return "editor.historystages.tab.slots"; }
+        @Override public String tooltipLangKey() { return "editor.historystages.tooltip.slots"; }
+
+        @Override public List<net.bananemdnsa.historystages.data.lock.SlotLockEntry> read(StageEntry stage) {
+            return stage.getSlotLocks();
+        }
+
+        @Override public void write(StageEntry stage, List<net.bananemdnsa.historystages.data.lock.SlotLockEntry> entries) {
+            stage.setSlotLocks(entries);
+        }
+
+        @Override public boolean matches(net.bananemdnsa.historystages.data.lock.SlotLockEntry entry, Object subject) {
+            return subject instanceof String key && entry.indexKeys().contains(key);
+        }
+
+        @Override public List<String> indexKeys(StageEntry stage) {
+            List<String> keys = new ArrayList<>();
+            for (var entry : stage.getSlotLocks()) keys.addAll(entry.indexKeys());
+            return keys;
+        }
+
+        @Override public String lookupKey(Object subject) { return SUBJECT_IS_THE_KEY.apply(subject); }
     }
 
     /**

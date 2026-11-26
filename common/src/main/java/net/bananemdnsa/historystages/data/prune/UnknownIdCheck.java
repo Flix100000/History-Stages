@@ -27,6 +27,11 @@ public interface UnknownIdCheck {
 
     boolean isUnknownBlock(String id);
 
+    /** A slot-lock target: neither a block nor a menu type in the game. "player" never gets here. */
+    default boolean isUnknownSlotTarget(String id) {
+        return false;
+    }
+
     /**
      * Same character rules as a Identifier with an explicit namespace, written out so this
      * stays free of Minecraft classes. Tags ({@code #...}) fail here on purpose.
