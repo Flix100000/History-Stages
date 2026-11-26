@@ -139,6 +139,12 @@ public final class ModPayloads {
         clientbound(net.bananemdnsa.historystages.network.clientbound.SyncZoneSelectionPacket.TYPE, net.bananemdnsa.historystages.network.clientbound.SyncZoneSelectionPacket.STREAM_CODEC, net.bananemdnsa.historystages.network.clientbound.SyncZoneSelectionPacket::handle);
         serverbound(net.bananemdnsa.historystages.network.serverbound.RequestZoneSelectionPacket.TYPE, net.bananemdnsa.historystages.network.serverbound.RequestZoneSelectionPacket.STREAM_CODEC, net.bananemdnsa.historystages.network.serverbound.RequestZoneSelectionPacket::handle);
         clientbound(net.bananemdnsa.historystages.network.clientbound.SyncZoneShapesPacket.TYPE, net.bananemdnsa.historystages.network.clientbound.SyncZoneShapesPacket.STREAM_CODEC, net.bananemdnsa.historystages.network.clientbound.SyncZoneShapesPacket::handle);
+        serverbound(net.bananemdnsa.historystages.network.serverbound.PruneUnknownEntriesPacket.TYPE,
+                net.bananemdnsa.historystages.network.serverbound.PruneUnknownEntriesPacket.STREAM_CODEC,
+                net.bananemdnsa.historystages.network.serverbound.PruneUnknownEntriesPacket::handle);
+        clientbound(net.bananemdnsa.historystages.network.clientbound.PruneUnknownPreviewPacket.TYPE,
+                net.bananemdnsa.historystages.network.clientbound.PruneUnknownPreviewPacket.STREAM_CODEC,
+                net.bananemdnsa.historystages.network.clientbound.PruneUnknownPreviewPacket::handle);
     }
 
     // Receivers for clientbound payloads only exist on the client; the server just needs the codec.

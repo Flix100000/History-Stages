@@ -41,8 +41,9 @@ public class EntityInteractionLockEntryListAdapter extends TypeAdapter<List<Enti
             }
             boolean hasActionFilter = !unlockedActions.isEmpty();
             boolean hasItemFilter = entry.hasLockItems();
+            JsonElement nbt = entry.getNbt().toJson();
 
-            if (!hasActionFilter && !hasItemFilter) {
+            if (!hasActionFilter && !hasItemFilter && nbt == null) {
                 out.value(entry.getId());
                 continue;
             }
@@ -70,6 +71,10 @@ public class EntityInteractionLockEntryListAdapter extends TypeAdapter<List<Enti
                 }
                 out.endArray();
             }
+            if (nbt != null) {
+                out.name("nbt");
+                Streams.write(nbt, out);
+            }
             out.endObject();
         }
         out.endArray();
@@ -85,7 +90,8 @@ public class EntityInteractionLockEntryListAdapter extends TypeAdapter<List<Enti
         in.beginArray();
         while (in.hasNext()) {
             if (in.peek() == JsonToken.STRING) {
-                entries.add(new EntityInteractionLockEntry(in.nextString()));
+                entries.addAll(LegacyBoatIds.expand(in.nextString(), EntityNbtFilter.NONE,
+                        (id, nbt) -> new EntityInteractionLockEntry(id, null, null, nbt)));
             } else {
                 JsonObject obj = JsonParser.parseReader(in).getAsJsonObject();
                 String id = obj.has("id") ? obj.get("id").getAsString() : "";
@@ -119,7 +125,13 @@ public class EntityInteractionLockEntryListAdapter extends TypeAdapter<List<Enti
                         }
                     }
                 }
-                entries.add(new EntityInteractionLockEntry(id, lockActions, lockItems));
+                List<String> actions = lockActions;
+                List<ItemEntry> items = lockItems;
+                // A 1.21.1 boat entry becomes one per wood (see LegacyBoatIds).
+                entries.addAll(LegacyBoatIds.expand(id, EntityNbtFilter.fromJson(obj.get("nbt")),
+                        (entryId, nbt) -> new EntityInteractionLockEntry(entryId,
+                                actions == null ? null : new ArrayList<>(actions),
+                                items == null ? null : new ArrayList<>(items), nbt)));
             }
         }
         in.endArray();

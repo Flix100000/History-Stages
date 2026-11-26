@@ -1489,10 +1489,58 @@ public class StageOverviewScreen extends Screen {
                 () -> this.minecraft.gui.setScreen(new DisguiseListScreen(this)));
         contextMenu.addEntry(Component.translatable("editor.historystages.menu.organize").getString(),
                 () -> setOrganizeMode(true));
+        if (anyUnknownEntries()) {
+            contextMenu.addEntry(Component.translatable("editor.historystages.prune.menu").getString(),
+                    () -> PacketHandler.sendToServer(
+                            new net.bananemdnsa.historystages.network.serverbound.PruneUnknownEntriesPacket(false)));
+        }
         contextMenu.addEntry(Component.translatable("editor.historystages.menu.credits").getString(),
                 () -> this.minecraft.gui.setScreen(new CreditsScreen(this)));
         contextMenu.showRightAligned(menuButtonX() + MENU_BUTTON_W,
                 MENU_BUTTON_Y + MENU_BUTTON_H + 3, this.font);
+    }
+
+    /**
+     * Whether any stage has an entry of a mod that is not installed, asked when the menu opens.
+     * The client's registries decide here, the same ones that colour the rows red in the stage
+     * editor; the confirmation then shows the server's own count.
+     */
+    private boolean anyUnknownEntries() {
+        var level = Minecraft.getInstance().level;
+        if (level == null) return false;
+        net.bananemdnsa.historystages.data.prune.UnknownIdCheck check =
+                new net.bananemdnsa.historystages.data.prune.RegistryUnknownIdCheck(
+                        level.registryAccess(), net.bananemdnsa.historystages.data.prune.RegistryUnknownIdCheck.idsOf(
+                                net.bananemdnsa.historystages.client.ClientRecipes.all()));
+        for (Map<String, StageEntry> stages : List.of(StageManager.getStages(), StageManager.getIndividualStages())) {
+            for (StageEntry entry : stages.values()) {
+                if (net.bananemdnsa.historystages.data.prune.UnknownEntryPruner.count(entry, check) > 0) return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * The server's count for "remove unknown entries". Asks before anything is written, since it
+     * saves every stage it touches.
+     */
+    public void onPrunePreview(int entries, int stages) {
+        if (entries == 0) {
+            net.bananemdnsa.historystages.client.editor.toast.EditorToastHandler.show(
+                    net.bananemdnsa.historystages.client.editor.toast.EditorToast.Level.INFO,
+                    Component.translatable("editor.historystages.toast.pruned.title"),
+                    Component.translatable("editor.historystages.prune.none"), null);
+            return;
+        }
+        Screen self = this;
+        this.minecraft.gui.setScreen(new ConfirmDialog(this,
+                Component.translatable("editor.historystages.prune.confirm.title"),
+                Component.translatable("editor.historystages.prune.confirm.message", entries, stages),
+                () -> {
+                    PacketHandler.sendToServer(
+                            new net.bananemdnsa.historystages.network.serverbound.PruneUnknownEntriesPacket(true));
+                    Minecraft.getInstance().gui.setScreen(self);
+                }));
     }
 
     /**

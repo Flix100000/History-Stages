@@ -3,6 +3,7 @@ package net.bananemdnsa.historystages.events.lock;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.data.StageEntry;
 import net.bananemdnsa.historystages.data.StageManager;
+import net.bananemdnsa.historystages.data.lock.EntityNbt;
 import net.bananemdnsa.historystages.data.lock.engine.LockResolution;
 import net.bananemdnsa.historystages.data.lock.engine.StageLocks;
 import net.bananemdnsa.historystages.api.stage.StageScope;
@@ -24,6 +25,9 @@ import net.minecraft.world.entity.animal.equine.AbstractHorse;
 import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.entity.vehicle.minecart.AbstractMinecart;
+import net.minecraft.world.entity.vehicle.boat.AbstractBoat;
+import net.minecraft.world.entity.vehicle.boat.AbstractChestBoat;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -76,12 +80,13 @@ public class InteractionLockHandler {
         if (entityType == null) return;
 
         String entityId = entityType.toString();
-        String action = classifyAction(target, held);
+        String action = classifyAction(interactor, target, held);
 
+        var targetMatches = EntityNbt.matcherFor(target);
         List<String> globalStageIds = StageLocks.engine()
-                .gatingStagesForEntityInteraction(entityId, action, held, StageScope.GLOBAL);
+                .gatingStagesForEntityInteraction(entityId, action, held, targetMatches, StageScope.GLOBAL);
         List<String> individualStageIds = StageLocks.engine()
-                .gatingStagesForEntityInteraction(entityId, action, held, StageScope.INDIVIDUAL);
+                .gatingStagesForEntityInteraction(entityId, action, held, targetMatches, StageScope.INDIVIDUAL);
         if (globalStageIds.isEmpty() && individualStageIds.isEmpty()) return;
 
         boolean isClient = interactor.level().isClientSide();
@@ -130,7 +135,18 @@ public class InteractionLockHandler {
      * breeding (feeding the target its food), trading (merchants), mounting (empty-hand on a
      * rideable), and finally the {@code other} catch-all. Public for the GameTests.
      */
-    public static String classifyAction(Entity target, ItemStack held) {
+    public static String classifyAction(Player interactor, Entity target, ItemStack held) {
+        // Vehicles first: holding a lead or name tag still just puts you in the boat.
+        // Sneaking on a chest boat (or chest raft) opens its chest instead, which stays "other";
+        // chest, hopper and furnace minecarts never seat anyone.
+        if (target instanceof AbstractBoat) {
+            boolean opensChest = target instanceof AbstractChestBoat
+                    && interactor != null && interactor.isSecondaryUseActive();
+            return opensChest ? "other" : "mount";
+        }
+        if (target instanceof AbstractMinecart minecart) {
+            return minecart.isRideable() ? "mount" : "other";
+        }
         Item item = held.getItem();
         if (item == Items.NAME_TAG) return "name";
         if (item == Items.LEAD) return "leash";

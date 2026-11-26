@@ -26,7 +26,7 @@ public final class InteractionScenarios {
 
     private static void expect(GameTestHelper helper, EntityType<?> type, String action) {
         Entity mob = helper.spawn(type, POS);
-        String actual = InteractionLockHandler.classifyAction(mob, ItemStack.EMPTY);
+        String actual = InteractionLockHandler.classifyAction(null, mob, ItemStack.EMPTY);
         mob.discard();
         if (!action.equals(actual)) {
             helper.fail(Component.literal("empty hand on " + EntityType.getKey(type) + " classified as "

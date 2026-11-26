@@ -34,6 +34,7 @@ public class EntityInteractionLockEntry {
     private final String id;
     private final List<String> lockActions; // null = all actions locked, empty = none locked
     private final List<ItemEntry> lockItems; // null/empty = no item filter (lock applies to any held item)
+    private final EntityNbtFilter nbt; // NONE = every entity of this type
 
     public EntityInteractionLockEntry(String id) {
         this(id, null, null);
@@ -44,7 +45,13 @@ public class EntityInteractionLockEntry {
     }
 
     public EntityInteractionLockEntry(String id, List<String> lockActions, List<ItemEntry> lockItems) {
+        this(id, lockActions, lockItems, EntityNbtFilter.NONE);
+    }
+
+    public EntityInteractionLockEntry(String id, List<String> lockActions, List<ItemEntry> lockItems,
+                                      EntityNbtFilter nbt) {
         this.id = id;
+        this.nbt = nbt != null ? nbt : EntityNbtFilter.NONE;
         this.lockActions = lockActions != null ? new ArrayList<>(lockActions) : null;
         this.lockItems = (lockItems != null && !lockItems.isEmpty()) ? new ArrayList<>(lockItems) : null;
     }
@@ -61,6 +68,11 @@ public class EntityInteractionLockEntry {
     public List<ItemEntry> getLockItems() { return lockItems; }
 
     public boolean hasLockItems() { return lockItems != null && !lockItems.isEmpty(); }
+
+    /** The filter on the target entity's own data; {@link EntityNbtFilter#NONE} for none. */
+    public EntityNbtFilter getNbt() { return nbt; }
+
+    public boolean hasNbt() { return !nbt.isEmpty(); }
 
     /** True if the given action is blocked by this entry. Null filter blocks every action. */
     public boolean blocksAction(String action) {
@@ -108,6 +120,7 @@ public class EntityInteractionLockEntry {
         return new EntityInteractionLockEntry(
                 id,
                 lockActions != null ? new ArrayList<>(lockActions) : null,
-                itemsCopy);
+                itemsCopy,
+                nbt);
     }
 }

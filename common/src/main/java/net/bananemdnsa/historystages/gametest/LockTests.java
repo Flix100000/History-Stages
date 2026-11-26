@@ -520,6 +520,84 @@ public final class LockTests {
         helper.succeed();
     }
 
+    // An NBT filter on entity locks is checked against the entity's real saved data, which a unit
+    // test cannot produce. A stage locks red sheep only; a white one must stay free. (On 1.21.1
+    // this test told oak from birch boats by their Type; since 1.21.2 each wood is its own type.)
+
+    @HsGameTest
+    public static void anEntityNbtFilterLocksOnlyMatchingCreatures(GameTestHelper helper) {
+        try {
+            com.google.gson.JsonObject red = new com.google.gson.JsonObject();
+            red.addProperty("Color", net.minecraft.world.item.DyeColor.RED.getId());
+            var filter = net.bananemdnsa.historystages.data.lock.EntityNbtFilter.of(List.of(red));
+            GameTestStages.global("red_sheep", stage -> {
+                stage.getEntities().setInteractionlock(new ArrayList<>(List.of(
+                        new net.bananemdnsa.historystages.data.lock.EntityInteractionLockEntry(
+                                "minecraft:sheep", null, null, filter))));
+                stage.getEntities().setAttacklockEntries(List.of(
+                        new net.bananemdnsa.historystages.data.lock.EntityAttackLockEntry("minecraft:sheep", filter)));
+            });
+
+            var redSheep = helper.spawn(net.minecraft.world.entity.EntityTypes.SHEEP, 1, 2, 1);
+            redSheep.setColor(net.minecraft.world.item.DyeColor.RED);
+            var whiteSheep = helper.spawn(net.minecraft.world.entity.EntityTypes.SHEEP, 3, 2, 1);
+            whiteSheep.setColor(net.minecraft.world.item.DyeColor.WHITE);
+
+            var engine = StageLocks.engine();
+            var redMatches = net.bananemdnsa.historystages.data.lock.EntityNbt.matcherFor(redSheep);
+            var whiteMatches = net.bananemdnsa.historystages.data.lock.EntityNbt.matcherFor(whiteSheep);
+
+            if (engine.gatingStagesForEntityInteraction("minecraft:sheep", "shear", ItemStack.EMPTY,
+                    redMatches, StageScope.GLOBAL).isEmpty()) {
+                helper.fail("the red sheep matches the filter, but shearing it was not locked");
+                return;
+            }
+            if (!engine.gatingStagesForEntityInteraction("minecraft:sheep", "shear", ItemStack.EMPTY,
+                    whiteMatches, StageScope.GLOBAL).isEmpty()) {
+                helper.fail("the white sheep does not match the filter, but shearing it was locked");
+                return;
+            }
+            if (engine.gatingStagesForEntityAttack("minecraft:sheep", redMatches, StageScope.GLOBAL).isEmpty()
+                    || !engine.gatingStagesForEntityAttack("minecraft:sheep", whiteMatches, StageScope.GLOBAL).isEmpty()) {
+                helper.fail("the attack lock did not follow the NBT filter");
+                return;
+            }
+            helper.succeed();
+        } finally {
+            GameTestStages.removeAll();
+        }
+    }
+
+    /** Boats are vehicles, not creatures: mounting one is the interaction, and each wood is its own type. */
+    @HsGameTest
+    public static void mountingALockedBoatTypeIsLockedAndOtherWoodsAreNot(GameTestHelper helper) {
+        try {
+            GameTestStages.global("oak_boats", stage -> stage.getEntities().setInteractionlock(new ArrayList<>(List.of(
+                    new net.bananemdnsa.historystages.data.lock.EntityInteractionLockEntry("minecraft:oak_boat")))));
+            var oakBoat = helper.spawn(net.minecraft.world.entity.EntityTypes.OAK_BOAT, 1, 2, 1);
+            String action = net.bananemdnsa.historystages.events.lock.InteractionLockHandler
+                    .classifyAction(null, oakBoat, ItemStack.EMPTY);
+            if (!"mount".equals(action)) {
+                helper.fail("an empty hand on a boat classified as " + action + ", not mount");
+                return;
+            }
+            var engine = StageLocks.engine();
+            if (engine.gatingStagesForEntityInteraction("minecraft:oak_boat", "mount", ItemStack.EMPTY,
+                    StageScope.GLOBAL).isEmpty()) {
+                helper.fail("the oak boat is locked, but mounting it was not");
+                return;
+            }
+            if (!engine.gatingStagesForEntityInteraction("minecraft:birch_boat", "mount", ItemStack.EMPTY,
+                    StageScope.GLOBAL).isEmpty()) {
+                helper.fail("only the oak boat is locked, but mounting a birch boat was locked too");
+                return;
+            }
+            helper.succeed();
+        } finally {
+            GameTestStages.removeAll();
+        }
+    }
+
     /** An individual stage locking the whole {@code minecraft} namespace, for the named actions. */
     private static void individualStageLockingMod(String name, List<String> actions) {
         GameTestStages.individual(name, stage -> stage.setModEntries(new ArrayList<>(

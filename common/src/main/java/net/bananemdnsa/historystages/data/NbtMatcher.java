@@ -74,6 +74,15 @@ public class NbtMatcher {
         }
     }
 
+    /**
+     * Matches an already built tag — an entity's saved data, say — against the same criteria
+     * language items use: exact values, numeric ranges, nested objects and list members.
+     */
+    public static boolean matchesTag(CompoundTag tag, JsonObject nbtCriteria) {
+        if (nbtCriteria == null || nbtCriteria.size() == 0) return true;
+        return tag != null && matchesCompound(tag, nbtCriteria);
+    }
+
     private static CompoundTag buildMatchTag(ItemStack stack, JsonObject criteria) {
         CustomData customData = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY);
         CompoundTag tag = customData.copyTag();

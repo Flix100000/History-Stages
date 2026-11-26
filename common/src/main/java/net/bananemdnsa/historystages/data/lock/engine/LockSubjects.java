@@ -1,8 +1,11 @@
 package net.bananemdnsa.historystages.data.lock.engine;
 
+import com.google.gson.JsonObject;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.function.Predicate;
 
 /**
  * The subjects the built-in lock categories are asked about.
@@ -72,7 +75,27 @@ public final class LockSubjects {
     public record SpawnSubject(String entityId, @Nullable String source, String dimension)
             implements net.bananemdnsa.historystages.api.lock.LockSubject {}
 
-    /** An interaction with an entity, including what the player is holding. */
-    public record InteractionSubject(String entityId, String action, ItemStack held)
+    /**
+     * An interaction with an entity, including what the player is holding.
+     *
+     * <p>{@code targetMatches} answers whether the entity's saved data matches one set of NBT
+     * criteria. It is a predicate rather than the entity itself so this record stays free of
+     * Minecraft entity types and the tests can build it. Null when only the id is known — an
+     * entry with an NBT filter then does not match.
+     */
+    public record InteractionSubject(String entityId, String action, ItemStack held,
+                                     @Nullable Predicate<JsonObject> targetMatches)
+            implements net.bananemdnsa.historystages.api.lock.LockSubject {
+
+        public InteractionSubject(String entityId, String action, ItemStack held) {
+            this(entityId, action, held, null);
+        }
+    }
+
+    /**
+     * An attack on an entity. Same idea as {@link InteractionSubject#targetMatches}: the plain id
+     * question still arrives as a bare string, this record is only built when the entity is there.
+     */
+    public record AttackSubject(String entityId, @Nullable Predicate<JsonObject> targetMatches)
             implements net.bananemdnsa.historystages.api.lock.LockSubject {}
 }
