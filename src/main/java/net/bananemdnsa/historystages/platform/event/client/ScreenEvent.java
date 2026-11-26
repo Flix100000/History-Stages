@@ -55,20 +55,38 @@ public abstract class ScreenEvent extends Event {
     public abstract static class Render extends ScreenEvent {
 
         private final GuiGraphics graphics;
+        private final int mouseX;
+        private final int mouseY;
+        private final float partialTick;
 
-        protected Render(Screen screen, GuiGraphics graphics) {
+        protected Render(Screen screen, GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
             super(screen);
             this.graphics = graphics;
+            this.mouseX = mouseX;
+            this.mouseY = mouseY;
+            this.partialTick = partialTick;
         }
 
         public GuiGraphics getGuiGraphics() {
             return graphics;
         }
 
+        public int getMouseX() {
+            return mouseX;
+        }
+
+        public int getMouseY() {
+            return mouseY;
+        }
+
+        public float getPartialTick() {
+            return partialTick;
+        }
+
         /** After the screen has drawn itself, which is where an overlay belongs. */
         public static class Post extends Render {
-            public Post(Screen screen, GuiGraphics graphics) {
-                super(screen, graphics);
+            public Post(Screen screen, GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+                super(screen, graphics, mouseX, mouseY, partialTick);
             }
         }
     }
@@ -104,6 +122,63 @@ public abstract class ScreenEvent extends Event {
             public Pre(Screen screen, double mouseX, double mouseY, int button) {
                 super(screen, mouseX, mouseY, button);
             }
+        }
+    }
+
+    /** A key going down on a screen. */
+    public abstract static class KeyPressed extends ScreenEvent {
+
+        private final int keyCode;
+        private final int scanCode;
+        private final int modifiers;
+
+        protected KeyPressed(Screen screen, int keyCode, int scanCode, int modifiers) {
+            super(screen);
+            this.keyCode = keyCode;
+            this.scanCode = scanCode;
+            this.modifiers = modifiers;
+        }
+
+        public int getKeyCode() {
+            return keyCode;
+        }
+
+        public int getScanCode() {
+            return scanCode;
+        }
+
+        public int getModifiers() {
+            return modifiers;
+        }
+
+        /** Before the screen sees it. Cancelling means the screen never does. */
+        public static class Pre extends KeyPressed implements ICancellableEvent {
+            public Pre(Screen screen, int keyCode, int scanCode, int modifiers) {
+                super(screen, keyCode, scanCode, modifiers);
+            }
+        }
+    }
+
+    /**
+     * A screen about to be shown, raised by {@code mixin/client/ScreenOpeningMixin}. The screen is
+     * the one being left, or null from the world. Cancelling keeps it.
+     */
+    public static class Opening extends ScreenEvent implements ICancellableEvent {
+
+        private final @org.jetbrains.annotations.Nullable Screen newScreen;
+
+        public Opening(@org.jetbrains.annotations.Nullable Screen currentScreen,
+                       @org.jetbrains.annotations.Nullable Screen newScreen) {
+            super(currentScreen);
+            this.newScreen = newScreen;
+        }
+
+        public @org.jetbrains.annotations.Nullable Screen getCurrentScreen() {
+            return getScreen();
+        }
+
+        public @org.jetbrains.annotations.Nullable Screen getNewScreen() {
+            return newScreen;
         }
     }
 }

@@ -17,6 +17,7 @@ import net.bananemdnsa.historystages.events.lock.FluidPickupLockHandler;
 import net.bananemdnsa.historystages.events.lock.FluidPlaceLockHandler;
 import net.bananemdnsa.historystages.events.lock.CropLockHandler;
 import net.bananemdnsa.historystages.events.lock.InteractionLockHandler;
+import net.bananemdnsa.historystages.events.lock.SlotLockHandler;
 import net.bananemdnsa.historystages.events.lock.ItemUseLockHandler;
 import net.bananemdnsa.historystages.events.lock.MobLockHandler;
 import net.bananemdnsa.historystages.events.lock.MobLootLockHandler;
@@ -66,6 +67,7 @@ public final class Handlers {
             MobLockHandler.class,
             MobLootLockHandler.class,
             MobSpawnLockHandler.class,
+            SlotLockHandler.class,
             StructureLockHandler.class,
             ZoneBarrierHandler.class,
             ZoneLockHandler.class,

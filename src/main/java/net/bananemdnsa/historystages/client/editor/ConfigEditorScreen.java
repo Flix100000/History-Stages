@@ -333,6 +333,19 @@ public class ConfigEditorScreen extends Screen {
                 Config.VISUAL.mobShowStagesInChat.get().toString(), true, "true"));
         visualSections.add(mobLock);
 
+        ConfigSection slotLock = new ConfigSection("editor.historystages.config.slot_lock");
+        slotLock.add(new ConfigEntry("slot_lock.showTooltip", "slotShowTooltip", ConfigType.BOOLEAN,
+                Config.VISUAL.slotShowTooltip.get().toString(), true, "true"));
+        slotLock.add(new ConfigEntry("slot_lock.tooltipLines", ConfigType.SUBSCREEN,
+                joinConfigList(Config.VISUAL.slotTooltipLines.get()), true,
+                String.join(";", net.bananemdnsa.historystages.data.tooltip.SlotTooltipLayout.defaultsEncoded()),
+                "editor.historystages.config.slotTooltipLines",
+                "editor.historystages.config.slotTooltipLines.desc",
+                Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, null, List.of(), null));
+        slotLock.add(new ConfigEntry("slot_lock.showAllUntilComplete", "slotShowAllUntilComplete", ConfigType.BOOLEAN,
+                Config.VISUAL.slotShowAllUntilComplete.get().toString(), true, "true"));
+        visualSections.add(slotLock);
+
         ConfigSection tradeLock = new ConfigSection("editor.historystages.config.trade_lock");
         tradeLock.add(new ConfigEntry("trade_lock.showStagesInWindow", "tradeShowStagesInWindow",
                 ConfigType.BOOLEAN,
@@ -571,6 +584,8 @@ public class ConfigEditorScreen extends Screen {
                 Config.GAMEPLAY.lockContainerInteraction.get().toString(), false, "true"));
         gameplay.add(new ConfigEntry("gameplay.lockEnchanting", "lockEnchanting", ConfigType.BOOLEAN,
                 Config.GAMEPLAY.lockEnchanting.get().toString(), false, "true"));
+        gameplay.add(new ConfigEntry("gameplay.dropItemsFromLockedSlots", "dropItemsFromLockedSlots", ConfigType.BOOLEAN,
+                Config.GAMEPLAY.dropItemsFromLockedSlots.get().toString(), false, "true"));
         gameplaySections.add(gameplay);
 
         ConfigSection individualCommon = new ConfigSection("editor.historystages.config.individual_stages");
@@ -1446,6 +1461,8 @@ public class ConfigEditorScreen extends Screen {
             case SUBSCREEN -> {
                 if ("scroll_tooltip.lines".equals(entry.key)) {
                     this.minecraft.setScreen(new ScrollTooltipScreen(this, entry));
+                } else if ("slot_lock.tooltipLines".equals(entry.key)) {
+                    this.minecraft.setScreen(new SlotTooltipScreen(this, entry));
                 } else if ("open_scroll.chapters".equals(entry.key)) {
                     this.minecraft.setScreen(new OpenScrollDocumentScreen(this));
                 } else {

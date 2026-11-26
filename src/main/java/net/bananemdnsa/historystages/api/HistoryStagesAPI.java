@@ -33,7 +33,7 @@ public final class HistoryStagesAPI {
      * Additions within the current generation. Bumps when a release grows the API without
      * breaking it, and starts again at 0 when {@link #API_VERSION} goes up.
      */
-    public static final int API_MINOR = 1;
+    public static final int API_MINOR = 2;
 
     private HistoryStagesAPI() {}
 }

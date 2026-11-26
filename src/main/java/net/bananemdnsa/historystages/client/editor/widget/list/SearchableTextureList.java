@@ -28,9 +28,38 @@ public class SearchableTextureList extends AbstractSearchableList<String> {
     private static final String BLOCK_TEXTURE_DIR = "textures/block";
     private static final int PREVIEW = 16;
 
+    /** Folders on offer, one tab each when there is more than one. */
+    private final List<String> dirs;
+    private final List<String> tabLabels;
+    private int activeTab = 0;
+
     public SearchableTextureList(Consumer<String> onSelect) {
+        this(onSelect, List.of(BLOCK_TEXTURE_DIR), List.of());
+    }
+
+    /**
+     * For pickers that want more than block textures, such as slot locks, where an item texture
+     * like a barrier is a natural choice. Everything listed lives in the block atlas, which is
+     * what keeps drawing a row cheap.
+     */
+    public SearchableTextureList(Consumer<String> onSelect, List<String> dirs, List<String> tabLabels) {
         super(Component.translatable("editor.historystages.search.textures").getString(),
                 onSelect, null);
+        this.dirs = List.copyOf(dirs);
+        this.tabLabels = List.copyOf(tabLabels);
+        // The base class loads entries while constructing, before these fields were set.
+        reloadEntries();
+    }
+
+    @Override
+    protected List<String> ownTabLabels() {
+        return tabLabels == null || tabLabels.size() < 2 ? super.ownTabLabels() : tabLabels;
+    }
+
+    @Override
+    protected void onOwnTabChanged(int index) {
+        activeTab = index;
+        reloadEntries();
     }
 
     @Override
@@ -40,14 +69,16 @@ public class SearchableTextureList extends AbstractSearchableList<String> {
         // Animated textures ship a .mcmeta beside the .png and are stored as a vertical strip of
         // frames. Tiled as a still image the whole strip shows at once, which looks like a bug
         // rather than a choice, so they are left out of the list.
+        // Called once by the base constructor before this class has set its fields.
+        String dir = dirs == null ? BLOCK_TEXTURE_DIR : dirs.get(Math.min(activeTab, dirs.size() - 1));
         Set<String> animated = new HashSet<>();
-        for (ResourceLocation rl : resources.listResources(BLOCK_TEXTURE_DIR,
+        for (ResourceLocation rl : resources.listResources(dir,
                 p -> p.getPath().endsWith(".png.mcmeta")).keySet()) {
             animated.add(rl.toString().replace(".png.mcmeta", ".png"));
         }
 
         List<String> textures = new ArrayList<>();
-        for (ResourceLocation rl : resources.listResources(BLOCK_TEXTURE_DIR,
+        for (ResourceLocation rl : resources.listResources(dir,
                 p -> p.getPath().endsWith(".png")).keySet()) {
             String id = rl.toString();
             if (!animated.contains(id)) textures.add(id);
@@ -100,7 +131,7 @@ public class SearchableTextureList extends AbstractSearchableList<String> {
 
         // The directory prefix is the same on every row and only pushes the part that
         // distinguishes them out of view.
-        String label = entry.replace(BLOCK_TEXTURE_DIR + "/", "").replace(".png", "");
+        String label = entry.replaceFirst("textures/[a-z_]+/", "").replace(".png", "");
         drawRowText(g, font, label, x + PREVIEW + 4, y, w - PREVIEW - 4, hovered);
     }
 }

@@ -2,6 +2,8 @@ package net.bananemdnsa.historystages.client;
 
 import net.bananemdnsa.historystages.client.disguise.ClientDisguises;
 import net.bananemdnsa.historystages.client.scroll.OpenScrollHandler;
+import net.bananemdnsa.historystages.client.slotlock.ClientSlotPick;
+import net.bananemdnsa.historystages.client.slotlock.SlotLockClient;
 import net.bananemdnsa.historystages.commands.ClientDebugCommand;
 import net.bananemdnsa.historystages.commands.ClientScreenCommand;
 import net.bananemdnsa.historystages.events.ToastClickHandler;
@@ -38,6 +40,8 @@ public final class ClientHandlers {
             ClientDebugCommand.class,
             ClientScreenCommand.class,
             ToastClickHandler.class,
+            ClientSlotPick.class,
+            SlotLockClient.class,
             TooltipEventHandler.class);
 
     public static void register() {

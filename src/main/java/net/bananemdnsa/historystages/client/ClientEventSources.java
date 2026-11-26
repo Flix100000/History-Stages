@@ -17,6 +17,7 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
+import net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents;
 import net.fabricmc.fabric.api.client.screen.v1.Screens;
 
@@ -64,7 +65,7 @@ public final class ClientEventSources {
     }
 
     /**
-     * The three screen events. Two of them are per screen rather than global, so they are hooked
+     * The per-screen events. All but init are registered on each screen rather than globally, so they are hooked
      * while each screen is being built — which is also the moment a widget may be added to it.
      */
     private static void screens() {
@@ -76,7 +77,10 @@ public final class ClientEventSources {
             }));
 
             ScreenEvents.afterRender(screen).register((rendered, graphics, mouseX, mouseY, delta) ->
-                    EventBus.post(new ScreenEvent.Render.Post(rendered, graphics)));
+                    EventBus.post(new ScreenEvent.Render.Post(rendered, graphics, mouseX, mouseY, delta)));
+
+            ScreenKeyboardEvents.allowKeyPress(screen).register((pressed, key, scancode, modifiers) ->
+                    !EventBus.post(new ScreenEvent.KeyPressed.Pre(pressed, key, scancode, modifiers)).isCanceled());
 
             ScreenMouseEvents.allowMouseClick(screen).register((clicked, mouseX, mouseY, button) -> {
                 ScreenEvent.MouseButtonPressed.Pre event = EventBus.post(

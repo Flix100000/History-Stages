@@ -7,7 +7,7 @@ import org.spongepowered.asm.mixin.gen.Accessor;
 /**
  * Reaches the top-left corner of a container screen.
  *
- * <p>NeoForge adds getters for these two; vanilla keeps them protected. Anything drawn over
+ * <p>NeoForge adds getters for these; vanilla keeps them protected. Anything drawn over
  * somebody else's container screen has to be placed relative to them, because a screen is
  * centred and the window is not.
  */
@@ -19,4 +19,13 @@ public interface ContainerScreenAccessor {
 
     @Accessor("topPos")
     int historystages$getTopPos();
+
+    @Accessor("imageWidth")
+    int historystages$getImageWidth();
+
+    @Accessor("imageHeight")
+    int historystages$getImageHeight();
+
+    @Accessor("hoveredSlot")
+    net.minecraft.world.inventory.Slot historystages$getHoveredSlot();
 }

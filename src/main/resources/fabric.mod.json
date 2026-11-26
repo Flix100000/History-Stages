@@ -68,6 +68,7 @@
 			"net.bananemdnsa.historystages.gametest.RecipeLockTests",
 			"net.bananemdnsa.historystages.gametest.RelockTests",
 			"net.bananemdnsa.historystages.gametest.ScrollShelfTests",
+			"net.bananemdnsa.historystages.gametest.SlotLockTests",
 			"net.bananemdnsa.historystages.gametest.SpawnControlTests",
 			"net.bananemdnsa.historystages.gametest.StageLogicRevokeTests",
 			"net.bananemdnsa.historystages.gametest.StageLogicRound2Tests",

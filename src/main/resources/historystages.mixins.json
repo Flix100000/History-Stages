@@ -53,9 +53,26 @@
     "SelectTradeMixin",
     "jei.RecipeLayoutMixin",
     "disguise.DisguiseProgressMixin",
-    "disguise.DisguiseDropsMixin"
+    "disguise.DisguiseDropsMixin",
+    "slotlock.SlotMixin",
+    "slotlock.ArmorSlotMixin",
+    "slotlock.SlotLockClickMixin",
+    "slotlock.InventoryMixin",
+    "slotlock.ServerGamePacketListenerSlotMixin",
+    "slotlock.AbstractContainerMenuSlotMixin",
+    "slotlock.CompoundContainerAccessor",
+    "slotlock.HopperBlockEntityMixin",
+    "slotlock.InventoryScrollMixin",
+    "slotlock.InventoryStorageImplAccessor",
+    "slotlock.InventorySlotWrapperMixin",
+    "slotlock.MoveItemStackToMixin",
+    "slotlock.ArmorSelectorMixin",
+    "event.ContainerOpenMixin",
+    "event.SwapHandsMixin"
   ],
   "client": [
+    "client.ContainerScreenRenderMixin",
+    "client.ScreenOpeningMixin",
     "client.ClientUseItemOnMixin",
     "client.ClientCommandTreeMixin",
     "client.ItemDecorationsMixin",
@@ -82,7 +99,10 @@
     "disguise.EntitySoundMixin",
     "disguise.LivingEntitySoundMixin",
     "disguise.MultiPlayerGameModeSoundMixin",
-    "disguise.LevelRendererSoundMixin"
+    "disguise.LevelRendererSoundMixin",
+    "client.slotlock.GuiHotbarMixin",
+    "client.slotlock.AbstractContainerScreenInvoker",
+    "client.slotlock.MenuScreensInvoker"
   ],
   "injectors": {
     "defaultRequire": 1

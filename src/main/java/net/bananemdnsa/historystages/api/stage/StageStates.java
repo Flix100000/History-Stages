@@ -662,6 +662,7 @@ public final class StageStates {
         );
 
         net.bananemdnsa.historystages.util.lock.StageLockHelper.dropLockedItemsForPlayer(player, stageId);
+        net.bananemdnsa.historystages.util.lock.SlotLockSweeper.sweep(player);
 
         // Config-gated "locked" feedback to the affected player.
         // A stage can opt out of its own messages (conditional stages do by default); the
