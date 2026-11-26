@@ -60,6 +60,28 @@ class LevelledMatchingTest {
                 carrying(SHARPNESS, 5), POTION));
     }
 
+    /**
+     * Actions fixed in the stage settings decide the item path too. Before, the category read the
+     * entry's own list only, so fixing "use" as locked never reached a station-only entry.
+     */
+    @Test
+    void fixedActionsDecideTheItemPath() {
+        List<String> vocabulary = net.bananemdnsa.historystages.api.lock.LockActions.ENCHANTMENT;
+        LevelledLockEntry stationsOnly = entry(null, List.of("enchanting_table", "anvil"), null);
+        List<String> useFixedLocked = net.bananemdnsa.historystages.data.lock.FixedLockActions.apply(
+                stationsOnly.getLockActions(), java.util.Map.of("use", true), vocabulary);
+        assertTrue(LevelledMatching.locksItem(stationsOnly, useFixedLocked, carrying(SHARPNESS, 5), POTION));
+
+        java.util.Map<String, Boolean> allItemActionsFree = new java.util.HashMap<>();
+        for (String action : vocabulary) {
+            if (!LevelledMatching.STATION_ACTIONS.contains(action)) allItemActionsFree.put(action, false);
+        }
+        LevelledLockEntry everything = entry(null, null, null);
+        List<String> freed = net.bananemdnsa.historystages.data.lock.FixedLockActions.apply(
+                everything.getLockActions(), allItemActionsFree, vocabulary);
+        assertFalse(LevelledMatching.locksItem(everything, freed, carrying(SHARPNESS, 5), POTION));
+    }
+
     @Test
     void anExcludedItemTypeIsFree() {
         LevelledLockEntry e = entry(null, null, List.of(ARROW));

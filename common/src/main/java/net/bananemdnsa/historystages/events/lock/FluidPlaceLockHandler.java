@@ -118,6 +118,6 @@ public class FluidPlaceLockHandler {
         DebugLogger.runtimeThrottled(HsRuntimeCategories.FLUID_LOCK, "place_" + sp.getUUID() + "_" + fluidId,
                 "<" + sp.getName().getString() + "> placing '" + fluidId + "' " + where
                         + " blocked [action: place]");
-        LockFeedback.sendActionbar(sp, FEEDBACK_CATEGORY, LockMessages.fluidLocked());
+        LockFeedback.sendActionbar(sp, FEEDBACK_CATEGORY, LockMessages.fluidLocked(sp, fluidId, "place"));
     }
 }

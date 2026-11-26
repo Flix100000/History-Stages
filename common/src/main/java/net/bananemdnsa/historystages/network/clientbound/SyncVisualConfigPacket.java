@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.network.clientbound;
 
+import net.bananemdnsa.historystages.platform.Services;
 import net.bananemdnsa.historystages.Config;
 import net.bananemdnsa.historystages.HistoryStages;
 import net.bananemdnsa.historystages.data.config.ConfigSpecCodec;
@@ -80,6 +81,23 @@ public record SyncVisualConfigPacket(Map<String, String> values) implements Cust
         // saved first. Safe to call from here: unlike the common config's apply path, this one only
         // ever runs client-side.
         net.bananemdnsa.historystages.client.editor.ConfigEditorScreen.onVisualConfigSynced();
+
+        // The viewers have to be brought up to date here and not when the editor saves: the save
+        // goes to the server first, so at that moment the client still holds the old values, and
+        // switching hiding on or off left JEI and EMI as they were until the next /reload.
+        if (net.bananemdnsa.historystages.platform.Services.isModLoaded("jei")) {
+            try {
+                net.bananemdnsa.historystages.compat.jei.JEIPlugin.tryApplyDiff();
+            } catch (Throwable ignored) {}
+        }
+        // PORT(later): EMI has no 26.2 build (code in port-later/emi).
+        /*
+        if (net.bananemdnsa.historystages.platform.Services.isModLoaded("emi")) {
+            try {
+                net.bananemdnsa.historystages.compat.emi.EmiReloadBridge.reloadIfViewerSettingsChanged();
+            } catch (Throwable ignored) {}
+        }
+        */
     }
 
     @Override

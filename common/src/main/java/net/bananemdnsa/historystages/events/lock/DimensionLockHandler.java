@@ -56,7 +56,7 @@ public class DimensionLockHandler {
             }
 
             PacketHandler.sendLockFeedbackToPlayer(
-                    new LockFeedbackPacket(LockFeedbackPacket.KIND_DIMENSION, displayNames),
+                    new LockFeedbackPacket(LockFeedbackPacket.KIND_DIMENSION, dimId, displayNames),
                     player
             );
         }

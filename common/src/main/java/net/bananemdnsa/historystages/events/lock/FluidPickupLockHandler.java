@@ -100,7 +100,7 @@ public class FluidPickupLockHandler {
             DebugLogger.runtimeThrottled(HsRuntimeCategories.FLUID_LOCK, "pickup_" + sp.getUUID() + "_" + fluidId,
                     "<" + sp.getName().getString() + "> pickup of '" + fluidId
                             + "' blocked [action: pickup]");
-            LockFeedback.sendActionbar(sp, FEEDBACK_CATEGORY, LockMessages.fluidLocked());
+            LockFeedback.sendActionbar(sp, FEEDBACK_CATEGORY, LockMessages.fluidLocked(sp, fluidId, "pickup"));
         }
         return true;
     }

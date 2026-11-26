@@ -75,6 +75,14 @@ public class JEIPlugin implements IModPlugin {
 
     @Override
     public void onRuntimeAvailable(IJeiRuntime jeiRuntime) {
+        // For the exemption picker in the config editor. Hidden categories too: an admin may want
+        // to exempt one before another mod shows it again.
+        net.bananemdnsa.historystages.compat.ViewerCategoryCatalog.register("jei", () ->
+                jeiRuntime.getRecipeManager().createRecipeCategoryLookup().includeHidden().get()
+                        .map(category -> new net.bananemdnsa.historystages.compat.ViewerCategoryCatalog.Category(
+                                category.getRecipeType().getUid().toString(), category.getTitle()))
+                        .toList());
+
         // Add one scroll variant per stage so they appear in JEI
         List<ItemStack> scrolls = ScrollVariants.buildAllStageScrolls();
 
@@ -254,8 +262,11 @@ public class JEIPlugin implements IModPlugin {
         // result it built out of an empty world.
         HolderLookup.Provider registryAccess = CurrentRegistries.orEmpty();
 
-        runtime.getJeiHelpers().getAllRecipeTypes().forEach(type ->
-                hideForType(rm, (IRecipeType) type, lockedFinal, registryAccess));
+        runtime.getJeiHelpers().getAllRecipeTypes().forEach(type -> {
+            // Pages the pack exempted keep every recipe, same as they keep them unshaded.
+            if (ExemptCategories.isExempt(type.getUid().toString())) return;
+            hideForType(rm, (IRecipeType) type, lockedFinal, registryAccess);
+        });
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})

@@ -52,7 +52,7 @@ public final class CuriosEquipLockHandler {
             DebugLogger.runtime(HsRuntimeCategories.CURIOS_LOCK, player.getName().getString(),
                     "Equipping locked item '" + itemRL + "' in curio slot '"
                             + event.getSlotContext().identifier() + "' — blocked");
-            showMessage((ServerPlayer) player);
+            showMessage((ServerPlayer) player, stack);
         }
     }
 
@@ -74,13 +74,13 @@ public final class CuriosEquipLockHandler {
         return false;
     }
 
-    private static void showMessage(ServerPlayer player) {
+    private static void showMessage(ServerPlayer player, ItemStack stack) {
         long now = System.currentTimeMillis();
         Long last = MESSAGE_COOLDOWNS.get(player.getUUID());
         if (last != null && (now - last) < COOLDOWN_MS) return;
         MESSAGE_COOLDOWNS.put(player.getUUID(), now);
 
-        player.sendOverlayMessage(net.bananemdnsa.historystages.util.lock.LockMessages.itemLocked()
+        player.sendOverlayMessage(net.bananemdnsa.historystages.util.lock.LockMessages.itemLocked(player, stack, "equip")
                         .withStyle(ChatFormatting.DARK_RED, ChatFormatting.ITALIC));
     }
 }

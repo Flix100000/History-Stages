@@ -45,7 +45,7 @@ public final class AccessoriesEquipLockHandler {
             DebugLogger.runtime(HsRuntimeCategories.ACCESSORIES_LOCK, player.getName().getString(),
                     "Equipping locked item '" + itemRL + "' in accessory slot '"
                             + reference.slotName() + "' — blocked");
-            showMessage((ServerPlayer) player);
+            showMessage((ServerPlayer) player, stack);
         }
         return TriState.FALSE;
     }
@@ -68,13 +68,13 @@ public final class AccessoriesEquipLockHandler {
         return false;
     }
 
-    private static void showMessage(ServerPlayer player) {
+    private static void showMessage(ServerPlayer player, ItemStack stack) {
         long now = System.currentTimeMillis();
         Long last = MESSAGE_COOLDOWNS.get(player.getUUID());
         if (last != null && (now - last) < COOLDOWN_MS) return;
         MESSAGE_COOLDOWNS.put(player.getUUID(), now);
 
-        player.sendOverlayMessage(net.bananemdnsa.historystages.util.lock.LockMessages.itemLocked()
+        player.sendOverlayMessage(net.bananemdnsa.historystages.util.lock.LockMessages.itemLocked(player, stack, "equip")
                         .withStyle(ChatFormatting.DARK_RED, ChatFormatting.ITALIC));
     }
 }

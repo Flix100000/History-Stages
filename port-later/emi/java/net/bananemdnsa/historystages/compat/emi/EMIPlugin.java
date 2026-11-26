@@ -29,8 +29,19 @@ public class EMIPlugin implements EmiPlugin {
 
     @Override
     public void register(EmiRegistry registry) {
+        // So a later config sync can tell whether EMI was built with other hiding switches.
+        EmiReloadBridge.rememberBuilt();
+
         // Register the locked recipe decorator globally for all categories
         registry.addRecipeDecorator(new LockedEmiRecipeDecorator());
+
+        // For the exemption picker in the config editor. Read when the picker opens, by which
+        // time EMI has finished building its recipe manager.
+        net.bananemdnsa.historystages.compat.ViewerCategoryCatalog.register("emi", () ->
+                dev.emi.emi.api.EmiApi.getRecipeManager().getCategories().stream()
+                        .map(category -> new net.bananemdnsa.historystages.compat.ViewerCategoryCatalog.Category(
+                                category.getId().toString(), category.getName()))
+                        .toList());
 
         // Treat scrolls with different StageResearch as distinct EMI entries (parity with JEI subtypes)
         Comparison stageComparison = Comparison.compareData(

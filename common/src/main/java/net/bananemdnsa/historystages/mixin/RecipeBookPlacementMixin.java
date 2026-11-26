@@ -45,6 +45,6 @@ public class RecipeBookPlacementMixin {
         boolean locked = RecipeCraftContext.with(this.player.getUUID(),
                 () -> RecipeHandler.isRecipeIdLocked(display.parent().id().identifier(), false));
         if (!locked) return;
-        LockFeedback.sendActionbar(this.player, FEEDBACK_CATEGORY, LockMessages.recipeLocked());
+        LockFeedback.sendActionbar(this.player, FEEDBACK_CATEGORY, LockMessages.recipeLocked(this.player, display.parent().id().identifier()));
     }
 }

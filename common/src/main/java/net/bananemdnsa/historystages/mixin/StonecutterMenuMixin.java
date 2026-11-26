@@ -78,7 +78,7 @@ public class StonecutterMenuMixin {
         boolean locked = RecipeCraftContext.with(player.getUUID(),
                 () -> RecipeHandler.isLockedForResolution(holder, false));
         if (!locked) return recipe;
-        LockFeedback.sendActionbar(player, FEEDBACK_CATEGORY, LockMessages.recipeLocked());
+        LockFeedback.sendActionbar(player, FEEDBACK_CATEGORY, LockMessages.recipeLocked(player, holder.id().identifier()));
         return Optional.empty();
     }
 }

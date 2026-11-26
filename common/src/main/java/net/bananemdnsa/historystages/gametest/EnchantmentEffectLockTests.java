@@ -472,6 +472,46 @@ public final class EnchantmentEffectLockTests {
         }
     }
 
+    /**
+     * Fixed actions reach the items too, not only the stations. A station-only entry with "use"
+     * fixed as locked locks the book; an entry locking everything with every item action fixed
+     * as allowed leaves the book free.
+     */
+    @HsGameTest
+    public static void fixedActionsReachTheItems(GameTestHelper helper) {
+        try {
+            GameTestStages.global("act_fixed_items_on", stage -> {
+                stage.setEnchantmentEntries(List.of(new LevelledLockEntry(SHARPNESS, null,
+                        List.of("enchanting_table", "anvil"), null)));
+                stage.setFixedEnchantmentLockActions(java.util.Map.of("use", true));
+            });
+            if (!StageLockHelper.isItemLockedForServer(book(helper, Enchantments.SHARPNESS, 5))) {
+                helper.fail("the stage fixes \"use\" as locked but the Sharpness book is free");
+                return;
+            }
+            GameTestStages.removeAll();
+
+            GameTestStages.global("act_fixed_items_off", stage -> {
+                stage.setEnchantmentEntries(List.of(new LevelledLockEntry(SHARPNESS)));
+                java.util.Map<String, Boolean> free = new java.util.HashMap<>();
+                for (String action : net.bananemdnsa.historystages.api.lock.LockActions.ENCHANTMENT) {
+                    if (!net.bananemdnsa.historystages.data.lock.engine.LevelledMatching.STATION_ACTIONS
+                            .contains(action)) {
+                        free.put(action, false);
+                    }
+                }
+                stage.setFixedEnchantmentLockActions(free);
+            });
+            if (StageLockHelper.isItemLockedForServer(book(helper, Enchantments.SHARPNESS, 5))) {
+                helper.fail("every item action is fixed as allowed but the Sharpness book is locked");
+                return;
+            }
+            helper.succeed();
+        } finally {
+            GameTestStages.removeAll();
+        }
+    }
+
     @HsGameTest
     public static void aSparedItemTypeIsFree(GameTestHelper helper) {
         try {

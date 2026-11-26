@@ -35,6 +35,18 @@ public abstract class RecipeLayoutMixin {
     }
 
     private boolean isCurrentRecipeLocked() {
+        // No overlay at all, nothing to protect: the hover only stays blocked under a drawn one.
+        if (!net.bananemdnsa.historystages.Config.VISUAL.showLockOverlay.get()) return false;
+        // Exempt pages get no overlay, so hover has to keep working there. Asked first: a page
+        // listed in the config can also hold vanilla recipes, which the id check would catch.
+        try {
+            var layout = (mezz.jei.api.gui.IRecipeLayoutDrawable<?>) this;
+            if (net.bananemdnsa.historystages.compat.jei.ExemptCategories.isExempt(layout.getRecipeCategory())) {
+                return false;
+            }
+        } catch (Exception ignored) {
+        }
+
         Object recipe = getRecipe();
 
         // 1. Check by recipe ID — in 1.21 recipes are wrapped in RecipeHolder<?>
@@ -51,10 +63,6 @@ public abstract class RecipeLayoutMixin {
         // 2. Check by output items — use the same logic as the decorator
         try {
             var layout = (mezz.jei.api.gui.IRecipeLayoutDrawable<?>) this;
-            // No overlay is drawn on JER pages, so hover must keep working there too
-            if (net.bananemdnsa.historystages.compat.jei.JerCategories.isJer(layout.getRecipeCategory())) {
-                return false;
-            }
             var slotsView = layout.getRecipeSlotsView();
             var outputSlots = slotsView.getSlotViews(mezz.jei.api.recipe.RecipeIngredientRole.OUTPUT);
             for (var slot : outputSlots) {

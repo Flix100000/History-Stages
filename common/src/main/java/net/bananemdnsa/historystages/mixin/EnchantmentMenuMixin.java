@@ -66,7 +66,8 @@ public class EnchantmentMenuMixin {
                     "<" + serverPlayer.getName().getString() + "> Enchanting table blocked: enchantment '"
                             + enchantRL + "' level " + level + " is locked");
 
-            LockFeedback.sendActionbar(serverPlayer, FEEDBACK_CATEGORY, LockMessages.enchantmentLocked());
+            LockFeedback.sendActionbar(serverPlayer, FEEDBACK_CATEGORY, LockMessages.enchantmentLocked(serverPlayer,
+                    enchantRL.toString(), level, "enchanting_table", enchantSlots.getItem(0)));
         }
     }
 }

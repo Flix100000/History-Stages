@@ -37,7 +37,7 @@ public final class SpellEngineCompat {
                     Identifier itemRL = BuiltInRegistries.ITEM.getKey(stack.getItem());
                     DebugLogger.runtimeThrottled(HsRuntimeCategories.ITEM_USE_LOCK, "cast_" + sp.getUUID() + "_" + itemRL,
                             "<" + sp.getName().getString() + "> Spell cast with '" + itemRL + "' blocked [action: use]");
-                    LockFeedback.sendActionbar(sp, "item", LockMessages.itemLocked());
+                    LockFeedback.sendActionbar(sp, "item", LockMessages.itemLocked(sp, stack, "use"));
                 }
                 return SpellCast.Attempt.none(); // non-null result aborts the cast
             }
