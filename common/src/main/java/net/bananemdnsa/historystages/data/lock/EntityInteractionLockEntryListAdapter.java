@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.data.lock;
 
+import net.bananemdnsa.historystages.data.NbtFilter;
 import com.google.gson.*;
 import com.google.gson.internal.Streams;
 import com.google.gson.stream.JsonReader;
@@ -65,7 +66,7 @@ public class EntityInteractionLockEntryListAdapter extends TypeAdapter<List<Enti
                         out.beginObject();
                         out.name("id").value(item.getId());
                         out.name("nbt");
-                        Streams.write(item.getNbt(), out);
+                        Streams.write(item.getNbtFilter().toJson(), out);
                         out.endObject();
                     }
                 }
@@ -90,7 +91,7 @@ public class EntityInteractionLockEntryListAdapter extends TypeAdapter<List<Enti
         in.beginArray();
         while (in.hasNext()) {
             if (in.peek() == JsonToken.STRING) {
-                entries.addAll(LegacyBoatIds.expand(in.nextString(), EntityNbtFilter.NONE,
+                entries.addAll(LegacyBoatIds.expand(in.nextString(), NbtFilter.NONE,
                         (id, nbt) -> new EntityInteractionLockEntry(id, null, null, nbt)));
             } else {
                 JsonObject obj = JsonParser.parseReader(in).getAsJsonObject();
@@ -120,15 +121,15 @@ public class EntityInteractionLockEntryListAdapter extends TypeAdapter<List<Enti
                         } else if (el.isJsonObject()) {
                             JsonObject itemObj = el.getAsJsonObject();
                             String itemId = itemObj.has("id") ? itemObj.get("id").getAsString() : "";
-                            JsonObject nbt = itemObj.has("nbt") ? itemObj.getAsJsonObject("nbt") : null;
-                            lockItems.add(new ItemEntry(itemId, nbt));
+                            lockItems.add(ItemEntry.withFilter(itemId,
+                                    NbtFilter.fromJsonStrict(itemObj.get("nbt")), null, null, null));
                         }
                     }
                 }
                 List<String> actions = lockActions;
                 List<ItemEntry> items = lockItems;
                 // A 1.21.1 boat entry becomes one per wood (see LegacyBoatIds).
-                entries.addAll(LegacyBoatIds.expand(id, EntityNbtFilter.fromJson(obj.get("nbt")),
+                entries.addAll(LegacyBoatIds.expand(id, NbtFilter.fromJson(obj.get("nbt")),
                         (entryId, nbt) -> new EntityInteractionLockEntry(entryId,
                                 actions == null ? null : new ArrayList<>(actions),
                                 items == null ? null : new ArrayList<>(items), nbt)));

@@ -6,6 +6,7 @@ import java.util.List;
 import net.bananemdnsa.historystages.HistoryStages;
 import com.google.gson.JsonObject;
 import net.bananemdnsa.historystages.data.ItemEntry;
+import net.bananemdnsa.historystages.data.NbtFilter;
 import net.bananemdnsa.historystages.data.lock.NamedLockEntry;
 import net.bananemdnsa.historystages.data.lock.engine.StageLocks;
 import net.bananemdnsa.historystages.api.stage.StageScope;
@@ -228,6 +229,70 @@ public final class LockTests {
             if (!StageLockHelper.isItemLockedForPlayer(tagged, player.getUUID())) {
                 helper.fail("the tagged sword matches the stage's NBT criterion and must be "
                         + "locked — it was answered from the plain sword's result");
+                return;
+            }
+            helper.succeed();
+        } finally {
+            GameTestStages.removeAll();
+        }
+    }
+
+    /** Two NBT variants on one entry, the Tinkers' "parts of cobalt or manyullyn" case. */
+    private static NbtFilter materialVariants() {
+        return NbtFilter.fromJson(com.google.gson.JsonParser.parseString(
+                "[{\"Material\":\"cobalt\"},{\"Material\":\"manyullyn\"}]"));
+    }
+
+    private static ItemStack withMaterial(net.minecraft.world.item.Item item, String material) {
+        ItemStack stack = new ItemStack(item);
+        if (material != null) {
+            CompoundTag tag = new CompoundTag();
+            tag.putString("Material", material);
+            stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
+        }
+        return stack;
+    }
+
+    /** Both variants locked, a third material and the bare item free. Null when it holds. */
+    private static String checkVariants(net.minecraft.world.item.Item item, ServerPlayer player) {
+        for (String material : new String[]{"cobalt", "manyullyn"}) {
+            if (!StageLockHelper.isItemLockedForPlayer(withMaterial(item, material), player.getUUID())) {
+                return material + " matches one of the two variants and must be locked";
+            }
+        }
+        if (StageLockHelper.isItemLockedForPlayer(withMaterial(item, "iron"), player.getUUID())) {
+            return "iron matches neither variant and must stay free";
+        }
+        if (StageLockHelper.isItemLockedForPlayer(withMaterial(item, null), player.getUUID())) {
+            return "an item without data matches neither variant and must stay free";
+        }
+        return null;
+    }
+
+    @HsGameTest
+    public static void anItemEntryWithTwoNbtVariantsLocksBothAndNotAThird(GameTestHelper helper) {
+        try {
+            GameTestStages.global("nbt_variants_item", stage -> stage.setItemEntries(new ArrayList<>(List.of(
+                    ItemEntry.withFilter("minecraft:paper", materialVariants(), null, null, null)))));
+            String problem = checkVariants(Items.PAPER, GameTestPlayers.create(helper));
+            if (problem != null) {
+                helper.fail(problem);
+                return;
+            }
+            helper.succeed();
+        } finally {
+            GameTestStages.removeAll();
+        }
+    }
+
+    @HsGameTest
+    public static void aTagEntryWithTwoNbtVariantsLocksBothAndNotAThird(GameTestHelper helper) {
+        try {
+            GameTestStages.global("nbt_variants_tag", stage -> stage.setTagEntries(new ArrayList<>(List.of(
+                    NamedLockEntry.withFilter("minecraft:bookshelf_books", null, null, null, materialVariants())))));
+            String problem = checkVariants(Items.BOOK, GameTestPlayers.create(helper));
+            if (problem != null) {
+                helper.fail(problem);
                 return;
             }
             helper.succeed();
@@ -529,7 +594,7 @@ public final class LockTests {
         try {
             com.google.gson.JsonObject red = new com.google.gson.JsonObject();
             red.addProperty("Color", net.minecraft.world.item.DyeColor.RED.getId());
-            var filter = net.bananemdnsa.historystages.data.lock.EntityNbtFilter.of(List.of(red));
+            var filter = net.bananemdnsa.historystages.data.NbtFilter.of(List.of(red));
             GameTestStages.global("red_sheep", stage -> {
                 stage.getEntities().setInteractionlock(new ArrayList<>(List.of(
                         new net.bananemdnsa.historystages.data.lock.EntityInteractionLockEntry(

@@ -1324,14 +1324,14 @@ public class StageDetailScreen extends Screen {
     private static final RichEntryCategoryTab.EntryAdapter<net.bananemdnsa.historystages.data.ItemEntry>
             ITEM_ENTRY_ADAPTER = new RichEntryCategoryTab.EntryAdapter<>() {
         @Override public String id(net.bananemdnsa.historystages.data.ItemEntry e) { return e.getId(); }
-        @Override public com.google.gson.JsonObject nbt(net.bananemdnsa.historystages.data.ItemEntry e) { return e.getNbt(); }
+        @Override public net.bananemdnsa.historystages.data.NbtFilter nbt(net.bananemdnsa.historystages.data.ItemEntry e) { return e.getNbtFilter(); }
         @Override public List<String> lockActions(net.bananemdnsa.historystages.data.ItemEntry e) { return e.getLockActions(); }
         @Override public String nameText(net.bananemdnsa.historystages.data.ItemEntry e) { return e.getNameTextOverride(); }
         @Override public String tooltipText(net.bananemdnsa.historystages.data.ItemEntry e) { return e.getTooltipTextOverride(); }
         @Override public net.bananemdnsa.historystages.data.ItemEntry build(
-                String id, com.google.gson.JsonObject nbt, List<String> lockActions,
+                String id, net.bananemdnsa.historystages.data.NbtFilter nbt, List<String> lockActions,
                 String nameText, String tooltipText) {
-            return new net.bananemdnsa.historystages.data.ItemEntry(id, nbt, lockActions, nameText, tooltipText);
+            return net.bananemdnsa.historystages.data.ItemEntry.withFilter(id, nbt, lockActions, nameText, tooltipText);
         }
     };
 
@@ -1339,12 +1339,12 @@ public class StageDetailScreen extends Screen {
     private static final RichEntryCategoryTab.EntryAdapter<net.bananemdnsa.historystages.data.FluidEntry>
             FLUID_ENTRY_ADAPTER = new RichEntryCategoryTab.EntryAdapter<>() {
         @Override public String id(net.bananemdnsa.historystages.data.FluidEntry e) { return e.getId(); }
-        @Override public com.google.gson.JsonObject nbt(net.bananemdnsa.historystages.data.FluidEntry e) { return null; }
+        @Override public net.bananemdnsa.historystages.data.NbtFilter nbt(net.bananemdnsa.historystages.data.FluidEntry e) { return null; }
         @Override public List<String> lockActions(net.bananemdnsa.historystages.data.FluidEntry e) { return e.getLockActions(); }
         @Override public String nameText(net.bananemdnsa.historystages.data.FluidEntry e) { return e.getNameTextOverride(); }
         @Override public String tooltipText(net.bananemdnsa.historystages.data.FluidEntry e) { return e.getTooltipTextOverride(); }
         @Override public net.bananemdnsa.historystages.data.FluidEntry build(
-                String id, com.google.gson.JsonObject nbt, List<String> lockActions,
+                String id, net.bananemdnsa.historystages.data.NbtFilter nbt, List<String> lockActions,
                 String nameText, String tooltipText) {
             return new net.bananemdnsa.historystages.data.FluidEntry(id, lockActions, nameText, tooltipText);
         }
@@ -1355,14 +1355,14 @@ public class StageDetailScreen extends Screen {
     private static final RichEntryCategoryTab.EntryAdapter<net.bananemdnsa.historystages.data.lock.NamedLockEntry>
             NAMED_LOCK_ENTRY_ADAPTER = new RichEntryCategoryTab.EntryAdapter<>() {
         @Override public String id(net.bananemdnsa.historystages.data.lock.NamedLockEntry e) { return e.getId(); }
-        @Override public com.google.gson.JsonObject nbt(net.bananemdnsa.historystages.data.lock.NamedLockEntry e) { return e.getNbt(); }
+        @Override public net.bananemdnsa.historystages.data.NbtFilter nbt(net.bananemdnsa.historystages.data.lock.NamedLockEntry e) { return e.getNbtFilter(); }
         @Override public List<String> lockActions(net.bananemdnsa.historystages.data.lock.NamedLockEntry e) { return e.getLockActions(); }
         @Override public String nameText(net.bananemdnsa.historystages.data.lock.NamedLockEntry e) { return e.getNameTextOverride(); }
         @Override public String tooltipText(net.bananemdnsa.historystages.data.lock.NamedLockEntry e) { return e.getTooltipTextOverride(); }
         @Override public net.bananemdnsa.historystages.data.lock.NamedLockEntry build(
-                String id, com.google.gson.JsonObject nbt, List<String> lockActions,
+                String id, net.bananemdnsa.historystages.data.NbtFilter nbt, List<String> lockActions,
                 String nameText, String tooltipText) {
-            return new net.bananemdnsa.historystages.data.lock.NamedLockEntry(
+            return net.bananemdnsa.historystages.data.lock.NamedLockEntry.withFilter(
                     id, lockActions, nameText, tooltipText, nbt);
         }
     };
@@ -2818,7 +2818,7 @@ public class StageDetailScreen extends Screen {
                                         this.width / 2, this.height / 2));
                     }
                     if (isAnyTab(tabIdx, CAT_ATTACK, CAT_INTERACT)) {
-                        java.util.Map<String, net.bananemdnsa.historystages.data.lock.EntityNbtFilter> nbtMap =
+                        java.util.Map<String, net.bananemdnsa.historystages.data.NbtFilter> nbtMap =
                                 isTab(tabIdx, CAT_ATTACK) ? entityState.attackNbt() : entityState.interactionNbt();
                         contextMenu.addEntry(Component.translatable("editor.historystages.context.edit_nbt").getString(),
                                 () -> this.minecraft.gui.setScreen(new EntityNbtEditScreen(
@@ -3220,11 +3220,11 @@ public class StageDetailScreen extends Screen {
         if (list == null || index < 0 || index >= list.size()) return;
         net.bananemdnsa.historystages.data.ItemEntry entry = list.get(index);
         interactionItemsTarget = entityId;
-        this.minecraft.gui.setScreen(new NbtItemEditScreen(this, entry.getId(), entry.getNbt(), nbt -> {
+        this.minecraft.gui.setScreen(new NbtItemEditScreen(this, entry.getId(), false, entry.getNbtFilter(), false, nbt -> {
             List<net.bananemdnsa.historystages.data.ItemEntry> target = editInteractionlockItems.get(entityId);
             if (target == null || index >= target.size()) return;
-            target.set(index, new net.bananemdnsa.historystages.data.ItemEntry(entry.getId(),
-                    (nbt != null && nbt.size() > 0) ? nbt : null));
+            target.set(index, net.bananemdnsa.historystages.data.ItemEntry.withFilter(entry.getId(),
+                    nbt, null, null, null));
             hasChanges = true;
             saveStage();
         }));
@@ -3254,9 +3254,9 @@ public class StageDetailScreen extends Screen {
     }
 
     private void openNbtEditScreen(int entryIdx, String itemId) {
-        com.google.gson.JsonObject currentNbt = itemTab.nbtByIndex().get(entryIdx);
-        this.minecraft.gui.setScreen(new NbtItemEditScreen(this, itemId, currentNbt, nbt -> {
-            if (nbt != null) {
+        net.bananemdnsa.historystages.data.NbtFilter currentNbt = itemTab.nbtByIndex().get(entryIdx);
+        this.minecraft.gui.setScreen(new NbtItemEditScreen(this, itemId, false, currentNbt, true, nbt -> {
+            if (!nbt.isEmpty()) {
                 itemTab.nbtByIndex().put(entryIdx, nbt);
             } else {
                 itemTab.nbtByIndex().remove(entryIdx);
@@ -3286,9 +3286,9 @@ public class StageDetailScreen extends Screen {
     }
 
     private void openTagNbtEditScreen(int entryIdx, String tagId) {
-        com.google.gson.JsonObject currentNbt = tagTab.nbtByIndex().get(entryIdx);
-        this.minecraft.gui.setScreen(new NbtItemEditScreen(this, tagId, true, currentNbt, nbt -> {
-            if (nbt != null) {
+        net.bananemdnsa.historystages.data.NbtFilter currentNbt = tagTab.nbtByIndex().get(entryIdx);
+        this.minecraft.gui.setScreen(new NbtItemEditScreen(this, tagId, true, currentNbt, true, nbt -> {
+            if (!nbt.isEmpty()) {
                 tagTab.nbtByIndex().put(entryIdx, nbt);
             } else {
                 tagTab.nbtByIndex().remove(entryIdx);
@@ -3299,9 +3299,9 @@ public class StageDetailScreen extends Screen {
     }
 
     private void openModExceptionNbtEditScreen(int entryIdx, String itemId) {
-        com.google.gson.JsonObject currentNbt = modExceptionTab.nbtByIndex().get(entryIdx);
-        this.minecraft.gui.setScreen(new NbtItemEditScreen(this, itemId, currentNbt, nbt -> {
-            if (nbt != null) {
+        net.bananemdnsa.historystages.data.NbtFilter currentNbt = modExceptionTab.nbtByIndex().get(entryIdx);
+        this.minecraft.gui.setScreen(new NbtItemEditScreen(this, itemId, false, currentNbt, true, nbt -> {
+            if (!nbt.isEmpty()) {
                 modExceptionTab.nbtByIndex().put(entryIdx, nbt);
             } else {
                 modExceptionTab.nbtByIndex().remove(entryIdx);

@@ -38,7 +38,7 @@ public final class BuiltInLockMatching {
     public static boolean itemEntryMatches(ItemEntry entry, LockSubjects.ItemSubject subject) {
         if (!entry.getId().equals(subject.itemId())) return false;
         if (!entry.hasNbt()) return true;
-        return subject.stack() != null && NbtMatcher.matches(subject.stack(), entry.getNbt());
+        return subject.stack() != null && NbtMatcher.matches(subject.stack(), entry.getNbtFilter());
     }
 
     /**
@@ -87,7 +87,7 @@ public final class BuiltInLockMatching {
         if (item == null) return false;
         if (!item.builtInRegistryHolder().is(entry.getItemTagKey())) return false;
         if (!entry.hasNbt()) return true;
-        return stack != null && NbtMatcher.matches(stack, entry.getNbt());
+        return stack != null && NbtMatcher.matches(stack, entry.getNbtFilter());
     }
 
     /**

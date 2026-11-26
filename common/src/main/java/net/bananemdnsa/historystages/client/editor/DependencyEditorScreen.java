@@ -1634,8 +1634,8 @@ public class DependencyEditorScreen extends Screen {
         if (tab == null) return;
         boolean tagMode = entryId.startsWith("#");
         String subject = tagMode ? entryId.substring(1) : entryId;
-        this.minecraft.gui.setScreen(new NbtItemEditScreen(this, subject, tagMode, tab.nbtAt(entryIdx), nbt -> {
-            tab.setNbtAt(entryIdx, nbt == null ? null : nbt.deepCopy());
+        this.minecraft.gui.setScreen(new NbtItemEditScreen(this, subject, tagMode, tab.nbtAt(entryIdx), true, nbt -> {
+            tab.setNbtAt(entryIdx, nbt);
             // Routes through this screen own save, so the whole stage is persisted.
             save();
         }));

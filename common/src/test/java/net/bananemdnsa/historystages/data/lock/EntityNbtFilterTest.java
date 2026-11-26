@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.data.lock;
 
+import net.bananemdnsa.historystages.data.NbtFilter;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
@@ -70,14 +71,14 @@ class EntityNbtFilterTest {
     @Test
     void anInteractionEntryWithOnlyAFilterIsNoLongerAPlainString() {
         List<EntityInteractionLockEntry> entries = List.of(new EntityInteractionLockEntry(
-                "minecraft:fox", null, null, EntityNbtFilter.of(List.of(obj("{\"Type\":\"oak\"}")))));
+                "minecraft:fox", null, null, NbtFilter.of(List.of(obj("{\"Type\":\"oak\"}")))));
         assertEquals(JsonParser.parseString("[{\"id\":\"minecraft:fox\",\"nbt\":{\"Type\":\"oak\"}}]"),
                 JsonParser.parseString(GSON.toJson(entries, INTERACT)));
     }
 
     @Test
     void emptyCriteriaAreDroppedBecauseTheyWouldMatchEverything() {
-        assertTrue(EntityNbtFilter.fromJson(JsonParser.parseString("[{}]")).isEmpty());
+        assertTrue(NbtFilter.fromJson(JsonParser.parseString("[{}]")).isEmpty());
     }
 
     // ---- the id view -----------------------------------------------------------------
@@ -86,7 +87,7 @@ class EntityNbtFilterTest {
     void writingIdsKeepsTheFiltersOfIdsThatStay() {
         EntityLocks locks = new EntityLocks();
         locks.setAttacklockEntries(List.of(
-                new EntityAttackLockEntry("minecraft:fox", EntityNbtFilter.of(List.of(obj("{\"Type\":\"oak\"}")))),
+                new EntityAttackLockEntry("minecraft:fox", NbtFilter.of(List.of(obj("{\"Type\":\"oak\"}")))),
                 new EntityAttackLockEntry("minecraft:zombie")));
 
         locks.setAttacklock(List.of("minecraft:fox", "minecraft:husk"));
@@ -110,7 +111,7 @@ class EntityNbtFilterTest {
     void aStageCopyKeepsAttackFilters() {
         StageEntry stage = new StageEntry();
         stage.getEntities().setAttacklockEntries(List.of(new EntityAttackLockEntry("minecraft:villager",
-                EntityNbtFilter.of(List.of(obj("{\"Age\":\"0-0\"}"))))));
+                NbtFilter.of(List.of(obj("{\"Age\":\"0-0\"}"))))));
         assertTrue(stage.copy().getEntities().getAttacklockEntries().get(0).hasNbt());
     }
 
@@ -119,7 +120,7 @@ class EntityNbtFilterTest {
     private static StageEntry lockingOakBoats() {
         StageEntry stage = new StageEntry();
         stage.getEntities().setAttacklockEntries(List.of(new EntityAttackLockEntry("minecraft:fox",
-                EntityNbtFilter.of(List.of(obj("{\"Type\":\"oak\"}"), obj("{\"Type\":\"birch\"}"))))));
+                NbtFilter.of(List.of(obj("{\"Type\":\"oak\"}"), obj("{\"Type\":\"birch\"}"))))));
         return stage;
     }
 

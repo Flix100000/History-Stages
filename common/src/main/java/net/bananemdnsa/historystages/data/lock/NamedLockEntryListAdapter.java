@@ -47,7 +47,7 @@ public class NamedLockEntryListAdapter extends TypeAdapter<List<NamedLockEntry>>
                 out.name("id").value(entry.getId());
                 if (entry.hasNbt()) {
                     out.name("nbt");
-                    com.google.gson.internal.Streams.write(entry.getNbt(), out);
+                    com.google.gson.internal.Streams.write(entry.getNbtFilter().toJson(), out);
                 }
                 if (!unlocked.isEmpty()) {
                     out.name("unlock_actions");
@@ -103,9 +103,9 @@ public class NamedLockEntryListAdapter extends TypeAdapter<List<NamedLockEntry>>
                 }
                 String nameText = obj.has("name_text") ? obj.get("name_text").getAsString() : null;
                 String tooltipText = obj.has("tooltip_text") ? obj.get("tooltip_text").getAsString() : null;
-                com.google.gson.JsonObject nbt = obj.has("nbt") && obj.get("nbt").isJsonObject()
-                        ? obj.getAsJsonObject("nbt") : null;
-                entries.add(new NamedLockEntry(id, lockActions, nameText, tooltipText, nbt));
+                net.bananemdnsa.historystages.data.NbtFilter nbt =
+                        net.bananemdnsa.historystages.data.NbtFilter.fromJson(obj.get("nbt"));
+                entries.add(NamedLockEntry.withFilter(id, lockActions, nameText, tooltipText, nbt));
             }
         }
         in.endArray();

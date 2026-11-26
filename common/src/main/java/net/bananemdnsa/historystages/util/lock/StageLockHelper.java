@@ -437,7 +437,7 @@ public class StageLockHelper {
         for (ItemEntry itemEntry : entry.getItemEntries()) {
             if (itemEntry.getId().equals(itemId)) {
                 if (itemEntry.hasNbt()) {
-                    if (NbtMatcher.matches(stack, itemEntry.getNbt())) return true;
+                    if (NbtMatcher.matches(stack, itemEntry.getNbtFilter())) return true;
                 } else {
                     return true;
                 }

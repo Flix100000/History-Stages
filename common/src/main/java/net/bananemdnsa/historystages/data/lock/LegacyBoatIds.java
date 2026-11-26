@@ -1,5 +1,6 @@
 package net.bananemdnsa.historystages.data.lock;
 
+import net.bananemdnsa.historystages.data.NbtFilter;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
@@ -47,7 +48,7 @@ public final class LegacyBoatIds {
      * The entries an old boat entry stands for, built by {@code make} from an id and the filter
      * left once the wood is taken out. Any other entry comes back as it is, through {@code make}.
      */
-    public static <T> List<T> expand(String id, EntityNbtFilter filter, BiFunction<String, EntityNbtFilter, T> make) {
+    public static <T> List<T> expand(String id, NbtFilter filter, BiFunction<String, NbtFilter, T> make) {
         if (!isLegacy(id)) return List.of(make.apply(id, filter));
         boolean chest = CHEST_BOAT.equals(id);
 
@@ -76,7 +77,7 @@ public final class LegacyBoatIds {
         for (String wood : WOODS) {
             if (!byWood.containsKey(wood)) continue;
             List<JsonObject> rest = byWood.get(wood);
-            out.add(make.apply(idFor(wood, chest), rest == null ? EntityNbtFilter.NONE : EntityNbtFilter.of(rest)));
+            out.add(make.apply(idFor(wood, chest), rest == null ? NbtFilter.NONE : NbtFilter.of(rest)));
         }
         return out;
     }

@@ -111,7 +111,7 @@ public record DepositDependencyPacket(BlockPos pos, int groupIndex, String depos
                     ItemStack invStack = player.getInventory().getItem(i);
                     if (!invStack.isEmpty()
                             && rl.equals(BuiltInRegistries.ITEM.getKey(invStack.getItem()))
-                            && (!matched.hasNbt() || NbtMatcher.matches(invStack, matched.getNbt()))) {
+                            && (!matched.hasNbt() || NbtMatcher.matches(invStack, matched.getNbtFilter()))) {
                         int toRemove = Math.min(needed - consumed, invStack.getCount());
                         invStack.shrink(toRemove);
                         consumed += toRemove;
