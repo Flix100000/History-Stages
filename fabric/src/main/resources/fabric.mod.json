@@ -34,7 +34,8 @@
 			"net.bananemdnsa.historystages.fabric.gametest.InteractionClassifyTests",
 			"net.bananemdnsa.historystages.fabric.gametest.RecipeOutputTests",
 			"net.bananemdnsa.historystages.fabric.gametest.PayloadSizeTests",
-			"net.bananemdnsa.historystages.fabric.gametest.RecipeListSyncTests"
+			"net.bananemdnsa.historystages.fabric.gametest.RecipeListSyncTests",
+			"net.bananemdnsa.historystages.fabric.gametest.ReloadListenerTests"
 		],
 		"historystages": [
 			"net.bananemdnsa.historystages.fabric.gametest.TestAddonPlugin"

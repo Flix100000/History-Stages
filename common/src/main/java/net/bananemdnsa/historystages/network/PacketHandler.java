@@ -1,4 +1,8 @@
 package net.bananemdnsa.historystages.network;
+import net.bananemdnsa.historystages.reload.BackgroundReload;
+import net.bananemdnsa.historystages.reload.LightReload;
+import net.bananemdnsa.historystages.reload.StageReloadMode;
+import net.bananemdnsa.historystages.reload.ReloadStats;
 import net.bananemdnsa.historystages.network.serverbound.RequestClusterShapesPacket;
 import net.bananemdnsa.historystages.network.serverbound.ToggleStructureVizPacket;
 import net.bananemdnsa.historystages.network.serverbound.RequestStructureDebugPacket;
@@ -198,13 +202,32 @@ public class PacketHandler {
         if (!reloadRequested) return;
         reloadRequested = false;
 
-        if (!net.bananemdnsa.historystages.data.lock.VisibleRecipes.gatedSetChanged(
-                net.bananemdnsa.historystages.util.lock.RecipeResolutionFilter.allRecipes(server.getRecipeManager()))) {
-            resyncRecipes(server);
+        var recipes = net.bananemdnsa.historystages.util.lock.RecipeResolutionFilter.allRecipes(server.getRecipeManager());
+        int gatedBefore = net.bananemdnsa.historystages.data.lock.VisibleRecipes.gatedCount();
+        boolean changed = net.bananemdnsa.historystages.data.lock.VisibleRecipes.gatedSetChanged(recipes);
+        int gatedAfter = net.bananemdnsa.historystages.data.lock.VisibleRecipes.gatedCount();
+        StageReloadMode mode = LightReload.mode();
+        ReloadStats.begin(changed ? mode.name().toLowerCase(java.util.Locale.ROOT) : "none",
+                gatedBefore, gatedAfter, recipes.size());
+
+        // PROTOTYPE: the resend only exists to restart JEI; /hsreloadlab jei picks.
+        if (!changed) {
+            if (LightReload.resendRecipes()) resyncRecipes(server);
+            ReloadStats.end(null);
+            return;
+        }
+
+        // PROTOTYPE: /hsreloadlab mode picks what happens here. FULL is what shipped; BACKGROUND
+        // the same reload without the freeze; TARGETED only the mods' listeners, the branch default.
+        if (mode != StageReloadMode.FULL) {
+            BackgroundReload.request(server);
+            // A full reload ends by sending the recipe list itself; the targeted one does not.
+            if (mode == StageReloadMode.TARGETED && LightReload.resendRecipes()) resyncRecipes(server);
             return;
         }
 
         server.reloadResources(server.getPackRepository().getSelectedIds())
+                .whenComplete((ignored, e) -> ReloadStats.end(e))
                 .exceptionally(e -> {
                     DebugLogger.warn("Recipe Locks",
                             "Reloading datapacks after a stage change failed: " + e.getMessage()
@@ -229,7 +252,7 @@ public class PacketHandler {
      * puts in this packet — and because {@code getRecipes} is gated on the server now, so sending
      * it would take the locked recipes off every client and out of their recipe book.
      */
-    private static void resyncRecipes(MinecraftServer server) {
+    public static void resyncRecipes(MinecraftServer server) {
         ClientboundUpdateRecipesPacket recipePacket = new ClientboundUpdateRecipesPacket(
                 server.getRecipeManager().getSynchronizedItemProperties(),
                 server.getRecipeManager().getSynchronizedStonecutterRecipes());

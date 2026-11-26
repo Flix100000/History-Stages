@@ -62,6 +62,9 @@ public final class HistoryStagesGameTests {
             StonecutterLockTests.class,
             StageQueryTests.class,
             TeamShareTests.class,
+            LightReloadTests.class,
+            BackgroundReloadTests.class,
+            JeiRefresherTests.class,
             TradeLockTests.class,
             ZoneLockTests.class,
             ZoneMarkingTests.class);

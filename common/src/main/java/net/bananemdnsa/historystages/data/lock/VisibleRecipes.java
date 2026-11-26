@@ -163,6 +163,11 @@ public final class VisibleRecipes {
         gatedSeeded = false;
     }
 
+    /** How many recipes the last {@link #gatedSetChanged} found hidden. For the reload stats. */
+    public static synchronized int gatedCount() {
+        return gatedIds.size();
+    }
+
     /** What {@link #gatedSetChanged} last reported. Not a cache — do not clear it on invalidate. */
     private static Set<Identifier> gatedIds = Set.of();
 

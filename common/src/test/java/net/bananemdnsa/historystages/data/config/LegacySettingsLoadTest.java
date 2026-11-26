@@ -30,10 +30,27 @@ class LegacySettingsLoadTest {
         return target;
     }
 
+    /**
+     * The first load may add settings that came after 6.1.0 (gameplay.toml gained [advanced] in
+     * 6.2.0), but it must keep every value the file had, and from then on loading leaves it alone.
+     */
     private static void assertLoadsUnchanged(ModConfigSpec spec, Path file) throws IOException {
-        byte[] before = Files.readAllBytes(file);
+        java.util.List<String> valuesBefore = valueLines(file);
         spec.load(file);
-        assertArrayEquals(before, Files.readAllBytes(file), file.getFileName() + " was rewritten by loading it");
+        java.util.List<String> valuesAfter = valueLines(file);
+        for (String line : valuesBefore) {
+            assertTrue(valuesAfter.contains(line), file.getFileName() + " lost or changed \"" + line + "\" on load");
+        }
+        byte[] settled = Files.readAllBytes(file);
+        spec.load(file);
+        assertArrayEquals(settled, Files.readAllBytes(file), file.getFileName() + " was rewritten by loading it again");
+    }
+
+    private static java.util.List<String> valueLines(Path file) throws IOException {
+        return Files.readAllLines(file).stream()
+                .map(String::strip)
+                .filter(line -> !line.isEmpty() && !line.startsWith("#") && !line.startsWith("["))
+                .toList();
     }
 
     @Test
